@@ -39,5 +39,5 @@ void main ()
    textureCoordinate = inTexCoord;
 
    isUnderPerspective = usesPerspective;
-   skyBoxTextureCoordinate = inVertex;
+   skyBoxTextureCoordinate = -inVertex;
 }

@@ -166,6 +166,7 @@ int WindowManager::loadConfig(GLuint shader)
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 
+    glFrontFace(GL_CCW);
 
     glClearColor        (0.0, 0.0, 0.0, 0.0);
 

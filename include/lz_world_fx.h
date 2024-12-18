@@ -55,7 +55,7 @@ class WorldFX
             MeshManager::Mesh cube;
         };
 
-        SkyBox createSkyBox(std::string rightPath, std::string leftPath, std::string upPath, std::string downPath, std::string frontPath, std::string backPath);
+        SkyBox createSkyBox(std::string rightPath, std::string leftPath, std::string downPath, std::string upPath, std::string frontPath, std::string backPath);
         void drawSkyBox(SkyBox sky, CameraManager::Camera camera);
 
         virtual ~WorldFX();

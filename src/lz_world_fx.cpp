@@ -31,10 +31,10 @@ WorldFX::WorldFX(GLuint shaderProgram)
     this->skyBox = {};
 };
 
-WorldFX::SkyBox WorldFX::createSkyBox(std::string rightPath, std::string leftPath, std::string upPath, std::string downPath, std::string frontPath, std::string backPath)
+WorldFX::SkyBox WorldFX::createSkyBox(std::string rightPath, std::string leftPath, std::string downPath, std::string upPath, std::string frontPath, std::string backPath)
 {
     this->skyBox.cube = meshLoader->createCube(10.0f);
-    this->skyBox.paths = {rightPath, leftPath, upPath, downPath, frontPath, backPath};
+    this->skyBox.paths = {rightPath, leftPath, downPath, upPath, frontPath, backPath};
 
     this->loadSkyMap();
 
@@ -65,6 +65,8 @@ void WorldFX::drawSkyBox(WorldFX::SkyBox sky, CameraManager::Camera camera)
         it with 0's (essentially back at the origin). It's then
         changed back again afterwards.
     ============================================================== */
+    glDisable           (GL_CULL_FACE);
+
     glm::mat4 viewFromOrigin = glm::mat4(glm::mat3(camera.viewMatrix)); 
     GLuint uniform = glGetUniformLocation(this->shader, "viewMatrix");
 
@@ -76,6 +78,12 @@ void WorldFX::drawSkyBox(WorldFX::SkyBox sky, CameraManager::Camera camera)
     meshLoader->drawMesh(sky.cube);
     
     glDepthMask(GL_TRUE);
+
+    if(globals.getBackFaceCulling())
+    {
+        glEnable            (GL_CULL_FACE);
+        glCullFace          (GL_BACK);
+    };
 
     glUniformMatrix4fv(uniform, 1, GL_FALSE, &camera.viewMatrix[0][0]);
 };
