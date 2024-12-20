@@ -1,5 +1,6 @@
-# Version: 2024.12.20050217
+# Version: 2024.12.20050447
 
+* [3993fc9](https://github.com/ford-jones/lazarus/commit/3993fc9f6f1c2310c915138a6018a4a38090eb09): [Changelog CI] Add Changelog for Version 2024.12.20050217
 * [7a4271d](https://github.com/ford-jones/lazarus/commit/7a4271df4af069b98e0f26c7f61c4bdfea208bc8): Docs: Updated audio documentation and added skyboxes
 * [9dafd71](https://github.com/ford-jones/lazarus/commit/9dafd7125cb440bf3c7b79cb34887755efa75125): Update: Allocate immutable storage on VRAM for cubemap textures
 * [c89f53d](https://github.com/ford-jones/lazarus/commit/c89f53d7475d82cab2f77221e4de76ccaccf7e1a): Update: Disabled backface culling and inverted direction vector for skybox rendering
