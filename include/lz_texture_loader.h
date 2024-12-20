@@ -61,6 +61,7 @@ class TextureLoader
 		GLuint cubeMapTexture;
 
 	private:		
+		int countMipLevels(int width, int height);
 		void checkErrors(const char *invoker);
 
 		shared_ptr<FileReader> loader;

@@ -17,6 +17,15 @@
 //                                                                                                      .***,.   . .,/##%###(/.  ...,,.      
 /*  LAZARUS ENGINE */
 
+/* ================================================================
+	TODO:
+		- Support for texture-per-face loading
+		- Support for multiple textured meshes (layering)
+		- Ideally have each of these functions use immutable storage
+		- Create and bind textures where needed. This gets ugly fast 
+		  as a scene starts to grow.
+=================================================================== */
+
 #include "../include/lz_texture_loader.h"
 
 TextureLoader::TextureLoader()
@@ -111,16 +120,26 @@ void TextureLoader::storeCubeMap(int width, int height)
 {
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, this->cubeMapTexture);
-
-	// glTexImage2D(GL_TEXTURE_CUBE_MAP, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 	
+	/* ===========================================================
+		Calculate the depth of the mip map (levels) for the given
+		width / height params, which are the dimensions for the 
+		images that make up each face of the cubemap. Despite only
+		handing over the dimensions for one face, OpenGL will 
+		multiply this number internally by 6 to allocate storage 
+		each mip of each face.
+	============================================================== */
+
+	this->mipCount = this->countMipLevels(width, height);
+	glTexStorage2D(GL_TEXTURE_CUBE_MAP, this->mipCount, GL_RGBA8, width, height);
+
 	this->checkErrors(__PRETTY_FUNCTION__);
 };
 
 void TextureLoader::loadCubeMap(std::vector<FileReader::Image> faces)
-{
-	// glActiveTexture(GL_TEXTURE3);
-	// glBindTexture(GL_TEXTURE_CUBE_MAP, this->cubeMapTexture);
+{	
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, this->cubeMapTexture);
 	
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
@@ -132,12 +151,20 @@ void TextureLoader::loadCubeMap(std::vector<FileReader::Image> faces)
 	{
 		for(unsigned int i = 0; i < 6; i++)
 		{
-			glTexImage2D(
-				(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i),
+			/* ===================================================
+				For each face; buffer the images pixel data to 
+				the respective faces target binding. These targets 
+				are intrinsically related to / a part of the 
+				GL_TEXTURE_CUBE_MAP texture name which is currently 
+				bound to the active texture slot.
+			====================================================== */
+			GLenum target = GL_TEXTURE_CUBE_MAP_POSITIVE_X + i;
+
+			glTexSubImage2D(
+				target,
 				0,
-				GL_RGBA8,
+				0, 0,
 				faces[0].width, faces[0].height,
-				0,
 				GL_RGBA,
 				GL_UNSIGNED_BYTE,
 				(const void *)faces[i].pixelData
@@ -221,6 +248,40 @@ void TextureLoader::loadBitmapToTexture(FileReader::Image imageData)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);	
 	
+};
+
+int TextureLoader::countMipLevels(int width, int height)
+{
+	this->loopCount = 0;
+
+	this->x = width;
+	this->y = height;
+
+	this->loopCount += 1;
+
+	while( 1 )
+	{
+		this->loopCount += 1;
+
+		if(this->x != 1)
+		{
+			int xResult = floor(this->x / 2);
+			this->x = xResult;
+		}
+
+		if (this->y != 1)
+		{
+			int yResult = floor(this->y / 2);
+			this->y = yResult;
+		}
+
+		if ( (this->x == 1) && (this->y == 1) )
+		{
+			break;
+		}
+	}
+
+	return this->loopCount;
 };
 
 void TextureLoader::checkErrors(const char *invoker)

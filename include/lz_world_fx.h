@@ -47,14 +47,15 @@ class WorldFX
 
         struct SkyBox
         {
-            // +x -x +y -y +z -z
-
             std::vector<std::string> paths;
             std::vector<FileReader::Image> cubeMap;
 
             MeshManager::Mesh cube;
         };
 
+        /* ==================================================================================================================================================
+                                            +x                    -x                    -y                  +y                    +z                    -z
+        ===================================================================================================================================================== */
         SkyBox createSkyBox(std::string rightPath, std::string leftPath, std::string downPath, std::string upPath, std::string frontPath, std::string backPath);
         void drawSkyBox(SkyBox sky, CameraManager::Camera camera);
 
