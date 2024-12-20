@@ -48,3 +48,4 @@ Core guidelines: https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#S-
 11. Misc:
 RGB decimal colours: https://www.tug.org/pracjourn/2007-4/walden/color.pdf
 Unicode UTF-8 characters: https://www.charset.org/utf-8
+Free cubemaps: https://www.humus.name/index.php?page=Textures

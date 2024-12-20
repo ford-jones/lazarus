@@ -15,15 +15,13 @@ uniform mat4 orthoProjectionMatrix;
 out vec3 fragPosition;
 out vec3 diffuseColor;
 out vec3 normalCoordinate;
-out vec2 textureCoordinate;
+out vec3 textureCoordinate;
+out vec3 skyBoxTextureCoordinate;
 
 flat out int isUnderPerspective;
 
 void main ()
 {
-   fragPosition = vec3(modelMatrix * vec4(inVertex, 1.0));
-   normalCoordinate = mat3(transpose(inverse(modelMatrix))) * inNormal;
-
    vec4 worldPosition = modelMatrix * vec4(inVertex, 1.0);
    
    if(usesPerspective != 0)
@@ -35,7 +33,11 @@ void main ()
       gl_Position = orthoProjectionMatrix * viewMatrix * worldPosition;
    }
    
-   textureCoordinate = vec2(inTexCoord.x, inTexCoord.y);
+   fragPosition = vec3(worldPosition);
    diffuseColor = inDiffuse;
+   normalCoordinate = mat3(transpose(inverse(modelMatrix))) * inNormal;
+   textureCoordinate = inTexCoord;
+
    isUnderPerspective = usesPerspective;
+   skyBoxTextureCoordinate = -inVertex;
 }

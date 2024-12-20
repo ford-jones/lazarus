@@ -45,6 +45,7 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
 
     mesh.is3D = 1;
     mesh.isGlyph = 0;
+    mesh.isSkybox = 0;
 
     this->lookupUniforms(mesh);
 
@@ -90,6 +91,7 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
 
     mesh.is3D = 0;
     mesh.isGlyph = 0;
+    mesh.isSkybox = 0;
 
     this->lookupUniforms(mesh);
 
@@ -158,6 +160,96 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
     return mesh;
 }
 
+MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath)
+{
+    float vertexPosition = scale / 2; 
+
+    this->mesh = {};
+
+    mesh.is3D = 0;
+    mesh.isGlyph = 0;
+    mesh.isSkybox = 1;
+
+    this->lookupUniforms(mesh);
+
+    /* ==================================================
+        Change the sampler location set by lookupUniforms
+        from the texture array to the cube map.
+    ===================================================== */
+
+    mesh.samplerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureCube");
+    glUniform1i(mesh.samplerUniformLocation, 3);
+    
+    mesh.textureUnit = GL_TEXTURE3;
+    glActiveTexture(mesh.textureUnit);
+
+    this->resolveFilepaths(mesh, texturePath);
+
+    if(mesh.textureFilepath == LAZARUS_MESH_NOTEX)
+    {
+        mesh.attributes = {                                                                                          
+            // Front face
+            vec3(-vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(-vertexPosition, -vertexPosition,  vertexPosition),
+            vec3(vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(vertexPosition, -vertexPosition,  vertexPosition),
+            vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(vertexPosition,  vertexPosition,  vertexPosition),
+
+            vec3(-vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(-vertexPosition, -vertexPosition,  vertexPosition),
+            vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(vertexPosition,  vertexPosition,  vertexPosition),
+            vec3(-vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(-vertexPosition,  vertexPosition,  vertexPosition),
+
+            // Back face
+            vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(-vertexPosition, -vertexPosition, -vertexPosition),
+            vec3(vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(vertexPosition, -vertexPosition, -vertexPosition),
+            vec3(vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(vertexPosition,  vertexPosition, -vertexPosition),
+
+            vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(-vertexPosition, -vertexPosition, -vertexPosition),
+            vec3(vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(vertexPosition,  vertexPosition, -vertexPosition),
+            vec3(-vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(-vertexPosition,  vertexPosition, -vertexPosition),
+
+            // Left face
+            vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(-vertexPosition, -vertexPosition, -vertexPosition),
+            vec3(-vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(-vertexPosition, -vertexPosition,  vertexPosition),
+            vec3(-vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(-vertexPosition,  vertexPosition,  vertexPosition),
+
+            vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(vertexPosition, -vertexPosition, -vertexPosition),
+            vec3(-vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(-vertexPosition,  vertexPosition,  vertexPosition),
+            vec3(-vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(-vertexPosition,  vertexPosition, -vertexPosition),
+
+            // Right face
+            vec3(vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(vertexPosition, -vertexPosition, -vertexPosition),
+            vec3(vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(vertexPosition, -vertexPosition,  vertexPosition),
+            vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(vertexPosition,  vertexPosition,  vertexPosition),
+
+            vec3(vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(vertexPosition, -vertexPosition, -vertexPosition),
+            vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(vertexPosition,  vertexPosition,  vertexPosition),
+            vec3(vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(vertexPosition,  vertexPosition, -vertexPosition),
+
+            // Top face
+            vec3(-vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(-vertexPosition,  vertexPosition, -vertexPosition),
+            vec3(vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(vertexPosition,  vertexPosition, -vertexPosition),
+            vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(vertexPosition,  vertexPosition,  vertexPosition),
+
+            vec3(-vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(-vertexPosition,  vertexPosition, -vertexPosition),
+            vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(vertexPosition,  vertexPosition,  vertexPosition),
+            vec3(-vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(-vertexPosition,  vertexPosition,  vertexPosition),
+
+            // Bottom face
+            vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(-vertexPosition, -vertexPosition, -vertexPosition),
+            vec3(vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(vertexPosition, -vertexPosition, -vertexPosition),
+            vec3(vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(vertexPosition, -vertexPosition,  vertexPosition),
+
+            vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(-vertexPosition, -vertexPosition, -vertexPosition),
+            vec3(vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(vertexPosition, -vertexPosition,  vertexPosition),
+            vec3(-vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(-vertexPosition, -vertexPosition,  vertexPosition)
+        };
+    }
+
+    this->setInherentProperties(mesh);
+    this->initialiseMesh(mesh);
+
+    return this->mesh;
+};
+
 void MeshManager::initialiseMesh(MeshManager::Mesh &asset)
 {	
     glGenVertexArrays(1, &asset.VAO);
@@ -185,7 +277,11 @@ void MeshManager::initialiseMesh(MeshManager::Mesh &asset)
         this->checkErrors(__PRETTY_FUNCTION__);
 
         this->meshStore.push_back(asset);
-        this->prepareTextures();
+
+        if(asset.isSkybox != 1)
+        {
+            this->prepareTextures();
+        };
     }
     else
     {
@@ -219,6 +315,7 @@ void MeshManager::loadMesh(MeshManager::Mesh &asset)
         glUniformMatrix4fv(asset.modelMatrixUniformLocation, 1, GL_FALSE, &asset.modelMatrix[0][0]);
         glUniform1i(asset.is3DUniformLocation, asset.is3D);
         glUniform1i(asset.isGlyphUniformLocation, asset.isGlyph);
+        glUniform1i(asset.isSkyBoxUniformLocation, asset.isSkybox);
     
         if(asset.textureId != 0)
         {
@@ -245,6 +342,10 @@ void MeshManager::drawMesh(MeshManager::Mesh &asset)
     if((asset.textureFilepath == LAZARUS_MESH_ISTEXT))
     {
         glBindTexture(GL_TEXTURE_2D, asset.textureId);
+    }
+    else if((asset.textureFilepath == LAZARUS_MESH_ISSKYBOX))
+    {
+        glBindTexture(GL_TEXTURE_CUBE_MAP, asset.textureId);
     }
     else if((asset.textureFilepath != LAZARUS_MESH_NOTEX))
     {
@@ -328,6 +429,7 @@ void MeshManager::lookupUniforms(MeshManager::Mesh &asset)
     asset.modelMatrixUniformLocation = glGetUniformLocation(this->shaderProgram, "modelMatrix");
     asset.is3DUniformLocation = glGetUniformLocation(this->shaderProgram, "spriteAsset");
     asset.isGlyphUniformLocation = glGetUniformLocation(this->shaderProgram, "glyphAsset");
+    asset.isSkyBoxUniformLocation = glGetUniformLocation(this->shaderProgram, "isSkyBox");
 
     asset.samplerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureArray");
     asset.textureLayerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureLayer");    

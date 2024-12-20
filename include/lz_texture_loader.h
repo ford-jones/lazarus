@@ -48,6 +48,9 @@ class TextureLoader
 		void extendTextureStack(int maxWidth, int maxHeight, int textureLayers);
 		void loadImageToTextureStack(FileReader::Image imageData, GLuint textureLayer);
 
+		void storeCubeMap(int width, int height);
+		void loadCubeMap(std::vector<FileReader::Image> faces);
+
 		void storeBitmapTexture(int maxWidth, int maxHeight);
 		void loadBitmapToTexture(FileReader::Image imageData);
 
@@ -55,8 +58,10 @@ class TextureLoader
 		
 		GLuint bitmapTexture;
 		GLuint textureStack;
+		GLuint cubeMapTexture;
 
 	private:		
+		int countMipLevels(int width, int height);
 		void checkErrors(const char *invoker);
 
 		shared_ptr<FileReader> loader;

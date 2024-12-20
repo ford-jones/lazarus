@@ -87,9 +87,11 @@ class MeshManager
             GLint textureLayerUniformLocation;
             GLint is3DUniformLocation;
             GLint isGlyphUniformLocation;
+            GLint isSkyBoxUniformLocation;
 
             int is3D;
             int isGlyph;
+            int isSkybox;
 
             int textureUnit;
         };
@@ -98,6 +100,7 @@ class MeshManager
 		
         Mesh create3DAsset(string meshPath, string materialPath, string texturePath = "");
         Mesh createQuad(float width, float height, string texturePath = "", float uvXL = 0.0, float uvXR = 0.0, float uvY = 0.0);
+        Mesh createCube(float scale, string texturePath = "");
 
         void prepareTextures();
 

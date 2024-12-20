@@ -26,7 +26,7 @@ OBJECTS = src/lz_globals_manager.o src/lz_shader.o src/lz_light.o src/lz_camera.
 					src/lz_mesh_loader.o src/lz_material_loader.o src/lz_texture_loader.o \
 					src/lz_window_manager.o src/lz_file_reader.o src/lz_event_manager.o \
 					src/lz_fps_counter.o src/lz_image_loader.o src/lz_image_resize.o src/lz_audio_manager.o \
-					src/lz_text_manager.o src/lz_font_loader.o src/lz_constants.o
+					src/lz_text_manager.o src/lz_font_loader.o src/lz_world_fx.o src/lz_constants.o
 
 run : build
 	$(shell mv src/*.o build/)
@@ -62,6 +62,7 @@ lz_image_loader.o := /usr/local/include/stb_image.h
 lz_imageResize.o := /usr/local/include/stb_image_resize.h
 lz_text_manager.o := include/lz_text_manager.h
 lz_font_loader.o := include/lz_font_loader.h
+lz_world_fx.o := include/lz_world_fx.h
 lz_constants.o := include/lz_constants.h
 
 clean : 

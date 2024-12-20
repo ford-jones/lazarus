@@ -209,7 +209,7 @@ Params:
 > **filepath**: The relative path to the file you would like to read from.
 
 #### FileReader::Image readFromImage(std::string filename)
-Reads and parses the contents of an image file (.png, .jpg, .tga, .pic; view `stb_image` documentation for the full list). 
+Reads and parses the contents of an image file (.png, .jpg, .tga, .pic; view `stb_image` documentation for the full list). Images must be formatted into 8-bit per channel RGBA.
 Returns the image data in the form of an `unsigned char*`.
 
 Params:
@@ -554,6 +554,13 @@ Pauses an `AudioManager::Audio` object which has been previously played with `Au
 Params:
 > **audioIn:** *The audio object you want to pause / stop playing.*
 
+#### AudioManager::Audio setPlaybackCursor(AudioManager::Audio &audioIn, int milliseconds)
+Set the playback position of the target audio in milliseconds.
+
+Params:
+> **audioIn** *A reference to the target audio sample* \
+> **milliseconds** *Target number of elapsed milliseconds since the audios beginning (0) to playback from.*
+
 
 #### AudioManager::Audio updateSourceLocation(AudioManager::Audio audioIn, float x, float y, float z)
 Updates the location in 3D of a `AudioManager::Audio` source; using `FMOD` to calculate the sound's doppler, relative to the listener's current positioning (*see*: `AudioManager::listenerLocationX`, `AudioManager::listenerLocationY` and `AudioManager::listenerLocationZ`).
@@ -630,6 +637,35 @@ Draws text that has been loaded into the layout at `layoutIndex` onto the screen
 Params:
 > **layoutIndex:** *The identifier of a string previously loaded by `TextManager::loadText`.*
 
+## WorldFX:
+A management class for handling environmental effects such as skyboxes and soon; particles.
+
+### Constructor:
+#### WorldFX(GLuint shader)
+
+Params:
+> **shader:** *The id of the shader program used to render the subject's of this classes tooling. Acquired from the return value of `Shader::initialiseShader()`*
+
+### Functions:
+
+#### WorldFX::SkyBox createSkyBox(std::string rightPath, std::string leftPath, std::string downPath, std::string upPath, std::string frontPath, std::string backPath)
+Creates and initialises a skybox object using textures loaded from the functions path params.
+
+Params:
+> **rightPath** *The relative path to the image used for the cube's `+X axis` face.* \
+> **leftPath** *The relative path to the image used for the cube's `-X axis` face.* \
+> **downPath** *The relative path to the image used for the cube's `-Y axis` face.* \
+> **upPath** *The relative path to the image used for the cube's `+Y axis` face.* \
+> **frontPath** *The relative path to the image used for the cube's `+Z axis` face.* \
+> **backPath** *The relative path to the image used for the cube's `-Z axis` face.*
+
+#### void drawSkyBox(WorldFX::SkyBox sky, CameraManager::Camera camera)
+Draws texels from the specified skybox into the scene at the location of the camera's direction vector.
+
+Params:
+> **sky** The target skybox object to be drawn. \
+> **camera** The camera object used to determine the target uvw coordinate of the texel to the sampled from the bound cubemap image texture.
+
 ## Status Codes:
 - **LAZARUS_OK** *The engines default state. No problems. (Code: 0)* 
 - **LAZARUS_FILE_NOT_FOUND** *The specified asset couldn't be found (Code: 101)* 
@@ -653,3 +689,4 @@ Params:
 - **LAZARUS_WIN_EXCEEDS_MAX** *The requested window size is larger than the dimensions of the primary monitor. (Code: 305)*
 - **LAZARUS_AUDIO_ERROR** *An error occured in the FMOD audio backend. (Code: 401)*
 - **LAZARUS_INVALID_RADIANS** *Lazarus recieved a rotational value which exceeds 360.0. (Code: 501)*
+- **LAZARUS_INVALID_CUBEMAP** *The images recieved to construct a cubemap texture are not all of equal height and width (Code: 502)*

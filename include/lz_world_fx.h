@@ -14,45 +14,65 @@
 //              ,/(#%#*                                                                                     .....  ... ......       .#*                 
 //                 /((##%#(*                                                                                      .......        ,(#(*,                 
 //               (.           .,,,,,                                                                                        .*#%%(                      
-//                                        
+//                                                                                                      .***,.   . .,/##%###(/.  ...,,.      
 /*  LAZARUS ENGINE */
-
 #ifndef LAZARUS_GL_INCLUDES_H
     #include "lz_gl_includes.h"
 #endif
 
-#include "lz_globals_manager.h"
-#include "lz_window_manager.h"
-#include "lz_event_manager.h"
-#include "lz_mesh.h"
-#include "lz_transforms.h"
-#include "lz_shader.h"
-#include "lz_light.h"
-#include "lz_camera.h"
-#include "lz_fps_counter.h"
+#ifndef LAZARUS_CONSTANTS_H
+	#include "lz_constants.h"
+#endif
+
+#ifndef LAZARUS_GLOBALS_MANAGER_H
+	#include "lz_globals_manager.h"
+#endif
+
+#include <iostream>
+#include <memory>
+#include <string>
+
+#include "lz_texture_loader.h"
 #include "lz_file_reader.h"
-#include "lz_audio_manager.h"
-#include "lz_text_manager.h"
-#include "lz_world_fx.h"
+#include "lz_mesh.h"
+#include "lz_camera.h"
 
-#ifndef LAZARUS_H
-#define LAZARUS_H
+#ifndef LAZARUS_WORLD_FX_H
+#define LAZARUS_WORLD_FX_H
 
-namespace Lazarus
+class WorldFX 
 {
-    using ::WorldFX;
-    using ::TextManager;
-    using ::GlobalsManager;
-    using ::WindowManager;
-    using ::EventManager;
-    using ::MeshManager;
-    using ::Transform;
-    using ::Shader;
-    using ::LightManager;
-    using ::CameraManager;
-    using ::FpsCounter;
-    using ::FileReader;
-    using ::AudioManager;
-}
+    public:
+        WorldFX(GLuint shaderProgram);
+
+        struct SkyBox
+        {
+            std::vector<std::string> paths;
+            std::vector<FileReader::Image> cubeMap;
+
+            MeshManager::Mesh cube;
+        };
+
+        /* ==================================================================================================================================================
+                                            +x                    -x                    -y                  +y                    +z                    -z
+        ===================================================================================================================================================== */
+        SkyBox createSkyBox(std::string rightPath, std::string leftPath, std::string downPath, std::string upPath, std::string frontPath, std::string backPath);
+        void drawSkyBox(SkyBox sky, CameraManager::Camera camera);
+
+        virtual ~WorldFX();
+
+    private:
+        void loadSkyMap();
+
+        SkyBox skyBox;
+
+        std::unique_ptr<MeshManager> meshLoader;
+        std::unique_ptr<FileReader> imageLoader;
+        std::unique_ptr<TextureLoader> textureLoader;
+
+        GlobalsManager globals;
+
+        GLuint shader;
+};
 
 #endif

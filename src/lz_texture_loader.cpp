@@ -17,6 +17,15 @@
 //                                                                                                      .***,.   . .,/##%###(/.  ...,,.      
 /*  LAZARUS ENGINE */
 
+/* ================================================================
+	TODO:
+		- Support for texture-per-face loading
+		- Support for multiple textured meshes (layering)
+		- Ideally have each of these functions use immutable storage
+		- Create and bind textures where needed. This gets ugly fast 
+		  as a scene starts to grow.
+=================================================================== */
+
 #include "../include/lz_texture_loader.h"
 
 TextureLoader::TextureLoader()
@@ -40,8 +49,11 @@ TextureLoader::TextureLoader()
 	glGenTextures(1, &this->textureStack);
 	glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureStack);
 
-	glGenTextures(1, &bitmapTexture);
+	glGenTextures(1, &this->bitmapTexture);
 	glBindTexture(GL_TEXTURE_2D, this->bitmapTexture);
+
+	glGenTextures(1, &this->cubeMapTexture);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, this->cubeMapTexture);
 };
 
 void TextureLoader::extendTextureStack(int maxWidth, int maxHeight, int textureLayers)
@@ -102,6 +114,75 @@ void TextureLoader::loadImageToTextureStack(FileReader::Image imageData, GLuint 
 	}
 
 	this->checkErrors(__PRETTY_FUNCTION__);
+};
+
+void TextureLoader::storeCubeMap(int width, int height)
+{
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, this->cubeMapTexture);
+	
+	/* ===========================================================
+		Calculate the depth of the mip map (levels) for the given
+		width / height params, which are the dimensions for the 
+		images that make up each face of the cubemap. Despite only
+		handing over the dimensions for one face, OpenGL will 
+		multiply this number internally by 6 to allocate storage 
+		each mip of each face.
+	============================================================== */
+
+	this->mipCount = this->countMipLevels(width, height);
+	glTexStorage2D(GL_TEXTURE_CUBE_MAP, this->mipCount, GL_RGBA8, width, height);
+
+	this->checkErrors(__PRETTY_FUNCTION__);
+};
+
+void TextureLoader::loadCubeMap(std::vector<FileReader::Image> faces)
+{	
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, this->cubeMapTexture);
+	
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
+	if(faces.size() > 6)
+	{
+		globals.setExecutionState(LAZARUS_INVALID_CUBEMAP);
+	}
+	else
+	{
+		for(unsigned int i = 0; i < 6; i++)
+		{
+			/* ===================================================
+				For each face; buffer the images pixel data to 
+				the respective faces target binding. These targets 
+				are intrinsically related to / a part of the 
+				GL_TEXTURE_CUBE_MAP texture name which is currently 
+				bound to the active texture slot.
+			====================================================== */
+			GLenum target = GL_TEXTURE_CUBE_MAP_POSITIVE_X + i;
+
+			glTexSubImage2D(
+				target,
+				0,
+				0, 0,
+				faces[0].width, faces[0].height,
+				GL_RGBA,
+				GL_UNSIGNED_BYTE,
+				(const void *)faces[i].pixelData
+			);
+
+			this->checkErrors(__PRETTY_FUNCTION__);
+		};
+
+		glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+		this->checkErrors(__PRETTY_FUNCTION__);
+	};
 };
 
 void TextureLoader::storeBitmapTexture(int maxWidth, int maxHeight)
@@ -167,6 +248,40 @@ void TextureLoader::loadBitmapToTexture(FileReader::Image imageData)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);	
 	
+};
+
+int TextureLoader::countMipLevels(int width, int height)
+{
+	this->loopCount = 0;
+
+	this->x = width;
+	this->y = height;
+
+	this->loopCount += 1;
+
+	while( 1 )
+	{
+		this->loopCount += 1;
+
+		if(this->x != 1)
+		{
+			int xResult = floor(this->x / 2);
+			this->x = xResult;
+		}
+
+		if (this->y != 1)
+		{
+			int yResult = floor(this->y / 2);
+			this->y = yResult;
+		}
+
+		if ( (this->x == 1) && (this->y == 1) )
+		{
+			break;
+		}
+	}
+
+	return this->loopCount;
 };
 
 void TextureLoader::checkErrors(const char *invoker)

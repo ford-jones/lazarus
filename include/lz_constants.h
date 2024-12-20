@@ -54,6 +54,7 @@ extern double       LAZARUS_LISTENER_SCROLLCODE;
 
 extern const int    LAZARUS_MOUSE_NOCLICK;
 
+extern const char*  LAZARUS_MESH_ISSKYBOX;
 extern const char*  LAZARUS_MESH_ISTEXT;
 extern const char*  LAZARUS_MESH_NOOBJ;
 extern const char*  LAZARUS_MESH_NOMTL;
@@ -75,6 +76,7 @@ extern const int    LAZARUS_VSHADER_COMPILE_FAILURE;
 extern const int    LAZARUS_FSHADER_COMPILE_FAILURE;
 extern const int    LAZARUS_SHADER_LINKING_FAILURE;
 extern const int    LAZARUS_UNIFORM_NOT_FOUND;
+extern const int    LAZARUS_MATRIX_LOCATION_ERROR;
 extern const int    LAZARUS_OPENGL_ERROR;
 extern const int    LAZARUS_NO_CONTEXT;
 extern const int    LAZARUS_WINDOW_ERROR;
@@ -83,6 +85,6 @@ extern const int    LAZARUS_WIN_EXCEEDS_MAX;
 extern const int    LAZARUS_AUDIO_ERROR;
 extern const int    LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR;
 extern const int    LAZARUS_INVALID_RADIANS;
-extern const int    LAZARUS_MATRIX_LOCATION_ERROR;
+extern const int    LAZARUS_INVALID_CUBEMAP;
 
 #endif
