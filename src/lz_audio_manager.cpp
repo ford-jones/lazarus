@@ -79,11 +79,11 @@ AudioManager::Audio AudioManager::createAudio(string filepath, bool is3D, int lo
 	return audioOut;
 };
 
-void AudioManager::setPlaybackCursor(AudioManager::Audio &audioIn, int milliseconds)
+void AudioManager::setPlaybackCursor(AudioManager::Audio &audioIn, int seconds)
 {
 	this->audioData = this->audioStore[audioIn.audioIndex - 1];
 
-	this->result = this->audioData.channel->setPosition(milliseconds, FMOD_TIMEUNIT_MS);
+	this->result = this->audioData.channel->setPosition((seconds * 100), FMOD_TIMEUNIT_MS);
 
 	if(result != FMOD_OK)
 	{
