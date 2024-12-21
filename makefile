@@ -6,12 +6,16 @@ CXX = g++
 
 CXXFLAGS = -std=c++17 -fPIC -Wall
 
+BUILDSTEPS := 
+
 # OS-specifics
 ifeq ($(shell uname),Linux)
 	CXX += -lstdc++fs
 	CXXFLAGS += -shared
 	LDFLAGS += -lGL 
 	TARGET += liblazarus.so
+
+	BUILDSTEPS += && sudo ldconfig
 else ifeq ($(shell uname),Darwin)
 	CXXFLAGS += -dynamiclib
 	LDFLAGS += -framework OpenGL
@@ -21,12 +25,12 @@ endif
 # Remove whitespace from "lib/ liblazarus.*"
 OUT := $(addprefix lib/,$(TARGET))
 
-OBJECTS = src/lz_globals_manager.o src/lz_shader.o src/lz_light.o src/lz_camera.o \
-					src/lz_mesh.o src/lz_transforms.o \
-					src/lz_mesh_loader.o src/lz_material_loader.o src/lz_texture_loader.o \
-					src/lz_window_manager.o src/lz_file_reader.o src/lz_event_manager.o \
-					src/lz_fps_counter.o src/lz_image_loader.o src/lz_image_resize.o src/lz_audio_manager.o \
-					src/lz_text_manager.o src/lz_font_loader.o src/lz_world_fx.o src/lz_constants.o
+OBJECTS = src/lazarus_globals_manager.o src/lazarus_shader.o src/lazarus_light.o src/lazarus_camera.o \
+					src/lazarus_mesh.o src/lazarus_transforms.o \
+					src/lazarus_mesh_loader.o src/lazarus_material_loader.o src/lazarus_texture_loader.o \
+					src/lazarus_window_manager.o src/lazarus_file_reader.o src/lazarus_event_manager.o \
+					src/lazarus_fps_counter.o src/lazarus_image_loader.o src/lazarus_image_resize.o src/lazarus_audio_manager.o \
+					src/lazarus_text_manager.o src/lazarus_font_loader.o src/lazarus_world_fx.o src/lazarus_constants.o
 
 run : build
 	$(shell mv src/*.o build/)
@@ -39,31 +43,31 @@ build : $(OBJECTS)
 # MacOS doesn't need to run ldconfig
 # Windows uses \ Program Files \ instead of /usr/local/*
 install : 
-	sudo cp include/* /usr/local/include && sudo cp lib/liblazarus.so /usr/local/lib && sudo ldconfig
+	@echo "installing..." && sudo cp include/* /usr/local/include && sudo cp $(OUT) /usr/local/lib $(BUILDSTEPS)
 
 uninstall : 
-	sudo rm /usr/local/include/lz*.h && sudo rm /usr/local/lib/liblazarus.so
+	@echo "uninstalling..." && sudo rm /usr/local/include/lazarus_*.h && sudo rm $(addprefix /usr/local/,$(OUT))
 
-lz_globals_manager.o := include/lz_globals_manager.h
-lz_shader.o := include/lz_shader.h
-lz_light.o := include/lz_light.h
-lz_camera.o := include/lz_camera.h
-lz_mesh.o := include/lz_mesh.h
-lz_transforms.o := include/lz_transforms.h
-lz_mesh_loader.o := include/lz_mesh_loader.h
-lz_material_loader.o := include/lz_material_loader.h
-lz_file_reader.o := include/lz_file_reader.h
-lz_window_manager.o := include/lz_window_manager.h
-lz_event_manager.o := include/lz_event_manager.h
-lz_fps_counter.o := include/lz_fps_counter.h
-lz_audio_manager.o := include/lz_audio_manager.h
-lz_texture_loader.o := include/lz_texture.h
-lz_image_loader.o := /usr/local/include/stb_image.h
-lz_imageResize.o := /usr/local/include/stb_image_resize.h
-lz_text_manager.o := include/lz_text_manager.h
-lz_font_loader.o := include/lz_font_loader.h
-lz_world_fx.o := include/lz_world_fx.h
-lz_constants.o := include/lz_constants.h
+lazarus_globals_manager.o := include/lazarus_globals_manager.h
+lazarus_shader.o := include/lazarus_shader.h
+lazarus_light.o := include/lazarus_light.h
+lazarus_camera.o := include/lazarus_camera.h
+lazarus_mesh.o := include/lazarus_mesh.h
+lazarus_transforms.o := include/lazarus_transforms.h
+lazarus_mesh_loader.o := include/lazarus_mesh_loader.h
+lazarus_material_loader.o := include/lazarus_material_loader.h
+lazarus_file_reader.o := include/lazarus_file_reader.h
+lazarus_window_manager.o := include/lazarus_window_manager.h
+lazarus_event_manager.o := include/lazarus_event_manager.h
+lazarus_fps_counter.o := include/lazarus_fps_counter.h
+lazarus_audio_manager.o := include/lazarus_audio_manager.h
+lazarus_texture_loader.o := include/lazarus_texture.h
+lazarus_image_loader.o := /usr/local/include/stb_image.h
+lazarus_imageResize.o := /usr/local/include/stb_image_resize.h
+lazarus_text_manager.o := include/lazarus_text_manager.h
+lazarus_font_loader.o := include/lazarus_font_loader.h
+lazarus_world_fx.o := include/lazarus_world_fx.h
+lazarus_constants.o := include/lazarus_constants.h
 
 clean : 
-	rm -R lib/ && rm -R build/
+	@echo "Destroying latest build files." && rm -R lib/ && rm -R build/
