@@ -22,13 +22,14 @@
 int          LAZARUS_EXECUTION_STATUS               = 0;
 int          LAZARUS_PRIMARY_DISPLAY_WIDTH          = 0;
 int          LAZARUS_PRIMARY_DISPLAY_HEIGHT         = 0;
-bool         LAZARUS_ENFORCE_IMAGE_SANITY           = false;
-bool         LAZARUS_DISABLE_CURSOR_VISIBILITY      = false;
-bool         LAZARUS_CULL_BACK_FACES                = true;
-bool         LAZARUS_DEPTH_TEST_FRAGS               = true;
-bool         LAZARUS_LAUNCH_IN_FULLSCREEN           = false;
 int          LAZARUS_MAX_IMAGE_WIDTH                = 0;
 int          LAZARUS_MAX_IMAGE_HEIGHT               = 0;
+bool         LAZARUS_ENFORCE_IMAGE_SANITY           = false;
+bool         LAZARUS_DISABLE_CURSOR_VISIBILITY      = false;
+bool         LAZARUS_LAUNCH_IN_FULLSCREEN           = false;
+bool         LAZARUS_CULL_BACK_FACES                = true;
+bool         LAZARUS_DEPTH_TEST_FRAGS               = true;
+
 int          LAZARUS_LISTENER_KEYCODE               = 0;
 int          LAZARUS_LISTENER_SCANCODE              = 0;
 int          LAZARUS_LISTENER_MOUSECODE             = 0;
@@ -36,11 +37,13 @@ double       LAZARUS_LISTENER_MOUSEX                = 0;
 double       LAZARUS_LISTENER_MOUSEY                = 0;
 double       LAZARUS_LISTENER_SCROLLCODE            = 0;
 const int    LAZARUS_MOUSE_NOCLICK                  = 999;
-const char*  LAZARUS_MESH_ISSKYBOX                  = "This mesh is used to display a skybox.";
-const char*  LAZARUS_MESH_ISTEXT                    = "This mesh is used to display a glyph.";
-const char*  LAZARUS_MESH_NOOBJ                     = "Non-wavefront mesh.";
-const char*  LAZARUS_MESH_NOMTL                     = "Colourless mesh.";
-const char*  LAZARUS_MESH_NOTEX                     = "Textureless mesh.";
+
+const char*  LAZARUS_SKYBOX_CUBE                    = "Skybox target.";
+const char*  LAZARUS_GLYPH_QUAD                     = "Glyph target.";
+const char*  LAZARUS_PRIMITIVE_MESH                 = "Primitive mesh.";
+const char*  LAZARUS_TEXTURED_MESH                  = "Textured mesh.";
+const char*  LAZARUS_DIFFUSE_MESH                   = "Diffuse colored mesh.";
+
 const int    LAZARUS_OK                             = 0;
 const int    LAZARUS_FILE_NOT_FOUND                 = 101;
 const int    LAZARUS_FILE_UNREADABLE                = 102;

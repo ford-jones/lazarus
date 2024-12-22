@@ -54,11 +54,11 @@ extern double       LAZARUS_LISTENER_SCROLLCODE;
 
 extern const int    LAZARUS_MOUSE_NOCLICK;
 
-extern const char*  LAZARUS_MESH_ISSKYBOX;
-extern const char*  LAZARUS_MESH_ISTEXT;
-extern const char*  LAZARUS_MESH_NOOBJ;
-extern const char*  LAZARUS_MESH_NOMTL;
-extern const char*  LAZARUS_MESH_NOTEX;
+extern const char*  LAZARUS_SKYBOX_CUBE;
+extern const char*  LAZARUS_GLYPH_QUAD;
+extern const char*  LAZARUS_PRIMITIVE_MESH;
+extern const char*  LAZARUS_TEXTURED_MESH;
+extern const char*  LAZARUS_DIFFUSE_MESH;
     
 /* Status Codes */
 
