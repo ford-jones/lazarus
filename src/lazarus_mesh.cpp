@@ -166,83 +166,84 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath)
 
     this->mesh = {};
 
-    mesh.is3D = 0;
-    mesh.isGlyph = 0;
-    mesh.isSkybox = 1;
-
     this->lookupUniforms(mesh);
-
-    /* ==================================================
-        Change the sampler location set by lookupUniforms
-        from the texture array to the cube map.
-    ===================================================== */
-
-    mesh.samplerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureCube");
-    glUniform1i(mesh.samplerUniformLocation, 3);
-    
-    mesh.textureUnit = GL_TEXTURE3;
-    glActiveTexture(mesh.textureUnit);
-
     this->resolveFilepaths(mesh, texturePath);
 
-    if(mesh.textureFilepath == LAZARUS_MESH_NOTEX)
+    if(mesh.textureFilepath == LAZARUS_SKYBOX_CUBE)
     {
-        mesh.attributes = {                                                                                          
-            // Front face
-            vec3(-vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(-vertexPosition, -vertexPosition,  vertexPosition),
-            vec3(vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(vertexPosition, -vertexPosition,  vertexPosition),
-            vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(vertexPosition,  vertexPosition,  vertexPosition),
+        mesh.is3D = 0;
+        mesh.isGlyph = 0;
+        mesh.isSkybox = 1;
 
-            vec3(-vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(-vertexPosition, -vertexPosition,  vertexPosition),
-            vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(vertexPosition,  vertexPosition,  vertexPosition),
-            vec3(-vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(-vertexPosition,  vertexPosition,  vertexPosition),
+        /* ==================================================
+            Change the sampler location set by lookupUniforms
+            from the texture array to the cube map.
+        ===================================================== */
 
-            // Back face
-            vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(-vertexPosition, -vertexPosition, -vertexPosition),
-            vec3(vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(vertexPosition, -vertexPosition, -vertexPosition),
-            vec3(vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(vertexPosition,  vertexPosition, -vertexPosition),
+        mesh.samplerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureCube");
+        glUniform1i(mesh.samplerUniformLocation, 3);
 
-            vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(-vertexPosition, -vertexPosition, -vertexPosition),
-            vec3(vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(vertexPosition,  vertexPosition, -vertexPosition),
-            vec3(-vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(-vertexPosition,  vertexPosition, -vertexPosition),
-
-            // Left face
-            vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(-vertexPosition, -vertexPosition, -vertexPosition),
-            vec3(-vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(-vertexPosition, -vertexPosition,  vertexPosition),
-            vec3(-vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(-vertexPosition,  vertexPosition,  vertexPosition),
-
-            vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(vertexPosition, -vertexPosition, -vertexPosition),
-            vec3(-vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(-vertexPosition,  vertexPosition,  vertexPosition),
-            vec3(-vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(-vertexPosition,  vertexPosition, -vertexPosition),
-
-            // Right face
-            vec3(vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(vertexPosition, -vertexPosition, -vertexPosition),
-            vec3(vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(vertexPosition, -vertexPosition,  vertexPosition),
-            vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(vertexPosition,  vertexPosition,  vertexPosition),
-
-            vec3(vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(vertexPosition, -vertexPosition, -vertexPosition),
-            vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(vertexPosition,  vertexPosition,  vertexPosition),
-            vec3(vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(vertexPosition,  vertexPosition, -vertexPosition),
-
-            // Top face
-            vec3(-vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(-vertexPosition,  vertexPosition, -vertexPosition),
-            vec3(vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(vertexPosition,  vertexPosition, -vertexPosition),
-            vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(vertexPosition,  vertexPosition,  vertexPosition),
-
-            vec3(-vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(-vertexPosition,  vertexPosition, -vertexPosition),
-            vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(vertexPosition,  vertexPosition,  vertexPosition),
-            vec3(-vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(-vertexPosition,  vertexPosition,  vertexPosition),
-
-            // Bottom face
-            vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(-vertexPosition, -vertexPosition, -vertexPosition),
-            vec3(vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(vertexPosition, -vertexPosition, -vertexPosition),
-            vec3(vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(vertexPosition, -vertexPosition,  vertexPosition),
-
-            vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(-vertexPosition, -vertexPosition, -vertexPosition),
-            vec3(vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(vertexPosition, -vertexPosition,  vertexPosition),
-            vec3(-vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(-vertexPosition, -vertexPosition,  vertexPosition)
-        };
+        mesh.textureUnit = GL_TEXTURE3;
+        glActiveTexture(mesh.textureUnit);
     }
+    else
+    {
+        mesh.is3D = 1;
+        mesh.isGlyph = 0;
+        mesh.isSkybox = 0;
+
+        mesh.samplerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureArray");
+        glUniform1i(mesh.samplerUniformLocation, 2);
+
+        mesh.textureUnit = GL_TEXTURE2;
+        glActiveTexture(mesh.textureUnit);
+    }
+
+
+    mesh.attributes = {                                                                                          
+        // Front face
+        vec3(-vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f),
+        vec3(vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(1.0f, 0.0f, 0.0f),
+        vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(1.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f),
+        vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(1.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(0.0f, 1.0f, 0.0f),
+        // Back face
+        vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 0.0f, 0.0f),
+        vec3(vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 0.0f, 0.0f),
+        vec3(vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 0.0f, 0.0f),
+        vec3(vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 1.0f, 0.0f),
+        // Left face
+        vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
+        vec3(-vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 0.0f, 0.0f),
+        vec3(-vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
+        vec3(-vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f),
+        // Right face
+        vec3(vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
+        vec3(vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(1.0f, 0.0f, 0.0f),
+        vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
+        vec3(vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
+        vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
+        vec3(vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f),
+        // Top face
+        vec3(-vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
+        vec3(vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(1.0f, 0.0f, 0.0f),
+        vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
+        vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f),
+        // Bottom face
+        vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
+        vec3(vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 0.0f, 0.0f),
+        vec3(vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
+        vec3(vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f)
+    };
 
     this->setInherentProperties(mesh);
     this->initialiseMesh(mesh);
@@ -299,7 +300,7 @@ void MeshManager::prepareTextures()
     {
         glActiveTexture(i.textureUnit);
     
-        if((i.textureFilepath != LAZARUS_MESH_NOTEX))
+        if((i.textureFilepath != LAZARUS_DIFFUSE_MESH))
         {
             texLoader->loadImageToTextureStack(i.textureData, i.textureLayer);
         };
@@ -339,15 +340,15 @@ void MeshManager::drawMesh(MeshManager::Mesh &asset)
 
     glActiveTexture(asset.textureUnit);
 
-    if((asset.textureFilepath == LAZARUS_MESH_ISTEXT))
+    if((asset.textureFilepath == LAZARUS_GLYPH_QUAD))
     {
         glBindTexture(GL_TEXTURE_2D, asset.textureId);
     }
-    else if((asset.textureFilepath == LAZARUS_MESH_ISSKYBOX))
+    else if((asset.textureFilepath == LAZARUS_SKYBOX_CUBE))
     {
         glBindTexture(GL_TEXTURE_CUBE_MAP, asset.textureId);
     }
-    else if((asset.textureFilepath != LAZARUS_MESH_NOTEX))
+    else if((asset.textureFilepath != LAZARUS_DIFFUSE_MESH))
     {
         glBindTexture(GL_TEXTURE_2D_ARRAY, asset.textureId);
     };
@@ -361,50 +362,44 @@ void MeshManager::drawMesh(MeshManager::Mesh &asset)
 
 void MeshManager::resolveFilepaths(MeshManager::Mesh &asset, string texPath, string mtlPath, string objPath)
 {
-    if(objPath != "") 
-    {
-        asset.meshFilepath =  finder->relativePathToAbsolute(objPath);
-    } 
-    else
-    {
-        asset.meshFilepath = LAZARUS_MESH_NOOBJ;
-    };
+    objPath != LAZARUS_PRIMITIVE_MESH
+    ? asset.meshFilepath =  finder->relativePathToAbsolute(objPath)
+    : asset.meshFilepath = LAZARUS_PRIMITIVE_MESH;
 
-    if(mtlPath != "") 
-    {
-        asset.materialFilepath = finder->relativePathToAbsolute(mtlPath);
-    }
-    else
-    {
-        asset.materialFilepath = LAZARUS_MESH_NOMTL;
-    }
-    
-    if(texPath == LAZARUS_MESH_ISTEXT)
-    {
-        asset.textureFilepath = LAZARUS_MESH_ISTEXT;
-    }
-    else if(texPath != "")
-    {
-        this->layerCount += 1;
+    mtlPath != LAZARUS_TEXTURED_MESH
+    ? asset.materialFilepath =  finder->relativePathToAbsolute(mtlPath)
+    : asset.materialFilepath = LAZARUS_TEXTURED_MESH;
 
-	    asset.textureFilepath = finder->relativePathToAbsolute(texPath);
-        asset.textureData = finder->readFromImage(asset.textureFilepath);
+    switch (texPath[0])
+    {
+        //  Glyph atlas
+        case 'G':
+            asset.textureFilepath = LAZARUS_GLYPH_QUAD;
+            break;
         
-        asset.textureLayer = this->layerCount;
-        asset.textureId = texLoader->textureStack;
-    }
-    else
-    {
-        /* ========================================
-            Layers of the sampler array are aren't 
-            zero-indexed. Texture id's of 0 are 
-            another indicator that no texture is in
-            use.
-        =========================================== */
-        asset.textureLayer = 0;
-        asset.textureId = 0;
-    	asset.textureFilepath = LAZARUS_MESH_NOTEX;
-        asset.textureData = {pixelData: NULL, height: 0, width: 0};
+        //  Skybox cubemap
+        case 'S':
+            asset.textureFilepath = LAZARUS_SKYBOX_CUBE;
+            break;
+
+        //  Diffuse color
+        case 'D':
+            asset.textureLayer = 0;
+            asset.textureId = 0;
+    	    asset.textureFilepath = LAZARUS_DIFFUSE_MESH;
+            asset.textureData = {pixelData: NULL, height: 0, width: 0};
+            break;
+        
+        //  Image array
+        default:
+            this->layerCount += 1;
+
+	        asset.textureFilepath = finder->relativePathToAbsolute(texPath);
+            asset.textureData = finder->readFromImage(asset.textureFilepath);
+            
+            asset.textureLayer = this->layerCount;
+            asset.textureId = texLoader->textureStack;
+            break;
     };
 
     return;
@@ -459,7 +454,6 @@ MeshManager::~MeshManager()
         glDeleteBuffers         (1, &i.VBO);
         glDeleteVertexArrays    (1, &i.VAO);
     };
-
 
     this->checkErrors(__PRETTY_FUNCTION__);
 

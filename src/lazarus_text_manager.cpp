@@ -127,7 +127,7 @@ int TextManager::loadText(std::string targetText, int posX, int posY, int letter
     {   
         this->setActiveGlyph(targetText[i], letterSpacing);
 
-        quad = meshLoader->createQuad(static_cast<float>(this->glyph.width), static_cast<float>(this->atlasY), LAZARUS_MESH_ISTEXT, this->uvL, this->uvR, this->uvH);
+        quad = meshLoader->createQuad(static_cast<float>(this->glyph.width), static_cast<float>(this->atlasY), LAZARUS_GLYPH_QUAD, this->uvL, this->uvR, this->uvH);
         
         quad.isGlyph = 1;
         quad.textureId = this->textureId;

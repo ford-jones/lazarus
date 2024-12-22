@@ -39,7 +39,7 @@ WorldFX::SkyBox WorldFX::createSkyBox(std::string rightPath, std::string leftPat
     this->loadSkyMap();
 
     this->skyBox.cube.textureId = textureLoader->cubeMapTexture;
-    this->skyBox.cube.textureFilepath = LAZARUS_MESH_ISSKYBOX;
+    this->skyBox.cube.textureFilepath = LAZARUS_SKYBOX_CUBE;
 
     /* =================================================
         TODO:

@@ -98,9 +98,9 @@ class MeshManager
 		
 		MeshManager(GLuint shader);
 		
-        Mesh create3DAsset(string meshPath, string materialPath, string texturePath = "");
-        Mesh createQuad(float width, float height, string texturePath = "", float uvXL = 0.0, float uvXR = 0.0, float uvY = 0.0);
-        Mesh createCube(float scale, string texturePath = "");
+        Mesh create3DAsset(string meshPath, string materialPath, string texturePath = LAZARUS_DIFFUSE_MESH);
+        Mesh createQuad(float width, float height, string texturePath = LAZARUS_DIFFUSE_MESH, float uvXL = 0.0, float uvXR = 0.0, float uvY = 0.0);
+        Mesh createCube(float scale, string texturePath = LAZARUS_SKYBOX_CUBE);
 
         void prepareTextures();
 
@@ -110,7 +110,7 @@ class MeshManager
         virtual ~MeshManager();
 
     private:
-        void resolveFilepaths(Mesh &asset, string texPath = "", string mtlPath = "", string objPath = "");
+        void resolveFilepaths(Mesh &asset, string texPath = LAZARUS_DIFFUSE_MESH, string mtlPath = LAZARUS_TEXTURED_MESH, string objPath = LAZARUS_PRIMITIVE_MESH);
         void setInherentProperties(Mesh &asset);
         void lookupUniforms(Mesh &asset);
         void initialiseMesh(Mesh &meshData);
