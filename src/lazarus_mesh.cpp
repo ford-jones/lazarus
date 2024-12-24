@@ -165,6 +165,7 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath)
     float vertexPosition = scale / 2; 
 
     this->mesh = {};
+    mesh.isGlyph = 0;
 
     this->lookupUniforms(mesh);
     this->resolveFilepaths(mesh, texturePath);
@@ -172,77 +173,91 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath)
     if(mesh.textureFilepath == LAZARUS_SKYBOX_CUBE)
     {
         mesh.is3D = 0;
-        mesh.isGlyph = 0;
         mesh.isSkybox = 1;
 
         /* ==================================================
             Change the sampler location set by lookupUniforms
             from the texture array to the cube map.
         ===================================================== */
-
         mesh.samplerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureCube");
         glUniform1i(mesh.samplerUniformLocation, 3);
 
         mesh.textureUnit = GL_TEXTURE3;
-        glActiveTexture(mesh.textureUnit);
     }
     else
     {
         mesh.is3D = 1;
-        mesh.isGlyph = 0;
         mesh.isSkybox = 0;
 
         mesh.samplerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureArray");
         glUniform1i(mesh.samplerUniformLocation, 2);
 
         mesh.textureUnit = GL_TEXTURE2;
-        glActiveTexture(mesh.textureUnit);
-    }
+    };
 
+    glActiveTexture(mesh.textureUnit);
 
     mesh.attributes = {                                                                                          
-        // Front face
-        vec3(-vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f),
-        vec3(vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(1.0f, 0.0f, 0.0f),
-        vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(1.0f, 1.0f, 0.0f),
-        vec3(-vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(0.0f, 0.0f, 0.0f),
-        vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(1.0f, 1.0f, 0.0f),
-        vec3(-vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, 1.0f), vec3(0.0f, 1.0f, 0.0f),
-        // Back face
-        vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 0.0f, 0.0f),
-        vec3(vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 0.0f, 0.0f),
-        vec3(vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 1.0f, 0.0f),
-        vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 0.0f, 0.0f),
-        vec3(vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 1.0f, 0.0f),
-        vec3(-vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 1.0f, 0.0f),
-        // Left face
-        vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
-        vec3(-vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 0.0f, 0.0f),
-        vec3(-vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
-        vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
-        vec3(-vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
-        vec3(-vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f),
-        // Right face
-        vec3(vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
-        vec3(vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(1.0f, 0.0f, 0.0f),
-        vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
-        vec3(vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
-        vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
-        vec3(vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(1.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f),
+        /* ===========================================
+
+               POS                      ST
+
+          (5)_____(2, 6)           0:1 _______1:1
+            \      /\               |          |
+             \    /  \              |          |
+              \  /    \             |          |
+               \/______\            |__________|
+            (1, 4)     (3)         0:0        1:0
+
+        ============================================== */
+        
         // Top face
-        vec3(-vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
-        vec3(vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(1.0f, 0.0f, 0.0f),
-        vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
-        vec3(-vertexPosition,  vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
-        vec3(vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
-        vec3(-vertexPosition,  vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, 1.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition, vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(0.0f, 0.0f, 0.0f),
+        vec3(vertexPosition, vertexPosition,  vertexPosition),      vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(1.0f, 1.0f, 0.0f),
+        vec3(vertexPosition,  vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(1.0f, 0.0f, 0.0f),
+        vec3(-vertexPosition, vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(0.0f, 0.0f, 0.0f),
+        vec3(-vertexPosition,  vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(0.0f, 1.0f, 0.0f),
+        vec3(vertexPosition,    vertexPosition,  vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(1.0f, 1.0f, 0.0f),
+
+        // Back face
+        vec3(-vertexPosition, vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 0.0f, 0.0f),
+        vec3(vertexPosition, -vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition,  -vertexPosition, -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 0.0f, 0.0f),
+        vec3(-vertexPosition, vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 0.0f, 0.0f),
+        vec3(vertexPosition,  vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 1.0f, 0.0f),
+        vec3(vertexPosition,  -vertexPosition, -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 1.0f, 0.0f),
+
+        // Right face
+        vec3(vertexPosition, vertexPosition, -vertexPosition),      vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(0.0f, 0.0f, 0.0f),
+        vec3(vertexPosition, -vertexPosition,  vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(1.0f, 1.0f, 0.0f),
+        vec3(vertexPosition,  -vertexPosition,  -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(1.0f, 0.0f, 0.0f),
+        vec3(vertexPosition, vertexPosition, -vertexPosition),      vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(0.0f, 0.0f, 0.0f),
+        vec3(vertexPosition,  vertexPosition,  vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(0.0f, 1.0f, 0.0f),
+        vec3(vertexPosition,  -vertexPosition, vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(1.0f, 1.0f, 0.0f),
+
+        // Front face
+        vec3(vertexPosition, vertexPosition, vertexPosition),       vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(0.0f, 0.0f, 0.0f),
+        vec3(-vertexPosition, -vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(1.0f, 1.0f, 0.0f),
+        vec3(vertexPosition,  -vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(1.0f, 0.0f, 0.0f),
+        vec3(vertexPosition, vertexPosition, vertexPosition),       vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(0.0f, 0.0f, 0.0f),
+        vec3(-vertexPosition,  vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(0.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition,  -vertexPosition, vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(1.0f, 1.0f, 0.0f),
+
+        // Left face
+        vec3(-vertexPosition,  vertexPosition, vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
+        vec3(-vertexPosition,  -vertexPosition, -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition,  -vertexPosition,  vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 0.0f, 0.0f),
+        vec3(-vertexPosition,  vertexPosition, vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
+        vec3(-vertexPosition,  vertexPosition,  -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition,  -vertexPosition,  -vertexPosition),  vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
+
         // Bottom face
-        vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
-        vec3(vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 0.0f, 0.0f),
-        vec3(vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
-        vec3(-vertexPosition, -vertexPosition, -vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
-        vec3(vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
-        vec3(-vertexPosition, -vertexPosition,  vertexPosition), vec3(-0.1f, -0.1f, -0.1f), vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f)
+        vec3(vertexPosition, -vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
+        vec3(-vertexPosition, -vertexPosition, vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition, -vertexPosition,  -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 0.0f, 0.0f),
+        vec3(vertexPosition, -vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
+        vec3(vertexPosition, -vertexPosition,  vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition, -vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f)
     };
 
     this->setInherentProperties(mesh);
