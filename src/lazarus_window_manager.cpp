@@ -48,8 +48,7 @@ WindowManager::WindowManager(const char *title, int width, int height)
     this->cursor = NULL;
 
     this->isOpen = false;
-
-
+    this->window = NULL;
 };
 
 int WindowManager::initialise()
@@ -218,6 +217,22 @@ int WindowManager::createCursor(int sizeX, int sizeY, int hotX, int hotY, std::s
 	
 	return GLFW_NO_ERROR;
 };
+
+int WindowManager::snapCursor(float moveX, float moveY)
+{
+    if(moveX > globals.getDisplayWidth() || moveY > globals.getDisplayHeight())
+    {
+        globals.setExecutionState(LAZARUS_INVALID_COORDINATE);
+    }
+    else
+    {
+        glfwSetCursorPos(this->window, moveX, moveY);
+        this->checkErrors();
+    };
+
+    return GLFW_NO_ERROR;
+};
+
 
 int WindowManager::handleBuffers()
 {
