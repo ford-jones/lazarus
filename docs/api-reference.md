@@ -58,6 +58,12 @@ parms:
 #### bool getLaunchInFullScreen()
 Returns the current value of `LAZARUS_DISABLE_CURSOR_VISIBILITY`.
 
+#### void setVsyncDisabled(bool shouldDisable)
+Sets the value of `LAZARUS_VSYNC_DISABLED`. If true, the render pipeline will be allowed to render at it's maximum framerate. When false the interval between rendering and processing is set to 1 frame.
+
+#### bool getVsyncDisabled()
+Returns the current value of `LAZARUS_VSYNC_DISABLED`.
+
 #### void setBackFaceCulling(bool shouldCull)
 Sets the value of `LAZARUS_CULL_BACK_FACES`. I don't reccomend disabling this optimisation but if you want to you can... Ensures that faces opposite to the camera aren't rendered. Front face culling is currently unsupported through lazarus but you can enable it yourself using OpenGL (prior to window creation) like so:
 
