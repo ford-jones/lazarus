@@ -21,7 +21,7 @@
 
 LightManager::LightManager(GLuint shader)
 {
-    std::cout << GREEN_TEXT << "Calling constructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+    std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 	this->shaderProgram = shader;
 }
 
@@ -51,5 +51,5 @@ void LightManager::loadLightSource(LightManager::Light &lightData)
 
 LightManager::~LightManager()
 {
-    std::cout << GREEN_TEXT << "Calling destructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 }

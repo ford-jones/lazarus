@@ -20,7 +20,7 @@
 
 AudioManager::AudioManager() 
 {
-    std::cout << GREEN_TEXT << "Calling constructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+    std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__  << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 
 	this->audioOut = {};
 	this->reader = nullptr;
@@ -235,7 +235,7 @@ void AudioManager::checkErrors(FMOD_RESULT res)
 
 AudioManager::~AudioManager()
 {
-    std::cout << GREEN_TEXT << "Calling destructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 	
 	for(unsigned int i = 0; i < this->audioStore.size(); i++)
 	{

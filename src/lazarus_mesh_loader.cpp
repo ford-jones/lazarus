@@ -21,7 +21,7 @@
 
 MeshLoader::MeshLoader()
 {
-	std::cout << GREEN_TEXT << "Calling constructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 	this->materialIdentifierIndex	=	0;
 	this->triangleCount				=	0;
 
@@ -242,6 +242,6 @@ MeshLoader::~MeshLoader()
     {
         file.close();
     }
-	std::cout << GREEN_TEXT << "Calling destructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+	std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 };
 
