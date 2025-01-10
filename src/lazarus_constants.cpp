@@ -27,6 +27,7 @@ int          LAZARUS_MAX_IMAGE_HEIGHT               = 0;
 bool         LAZARUS_ENFORCE_IMAGE_SANITY           = false;
 bool         LAZARUS_DISABLE_CURSOR_VISIBILITY      = false;
 bool         LAZARUS_LAUNCH_IN_FULLSCREEN           = false;
+bool         LAZARUS_DISABLE_VSYNC                  = false;
 bool         LAZARUS_CULL_BACK_FACES                = true;
 bool         LAZARUS_DEPTH_TEST_FRAGS               = true;
 

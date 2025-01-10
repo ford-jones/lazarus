@@ -50,6 +50,9 @@ class GlobalsManager
         void setExecutionState(int state);
         int getExecutionState();
 
+        void setVsyncDisabled(bool shouldDisable);
+        bool getVsyncDisabled();
+
         void setDisplaySize(int width, int height);
         int getDisplayWidth();
         int getDisplayHeight();
