@@ -39,6 +39,7 @@ WindowManager::WindowManager(const char *title, int width, int height)
     this->enableCursor = globals.getCursorHidden();
     this->cullFaces = globals.getBackFaceCulling();
     this->testDepth = globals.getDepthTest();
+    this->disableVsync = globals.getVsyncDisabled();
     /* ==================
         Optional
     ===================== */
@@ -120,7 +121,7 @@ int WindowManager::initialise()
     glfwSetWindowPos(this->window, floor((videoMode->width - this->frame.width) / 2), floor((videoMode->height - this->frame.height) / 2));
 
     glfwMakeContextCurrent(this->window);
-    glfwSwapInterval(1);
+    // glfwSwapInterval(1);
 
     /* ========================================================================== 
         Note that alot of the GL ecosystem uses C-style callbacks. The repercussion
@@ -161,6 +162,11 @@ int WindowManager::loadConfig(GLuint shader)
 	{
 	    glEnable            (GL_DEPTH_TEST);
 	};
+
+    if(disableVsync == true)
+    {
+        glfwSwapInterval(0);
+    };
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 

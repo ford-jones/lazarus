@@ -75,6 +75,7 @@ class WindowManager
         bool enableCursor;
         bool cullFaces;
         bool testDepth;
+        bool disableVsync;
 
         int errorCode;
         const char** errorMessage;
