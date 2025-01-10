@@ -121,7 +121,6 @@ int WindowManager::initialise()
     glfwSetWindowPos(this->window, floor((videoMode->width - this->frame.width) / 2), floor((videoMode->height - this->frame.height) / 2));
 
     glfwMakeContextCurrent(this->window);
-    // glfwSwapInterval(1);
 
     /* ========================================================================== 
         Note that alot of the GL ecosystem uses C-style callbacks. The repercussion
@@ -166,6 +165,15 @@ int WindowManager::loadConfig(GLuint shader)
     if(disableVsync == true)
     {
         glfwSwapInterval(0);
+    }
+    else
+    {
+        /* ======================================
+            Unless Vsync is disabled, go 
+            frame-for-frame between rendering and
+            processing.
+        ========================================= */
+        glfwSwapInterval(1);
     };
 
     glEnable(GL_BLEND);
