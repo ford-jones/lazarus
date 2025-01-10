@@ -21,7 +21,7 @@
 
 MeshManager::MeshManager(GLuint shader)
 {
-	std::cout << GREEN_TEXT << "Calling constructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 	this->shaderProgram = shader;
 	
 	this->finder = std::make_unique<FileReader>();
@@ -110,7 +110,8 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
         Otherwise it's a generic sprite.
     ============================================================= */
 
-    if((uvXL || uvXR || uvY) > 0.0 )
+    // Note: this was padded with brackets before windows port
+    if(uvXL || uvXR || uvY > 0.0 )
     {
     /* ======================================================================================================
             Vertex positions,           Diffuse colors,             Normals,                    UVs 
@@ -290,7 +291,11 @@ void MeshManager::initialiseMesh(MeshManager::Mesh &asset)
         glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)(3 * sizeof(vec3)));
         glEnableVertexAttribArray(3);
 
-        this->checkErrors(__PRETTY_FUNCTION__);
+        const char* signature = __FILE__;
+        int line = __LINE__;
+
+        std::string file = signature;
+        this->checkErrors(std::string("File: ").append(file.append(" Line : (" + std::to_string(line) + ")")).c_str());
 
         this->meshStore.push_back(asset);
 
@@ -337,8 +342,12 @@ void MeshManager::loadMesh(MeshManager::Mesh &asset)
         {
             glUniform1f(asset.textureLayerUniformLocation, (asset.textureLayer - 1));
         };
-    
-        this->checkErrors(__PRETTY_FUNCTION__);
+
+        const char* signature = __FILE__;
+        int line = __LINE__;
+
+        std::string file = signature;
+        this->checkErrors(std::string("File: ").append(file.append(" Line : (" + std::to_string(line) + ")")).c_str());
     }
     else
     {
@@ -370,7 +379,11 @@ void MeshManager::drawMesh(MeshManager::Mesh &asset)
 
     glDrawArrays(GL_TRIANGLES, 0, asset.attributes.size());
 
-    this->checkErrors(__PRETTY_FUNCTION__);
+    const char* signature = __FILE__;
+    int line = __LINE__;
+
+    std::string file = signature;
+    this->checkErrors(std::string("File: ").append(file.append(" Line : (" + std::to_string(line) + ")")).c_str());
 
     return;
 };
@@ -402,7 +415,10 @@ void MeshManager::resolveFilepaths(MeshManager::Mesh &asset, string texPath, str
             asset.textureLayer = 0;
             asset.textureId = 0;
     	    asset.textureFilepath = LAZARUS_DIFFUSE_MESH;
-            asset.textureData = {pixelData: NULL, height: 0, width: 0};
+          
+            asset.textureData.pixelData = NULL;
+            asset.textureData.height = 0;
+            asset.textureData.width = 0;
             break;
         
         //  Image array
@@ -470,7 +486,11 @@ MeshManager::~MeshManager()
         glDeleteVertexArrays    (1, &i.VAO);
     };
 
-    this->checkErrors(__PRETTY_FUNCTION__);
+    const char* signature = __FILE__;
+    int line = __LINE__;
 
-    std::cout << GREEN_TEXT << "Calling destructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+    std::string file = signature;
+    this->checkErrors(std::string("File: ").append(file.append(" Line : (" + std::to_string(line) + ")")).c_str());
+
+    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 };

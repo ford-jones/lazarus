@@ -21,7 +21,7 @@
 
 CameraManager::CameraManager(GLuint shader)
 {
-    std::cout << GREEN_TEXT << "Calling constructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+    std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
     this->shader = shader;
 
     this->monitorX = globals.getDisplayWidth();
@@ -114,5 +114,5 @@ void CameraManager::loadCamera(CameraManager::Camera &cameraData)
 
 CameraManager::~CameraManager()
 {
-    std::cout << GREEN_TEXT << "Calling destructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 }

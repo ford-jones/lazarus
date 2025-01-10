@@ -21,7 +21,7 @@
 
 WorldFX::WorldFX(GLuint shaderProgram)
 {
-    std::cout << GREEN_TEXT << "Calling constructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+    std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
     this->shader = shaderProgram;
 
     this->meshLoader = std::make_unique<MeshManager>(this->shader);
@@ -45,8 +45,10 @@ WorldFX::SkyBox WorldFX::createSkyBox(std::string rightPath, std::string leftPat
         TODO:
             Do something about this.
     ==================================================== */
-    this->skyBox.cube.textureLayer = 1;    
-    this->skyBox.cube.textureData = {pixelData: NULL, height: 0, width: 0};
+    this->skyBox.cube.textureLayer = 1;
+    this->skyBox.cube.textureData.pixelData = NULL;
+    this->skyBox.cube.textureData.height = 0;
+    this->skyBox.cube.textureData.width = 0;
 
     return this->skyBox;
 };
@@ -122,5 +124,5 @@ void WorldFX::loadSkyMap()
 
 WorldFX::~WorldFX()
 {
-    std::cout << GREEN_TEXT << "Calling destructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 };

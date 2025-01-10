@@ -21,7 +21,7 @@
 
 FontLoader::FontLoader()
 {
-    std::cout << GREEN_TEXT << "Calling constructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+    std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
     this->fileReader = nullptr;
 
     this->lib = NULL;
@@ -174,7 +174,7 @@ void FontLoader::flipGlyph()
 
 FontLoader::~FontLoader()
 {
-    std::cout << GREEN_TEXT << "Calling destructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 
     FT_Done_Face(this->fontFace);
     FT_Done_FreeType(this->lib);

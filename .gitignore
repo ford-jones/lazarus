@@ -3,6 +3,7 @@
 
 # User settings
 .vscode
+.vc
 
 # Compiler output
 lib
