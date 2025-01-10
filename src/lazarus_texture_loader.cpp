@@ -30,11 +30,14 @@
 
 TextureLoader::TextureLoader()
 {
-	std::cout << GREEN_TEXT << "Calling constructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 
 	this->loader = nullptr;	
 
-	this->image = {pixelData: NULL, height: 0, width: 0};
+	this->image.pixelData = NULL;
+	this->image.height = 0;
+	this->image.width = 0;
+
 	this->bitmapTexture = 0;
 	this->textureStack = 0;
 
@@ -77,7 +80,11 @@ void TextureLoader::extendTextureStack(int maxWidth, int maxHeight, int textureL
 		NULL															//	pixel data, NULL because the texture will be subImage'd in later
 	);
 
-	this->checkErrors(__PRETTY_FUNCTION__);
+	const char* signature = __FILE__;
+	int line = __LINE__;
+
+	std::string file = signature;
+	this->checkErrors(std::string("File: ").append(file.append(" Line : (" + std::to_string(line) + ")")).c_str());
 
 	return;
 };
@@ -113,7 +120,11 @@ void TextureLoader::loadImageToTextureStack(FileReader::Image imageData, GLuint 
 		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);	
 	}
 
-	this->checkErrors(__PRETTY_FUNCTION__);
+	const char* signature = __FILE__;
+	int line = __LINE__;
+
+	std::string file = signature;
+	this->checkErrors(std::string("File: ").append(file.append(" Line : (" + std::to_string(line) + ")")).c_str());
 };
 
 void TextureLoader::storeCubeMap(int width, int height)
@@ -133,7 +144,11 @@ void TextureLoader::storeCubeMap(int width, int height)
 	this->mipCount = this->countMipLevels(width, height);
 	glTexStorage2D(GL_TEXTURE_CUBE_MAP, this->mipCount, GL_RGBA8, width, height);
 
-	this->checkErrors(__PRETTY_FUNCTION__);
+	const char* signature = __FILE__;
+	int line = __LINE__;
+
+	std::string file = signature;
+	this->checkErrors(std::string("File: ").append(file.append(" Line : (" + std::to_string(line) + ")")).c_str());
 };
 
 void TextureLoader::loadCubeMap(std::vector<FileReader::Image> faces)
@@ -170,7 +185,11 @@ void TextureLoader::loadCubeMap(std::vector<FileReader::Image> faces)
 				(const void *)faces[i].pixelData
 			);
 
-			this->checkErrors(__PRETTY_FUNCTION__);
+			const char* signature = __FILE__;
+			int line = __LINE__;
+
+			std::string file = signature;
+			this->checkErrors(std::string("File: ").append(file.append(" Line : (" + std::to_string(line) + ")")).c_str());
 		};
 
 		glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
@@ -181,7 +200,11 @@ void TextureLoader::loadCubeMap(std::vector<FileReader::Image> faces)
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
-		this->checkErrors(__PRETTY_FUNCTION__);
+		const char* signature = __FILE__;
+		int line = __LINE__;
+
+		std::string file = signature;
+		this->checkErrors(std::string("File: ").append(file.append(" Line : (" + std::to_string(line) + ")")).c_str());
 	};
 };
 
@@ -208,7 +231,11 @@ void TextureLoader::storeBitmapTexture(int maxWidth, int maxHeight)
 	=========================================================================================== */
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, maxWidth, maxHeight, 0, GL_RED, GL_UNSIGNED_BYTE, 0);
 
-	this->checkErrors(__PRETTY_FUNCTION__);
+	const char* signature = __FILE__;
+	int line = __LINE__;
+
+	std::string file = signature;
+	this->checkErrors(std::string("File: ").append(file.append(" Line : (" + std::to_string(line) + ")")).c_str());
 
 	this->offset = 0;
 };
@@ -301,7 +328,7 @@ void TextureLoader::checkErrors(const char *invoker)
 
 TextureLoader::~TextureLoader()
 {
-	std::cout << GREEN_TEXT << "Calling destructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+	std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 
 	glDeleteTextures(1, &textureStack);
 	glDeleteTextures(1, &bitmapTexture);
