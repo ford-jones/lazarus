@@ -96,7 +96,7 @@ class AudioManager
 			FMOD_VECTOR sourceVelocity;
 		};
 
-		void checkErrors(FMOD_RESULT res);
+		void checkErrors(FMOD_RESULT res, const char *file, int line);
 
 		FMOD_RESULT result;
 		FMOD::System *system;

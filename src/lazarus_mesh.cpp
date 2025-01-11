@@ -109,8 +109,6 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
 
         Otherwise it's a generic sprite.
     ============================================================= */
-
-    // Note: this was padded with brackets before windows port
     if(uvXL || uvXR || uvY > 0.0 )
     {
     /* ======================================================================================================
@@ -291,11 +289,7 @@ void MeshManager::initialiseMesh(MeshManager::Mesh &asset)
         glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)(3 * sizeof(vec3)));
         glEnableVertexAttribArray(3);
 
-        const char* signature = __FILE__;
-        int line = __LINE__;
-
-        std::string file = signature;
-        this->checkErrors(std::string("File: ").append(file.append(" Line : (" + std::to_string(line) + ")")).c_str());
+        this->checkErrors(__FILE__, __LINE__);
 
         this->meshStore.push_back(asset);
 
@@ -343,11 +337,7 @@ void MeshManager::loadMesh(MeshManager::Mesh &asset)
             glUniform1f(asset.textureLayerUniformLocation, (asset.textureLayer - 1));
         };
 
-        const char* signature = __FILE__;
-        int line = __LINE__;
-
-        std::string file = signature;
-        this->checkErrors(std::string("File: ").append(file.append(" Line : (" + std::to_string(line) + ")")).c_str());
+        this->checkErrors(__FILE__, __LINE__);
     }
     else
     {
@@ -379,11 +369,7 @@ void MeshManager::drawMesh(MeshManager::Mesh &asset)
 
     glDrawArrays(GL_TRIANGLES, 0, asset.attributes.size());
 
-    const char* signature = __FILE__;
-    int line = __LINE__;
-
-    std::string file = signature;
-    this->checkErrors(std::string("File: ").append(file.append(" Line : (" + std::to_string(line) + ")")).c_str());
+    this->checkErrors(__FILE__, __LINE__);
 
     return;
 };
@@ -463,14 +449,14 @@ void MeshManager::lookupUniforms(MeshManager::Mesh &asset)
     return;
 };
 
-void MeshManager::checkErrors(const char *invoker)
+void MeshManager::checkErrors(const char *file, int line)
 {
     this->errorCode = glGetError();
     
     if(this->errorCode != 0)
     {
+        std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
         std::cerr << RED_TEXT << "ERROR::GL_ERROR::CODE " << RESET_TEXT << this->errorCode << std::endl;
-        std::cerr << RED_TEXT << "INVOKED BY: " << RESET_TEXT << invoker << std::endl;
 
         globals.setExecutionState(LAZARUS_OPENGL_ERROR);
     }
@@ -486,11 +472,7 @@ MeshManager::~MeshManager()
         glDeleteVertexArrays    (1, &i.VAO);
     };
 
-    const char* signature = __FILE__;
-    int line = __LINE__;
-
-    std::string file = signature;
-    this->checkErrors(std::string("File: ").append(file.append(" Line : (" + std::to_string(line) + ")")).c_str());
+    this->checkErrors(__FILE__, __LINE__);
 
     std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 };

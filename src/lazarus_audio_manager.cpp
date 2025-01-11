@@ -54,7 +54,7 @@ void AudioManager::initialise()
 
 	this->result = system->createChannelGroup("lazarusGroup", &audioData.group);
 
-	this->checkErrors(this->result);
+	this->checkErrors(this->result, __FILE__, __LINE__);
 };
 
 AudioManager::Audio AudioManager::createAudio(string filepath, bool is3D, int loopCount)
@@ -97,7 +97,7 @@ void AudioManager::loadAudio(AudioManager::Audio &audioIn)
 	? this->result = system->createSound(audioIn.path.c_str(), FMOD_3D, NULL, &this->audioData.sound) 
 	: this->result = system->createSound(audioIn.path.c_str(), FMOD_DEFAULT, NULL, &this->audioData.sound);
 	
-	this->checkErrors(this->result);
+	this->checkErrors(this->result, __FILE__, __LINE__);
 	
 	if(this->audioData.sound != NULL)
 	{
@@ -118,7 +118,7 @@ void AudioManager::loadAudio(AudioManager::Audio &audioIn)
 		std::cout << "Status: " << LAZARUS_FILE_NOT_FOUND << RESET_TEXT << std::endl;	
 	}
 
-	this->checkErrors(this->result);
+	this->checkErrors(this->result, __FILE__, __LINE__);
 	
 	this->audioStore.push_back(audioData);
 	audioIn.audioIndex = this->audioStore.size();
@@ -140,7 +140,7 @@ void AudioManager::playAudio(AudioManager::Audio &audioIn)
 		audioIn.isPaused = false;
 	}
 
-	this->checkErrors(this->result);
+	this->checkErrors(this->result, __FILE__, __LINE__);
 
 	return;
 };
@@ -155,7 +155,7 @@ void AudioManager::pauseAudio(AudioManager::Audio &audioIn)
 		audioIn.isPaused = true;
 	}
 
-	this->checkErrors(this->result);
+	this->checkErrors(this->result, __FILE__, __LINE__);
 
 	return;
 };
@@ -174,12 +174,12 @@ void AudioManager::updateSourceLocation(AudioManager::Audio &audioIn, float x, f
 
 	this->result = targetAudio.channel->set3DAttributes(&targetAudio.currentSourcePosition, &targetAudio.sourceVelocity);
 
-	this->checkErrors(this->result);
+	this->checkErrors(this->result, __FILE__, __LINE__);
 
 	this->result = system->update();
 	targetAudio.prevSourcePosition = targetAudio.currentSourcePosition;
 
-	this->checkErrors(this->result);
+	this->checkErrors(this->result, __FILE__, __LINE__);
 
 	audioIn.sourceLocationX = targetAudio.prevSourcePosition.x;
 	audioIn.sourceLocationY = targetAudio.prevSourcePosition.y;
@@ -211,25 +211,26 @@ void AudioManager::updateListenerLocation(float x, float y, float z)
 		&this->listenerUp
 	);
 	
-	this->checkErrors(this->result);
+	this->checkErrors(this->result, __FILE__, __LINE__);
 
 	this->result = system->update();
 	this->prevListenerPosition = this->currentListenerPosition;
 
-	this->checkErrors(this->result);
+	this->checkErrors(this->result, __FILE__, __LINE__);
 
 	this->listenerLocationX = this->prevListenerPosition.x;
 	this->listenerLocationY = this->prevListenerPosition.y;
 	this->listenerLocationZ = this->prevListenerPosition.z;
 };
 
-void AudioManager::checkErrors(FMOD_RESULT res) 
+void AudioManager::checkErrors(FMOD_RESULT res, const char *file, int line) 
 {
 	if(res != FMOD_OK)
 	{
+		std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
+		std::cout << RED_TEXT << "LAZARUS::ERROR::SOUND_MANAGER" << RESET_TEXT << std::endl;
+
 		globals.setExecutionState(LAZARUS_AUDIO_ERROR);
-		std::cout << RED_TEXT << "LAZARUS::ERROR::SOUND_MANAGER" << std::endl;
-		std::cout << "Status: " << LAZARUS_EXECUTION_STATUS << RESET_TEXT << std::endl;
 	};
 };
 
