@@ -39,6 +39,7 @@ WindowManager::WindowManager(const char *title, int width, int height)
     this->enableCursor = globals.getCursorHidden();
     this->cullFaces = globals.getBackFaceCulling();
     this->testDepth = globals.getDepthTest();
+    this->disableVsync = globals.getVsyncDisabled();
     /* ==================
         Optional
     ===================== */
@@ -78,7 +79,7 @@ int WindowManager::initialise()
     
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    this->checkErrors();
+    this->checkErrors(__FILE__, __LINE__);
 
     this->monitor = glfwGetPrimaryMonitor();
     this->videoMode = glfwGetVideoMode(this->monitor);
@@ -120,7 +121,6 @@ int WindowManager::initialise()
     glfwSetWindowPos(this->window, floor((videoMode->width - this->frame.width) / 2), floor((videoMode->height - this->frame.height) / 2));
 
     glfwMakeContextCurrent(this->window);
-    glfwSwapInterval(1);
 
     /* ========================================================================== 
         Note that alot of the GL ecosystem uses C-style callbacks. The repercussion
@@ -162,6 +162,20 @@ int WindowManager::loadConfig(GLuint shader)
 	    glEnable            (GL_DEPTH_TEST);
 	};
 
+    if(disableVsync == true)
+    {
+        glfwSwapInterval(0);
+    }
+    else
+    {
+        /* ======================================
+            Unless Vsync is disabled, go 
+            frame-for-frame between rendering and
+            processing.
+        ========================================= */
+        glfwSwapInterval(1);
+    };
+
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 
     glFrontFace(GL_CCW);
@@ -179,7 +193,7 @@ int WindowManager::loadConfig(GLuint shader)
     ================================================== */
 	glUseProgram(shader);
 	
-	this->checkErrors();
+	this->checkErrors(__FILE__, __LINE__);
 	
 	return GLFW_NO_ERROR;
 };
@@ -212,7 +226,7 @@ int WindowManager::createCursor(int sizeX, int sizeY, int hotX, int hotY, std::s
 	this->cursor = glfwCreateCursor(&this->glfwImage, hotX, hotY);
 	glfwSetCursor(this->window, this->cursor);
 	
-	this->checkErrors();
+	this->checkErrors(__FILE__, __LINE__);
 	
 	return GLFW_NO_ERROR;
 };
@@ -222,21 +236,21 @@ int WindowManager::handleBuffers()
 	glfwSwapBuffers(this->window);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-    this->checkErrors();
+    this->checkErrors(__FILE__, __LINE__);
 
 	return GLFW_NO_ERROR;
 };
 
-int WindowManager::checkErrors()
+int WindowManager::checkErrors(const char *file, int line)
 {
     errorCode = glfwGetError(errorMessage); 
     if(errorCode != GLFW_NO_ERROR)
     {
-        std::cout << "ERROR::GLFW::WINDOW" << std::endl;
-        std::cout << "GL_MESSAGE: " << errorMessage << std::endl;
-        std::cout << "STATUS: " << globals.getExecutionState() << std::endl;
+        std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
+        std::cerr << RED_TEXT << "ERROR::GLFW::WINDOW " << RESET_TEXT << errorMessage << std::endl;
 
         globals.setExecutionState(LAZARUS_WINDOW_ERROR);
+        
         return errorCode;
     }
     else 
