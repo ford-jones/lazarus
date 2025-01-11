@@ -1,5 +1,6 @@
-# Version: 2025.01.11032855
+# Version: 2025.01.11032951
 
+* [f5000db](https://github.com/ford-jones/lazarus/commit/f5000db7da266b2d8fada7e8665be6bb6439a71b): [Changelog CI] Add Changelog for Version 2025.01.11032855
 * [2d3f1a8](https://github.com/ford-jones/lazarus/commit/2d3f1a891b8a81a3729026f61cf5c8d7cf83f955): Update: Inclusion of filenames and line numbers in error output
 * [65a5b06](https://github.com/ford-jones/lazarus/commit/65a5b06219d16963b3d6f79d2879b2a5ad5e2a8c): Docs: Updated installation notes
 * [e22847d](https://github.com/ford-jones/lazarus/commit/e22847daef6438e788c61190f714c12e1354b983): Docs: Add vsync state handler functions to api documentation
