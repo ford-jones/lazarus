@@ -23,6 +23,7 @@ Downloads / Official Documentation: https://glew.sourceforge.net/
 
 5. GLM resources: \
 Official Documentation: https://glm.g-truc.net/0.9.9/api/index.html
+Download: https://sourceforge.net/projects/glm.mirror/
 
 6. nothings stb: \
 stb_image source (RAW): https://raw.githubusercontent.com/nothings/stb/master/stb_image.h \
@@ -35,6 +36,7 @@ Sign up: https://www.fmod.com/profile/register
 
 8. FreeType2: \
 Official Documentation: https://freetype.org/index.html
+Download: https://sourceforge.net/projects/freetype/files/freetype2/
 
 9. Valgrind resources: \
 Official Documentation: https://valgrind.org/docs/ \
