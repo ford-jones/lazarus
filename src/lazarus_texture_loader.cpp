@@ -173,10 +173,6 @@ void TextureLoader::loadCubeMap(std::vector<FileReader::Image> faces)
 				(const void *)faces[i].pixelData
 			);
 
-			const char* signature = __FILE__;
-			int line = __LINE__;
-
-			std::string file = signature;
 			this->checkErrors(__FILE__, __LINE__);
 		};
 
@@ -188,10 +184,6 @@ void TextureLoader::loadCubeMap(std::vector<FileReader::Image> faces)
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
-		const char* signature = __FILE__;
-		int line = __LINE__;
-
-		std::string file = signature;
 		this->checkErrors(__FILE__, __LINE__);
 	};
 };
