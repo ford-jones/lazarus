@@ -21,7 +21,7 @@
 
 MeshManager::MeshManager(GLuint shader)
 {
-	std::cout << GREEN_TEXT << "Calling constructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 	this->shaderProgram = shader;
 	
 	this->finder = std::make_unique<FileReader>();
@@ -109,8 +109,7 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
 
         Otherwise it's a generic sprite.
     ============================================================= */
-
-    if((uvXL || uvXR || uvY) > 0.0 )
+    if(uvXL || uvXR || uvY > 0.0 )
     {
     /* ======================================================================================================
             Vertex positions,           Diffuse colors,             Normals,                    UVs 
@@ -290,7 +289,7 @@ void MeshManager::initialiseMesh(MeshManager::Mesh &asset)
         glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)(3 * sizeof(vec3)));
         glEnableVertexAttribArray(3);
 
-        this->checkErrors(__PRETTY_FUNCTION__);
+        this->checkErrors(__FILE__, __LINE__);
 
         this->meshStore.push_back(asset);
 
@@ -337,8 +336,8 @@ void MeshManager::loadMesh(MeshManager::Mesh &asset)
         {
             glUniform1f(asset.textureLayerUniformLocation, (asset.textureLayer - 1));
         };
-    
-        this->checkErrors(__PRETTY_FUNCTION__);
+
+        this->checkErrors(__FILE__, __LINE__);
     }
     else
     {
@@ -370,7 +369,7 @@ void MeshManager::drawMesh(MeshManager::Mesh &asset)
 
     glDrawArrays(GL_TRIANGLES, 0, asset.attributes.size());
 
-    this->checkErrors(__PRETTY_FUNCTION__);
+    this->checkErrors(__FILE__, __LINE__);
 
     return;
 };
@@ -402,7 +401,10 @@ void MeshManager::resolveFilepaths(MeshManager::Mesh &asset, string texPath, str
             asset.textureLayer = 0;
             asset.textureId = 0;
     	    asset.textureFilepath = LAZARUS_DIFFUSE_MESH;
-            asset.textureData = {pixelData: NULL, height: 0, width: 0};
+          
+            asset.textureData.pixelData = NULL;
+            asset.textureData.height = 0;
+            asset.textureData.width = 0;
             break;
         
         //  Image array
@@ -447,14 +449,14 @@ void MeshManager::lookupUniforms(MeshManager::Mesh &asset)
     return;
 };
 
-void MeshManager::checkErrors(const char *invoker)
+void MeshManager::checkErrors(const char *file, int line)
 {
     this->errorCode = glGetError();
     
     if(this->errorCode != 0)
     {
+        std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
         std::cerr << RED_TEXT << "ERROR::GL_ERROR::CODE " << RESET_TEXT << this->errorCode << std::endl;
-        std::cerr << RED_TEXT << "INVOKED BY: " << RESET_TEXT << invoker << std::endl;
 
         globals.setExecutionState(LAZARUS_OPENGL_ERROR);
     }
@@ -470,7 +472,7 @@ MeshManager::~MeshManager()
         glDeleteVertexArrays    (1, &i.VAO);
     };
 
-    this->checkErrors(__PRETTY_FUNCTION__);
+    this->checkErrors(__FILE__, __LINE__);
 
-    std::cout << GREEN_TEXT << "Calling destructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 };

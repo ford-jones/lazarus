@@ -122,6 +122,16 @@ void GlobalsManager::setLaunchInFullscreen(bool shouldEnlarge)
     return;
 };
 
+void GlobalsManager::setVsyncDisabled(bool shouldDisable)
+{
+    LAZARUS_DISABLE_VSYNC = shouldDisable;
+};
+
+bool GlobalsManager::getVsyncDisabled()
+{
+    return LAZARUS_DISABLE_VSYNC;
+};
+
 bool GlobalsManager::getLaunchInFullscreen()
 {
     return LAZARUS_LAUNCH_IN_FULLSCREEN;

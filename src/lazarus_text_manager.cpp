@@ -31,7 +31,7 @@
 
 TextManager::TextManager(GLuint shader)
 {
-    std::cout << GREEN_TEXT << "Calling constructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+    std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
     this->shaderProgram = shader;
     this->meshLoader = nullptr;
     this->cameraBuilder = nullptr;
@@ -158,8 +158,9 @@ int TextManager::loadText(std::string targetText, int posX, int posY, int letter
         this->translation = 0;
         
         return layoutID;
-    }
-    else
+
+    } 
+    else 
     {
         this->layoutIndex += 1;
 
@@ -199,8 +200,8 @@ void TextManager::drawText(int layoutIndex)
             meshLoader->loadMesh(quad);
             meshLoader->drawMesh(quad);
             continue;
-        }
-        else
+        } 
+        else 
         {
             globals.setExecutionState(LAZARUS_UNIFORM_NOT_FOUND);
             break;
@@ -237,9 +238,11 @@ void TextManager::setActiveGlyph(char target, int spacing)
         this->uvR = -1.0f;
         this->uvH = -1.0f;
 
-        this->glyph = {pixelData: NULL, height: 0, width: (spacing * 8)};
-    }
-    else
+        this->glyph.pixelData = NULL;
+        this->glyph.height = 0;
+        this->glyph.width = (spacing * 8);
+    } 
+    else 
     {
         this->targetKey = static_cast<int>(target);
 
@@ -268,7 +271,7 @@ void TextManager::lookUpUVs(int keyCode)
     {
         this->glyph = textures.at(i);
         this->targetXL += this->glyph.width;
-    }
+    };
 
     this->glyph = textures.at(span);
     this->targetXR = targetXL + this->glyph.width;
@@ -285,5 +288,5 @@ void TextManager::lookUpUVs(int keyCode)
 
 TextManager::~TextManager()
 {
-        std::cout << GREEN_TEXT << "Calling destructor @: " << __PRETTY_FUNCTION__ << RESET_TEXT << std::endl;
+        std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 };

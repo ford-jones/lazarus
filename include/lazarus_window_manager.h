@@ -59,7 +59,7 @@ class WindowManager
         
 	private:
 		int initialiseGLEW();
-        int checkErrors();
+        int checkErrors(const char *file, int line);
 
         //  Dont know why I made this private
         struct Window
@@ -77,6 +77,7 @@ class WindowManager
         bool enableCursor;
         bool cullFaces;
         bool testDepth;
+        bool disableVsync;
 
         int errorCode;
         const char** errorMessage;

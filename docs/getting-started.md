@@ -2,44 +2,62 @@
 Hello and welcome to the Lazarus Project. \
 
 Before jumping into the project, make sure the following libraries / tools are accessible on your machine:
-- gcc (compiler)
-- gl.h
-- glfw3.h
-- glm.hpp
-- glew.h
-- stb_image.h
+- GCC / G++ (See: [Resources](./resources.md)) or [MSVC](https://visualstudio.microsoft.com/downloads/)
+- [OpenGL](https://www.khronos.org/opengl/wiki/Getting_Started#Downloading_OpenGL) (Note: Most modern OS's ship with OpenGL).
+- [GLFW](https://www.glfw.org/download.html)
+- [GLM](https://sourceforge.net/projects/glm.mirror/)
+- [GLEW](https://glew.sourceforge.net/)
+- stb ([stb_image.h](https://raw.githubusercontent.com/nothings/stb/master/stb_image.h), [stb_image_resize.h](https://raw.githubusercontent.com/nothings/obbg/refs/heads/master/stb/stb_image_resize.h))
+- [FreeType2](https://sourceforge.net/projects/freetype/files/freetype2/)
+- [FMOD Core](https://www.fmod.com/download#fmodengine)
 
 If any of these are unavailable to you, downloads can be found in the resources section. \
 *Note: gcc, glfw, glm & glew are available for macOS using* `homebrew` *and should be installed from there.*
 
 ## Compiling the application:
-Compile using the makefile: 
+
+### Unix (Linux / Mac):
+Compile lazarus using the makefile: 
 ```
-make run
+make
 ```
 
-At any time, if you want to cleanup the object files:
+Followed by:
+```
+make install
+```
+
+To uninstall the library and all associated files:
+```
+make uninstall
+```
+
+At any time, if you want to cleanup the project's build files locally:
 ```
 make clean
 ```
 
-To compile the project with debugging information enabled:
+### Windows:
+If using windows you will need to install Microsoft Visual Studio and use it's compiler. This hasn't been tested on versions below 2022. \
+In the project root use the following command in the Developer Command Prompt for VS 2022:
 ```
-make debug
+cl /std:c++17 /EHsc /c src/*.cpp /link glew32.lib glfw3.lib freetype.lib fmod_vc.lib
+```
+Now link the build output into a static library:
+```
+lib *.obj /out:liblazarus.lib
+```
+
+Now copy the header files located in include to msvc's include folder. Mine's located at:
+```
+c:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.42.34433\include
+```
+Move the lazarus library (`liblazarus.lib`) to msvc's lib folder:
+```
+c:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.42.34433\lib
 ```
 
 ## Usage:
-Move the library and required headers.
-```
-sudo mv lib/liblazarus.so /usr/local/lib/
-sudo mv include/* /usr/local/include/
-```
-
-Update the loader.
-```
-sudo ldconfig
-```
-
 You should now be able to use Lazarus with your project like so:
 ```cpp
 #include <lazarus.h>
@@ -54,11 +72,19 @@ int main()
 ```
 
 When compiling your project you will need to pass the following linker flags:
+#### Unix (Linux / Mac):
 ```
-g++ main.cpp -lGL -lGLEW -lglfw -lfmod -llazarus
+g++ main.cpp -o run -lGL -lGLEW -lglfw -lfmod -freetype -llazarus
+```
+
+#### Windows:
+```
+cl /EHsc /std:c++17 main.cpp /link fmod_vc.lib freetype.lib glfw3.lib glew32.lib opengl32.lib liblazarus.lib msvcrt.lib user32.lib gdi32.lib shell32.lib /out:run.exe /NODEFAULTLIB:libcmt
 ```
 
 ## Installation Notes:
+For generalised notes on how to install a system library, see [here.](./contribution.md#file-structure)
+
 1. gcc / g++: \
 If you are installing gcc / g++ on mac using homebrew, make sure to create a new symlink in your `$PATH`. It needs to occur *before* your `clang` compiler which is used as the compiler for macOS systems by default. Once your install is complete, this can be done like so; 
 

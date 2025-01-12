@@ -115,7 +115,7 @@ class MeshManager
         void lookupUniforms(Mesh &asset);
         void initialiseMesh(Mesh &meshData);
         
-        void checkErrors(const char *invoker);
+        void checkErrors(const char *file, int line);
 
         int errorCode;
         int layerCount;

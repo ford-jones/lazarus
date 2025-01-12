@@ -38,6 +38,7 @@ extern bool         LAZARUS_DISABLE_CURSOR_VISIBILITY;
 extern bool         LAZARUS_CULL_BACK_FACES;
 extern bool         LAZARUS_DEPTH_TEST_FRAGS;
 extern bool         LAZARUS_LAUNCH_IN_FULLSCREEN;
+extern bool         LAZARUS_DISABLE_VSYNC;
 extern int          LAZARUS_MAX_IMAGE_WIDTH;
 extern int          LAZARUS_MAX_IMAGE_HEIGHT;
 

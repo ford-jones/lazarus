@@ -62,7 +62,7 @@ class TextureLoader
 
 	private:		
 		int countMipLevels(int width, int height);
-		void checkErrors(const char *invoker);
+		void checkErrors(const char *file, int line);
 
 		shared_ptr<FileReader> loader;
 
