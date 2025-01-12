@@ -69,3 +69,4 @@ const int    LAZARUS_AUDIO_ERROR                    = 401;
 const int    LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR  = 402;
 const int    LAZARUS_INVALID_RADIANS                = 501;
 const int    LAZARUS_INVALID_CUBEMAP                = 502;
+const int    LAZARUS_INVALID_COORDINATE             = 503;

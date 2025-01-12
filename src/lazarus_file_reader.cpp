@@ -66,7 +66,9 @@ const char *FileReader::readFromText(string filepath)
             std::cout << RED_TEXT << "fileStream is not open" << RESET_TEXT << std::endl;
             globals.setExecutionState(LAZARUS_FILESTREAM_CLOSED);
 
-            return std::to_string(LAZARUS_FILESTREAM_CLOSED).c_str();
+            this->textData = std::to_string(LAZARUS_FILESTREAM_CLOSED).c_str();
+
+            return this->textData;
         };
     }
     else 
@@ -74,7 +76,9 @@ const char *FileReader::readFromText(string filepath)
         std::cout << RED_TEXT << "File doesn't exist" << RESET_TEXT << std::endl;
         globals.setExecutionState(LAZARUS_FILE_NOT_FOUND);
 
-        return std::to_string(LAZARUS_FILE_NOT_FOUND).c_str();
+        this->textData = std::to_string(LAZARUS_FILE_NOT_FOUND).c_str();
+
+        return this->textData;
     };
 };
 
@@ -103,9 +107,9 @@ FileReader::Image FileReader::readFromImage(string filename)
         this->maxWidth = globals.getMaxImageWidth();
         this->maxHeight = globals.getMaxImageHeight();
 
-        if((enforceResize == true))
+        if(enforceResize == true)
         {
-            if(( this->maxWidth <= 0 ) || ( this->maxHeight <= 0 ))
+            if(this->maxWidth <= 0 || this->maxHeight <= 0)
             {
                 std::cerr << RED_TEXT << "LAZARUS::ERROR::FILEREADER::IMAGE_LOADER " << "Width and height must both have values higher than zero." << RESET_TEXT << std::endl;    
                 globals.setExecutionState(LAZARUS_IMAGE_RESIZE_FAILURE);

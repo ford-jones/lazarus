@@ -49,6 +49,8 @@ class WindowManager
         int close();
 
 		int createCursor(int sizeX, int sizeY, int hotX, int hotY, std::string filepath);
+        int snapCursor(float moveX, float moveY);
+
         int handleBuffers();
 
         bool isOpen;
