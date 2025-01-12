@@ -1,9 +1,6 @@
-# Version: 2025.01.11032855
+# Version: 2025.01.12092224
 
-* [2d3f1a8](https://github.com/ford-jones/lazarus/commit/2d3f1a891b8a81a3729026f61cf5c8d7cf83f955): Update: Inclusion of filenames and line numbers in error output
-* [65a5b06](https://github.com/ford-jones/lazarus/commit/65a5b06219d16963b3d6f79d2879b2a5ad5e2a8c): Docs: Updated installation notes
-* [e22847d](https://github.com/ford-jones/lazarus/commit/e22847daef6438e788c61190f714c12e1354b983): Docs: Add vsync state handler functions to api documentation
-* [5e7e40d](https://github.com/ford-jones/lazarus/commit/5e7e40d138e06ae8d326d232f70648f21ac7adef): Docs: Updated resource material
-* [6321f91](https://github.com/ford-jones/lazarus/commit/6321f9198c74d57410cb6d7fcf2538a54ef93f2e): Fix: Set default vsync behaviour to frame-for-frame
-* [19f5f68](https://github.com/ford-jones/lazarus/commit/19f5f6887d9eb6ab3e6f102b5727c917ce053297): Fix: Vsync disable allowed for slower hardware
-* [05c5c83](https://github.com/ford-jones/lazarus/commit/05c5c8394cba973368194dd20ab8d9001cfc08b2): Update: Vsync switch added to global user settings
+* [ebfe610](https://github.com/ford-jones/lazarus/commit/ebfe610ec929baea20b8391c16bc5687556293d6): Fix: MacOS clang compiler warnings resolved
+* [00de18d](https://github.com/ford-jones/lazarus/commit/00de18dabf0ed94f73a9c712f23fdfb8d16ec3cf): Fix: Rebased main
+* [477645c](https://github.com/ford-jones/lazarus/commit/477645c99907d2d07a9d8f7d3a84402d6f4f6faf): Fix: New unique status code for invalid coordinate input
+* [7be7cee](https://github.com/ford-jones/lazarus/commit/7be7cee7532c520860c370c711b084aff28febf3): Update: Programatically update cursor position
