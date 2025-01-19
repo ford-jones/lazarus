@@ -111,6 +111,22 @@ void Transform::translateCameraAsset(CameraManager::Camera &camera, float x, flo
 		camera.position += (glm::normalize(glm::cross(camera.direction, camera.upVector)) * speed);
 	};
 
+	if(y != 0.0)
+	{
+		/* =============================================
+			Using "velocity" here instead of "speed"
+			because the variable here should always be 
+			positively signed. Otherwise in the case of 
+			(-y * -speed) the result will be positive.
+			The matching sign is only relevant when 
+			mulitplying against a vector.
+
+			10.0 & 5.0 Multipliers because y movement appears
+			considerably slower than z or x.
+		================================================ */
+		camera.position.y += ((y * 10.0f) * (velocity * 5.0f));
+	};
+
 	if(z != 0.0)
 	{
 		camera.position += (speed * camera.direction);
