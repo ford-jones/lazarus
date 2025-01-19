@@ -4,6 +4,7 @@
 # User settings
 .vscode
 .vc
+.vs
 
 # Compiler output
 lib
