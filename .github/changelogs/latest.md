@@ -1,5 +1,6 @@
-# Version: 2025.01.19003805
+# Version: 2025.01.19003904
 
+* [a65d00e](https://github.com/ford-jones/lazarus/commit/a65d00e52014a34f618d6b8b6f3a0a86c47d7a3a): [Changelog CI] Add Changelog for Version 2025.01.19003805
 * [88c5ebb](https://github.com/ford-jones/lazarus/commit/88c5ebbdd30c2c6dcd0565719a6013e45c8d9046): Docs: Updated windows build instructions
 * [ebb4d56](https://github.com/ford-jones/lazarus/commit/ebb4d565dea10b7778b17a0cc1bb164d1b35a374): Feat: New build script for windows
 * [d6f14b2](https://github.com/ford-jones/lazarus/commit/d6f14b20e7ffc262b64c6d9f8094a9295e05f932): Clean: Removed visual studio settings from check-in
