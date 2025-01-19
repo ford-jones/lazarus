@@ -39,20 +39,16 @@ make clean
 
 ### Windows:
 If using windows you will need to install Microsoft Visual Studio and use it's compiler. This hasn't been tested on versions below 2022. \
-In the project root use the following command in the Developer Command Prompt for VS 2022:
+In the project root use Powershell or the Developer Command Prompt for VS 2022 to run the batchfile:
 ```
-cl /std:c++17 /EHsc /c src/*.cpp /link glew32.lib glfw3.lib freetype.lib fmod_vc.lib
-```
-Now link the build output into a static library:
-```
-lib *.obj /out:liblazarus.lib
+build.bat
 ```
 
 Now copy the header files located in include to msvc's include folder. Mine's located at:
 ```
 c:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.42.34433\include
 ```
-Move the lazarus library (`liblazarus.lib`) to msvc's lib folder:
+Move the lazarus library (`lib/liblazarus.lib`) to msvc's lib folder:
 ```
 c:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.42.34433\lib
 ```
