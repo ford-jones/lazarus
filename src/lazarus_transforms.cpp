@@ -62,6 +62,11 @@ void Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float
     return;
 };
 
+void Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
+{
+	mesh.modelMatrix = glm::scale(mesh.modelMatrix, glm::vec3(x, y, z));
+};
+
 void Transform::translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity)
 {
 	/* =========================================
@@ -104,7 +109,7 @@ void Transform::translateCameraAsset(CameraManager::Camera &camera, float x, flo
 			we go right.
 		=============================================== */
 		camera.position += (glm::normalize(glm::cross(camera.direction, camera.upVector)) * speed);
-	}
+	};
 
 	if(z != 0.0)
 	{
