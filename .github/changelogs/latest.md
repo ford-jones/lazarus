@@ -1,6 +1,7 @@
-# Version: 2025.01.12092224
+# Version: 2025.01.19003805
 
-* [ebfe610](https://github.com/ford-jones/lazarus/commit/ebfe610ec929baea20b8391c16bc5687556293d6): Fix: MacOS clang compiler warnings resolved
-* [00de18d](https://github.com/ford-jones/lazarus/commit/00de18dabf0ed94f73a9c712f23fdfb8d16ec3cf): Fix: Rebased main
-* [477645c](https://github.com/ford-jones/lazarus/commit/477645c99907d2d07a9d8f7d3a84402d6f4f6faf): Fix: New unique status code for invalid coordinate input
-* [7be7cee](https://github.com/ford-jones/lazarus/commit/7be7cee7532c520860c370c711b084aff28febf3): Update: Programatically update cursor position
+* [88c5ebb](https://github.com/ford-jones/lazarus/commit/88c5ebbdd30c2c6dcd0565719a6013e45c8d9046): Docs: Updated windows build instructions
+* [ebb4d56](https://github.com/ford-jones/lazarus/commit/ebb4d565dea10b7778b17a0cc1bb164d1b35a374): Feat: New build script for windows
+* [d6f14b2](https://github.com/ford-jones/lazarus/commit/d6f14b20e7ffc262b64c6d9f8094a9295e05f932): Clean: Removed visual studio settings from check-in
+* [04df74d](https://github.com/ford-jones/lazarus/commit/04df74db5b01cefd0a2a487faf87edfa2022d2b1): Update: Camera Y-axis translation transformations enabled
+* [4200bd1](https://github.com/ford-jones/lazarus/commit/4200bd19d437d141df9d7e719c302d8cba6f6d37): Feat: Mesh scaling transformations added
