@@ -1,7 +1,5 @@
-# Version: 2025.01.19003805
+# Version: 2025.01.20023012
 
-* [88c5ebb](https://github.com/ford-jones/lazarus/commit/88c5ebbdd30c2c6dcd0565719a6013e45c8d9046): Docs: Updated windows build instructions
-* [ebb4d56](https://github.com/ford-jones/lazarus/commit/ebb4d565dea10b7778b17a0cc1bb164d1b35a374): Feat: New build script for windows
-* [d6f14b2](https://github.com/ford-jones/lazarus/commit/d6f14b20e7ffc262b64c6d9f8094a9295e05f932): Clean: Removed visual studio settings from check-in
-* [04df74d](https://github.com/ford-jones/lazarus/commit/04df74db5b01cefd0a2a487faf87edfa2022d2b1): Update: Camera Y-axis translation transformations enabled
-* [4200bd1](https://github.com/ford-jones/lazarus/commit/4200bd19d437d141df9d7e719c302d8cba6f6d37): Feat: Mesh scaling transformations added
+* [7245200](https://github.com/ford-jones/lazarus/commit/7245200a6153ac8312a84651c823e31e42765043): Fix: Stops y-overflow of glyphs by performing an offset on their translation transforms
+* [676acf3](https://github.com/ford-jones/lazarus/commit/676acf390c700d3b69ccc57f8524e8f406f40724): Update: Created new status code for invalid user-inputs
+* [3d8fa4e](https://github.com/ford-jones/lazarus/commit/3d8fa4edd2d210f67f6de216187c63c0ce206239): Fix: Ensures quads have centered origins instead of anchoring at bottom left corner
