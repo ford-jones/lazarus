@@ -40,7 +40,7 @@ TextManager::TextManager(GLuint shader)
     this->fontLoader = nullptr;
     this->word = {};
 
-    this->translation = 0;
+    this->translationStride = 0;
     this->span = 0;
     this->targetKey = 0;
     this->targetXL = 0;
@@ -97,10 +97,10 @@ int TextManager::extendFontStack(std::string filepath, int ptSize)
     ============================================================================== */
     for(int i = 33; i < 128; i++)
     {
-        glyph = fontLoader->loadCharacter(static_cast<char>(i), fontIndex);
-        textureLoader->loadBitmapToTexture(glyph);
+        this->glyph = fontLoader->loadCharacter(static_cast<char>(i), fontIndex);
+        textureLoader->loadBitmapToTexture(this->glyph);
 
-        textures.emplace((i - 33), glyph);
+        textures.emplace((i - 33), this->glyph);
     };
 
     return fontIndex;
@@ -135,8 +135,13 @@ int TextManager::loadText(std::string targetText, int posX, int posY, int letter
         quad.textureData = this->glyph;
         quad.textureUnit = GL_TEXTURE1;
 
-        transformer.translateMeshAsset(quad, static_cast<float>(posX + this->translation), static_cast<float>(posY), 0.0f);
-        this->translation += (this->glyph.width + letterSpacing);
+        /* =============================================
+            Add ((createQuad input's x & y) / 2) to the 
+            translation to offset from bottom left-most
+            corner instead of the origin.
+        ================================================*/
+        transformer.translateMeshAsset(quad, static_cast<float>((posX + (this->glyph.width / 2.0f)) + this->translationStride), static_cast<float>((posY + (this->atlasY / 2.0f))), 0.0f);
+        this->translationStride += (this->glyph.width + letterSpacing);
 
         this->word.push_back(quad);
     };
@@ -155,7 +160,7 @@ int TextManager::loadText(std::string targetText, int posX, int posY, int letter
         layout.erase(layoutID);
         layout.insert_or_assign(layoutID, this->word);
         
-        this->translation = 0;
+        this->translationStride = 0;
         
         return layoutID;
 
@@ -167,7 +172,7 @@ int TextManager::loadText(std::string targetText, int posX, int posY, int letter
         this->layoutEntry = std::pair<int, std::vector<MeshManager::Mesh>>(this->layoutIndex, this->word);
         layout.insert(this->layoutEntry);
 
-        this->translation = 0;
+        this->translationStride = 0;
 
         return this->layoutIndex;
     };
@@ -232,6 +237,11 @@ void TextManager::identifyAlphabetDimensions()
 
 void TextManager::setActiveGlyph(char target, int spacing)
 {
+    /* =====================================================
+        If the active glyph is a space; set the UV coordinates
+        to be outside of the texture atlas. That way the 
+        sampled area of the atlas will contain nothing.
+    ======================================================== */
     if(target == ' ')
     {
         this->uvL = -1.0f;

@@ -61,7 +61,7 @@ class TextManager
         void setTextColor(float r, float g, float b);
         void lookUpUVs(int keyCode);
 
-        int translation;
+        int translationStride;
         int targetKey;
         int targetXL;
         int targetXR;
