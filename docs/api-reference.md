@@ -696,3 +696,4 @@ Params:
 - **LAZARUS_AUDIO_ERROR** *An error occured in the FMOD audio backend. (Code: 401)*
 - **LAZARUS_INVALID_RADIANS** *Lazarus recieved a rotational value which exceeds 360.0. (Code: 501)*
 - **LAZARUS_INVALID_CUBEMAP** *The images recieved to construct a cubemap texture are not all of equal height and width (Code: 502)*
+- **LAZARUS_INVALID_DIMENSIONS** *Lazarus recieved a mesh creation input with value(s) below 0.0 (Code: 504).*
