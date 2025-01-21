@@ -64,7 +64,15 @@ void Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float
 
 void Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
 {
-	mesh.modelMatrix = glm::scale(mesh.modelMatrix, glm::vec3(x, y, z));
+	bool positiveSign = this->determineIsSigned(x, y, z);
+	if(!positiveSign)
+	{
+		globals.setExecutionState(LAZARUS_INVALID_DIMENSIONS);	
+	}
+	else
+	{
+		mesh.modelMatrix = glm::scale(mesh.modelMatrix, glm::vec3(x, y, z));
+	};
 };
 
 void Transform::translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity)
@@ -87,9 +95,9 @@ void Transform::translateCameraAsset(CameraManager::Camera &camera, float x, flo
 		a conversion for speed when moving either
 		left or backwards). 
 	================================================ */
-	float positiveSign = std::max(0.0f, (x + y + z));
+	bool positiveSign = this->determineIsSigned(x, y, z);
 
-	if(positiveSign == 0.0f)
+	if(!positiveSign)
 	{
 		speed = velocity - (velocity * 2);		
 	}
@@ -172,6 +180,7 @@ void Transform::translateLightAsset(LightManager::Light &light, float x, float y
 	return;
 };
 
+
 float Transform::determineUpVector(float rotation)
 {
 	if((rotation >= 90.0f && rotation <= 270.0f) || (rotation <= -90.0f && rotation >= -270.0f))
@@ -181,5 +190,17 @@ float Transform::determineUpVector(float rotation)
 	else
 	{
 		return 1.0f;
+	};
+};
+
+bool Transform::determineIsSigned(float x, float y, float z)
+{
+	if(std::max(0.0f, (x + y + z)) == 0.0f)
+	{
+		return false;
+	}
+	else
+	{
+		return true;
 	};
 };

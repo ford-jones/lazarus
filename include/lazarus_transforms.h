@@ -54,6 +54,7 @@ class Transform
 
 	private:
 		float determineUpVector(float rotation);
+		bool determineIsSigned(float x, float y, float z);
 		float up;
 
 		glm::vec3 temp;
