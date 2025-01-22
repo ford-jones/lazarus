@@ -48,9 +48,19 @@ LightManager::Light LightManager::createLightSource(float x, float y, float z, f
 
 void LightManager::loadLightSource(LightManager::Light &lightData)
 {
-    glUniform1i         (this->lightCountLocation, this->lightCount);
-    glUniform3fv        (lightData.lightPositionUniformLocation, 1, &lightData.lightPosition[0]);
-    glUniform3fv        (lightData.lightColorUniformLocation, 1, &lightData.lightColor[0]);
+    if(
+        lightData.lightPositionUniformLocation >= 0 &&
+        lightData.lightColorUniformLocation >= 0
+    )
+    {
+        glUniform1i         (this->lightCountLocation, this->lightCount);
+        glUniform3fv        (lightData.lightPositionUniformLocation, 1, &lightData.lightPosition[0]);
+        glUniform3fv        (lightData.lightColorUniformLocation, 1, &lightData.lightColor[0]);
+    }
+    else
+    {
+        globals.setExecutionState(LAZARUS_UNIFORM_NOT_FOUND);
+    };
 };
 
 LightManager::~LightManager()
