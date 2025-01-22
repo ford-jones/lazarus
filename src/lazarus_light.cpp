@@ -25,7 +25,7 @@ LightManager::LightManager(GLuint shader)
 	this->shaderProgram = shader;
 }
 
-LightManager::Light LightManager::createLightSource(double x, double y, double z, double r, double g, double b)
+LightManager::Light LightManager::createLightSource(float x, float y, float z, float r, float g, float b)
 {	
     srand(time((0)));                                                                                                             // Seed a random number based on current time
     light.id             =   1 + (rand() % 2147483647);

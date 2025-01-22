@@ -59,7 +59,7 @@ class LightManager
         LightManager(GLuint shader);
         virtual ~LightManager();
 
-        Light createLightSource(double x, double y, double z, double r, double g, double b);
+        Light createLightSource(float x, float y, float z, float r, float g, float b);
         void loadLightSource(Light &lightData);
 
     private:
