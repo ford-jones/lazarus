@@ -25,9 +25,7 @@
 #endif
 
 #include <iostream>
-#include <stdlib.h>
-
-using glm::vec3;
+#include "lazarus_globals_manager.h"
 
 #ifndef LAZARUS_LIGHT_H
 #define LAZARUS_LIGHT_H
@@ -49,8 +47,8 @@ class LightManager
             float locationY;
             float locationZ;
 
-            vec3 lightPosition;                     //  The (x,y,z) location of the light source
-            vec3 lightColor;                        //  The (r,g,b) color of the light
+            glm::vec3 lightPosition;                     //  The (x,y,z) location of the light source
+            glm::vec3 lightColor;                        //  The (r,g,b) color of the light
 
             GLuint lightPositionUniformLocation;    //  The location / index of the light position uniform inside the frag shader
             GLuint lightColorUniformLocation;       //  The location / index of the light color uniform inside the frag shader
@@ -63,9 +61,13 @@ class LightManager
         void loadLightSource(Light &lightData);
 
     private:
+        int lightCount;
+        GLuint lightCountLocation;
     	GLuint shaderProgram;
+
         Light light;
-        
+        GlobalsManager globals;
+
 };
 
 #endif

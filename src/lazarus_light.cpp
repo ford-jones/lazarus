@@ -23,28 +23,32 @@ LightManager::LightManager(GLuint shader)
 {
     std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 	this->shaderProgram = shader;
+
+    this->lightCountLocation = glGetUniformLocation(this->shaderProgram, "lightCount");
+    this->lightCount = 0;
 }
 
 LightManager::Light LightManager::createLightSource(float x, float y, float z, float r, float g, float b)
 {	
-    srand(time((0)));                                                                                                             // Seed a random number based on current time
-    light.id             =   1 + (rand() % 2147483647);
+    this->lightCount += 1;
+    light.id             =   (this->lightCount - 1);
     
     light.locationX = x;
     light.locationY = y;
     light.locationZ = z;
 
-    light.lightPosition  =   vec3(light.locationX, light.locationY, light.locationZ);
-    light.lightColor     =   vec3(r, g, b);
+    light.lightPosition  =   glm::vec3(light.locationX, light.locationY, light.locationZ);
+    light.lightColor     =   glm::vec3(r, g, b);
     
-    light.lightPositionUniformLocation   =   glGetUniformLocation(shaderProgram, "lightPosition");
-    light.lightColorUniformLocation      =   glGetUniformLocation(shaderProgram, "lightColor");
+    light.lightPositionUniformLocation   =   glGetUniformLocation(shaderProgram, (std::string("lightPositions[").append(std::to_string(light.id)) + "]").c_str());
+    light.lightColorUniformLocation      =   glGetUniformLocation(shaderProgram, (std::string("lightColors[").append(std::to_string(light.id)) + "]").c_str());
 
     return light;
 };
 
 void LightManager::loadLightSource(LightManager::Light &lightData)
 {
+    glUniform1i         (this->lightCountLocation, this->lightCount);
     glUniform3fv        (lightData.lightPositionUniformLocation, 1, &lightData.lightPosition[0]);
     glUniform3fv        (lightData.lightColorUniformLocation, 1, &lightData.lightColor[0]);
 };
