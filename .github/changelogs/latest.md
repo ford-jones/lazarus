@@ -1,5 +1,6 @@
-# Version: 2025.01.23060428
+# Version: 2025.01.23060618
 
+* [f6d7350](https://github.com/ford-jones/lazarus/commit/f6d7350859966267fc3d3335bd3f8c59064d00fd): [Changelog CI] Add Changelog for Version 2025.01.23060428
 * [3d7f74a](https://github.com/ford-jones/lazarus/commit/3d7f74a0a6f3a9f6c9581da5c88f749de0d6bd88): Fix: Resolved compiler warnings
 * [58975cd](https://github.com/ford-jones/lazarus/commit/58975cdfe37c87b2fb85126cf809aeddbe4ad15a): Docs: Updated transform documentation
 * [3479fc1](https://github.com/ford-jones/lazarus/commit/3479fc14e8a624107199d1a9c9f645b6eb662a02): Docs: Updated lighting documentation
