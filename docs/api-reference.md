@@ -492,7 +492,7 @@ Params:
 > **shader:** *The id of the shader program used to render this light. Acquired from the return value of `Shader::initialiseShader()`*
 
 ### Functions: 
-#### LightManager::Light createLightSource(double x, double y, double z, double r, double g, double b)
+#### LightManager::Light createLightSource(float x, float y, float z, float r, float g, float b, float brightness)
 Creates a new instance of an `Light`, initialises the values of its properties and returns it.
 
 Returns a new light entity.
@@ -503,7 +503,8 @@ Params:
 > **z:** *The z-axis starting coordinate of the light in world-space.* \
 > **r:** *This light's red colour value.* \
 > **g:** *This light's green colour value.* \
-> **b:** *This light's blue colour value.* 
+> **b:** *This light's blue colour value.* \
+> **brightness:** *The intensity of the light.*
 
 #### void loadLightSource(LightManager::Light &lightData)
 Passes the light object's locative (x,y,z) values into the vertex shader and its' colour (r,g,b) values into the fragment shader.
@@ -517,10 +518,12 @@ Params:
 >	- **locationX:** *The x-axis coordinate of the light's position in world space. (type: `float`)*
 >	- **locationY:** *The y-axis coordinate of the light's position in world space. (type: `float`)*
 >	- **locationZ:** *The z-axis coordinate of the light's position in world space. (type: `float`)*
+>   - **brightness**: *The intensity of the light.*
 >	- **lightPosition:** *The x, y, z location of the light. (type: glm::vec3)*
 >	- **lightColor:** *The r, g, b color values of the light. (type: glm::vec3)*
->	- **lightPositionUniformLocation:** *The location / index of the vertex shader position uniform. (type: `GLuint`)*
->	- **lightColorUniformLocation:** *The location / index of the fragment shader diffuse uniform. (type: `GLuint`)*
+>	- **lightPositionUniformLocation:** *The location / index of the vertex shader position uniform. (type: `GLint`)*
+>	- **lightColorUniformLocation:** *The location / index of the fragment shader diffuse uniform. (type: `GLint`)*
+>   - **lightBrightnessUniformLocation:** *The location / index of the fragment shader brightness uniform. (type: `GLint`)*
 
 ## AudioManager:
 A management class using an `FMOD` backend for loading audio, as well as handling audio locations and listeners. 
