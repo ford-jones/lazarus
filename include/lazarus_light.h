@@ -46,24 +46,27 @@ class LightManager
             float locationX;
             float locationY;
             float locationZ;
+            
+            float brightness;
 
             glm::vec3 lightPosition;                     //  The (x,y,z) location of the light source
             glm::vec3 lightColor;                        //  The (r,g,b) color of the light
 
-            GLuint lightPositionUniformLocation;    //  The location / index of the light position uniform inside the frag shader
-            GLuint lightColorUniformLocation;       //  The location / index of the light color uniform inside the frag shader
+            GLint lightPositionUniformLocation;    //  The location / index of the light position uniform inside the frag shader
+            GLint lightColorUniformLocation;       //  The location / index of the light color uniform inside the frag shader
+            GLint brightnessUniformLocation;
         };
         
         LightManager(GLuint shader);
         virtual ~LightManager();
 
-        Light createLightSource(float x, float y, float z, float r, float g, float b);
+        Light createLightSource(float x, float y, float z, float r, float g, float b, float brightness = 1.0f);
         void loadLightSource(Light &lightData);
 
     private:
         int lightCount;
-        GLuint lightCountLocation;
-    	GLuint shaderProgram;
+        GLint lightCountLocation;
+    	GLint shaderProgram;
 
         Light light;
         GlobalsManager globals;

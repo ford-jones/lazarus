@@ -28,7 +28,7 @@ LightManager::LightManager(GLuint shader)
     this->lightCount = 0;
 }
 
-LightManager::Light LightManager::createLightSource(float x, float y, float z, float r, float g, float b)
+LightManager::Light LightManager::createLightSource(float x, float y, float z, float r, float g, float b, float brightness)
 {	
     this->lightCount += 1;
     light.id             =   (this->lightCount - 1);
@@ -36,12 +36,14 @@ LightManager::Light LightManager::createLightSource(float x, float y, float z, f
     light.locationX = x;
     light.locationY = y;
     light.locationZ = z;
+    light.brightness = brightness;
 
     light.lightPosition  =   glm::vec3(light.locationX, light.locationY, light.locationZ);
     light.lightColor     =   glm::vec3(r, g, b);
     
     light.lightPositionUniformLocation   =   glGetUniformLocation(shaderProgram, (std::string("lightPositions[").append(std::to_string(light.id)) + "]").c_str());
     light.lightColorUniformLocation      =   glGetUniformLocation(shaderProgram, (std::string("lightColors[").append(std::to_string(light.id)) + "]").c_str());
+    light.brightnessUniformLocation      =   glGetUniformLocation(shaderProgram, (std::string("lightBrightness[").append(std::to_string(light.id)) + "]").c_str());
 
     return light;
 };
@@ -49,11 +51,13 @@ LightManager::Light LightManager::createLightSource(float x, float y, float z, f
 void LightManager::loadLightSource(LightManager::Light &lightData)
 {
     if(
-        lightData.lightPositionUniformLocation >= 0 &&
-        lightData.lightColorUniformLocation >= 0
+        lightData.brightnessUniformLocation >= 0    &&
+        lightData.lightColorUniformLocation >= 0    &&
+        lightData.lightPositionUniformLocation >= 0 
     )
     {
         glUniform1i         (this->lightCountLocation, this->lightCount);
+        glUniform1f         (lightData.brightnessUniformLocation, lightData.brightness);
         glUniform3fv        (lightData.lightPositionUniformLocation, 1, &lightData.lightPosition[0]);
         glUniform3fv        (lightData.lightColorUniformLocation, 1, &lightData.lightColor[0]);
     }
