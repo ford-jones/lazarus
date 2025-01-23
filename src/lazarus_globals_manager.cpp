@@ -122,6 +122,11 @@ void GlobalsManager::setLaunchInFullscreen(bool shouldEnlarge)
     return;
 };
 
+bool GlobalsManager::getLaunchInFullscreen()
+{
+    return LAZARUS_LAUNCH_IN_FULLSCREEN;
+};
+
 void GlobalsManager::setVsyncDisabled(bool shouldDisable)
 {
     LAZARUS_DISABLE_VSYNC = shouldDisable;
@@ -132,7 +137,12 @@ bool GlobalsManager::getVsyncDisabled()
     return LAZARUS_DISABLE_VSYNC;
 };
 
-bool GlobalsManager::getLaunchInFullscreen()
+int GlobalsManager::setNumberOfActiveLights(int count)
 {
-    return LAZARUS_LAUNCH_IN_FULLSCREEN;
+    LAZARUS_LIGHT_COUNT = count;
+};
+
+int GlobalsManager::getNumberOfActiveLights()
+{
+    return LAZARUS_LIGHT_COUNT;
 };

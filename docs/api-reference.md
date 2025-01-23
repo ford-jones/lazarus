@@ -245,10 +245,9 @@ Params:
 A class built to handle transformations of different world assets such as mesh, cameras and lights.
 
 ### Functions:
-#### MeshManager::Mesh translateMeshAsset(MeshManager::Mesh mesh, float x, float y, float z)
+#### void translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
 Applies a translation transformation (movement) to a mesh asset along the x, y and z axis from an offset of 0.0. \
-Updates the `locationX`, `locationY` and `locationZ` properties of a `MeshManager::Mesh` object in real time. \
-Returns a new mesh entity.
+Updates the `locationX`, `locationY` and `locationZ` properties of a `MeshManager::Mesh` object in real time. 
 
 Params:
 > **mesh:** *The mesh asset to be acted upon. (type: `MeshManager::Mesh`)* \
@@ -256,10 +255,9 @@ Params:
 > **y:** *A floating point number used to increment / decrement the y-axis locative value of the mesh.* \
 > **z:** *A floating point number used to increment / decrement the z-axis locative value of the mesh.*
 
-#### MeshManager::Mesh rotateMeshAsset(MeshManager::Mesh mesh, float x, float y, float z)
+#### void rotateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
 Applies a rotation transformation to a mesh asset on it's x, y and z axis from an offset of 0.0. \
-This rotation affects the yaw, pitch and roll of the mesh. Not to be confused with an orbital rotation. \
-Returns a new mesh entity.
+This rotation affects the yaw, pitch and roll of the mesh. Not to be confused with an orbital rotation. 
 
 Params:
 > **mesh:** *The mesh asset to be acted upon. (type: `MeshManager::Mesh`)* \
@@ -267,10 +265,13 @@ Params:
 > **y:** *A floating point number used to increment / decrement the y-axis (pitch) rotational value of the mesh.* \
 > **z:** *A floating point number used to increment / decrement the z-axis (roll) rotational value of the mesh.*
 
-#### CameraManager::Camera translateCameraAsset(CameraManager::Camera camera, float x, float y, float z, float velocity)
+#### void scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
+Applies a scaling transformation to a mesh asset on it's x, y, and z axis from and offset of 1.0. \
+Will update the value returned by `GlobalsManager::getExecutionStatus()` to `LAZARUS_INVALID_DIMENSIONS` if any of the values recieved are below `0.0`.
+
+#### void translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity)
 Applies a translation transformation (movement) to a camera asset along the x, y and z axis from an offset of 0.0. \
-Updates the `locationX`, `locationY` and `locationZ` properties of a `CameraManager::Camera` object in real time. \
-Returns a new camera entity.
+Updates the `locationX`, `locationY` and `locationZ` properties of a `CameraManager::Camera` object in real time. 
 
 Params:
 > **camera:** *The camera asset to be acted upon. (type: `CameraManager::Camera`)* \
@@ -279,10 +280,10 @@ Params:
 > **z:** *A floating point number used to increment / decrement the z-axis locative value of the camera.*
 > **velocity:** *The speed at which the camera should translate through space per update. (default: `0.1`)*
 
-#### CameraManager::Camera rotateCameraAsset(CameraManager::Camera camera, float x, float y, float z)
+#### void rotateCameraAsset(CameraManager::Camera &camera, float x, float y, float z)
 Applies a rotation transformation to a camera asset on it's x, y and z axis from an offset of 0.0. \
 This rotation affects the yaw, pitch and roll of the camera. Not to be confused with an orbital rotation. \
-Returns a new camera entity.
+Will update the value returned by `GlobalsManager::getExecutionStatus()` to `LAZARUS_INVALID_RADIANS` if any of the values recieved are below `-360.0` or above `+360.0`.
 
 Params:
 > **camera:** *The camera asset to be acted upon. (type: `CameraManager::Camera`)* \
@@ -290,10 +291,9 @@ Params:
 > **y:** *A floating point number used to increment / decrement the y-axis locative value of the camera.* \
 > **z:** *A floating point number used to increment / decrement the z-axis locative value of the camera.*
 
-#### LightManager::Light translateLightAsset(LightManager::Light light, float x, float y, float z)
+#### void translateLightAsset(LightManager::Light &light, float x, float y, float z)
 Applies a translation transformation (movement) to a light asset along the x, y and z axis from an offset of 0.0. \
-Updates the `locationX`, `locationY` and `locationZ` properties of a `LightManager::Light` object in real time. \
-Returns a new light entity.
+Updates the `locationX`, `locationY` and `locationZ` properties of a `LightManager::Light` object in real time. 
 
 
 Params:
@@ -492,7 +492,7 @@ Params:
 > **shader:** *The id of the shader program used to render this light. Acquired from the return value of `Shader::initialiseShader()`*
 
 ### Functions: 
-#### LightManager::Light createLightSource(double x, double y, double z, double r, double g, double b)
+#### LightManager::Light createLightSource(float x, float y, float z, float r, float g, float b, float brightness)
 Creates a new instance of an `Light`, initialises the values of its properties and returns it.
 
 Returns a new light entity.
@@ -503,7 +503,8 @@ Params:
 > **z:** *The z-axis starting coordinate of the light in world-space.* \
 > **r:** *This light's red colour value.* \
 > **g:** *This light's green colour value.* \
-> **b:** *This light's blue colour value.* 
+> **b:** *This light's blue colour value.* \
+> **brightness:** *The intensity of the light.*
 
 #### void loadLightSource(LightManager::Light &lightData)
 Passes the light object's locative (x,y,z) values into the vertex shader and its' colour (r,g,b) values into the fragment shader.
@@ -517,10 +518,12 @@ Params:
 >	- **locationX:** *The x-axis coordinate of the light's position in world space. (type: `float`)*
 >	- **locationY:** *The y-axis coordinate of the light's position in world space. (type: `float`)*
 >	- **locationZ:** *The z-axis coordinate of the light's position in world space. (type: `float`)*
+>   - **brightness**: *The intensity of the light.*
 >	- **lightPosition:** *The x, y, z location of the light. (type: glm::vec3)*
 >	- **lightColor:** *The r, g, b color values of the light. (type: glm::vec3)*
->	- **lightPositionUniformLocation:** *The location / index of the vertex shader position uniform. (type: `GLuint`)*
->	- **lightColorUniformLocation:** *The location / index of the fragment shader diffuse uniform. (type: `GLuint`)*
+>	- **lightPositionUniformLocation:** *The location / index of the vertex shader position uniform. (type: `GLint`)*
+>	- **lightColorUniformLocation:** *The location / index of the fragment shader diffuse uniform. (type: `GLint`)*
+>   - **lightBrightnessUniformLocation:** *The location / index of the fragment shader brightness uniform. (type: `GLint`)*
 
 ## AudioManager:
 A management class using an `FMOD` backend for loading audio, as well as handling audio locations and listeners. 

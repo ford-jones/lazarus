@@ -30,6 +30,7 @@
 extern int          LAZARUS_EXECUTION_STATUS;
 extern int          LAZARUS_PRIMARY_DISPLAY_WIDTH;
 extern int          LAZARUS_PRIMARY_DISPLAY_HEIGHT;
+extern int          LAZARUS_LIGHT_COUNT;
 
 /* User Settings */
 

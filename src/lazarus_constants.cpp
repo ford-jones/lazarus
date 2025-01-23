@@ -22,6 +22,8 @@
 int          LAZARUS_EXECUTION_STATUS               = 0;
 int          LAZARUS_PRIMARY_DISPLAY_WIDTH          = 0;
 int          LAZARUS_PRIMARY_DISPLAY_HEIGHT         = 0;
+int          LAZARUS_LIGHT_COUNT                    = 0;
+
 int          LAZARUS_MAX_IMAGE_WIDTH                = 0;
 int          LAZARUS_MAX_IMAGE_HEIGHT               = 0;
 bool         LAZARUS_ENFORCE_IMAGE_SANITY           = false;
