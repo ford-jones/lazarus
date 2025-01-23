@@ -35,8 +35,7 @@ using std::shared_ptr;
 
 /* =====================================================
 	TODO:
-	1. Scaling transforms
-	2. Light rotation (For use with directional lights)
+	1. Light rotation (For use with directional lights)
 ======================================================== */
 
 class Transform
