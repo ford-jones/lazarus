@@ -137,7 +137,7 @@ bool GlobalsManager::getVsyncDisabled()
     return LAZARUS_DISABLE_VSYNC;
 };
 
-int GlobalsManager::setNumberOfActiveLights(int count)
+void GlobalsManager::setNumberOfActiveLights(int count)
 {
     LAZARUS_LIGHT_COUNT = count;
 };

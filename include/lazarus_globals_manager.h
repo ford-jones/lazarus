@@ -53,7 +53,7 @@ class GlobalsManager
         void setVsyncDisabled(bool shouldDisable);
         bool getVsyncDisabled();
 
-        int setNumberOfActiveLights(int count);
+        void setNumberOfActiveLights(int count);
         int getNumberOfActiveLights();
 
         void setDisplaySize(int width, int height);
