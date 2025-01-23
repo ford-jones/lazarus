@@ -25,7 +25,7 @@ LightManager::LightManager(GLuint shader)
 	this->shaderProgram = shader;
 
     this->lightCountLocation = glGetUniformLocation(this->shaderProgram, "lightCount");
-    this->lightCount = 0;
+    this->lightCount = globals.getNumberOfActiveLights();
 }
 
 LightManager::Light LightManager::createLightSource(float x, float y, float z, float r, float g, float b, float brightness)
@@ -45,6 +45,7 @@ LightManager::Light LightManager::createLightSource(float x, float y, float z, f
     light.lightColorUniformLocation      =   glGetUniformLocation(shaderProgram, (std::string("lightColors[").append(std::to_string(light.id)) + "]").c_str());
     light.brightnessUniformLocation      =   glGetUniformLocation(shaderProgram, (std::string("lightBrightness[").append(std::to_string(light.id)) + "]").c_str());
 
+    globals.setNumberOfActiveLights(this->lightCount);
     return light;
 };
 
