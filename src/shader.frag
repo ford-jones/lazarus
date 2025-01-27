@@ -32,12 +32,16 @@ out vec4 outFragment;
 //  Illuminate the fragment using the lambertian lighting model
 vec3 calculateLambertianDeflection (vec4 colorData, vec3 lightPosition, vec3 lightColor) 
 {
-    vec3 direction = normalize(lightPosition - fragPosition);
+    vec3 displacement = lightPosition - fragPosition;
+    vec3 direction = normalize(displacement);
     float diffusion = max(dot(normalCoordinate, direction), 0.0);
     vec3 color = vec3(colorData.r, colorData.g, colorData.b);
     vec3 illuminatedFrag = (color * lightColor * diffusion);
     
-    return illuminatedFrag;
+    //  Apply inverse square law to illumination result
+    //  Note: Don't apply for directional lights when they are added
+    //  This is better maybe: return illuminatedFrag * min(1.0 / pow(dot(displacement, displacement), 0.5), 1.0);
+    return illuminatedFrag / (dot(displacement, displacement));
 }
 
 vec4 interpretColorData ()
@@ -103,7 +107,7 @@ void main ()
     }
     else
     {
-        vec3 illuminationResult = vec3(0.0, 0.0, 0.0);
+        vec3 illuminationResult = 0.1 * fragColor.rgb;
 
         //  Calculate the fragment's diffuse lighting for each light in the scene.
         for(int i = 0; i < lightCount; i++)
