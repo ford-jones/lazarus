@@ -31,6 +31,11 @@ WorldFX::WorldFX(GLuint shaderProgram)
     this->skyBox = {};
 };
 
+/* =================================================================
+    TODO (priority):
+    For some reason when a skybox is NOT created, everything breaks
+    and openGL spits out a 1282 Error.
+==================================================================== */
 WorldFX::SkyBox WorldFX::createSkyBox(std::string rightPath, std::string leftPath, std::string downPath, std::string upPath, std::string frontPath, std::string backPath)
 {
     this->skyBox.cube = meshLoader->createCube(10.0f);
@@ -43,7 +48,8 @@ WorldFX::SkyBox WorldFX::createSkyBox(std::string rightPath, std::string leftPat
 
     /* =================================================
         TODO:
-            Do something about this.
+        There must surely be a way to store this better.
+        i.e. textureData in this case is 6 * textureData
     ==================================================== */
     this->skyBox.cube.textureLayer = 1;
     this->skyBox.cube.textureData.pixelData = NULL;
