@@ -170,9 +170,9 @@ void AudioManager::updateSourceLocation(AudioManager::Audio &audioIn, float x, f
 	targetAudio.currentSourcePosition = {x, y, z};
 
 	targetAudio.sourceVelocity = {
-		((targetAudio.currentSourcePosition.x - targetAudio.prevSourcePosition.x)),
-		((targetAudio.currentSourcePosition.y - targetAudio.prevSourcePosition.y)),
-		((targetAudio.currentSourcePosition.z - targetAudio.prevSourcePosition.z))
+		((targetAudio.currentSourcePosition.x - targetAudio.prevSourcePosition.x) / (1000 / 60)),
+		((targetAudio.currentSourcePosition.y - targetAudio.prevSourcePosition.y) / (1000 / 60)),
+		((targetAudio.currentSourcePosition.z - targetAudio.prevSourcePosition.z) / (1000 / 60))
 	};
 
 	this->result = targetAudio.channel->set3DAttributes(&targetAudio.currentSourcePosition, &targetAudio.sourceVelocity);
@@ -199,9 +199,9 @@ void AudioManager::updateListenerLocation(float x, float y, float z)
 	======================================== */
 
 	this->listenerVelocity = {
-		((this->currentListenerPosition.x - this->prevListenerPosition.x) * (1000 / 60)),
-		((this->currentListenerPosition.y - this->prevListenerPosition.y) * (1000 / 60)),
-		((this->currentListenerPosition.z - this->prevListenerPosition.z) * (1000 / 60))
+		((this->currentListenerPosition.x - this->prevListenerPosition.x) / (1000 / 60)),
+		((this->currentListenerPosition.y - this->prevListenerPosition.y) / (1000 / 60)),
+		((this->currentListenerPosition.z - this->prevListenerPosition.z) / (1000 / 60))
 	};
 
 	this->result = system->set3DListenerAttributes(
