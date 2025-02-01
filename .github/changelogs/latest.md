@@ -1,5 +1,6 @@
-# Version: 2025.02.01045913
+# Version: 2025.02.01050024
 
+* [ed6a852](https://github.com/ford-jones/lazarus/commit/ed6a8525e307ae1031bdcd740f8d448e4fdf109f): [Changelog CI] Add Changelog for Version 2025.02.01045913
 * [131b9eb](https://github.com/ford-jones/lazarus/commit/131b9ebaca5105b984b0535da23a6cf2644500b1): Fix: Ensure assertion of texture sampler uniform location unit values
 * [0875354](https://github.com/ford-jones/lazarus/commit/0875354f2a4c69bc17093417b7255a6c89b566f4): Fix: Ammended doppler effect timestep
 * [a289056](https://github.com/ford-jones/lazarus/commit/a2890567a8c0f9f207662a00ba7ab94790bf2675): Fix: Positioning of audio emmiters relative to listeners
