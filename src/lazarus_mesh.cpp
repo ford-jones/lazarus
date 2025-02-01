@@ -35,6 +35,13 @@ MeshManager::MeshManager(GLuint shader)
 	this->errorCode = GL_NO_ERROR;
 
     this->layerCount = 0;
+
+    //  TODO: 
+    //  Remove locations from mesh struct
+    //  List here so they are all garaunteed a value
+    glUniform1i(glGetUniformLocation(this->shaderProgram, "textureAtlas"), 1);
+    glUniform1i(glGetUniformLocation(this->shaderProgram, "textureArray"), 2);
+    glUniform1i(glGetUniformLocation(this->shaderProgram, "textureCube"), 3);
 };
 
 MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPath, string texturePath)
@@ -49,7 +56,6 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
 
     this->lookupUniforms(mesh);
 
-    glUniform1i(mesh.samplerUniformLocation, 2);
 
     mesh.textureUnit = GL_TEXTURE2;
     glActiveTexture(mesh.textureUnit);
@@ -100,13 +106,21 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
 
     this->lookupUniforms(mesh);
 
-    glUniform1i(mesh.samplerUniformLocation, 2);
     
     mesh.textureUnit = GL_TEXTURE2;
     glActiveTexture(mesh.textureUnit);
 
     this->resolveFilepaths(mesh, texturePath);
 
+    /* ======================================================
+        Ensure that the origin is centered.
+        (E.g. width 2.0f, height 2.0f becomes 
+        width -1.0f, height +1.0f) 
+    ========================================================= */
+    float xMin = -(width / 2.0f);
+    float xMax = width / 2.0f;
+    float yMax = height / 2.0f;
+    float yMin = -(height / 2.0f);
     /* ==========================================================
         If the UV params aren't their default values (0.0) then
         this mesh is being created for a glyph which needs to be 
@@ -116,15 +130,6 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
     ============================================================= */
     if(uvXL || uvXR || uvY > 0.0 )
     {
-        /* ======================================================
-            Ensure that the origin is centered.
-            (E.g. width 2.0f, height 2.0f becomes 
-            width -1.0f, height +1.0f) 
-        ========================================================= */
-        float xMin = -(width / 2.0f);
-        float xMax = width / 2.0f;
-        float yMax = height / 2.0f;
-        float yMin = -(height / 2.0f);
 
     /* ======================================================================================================
             Vertex positions,           Diffuse colors,             Normals,                    UVs 
@@ -134,37 +139,43 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
             vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, 0.0f, 0.0f), 
             vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, uvY, 0.0f),
 
-            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, uvY, 0.0f),
-            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, 0.0f, 0.0f),
-            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, uvY, 0.0f),
+            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXR, uvY, 0.0f),
+            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXR, 0.0f, 0.0f),
+            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXL, uvY, 0.0f),
 
             vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, uvY, 0.0f),
             vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, 0.0f, 0.0f),
             vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, uvY, 0.0f),
 
-            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, uvY, 0.0f),
-            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, 0.0f, 0.0f), 
-            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, 0.0f, 0.0f),
+            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXL, uvY, 0.0f),
+            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXR, 0.0f, 0.0f), 
+            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXL, 0.0f, 0.0f),
         };
     }
     else
     {
+        /* ==================================================
+            For some reason Mac requires two sets of the 
+            vertices for what at a glance looks like an
+            unwinding / culling type of issue. Note the sign
+            of the normals.
+        ===================================================== */
         mesh.attributes = {
-            vec3(0.0f, 0.0f, 0.0f),     vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 0.0f, 0.0f),
-            vec3(width, 0.0f, 0.0f),    vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 0.0f, 0.0f),
-            vec3(0.0f, height, 0.0f),   vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 1.0f, 0.0f),
+            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 0.0f, 0.0f),
+            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 0.0f, 0.0f),
+            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 1.0f, 0.0f),
 
-            vec3(width, height, 0.0f),  vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 1.0f, 0.0f),
-            vec3(width, 0.0f, 0.0f),    vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 0.0f, 0.0f),
-            vec3(0.0f, height, 0.0f),   vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 1.0f, 0.0f),
+            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(1.0f, 1.0f, 0.0f),
+            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(1.0f, 0.0f, 0.0f),
+            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(0.0f, 1.0f, 0.0f),
 
-            vec3(0.0f, height, 0.0f),   vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 1.0f, 0.0f),
-            vec3(width, 0.0f, 0.0f),    vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 0.0f, 0.0f),
-            vec3(width, height, 0.0f),  vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 1.0f, 0.0f),
+            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 1.0f, 0.0f),
+            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 0.0f, 0.0f),
+            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 1.0f, 0.0f),
 
-            vec3(0.0f, height, 0.0f),   vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 1.0f, 0.0f),
-            vec3(width, 0.0f, 0.0f),    vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 0.0f, 0.0f),
-            vec3(0.0f, 0.0f, 0.0f),     vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 0.0f, 0.0f),
+            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(0.0f, 1.0f, 0.0f),
+            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(1.0f, 0.0f, 0.0f),
+            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(0.0f, 0.0f, 0.0f),
         };
     };
 
@@ -184,17 +195,14 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath)
     this->lookupUniforms(mesh);
     this->resolveFilepaths(mesh, texturePath);
 
+        /* ==================================================
+            Default texture unit is GL_TEXTURE1, which is the
+            samplerArray. Reset it appropriately here.
+        ===================================================== */
     if(mesh.textureFilepath == LAZARUS_SKYBOX_CUBE)
     {
         mesh.is3D = 0;
         mesh.isSkybox = 1;
-
-        /* ==================================================
-            Change the sampler location set by lookupUniforms
-            from the texture array to the cube map.
-        ===================================================== */
-        mesh.samplerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureCube");
-        glUniform1i(mesh.samplerUniformLocation, 3);
 
         mesh.textureUnit = GL_TEXTURE3;
     }
@@ -202,9 +210,6 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath)
     {
         mesh.is3D = 1;
         mesh.isSkybox = 0;
-
-        mesh.samplerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureArray");
-        glUniform1i(mesh.samplerUniformLocation, 2);
 
         mesh.textureUnit = GL_TEXTURE2;
     };
@@ -458,7 +463,6 @@ void MeshManager::lookupUniforms(MeshManager::Mesh &asset)
     asset.isGlyphUniformLocation = glGetUniformLocation(this->shaderProgram, "glyphAsset");
     asset.isSkyBoxUniformLocation = glGetUniformLocation(this->shaderProgram, "isSkyBox");
 
-    asset.samplerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureArray");
     asset.textureLayerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureLayer");    
 
     return;

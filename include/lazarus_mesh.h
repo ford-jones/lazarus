@@ -83,7 +83,6 @@ class MeshManager
             mat4 modelMatrix;                                                                                    //  A modelview matrix matrice passed into the shader program as a uniform
 
             GLint modelMatrixUniformLocation;                                                                        //  The location / index of the modelview matrix inside the vert shader program
-            GLint samplerUniformLocation;
             GLint textureLayerUniformLocation;
             GLint is3DUniformLocation;
             GLint isGlyphUniformLocation;
