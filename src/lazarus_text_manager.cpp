@@ -85,7 +85,6 @@ int TextManager::extendFontStack(std::string filepath, int ptSize)
 
     this->identifyAlphabetDimensions();
 
-    glUniform1i(glGetUniformLocation(this->shaderProgram, "textureAtlas"), 1);
     textureLoader->storeBitmapTexture(atlasX, atlasY);
 
     this->textureId = textureLoader->bitmapTexture;
@@ -129,11 +128,18 @@ int TextManager::loadText(std::string targetText, int posX, int posY, int letter
 
         quad = meshLoader->createQuad(static_cast<float>(this->glyph.width), static_cast<float>(this->atlasY), LAZARUS_GLYPH_QUAD, this->uvL, this->uvR, this->uvH);
         
-        quad.isGlyph = 1;
+        /* =============================================
+            Note: The uniform location of this texture
+            unit's corresponding sampler is *actually*
+            set during the construction of the MeshManager
+            class when it is imported and referenced in 
+            the Lazarus namespace at lazarus.h.
+        ================================================ */
+        quad.textureUnit = GL_TEXTURE1;
         quad.textureId = this->textureId;
         quad.textureLayer = 0;
         quad.textureData = this->glyph;
-        quad.textureUnit = GL_TEXTURE1;
+        quad.isGlyph = 1;
 
         /* =============================================
             Add ((createQuad input's x & y) / 2) to the 

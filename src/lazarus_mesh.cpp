@@ -35,6 +35,13 @@ MeshManager::MeshManager(GLuint shader)
 	this->errorCode = GL_NO_ERROR;
 
     this->layerCount = 0;
+
+    //  TODO: 
+    //  Remove locations from mesh struct
+    //  List here so they are all garaunteed a value
+    glUniform1i(glGetUniformLocation(this->shaderProgram, "textureAtlas"), 1);
+    glUniform1i(glGetUniformLocation(this->shaderProgram, "textureArray"), 2);
+    glUniform1i(glGetUniformLocation(this->shaderProgram, "textureCube"), 3);
 };
 
 MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPath, string texturePath)
@@ -49,7 +56,6 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
 
     this->lookupUniforms(mesh);
 
-    glUniform1i(mesh.samplerUniformLocation, 2);
 
     mesh.textureUnit = GL_TEXTURE2;
     glActiveTexture(mesh.textureUnit);
@@ -100,7 +106,6 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
 
     this->lookupUniforms(mesh);
 
-    glUniform1i(mesh.samplerUniformLocation, 2);
     
     mesh.textureUnit = GL_TEXTURE2;
     glActiveTexture(mesh.textureUnit);
@@ -190,17 +195,14 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath)
     this->lookupUniforms(mesh);
     this->resolveFilepaths(mesh, texturePath);
 
+        /* ==================================================
+            Default texture unit is GL_TEXTURE1, which is the
+            samplerArray. Reset it appropriately here.
+        ===================================================== */
     if(mesh.textureFilepath == LAZARUS_SKYBOX_CUBE)
     {
         mesh.is3D = 0;
         mesh.isSkybox = 1;
-
-        /* ==================================================
-            Change the sampler location set by lookupUniforms
-            from the texture array to the cube map.
-        ===================================================== */
-        mesh.samplerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureCube");
-        glUniform1i(mesh.samplerUniformLocation, 3);
 
         mesh.textureUnit = GL_TEXTURE3;
     }
@@ -208,9 +210,6 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath)
     {
         mesh.is3D = 1;
         mesh.isSkybox = 0;
-
-        mesh.samplerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureArray");
-        glUniform1i(mesh.samplerUniformLocation, 2);
 
         mesh.textureUnit = GL_TEXTURE2;
     };
@@ -464,7 +463,6 @@ void MeshManager::lookupUniforms(MeshManager::Mesh &asset)
     asset.isGlyphUniformLocation = glGetUniformLocation(this->shaderProgram, "glyphAsset");
     asset.isSkyBoxUniformLocation = glGetUniformLocation(this->shaderProgram, "isSkyBox");
 
-    asset.samplerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureArray");
     asset.textureLayerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureLayer");    
 
     return;
