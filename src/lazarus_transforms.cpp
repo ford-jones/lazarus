@@ -132,7 +132,7 @@ void Transform::translateCameraAsset(CameraManager::Camera &camera, float x, flo
 			10.0 & 5.0 Multipliers because y movement appears
 			considerably slower than z or x.
 		================================================ */
-		camera.position.y += ((y * 10.0f) * (velocity * 5.0f));
+		camera.position.y += (y * velocity);
 	};
 
 	if(z != 0.0)
