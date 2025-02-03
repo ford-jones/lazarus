@@ -436,18 +436,12 @@ Params:
 > **shader:** *The id of the shader program used to render this camera. Acquired from the return value of `Shader::initialiseShader()`*
 
 ### Functions: 
-#### CameraManager::Camera createPerspectiveCam(double pX, double pY, double pZ, double tX, double tY, double tZ, int arX, int arY)
-Creates a new instance of a `Camera`, with a perspective projection matrix. 
+#### CameraManager::Camera createPerspectiveCam(int arX, int arY)
+Creates a new `Camera` object located at the scenes origin (x: 0.0, y: 0.0, z: 0.0) which looks directly down the +X axis. 
 
-Returns a new camera entity.
+Returns a `Camera` object.
 
 Params:
-> **pX:** *The x-axis starting position / location of the camera.* \
-> **pY:** *The y-axis starting position / location of the camera.* \
-> **pZ:** *The z-axis starting position / location of the camera.* \
-> **tX:** *The x-axis target / lookat coordinate.* \
-> **tY:** *The y-axis target / lookat coordinate.* \
-> **tZ:** *The z-axis target / lookat coordinate.* \
 > **arX:** *The x-axis aspect ratio / width of the viewport. (Default: `LAZARUS_PRIMARY_DISPLAY_WIDTH`)* \
 > **arY:** *The y-axis aspect ratio / height of the viewport. (Default: `LAZARUS_PRIMARY_DISPLAY_HEIGHT`)* 
 
@@ -473,8 +467,7 @@ Params:
 > **Camera:** *A collection of properties which make up a camera entity. (type: `struct`)* 
 >	- **id:** *This camera's unique id. (type: `int`)* 
 >	- **position:** *The x, y, z location of the camera. (type: `glm::vec3`)*
->	- **direction:** *The x, y, z location of where the camera is facing. (type: `glm::vec3`)*
->	- **target:** *The x, y, z location of the camera's target. (type: `glm::vec3`)*
+>	- **direction:** *Which direction the camera is facing. (type: `glm::vec3`)*
 >	- **upVector:** *Which way is considered up. (type: `glm::vec3`)*
 >	- **aspectRatio:** *The camera's aspect ratio. (type: `float`)*
 >	- **viewLocation:** *The uniform location / index vert shader's view matrice. (type: `GLuint`)*

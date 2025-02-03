@@ -47,7 +47,6 @@ class CameraManager
             int id;
 			
             vec3 position;                                                                //  The (x,y,z) location of the camera                                                                  
-            vec3 target;                                                                //  The (x,y,z) location of the cameras target
             vec3 direction;                                                                     //  where the camera is looking                             
             vec3 upVector;
 
@@ -62,7 +61,7 @@ class CameraManager
             int usesPerspective;
         };
 		
-        Camera createPerspectiveCam(double pX, double pY, double pZ, double tX, double tY, double tZ, int arX = 0, int arY = 0);
+        Camera createPerspectiveCam(int arX = 0, int arY = 0);
         Camera createOrthoCam(int arX, int arY);
         void loadCamera(Camera &cameraData);
 

@@ -46,7 +46,7 @@ class Transform
     	void rotateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z);
 		void scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z);
 
-		void translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity = 0.1);
+		void translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity = 1.0);
 		void rotateCameraAsset(CameraManager::Camera &camera, float x, float y, float z);
 
 		void translateLightAsset(LightManager::Light &light, float x, float y, float z);
