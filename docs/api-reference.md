@@ -467,8 +467,7 @@ Params:
 > **Camera:** *A collection of properties which make up a camera entity. (type: `struct`)* 
 >	- **id:** *This camera's unique id. (type: `int`)* 
 >	- **position:** *The x, y, z location of the camera. (type: `glm::vec3`)*
->	- **direction:** *The x, y, z direction of the back of the camera. (type: `glm::vec3`)*
->	- **target:** *The x, y, z location of the camera's target. (type: `glm::vec3`)*
+>	- **direction:** *Which direction the camera is facing. (type: `glm::vec3`)*
 >	- **upVector:** *Which way is considered up. (type: `glm::vec3`)*
 >	- **aspectRatio:** *The camera's aspect ratio. (type: `float`)*
 >	- **viewLocation:** *The uniform location / index vert shader's view matrice. (type: `GLuint`)*
