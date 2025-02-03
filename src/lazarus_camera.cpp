@@ -28,11 +28,12 @@ CameraManager::CameraManager(GLuint shader)
     this->monitorY = globals.getDisplayHeight();
 };
 
-CameraManager::Camera CameraManager::createPerspectiveCam(double pX, double pY, double pZ, double tX, double tY, double tZ, int arX, int arY)
+CameraManager::Camera CameraManager::createPerspectiveCam(int arX, int arY)
 {
     srand(time((0)));
     camera.id                   = 1 + (rand() % 2147483647);
 
+    // 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f
     /* ===============================================
         If a target aspect ratio has been defined then
         use that. Otherwise use the dimensions 
@@ -47,8 +48,8 @@ CameraManager::Camera CameraManager::createPerspectiveCam(double pX, double pY, 
         camera.aspectRatio      = static_cast<float>(monitorX) / static_cast<float>(monitorY);                                                                             //  Cast the screens aspect ratio as a float
     };
 
-    camera.position             = vec3(pX, pY, pZ);                                                                                          //  Define the camera's position
-    camera.target		        = vec3(tX, tY, tZ);
+    camera.position             = vec3(0.0, 0.0, 0.0);                                                                                          //  Define the camera's position
+    camera.target		        = vec3(-1.0, 0.0, 0.0);
     camera.direction            = glm::normalize(camera.position - camera.target);
     camera.upVector             = vec3(0.0, 1.0, 0.0);                                                                                          //  Define the tilt / rotation of the camera
     

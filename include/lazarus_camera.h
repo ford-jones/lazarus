@@ -62,7 +62,7 @@ class CameraManager
             int usesPerspective;
         };
 		
-        Camera createPerspectiveCam(double pX, double pY, double pZ, double tX, double tY, double tZ, int arX = 0, int arY = 0);
+        Camera createPerspectiveCam(int arX = 0, int arY = 0);
         Camera createOrthoCam(int arX, int arY);
         void loadCamera(Camera &cameraData);
 
