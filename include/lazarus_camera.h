@@ -47,7 +47,6 @@ class CameraManager
             int id;
 			
             vec3 position;                                                                //  The (x,y,z) location of the camera                                                                  
-            vec3 target;                                                                //  The (x,y,z) location of the cameras target
             vec3 direction;                                                                     //  where the camera is looking                             
             vec3 upVector;
 

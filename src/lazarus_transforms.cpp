@@ -128,9 +128,6 @@ void Transform::translateCameraAsset(CameraManager::Camera &camera, float x, flo
 			(-y * -speed) the result will be positive.
 			The matching sign is only relevant when 
 			mulitplying against a vector.
-
-			10.0 & 5.0 Multipliers because y movement appears
-			considerably slower than z or x.
 		================================================ */
 		camera.position.y += (y * velocity);
 	};
