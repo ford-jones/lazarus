@@ -109,6 +109,18 @@ void AudioManager::loadAudio(AudioManager::Audio &audioIn)
 			audioData.channel->setMode(FMOD_LOOP_NORMAL);
 			audioData.channel->setLoopCount(audioIn.loopCount);
 		};
+		/* ========================================================
+			Listen for audio sample end so that it can be
+			revalidated instead of free'd.
+		===========================================================*/
+		this->result = audioData.channel->setCallback([](FMOD_CHANNELCONTROL *channelcontrol, FMOD_CHANNELCONTROL_TYPE controltype, FMOD_CHANNELCONTROL_CALLBACK_TYPE callbacktype, void *commanddata1, void *commanddata2){
+			if(controltype == FMOD_CHANNELCONTROL_CHANNEL && callbacktype == FMOD_CHANNELCONTROL_CALLBACK_END)
+			{
+				std::cout << RED_TEXT << "SAMPLE ENDED, RESTARTING...." << RESET_TEXT << std::endl;
+				FMOD::Channel *channel = (FMOD::Channel*)channelcontrol;
+			};
+			return FMOD_OK;
+		});
 		
 		this->result = audioData.channel->setPaused(true);
 		this->checkErrors(this->result, __FILE__, __LINE__);
