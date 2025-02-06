@@ -41,6 +41,8 @@ AudioManager::AudioManager()
 
 	this->listenerForward = {0.0f, 0.0f, 1.0f};
 	this->listenerUp = {0.0f, 1.0f, 0.0f};
+
+	this->audioDuration = 0;
 };
 
 void AudioManager::initialise()
@@ -75,6 +77,7 @@ AudioManager::Audio AudioManager::createAudio(string filepath, bool is3D, int lo
 	audioOut.loopCount = loopCount;
 	audioOut.isPaused = true;
 	audioOut.audioIndex = 0;
+	audioOut.duration = 0;
 
 	return audioOut;
 };
@@ -104,6 +107,11 @@ void AudioManager::loadAudio(AudioManager::Audio &audioIn)
 		this->result = system->playSound(this->audioData.sound, audioData.group, false, &audioData.channel);
 		this->checkErrors(this->result, __FILE__, __LINE__);
 
+		this->result = audioData.sound->getLength(&audioDuration, FMOD_TIMEUNIT_MS);
+		this->checkErrors(this->result, __FILE__, __LINE__);
+
+		audioIn.duration = ceil(audioDuration / 1000);
+
 		if (audioIn.loopCount != 0)
 		{
 			audioData.channel->setMode(FMOD_LOOP_NORMAL);
@@ -118,6 +126,8 @@ void AudioManager::loadAudio(AudioManager::Audio &audioIn)
 			{
 				std::cout << RED_TEXT << "SAMPLE ENDED, RESTARTING...." << RESET_TEXT << std::endl;
 				FMOD::Channel *channel = (FMOD::Channel*)channelcontrol;
+
+				channel->setPosition(0, FMOD_TIMEUNIT_MS);
 			};
 			return FMOD_OK;
 		});

@@ -34,6 +34,7 @@
 #include <memory>
 #include <time.h>
 #include <vector>
+#include <cmath>
 
 #include "lazarus_file_reader.h"
 
@@ -56,6 +57,8 @@ class AudioManager
 			float sourceLocationX;
 			float sourceLocationY;
 			float sourceLocationZ;
+
+			int duration;
 
 			bool is3D;
 			bool isPaused;
@@ -97,6 +100,8 @@ class AudioManager
 		};
 
 		void checkErrors(FMOD_RESULT res, const char *file, int line);
+
+		unsigned int audioDuration;
 
 		FMOD_RESULT result;
 		FMOD::System *system;
