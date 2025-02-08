@@ -690,6 +690,8 @@ Params:
 - **LAZARUS_GLFW_NOINIT** *GL framework wrangler failed to initialise. (Code: 304)*
 - **LAZARUS_WIN_EXCEEDS_MAX** *The requested window size is larger than the dimensions of the primary monitor. (Code: 305)*
 - **LAZARUS_AUDIO_ERROR** *An error occured in the FMOD audio backend. (Code: 401)*
+- **LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR** *Desired audio playback location was less than 0 seconds or more than AudioManager::Audio::length. (Code: 402)*
+- **LAZARUS_AUDIO_LOAD_ERROR** *Unable to load audio sample into a channel. (Code: 403)*
 - **LAZARUS_INVALID_RADIANS** *Lazarus recieved a rotational value which exceeds 360.0. (Code: 501)*
 - **LAZARUS_INVALID_CUBEMAP** *The images recieved to construct a cubemap texture are not all of equal height and width (Code: 502)*
 - **LAZARUS_INVALID_DIMENSIONS** *Lazarus recieved a mesh creation input with value(s) below 0.0 (Code: 504).*

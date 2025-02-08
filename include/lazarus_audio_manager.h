@@ -34,6 +34,7 @@
 #include <memory>
 #include <time.h>
 #include <vector>
+#include <cmath>
 
 #include "lazarus_file_reader.h"
 
@@ -56,6 +57,8 @@ class AudioManager
 			float sourceLocationX;
 			float sourceLocationY;
 			float sourceLocationZ;
+
+			int duration;
 
 			bool is3D;
 			bool isPaused;
@@ -95,12 +98,14 @@ class AudioManager
 			FMOD_VECTOR currentSourcePosition;
 			FMOD_VECTOR sourceVelocity;
 		};
-
+		void validateAudioHandle(AudioData &audioData);
 		void checkErrors(FMOD_RESULT res, const char *file, int line);
+
+		unsigned int audioDuration;
 
 		FMOD_RESULT result;
 		FMOD::System *system;
-
+		FMOD::ChannelGroup *mixer;
 		FMOD_VECTOR prevListenerPosition;
 		FMOD_VECTOR currentListenerPosition;
 		FMOD_VECTOR listenerVelocity;

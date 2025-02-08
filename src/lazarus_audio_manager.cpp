@@ -27,13 +27,7 @@ AudioManager::AudioManager()
 	
 	this->system = NULL;
 
-	this->audioData.channel = NULL;
-	this->audioData.group = NULL;
-	this->audioData.sound = NULL;
-
-	this->audioData.prevSourcePosition = {0.0f, 0.0f, 0.0f};
-	this->audioData.currentSourcePosition = {0.0f, 0.0f, 0.0f};
-	this->audioData.sourceVelocity = {0.0f, 0.0f, 0.0f};
+	this->mixer = NULL;
 
 	this->prevListenerPosition = {0.0f, 0.0f, 0.0f};
 	this->currentListenerPosition = {0.0f, 0.0f, 0.0f};
@@ -41,6 +35,8 @@ AudioManager::AudioManager()
 
 	this->listenerForward = {0.0f, 0.0f, 1.0f};
 	this->listenerUp = {0.0f, 1.0f, 0.0f};
+
+	this->audioDuration = 0;
 };
 
 void AudioManager::initialise()
@@ -52,7 +48,7 @@ void AudioManager::initialise()
 	================================================= */
 	this->result = system->init(512, FMOD_INIT_3D_RIGHTHANDED, 0);
 
-	this->result = system->createChannelGroup("lazarusGroup", &audioData.group);
+	this->result = system->createChannelGroup("lazarusGroup", &this->mixer);
 
 	this->checkErrors(this->result, __FILE__, __LINE__);
 };
@@ -81,9 +77,11 @@ AudioManager::Audio AudioManager::createAudio(string filepath, bool is3D, int lo
 
 void AudioManager::setPlaybackCursor(AudioManager::Audio &audioIn, int seconds)
 {
-	this->audioData = this->audioStore[audioIn.audioIndex - 1];
+	AudioData &audioData = this->audioStore[audioIn.audioIndex - 1];
 
-	this->result = this->audioData.channel->setPosition((seconds * 100), FMOD_TIMEUNIT_MS);
+	this->validateAudioHandle(audioData);
+
+	this->result = audioData.channel->setPosition((seconds * 100), FMOD_TIMEUNIT_MS);
 
 	if(result != FMOD_OK)
 	{
@@ -93,24 +91,33 @@ void AudioManager::setPlaybackCursor(AudioManager::Audio &audioIn, int seconds)
 
 void AudioManager::loadAudio(AudioManager::Audio &audioIn)
 {	
+	AudioData data = {} ;
+	
+	data.group = this->mixer;
+
 	(audioIn.is3D == true) 
-	? this->result = system->createSound(audioIn.path.c_str(), FMOD_3D, NULL, &this->audioData.sound) 
-	: this->result = system->createSound(audioIn.path.c_str(), FMOD_DEFAULT, NULL, &this->audioData.sound);
+	? this->result = system->createSound(audioIn.path.c_str(), FMOD_3D, NULL, &data.sound) 
+	: this->result = system->createSound(audioIn.path.c_str(), FMOD_DEFAULT, NULL, &data.sound);
 	
 	this->checkErrors(this->result, __FILE__, __LINE__);
 	
-	if(this->audioData.sound != NULL)
+	if(data.sound != NULL)
 	{
-		this->result = system->playSound(this->audioData.sound, audioData.group, false, &audioData.channel);
+		this->result = system->playSound(data.sound, data.group, false, &data.channel);
 		this->checkErrors(this->result, __FILE__, __LINE__);
+
+		this->result = data.sound->getLength(&audioDuration, FMOD_TIMEUNIT_MS);
+		this->checkErrors(this->result, __FILE__, __LINE__);
+
+		audioIn.duration = ceil(audioDuration / 1000);
 
 		if (audioIn.loopCount != 0)
 		{
-			audioData.channel->setMode(FMOD_LOOP_NORMAL);
-			audioData.channel->setLoopCount(audioIn.loopCount);
+			data.channel->setMode(FMOD_LOOP_NORMAL);
+			data.channel->setLoopCount(audioIn.loopCount);
 		};
 		
-		this->result = audioData.channel->setPaused(true);
+		this->result = data.channel->setPaused(true);
 		this->checkErrors(this->result, __FILE__, __LINE__);
 
 	}
@@ -123,23 +130,21 @@ void AudioManager::loadAudio(AudioManager::Audio &audioIn)
 
 	this->checkErrors(this->result, __FILE__, __LINE__);
 	
-	this->audioStore.push_back(audioData);
+	this->audioStore.push_back(data);
 	audioIn.audioIndex = this->audioStore.size();
-
-	audioData.channel = NULL;
-	audioData.group = NULL;
-	audioData.sound = NULL;
 
 	return;
 };
 
 void AudioManager::playAudio(AudioManager::Audio &audioIn)
 {
-	this->audioData = this->audioStore[audioIn.audioIndex - 1];
+	AudioData &audioData = this->audioStore[audioIn.audioIndex - 1];
+
+	this->validateAudioHandle(audioData);
 
 	if(audioIn.isPaused == true)
 	{
-		this->result = this->audioData.channel->setPaused(false);
+		this->result = audioData.channel->setPaused(false);
 		audioIn.isPaused = false;
 	}
 
@@ -150,41 +155,43 @@ void AudioManager::playAudio(AudioManager::Audio &audioIn)
 
 void AudioManager::pauseAudio(AudioManager::Audio &audioIn)
 {
-	this->audioData = this->audioStore[audioIn.audioIndex - 1];
+	AudioData &audioData = this->audioStore[audioIn.audioIndex - 1];
+
+	this->validateAudioHandle(audioData);
 
 	if(audioIn.isPaused == false)
 	{
-		this->result = this->audioData.channel->setPaused(true);
+		this->result = audioData.channel->setPaused(true);
 		audioIn.isPaused = true;
 	}
-
-	this->checkErrors(this->result, __FILE__, __LINE__);
 
 	return;
 };
 
 void AudioManager::updateSourceLocation(AudioManager::Audio &audioIn, float x, float y, float z)
 {
-	AudioData targetAudio = this->audioStore[audioIn.audioIndex - 1];
+	AudioData &audioData = this->audioStore[audioIn.audioIndex - 1];
 
-	targetAudio.currentSourcePosition = {x, y, z};
+	this->validateAudioHandle(audioData);
 
-	targetAudio.sourceVelocity = {
-		((targetAudio.currentSourcePosition.x - targetAudio.prevSourcePosition.x) / (1000 / 60)),
-		((targetAudio.currentSourcePosition.y - targetAudio.prevSourcePosition.y) / (1000 / 60)),
-		((targetAudio.currentSourcePosition.z - targetAudio.prevSourcePosition.z) / (1000 / 60))
+	audioData.currentSourcePosition = {x, y, z};
+
+	audioData.sourceVelocity = {
+		((audioData.currentSourcePosition.x - audioData.prevSourcePosition.x) / (1000 / 60)),
+		((audioData.currentSourcePosition.y - audioData.prevSourcePosition.y) / (1000 / 60)),
+		((audioData.currentSourcePosition.z - audioData.prevSourcePosition.z) / (1000 / 60))
 	};
 
-	this->result = targetAudio.channel->set3DAttributes(&targetAudio.currentSourcePosition, &targetAudio.sourceVelocity);
+	this->result = audioData.channel->set3DAttributes(&audioData.currentSourcePosition, &audioData.sourceVelocity);
 
 	this->result = system->update();
-	targetAudio.prevSourcePosition = targetAudio.currentSourcePosition;
-
 	this->checkErrors(this->result, __FILE__, __LINE__);
 
-	audioIn.sourceLocationX = targetAudio.prevSourcePosition.x;
-	audioIn.sourceLocationY = targetAudio.prevSourcePosition.y;
-	audioIn.sourceLocationZ = targetAudio.prevSourcePosition.z;
+	audioData.prevSourcePosition = audioData.currentSourcePosition;
+
+	audioIn.sourceLocationX = audioData.prevSourcePosition.x;
+	audioIn.sourceLocationY = audioData.prevSourcePosition.y;
+	audioIn.sourceLocationZ = audioData.prevSourcePosition.z;
 
 	return;
 };
@@ -224,15 +231,50 @@ void AudioManager::updateListenerLocation(float x, float y, float z)
 	this->listenerLocationZ = this->prevListenerPosition.z;
 };
 
+void AudioManager::validateAudioHandle(AudioData &audioData)
+{
+	/* =========================================
+		Channel handles become invalid upon it's
+		audio playback reaching completion. 
+		https://www.fmod.com/docs/2.02/api/white-papers-handle-system.html#core-api-channels
+
+		Perform a channel operation that has
+		little overhead so that the result can
+		be checked.
+	============================================ */
+	int index = 0;
+	this->result = audioData.channel->getIndex(&index);
+	
+	if(result == FMOD_ERR_INVALID_HANDLE)
+	{
+		/* ===============================================
+			Ensure that the AudioData object is holding an 
+			up to date reference to a valid channel handle 
+			by having FMOD reload the sample into one of
+			it's free channels (512 max).
+		================================================== */
+		this->result = system->playSound(audioData.sound, audioData.group, false, &audioData.channel);
+		
+		if(result != FMOD_OK)
+		{
+			globals.setExecutionState(LAZARUS_AUDIO_LOAD_ERROR);
+		};
+	};
+
+	return;
+};
+
 void AudioManager::checkErrors(FMOD_RESULT res, const char *file, int line) 
 {
 	if(res != FMOD_OK)
 	{
 		std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
-		std::cout << RED_TEXT << "LAZARUS::ERROR::SOUND_MANAGER" << RESET_TEXT << std::endl;
+		std::cout << RED_TEXT << "LAZARUS::ERROR::SOUND_MANAGER " << res << RESET_TEXT << std::endl;
 
 		globals.setExecutionState(LAZARUS_AUDIO_ERROR);
 	};
+
+	return;
 };
 
 AudioManager::~AudioManager()
