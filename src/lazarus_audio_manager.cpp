@@ -79,14 +79,9 @@ void AudioManager::setPlaybackCursor(AudioManager::Audio &audioIn, int seconds)
 {
 	AudioData &audioData = this->audioStore[audioIn.audioIndex - 1];
 
+	this->validateAudioHandle(audioData);
+
 	this->result = audioData.channel->setPosition((seconds * 100), FMOD_TIMEUNIT_MS);
-	if(this->result == FMOD_ERR_INVALID_HANDLE)
-	{
-		std::cout << "REVALIDATING: setPlaybackCursor" << std::endl;
-		audioData.channel = NULL;
-		this->result = system->playSound(audioData.sound, audioData.group, false, &audioData.channel);
-		audioData.channel->setPosition((seconds * 100), FMOD_TIMEUNIT_MS);
-	};
 
 	if(result != FMOD_OK)
 	{
@@ -145,15 +140,11 @@ void AudioManager::playAudio(AudioManager::Audio &audioIn)
 {
 	AudioData &audioData = this->audioStore[audioIn.audioIndex - 1];
 
+	this->validateAudioHandle(audioData);
+
 	if(audioIn.isPaused == true)
 	{
 		this->result = audioData.channel->setPaused(false);
-		if(this->result == FMOD_ERR_INVALID_HANDLE)
-		{
-			std::cout << "REVALIDATING: playAudio" << std::endl;
-			this->result = system->playSound(audioData.sound, audioData.group, false, &audioData.channel);
-			this->checkErrors(this->result, __FILE__, __LINE__);
-		};
 		audioIn.isPaused = false;
 	}
 
@@ -166,18 +157,11 @@ void AudioManager::pauseAudio(AudioManager::Audio &audioIn)
 {
 	AudioData &audioData = this->audioStore[audioIn.audioIndex - 1];
 
+	this->validateAudioHandle(audioData);
+
 	if(audioIn.isPaused == false)
 	{
 		this->result = audioData.channel->setPaused(true);
-		if(this->result == FMOD_ERR_INVALID_HANDLE)
-		{
-			std::cout << "REVALIDATING: pauseAudio" << std::endl;
-			this->result = system->playSound(audioData.sound, audioData.group, false, &audioData.channel);
-			this->checkErrors(this->result, __FILE__, __LINE__);
-			this->result = audioData.channel->setPaused(true);
-			this->checkErrors(this->result, __FILE__, __LINE__);
-		};
-
 		audioIn.isPaused = true;
 	}
 
@@ -188,6 +172,8 @@ void AudioManager::updateSourceLocation(AudioManager::Audio &audioIn, float x, f
 {
 	AudioData &audioData = this->audioStore[audioIn.audioIndex - 1];
 
+	this->validateAudioHandle(audioData);
+
 	audioData.currentSourcePosition = {x, y, z};
 
 	audioData.sourceVelocity = {
@@ -197,16 +183,6 @@ void AudioManager::updateSourceLocation(AudioManager::Audio &audioIn, float x, f
 	};
 
 	this->result = audioData.channel->set3DAttributes(&audioData.currentSourcePosition, &audioData.sourceVelocity);
-	if(this->result == FMOD_ERR_INVALID_HANDLE)
-	{
-		std::cout << "REVALIDATING: updateSourceLocation" << std::endl;
-		audioData.channel = NULL;
-		this->result = system->playSound(audioData.sound, audioData.group, false, &audioData.channel);
-		this->checkErrors(this->result, __FILE__, __LINE__);
-
-		this->result = audioData.channel->set3DAttributes(&audioData.currentSourcePosition, &audioData.sourceVelocity);
-		this->checkErrors(this->result, __FILE__, __LINE__);
-	};
 
 	this->result = system->update();
 	this->checkErrors(this->result, __FILE__, __LINE__);
@@ -255,6 +231,39 @@ void AudioManager::updateListenerLocation(float x, float y, float z)
 	this->listenerLocationZ = this->prevListenerPosition.z;
 };
 
+void AudioManager::validateAudioHandle(AudioData &audioData)
+{
+	/* =========================================
+		Channel handles become invalid upon it's
+		audio playback reaching completion. 
+		https://www.fmod.com/docs/2.02/api/white-papers-handle-system.html#core-api-channels
+
+		Perform a channel operation that has
+		little overhead so that the result can
+		be checked.
+	============================================ */
+	int index = 0;
+	this->result = audioData.channel->getIndex(&index);
+	
+	if(result == FMOD_ERR_INVALID_HANDLE)
+	{
+		/* ===============================================
+			Ensure that the AudioData object is holding an 
+			up to date reference to a valid channel handle 
+			by having FMOD reload the sample into one of
+			it's free channels (512 max).
+		================================================== */
+		this->result = system->playSound(audioData.sound, audioData.group, false, &audioData.channel);
+		
+		if(result != FMOD_OK)
+		{
+			globals.setExecutionState(LAZARUS_AUDIO_LOAD_ERROR);
+		};
+	};
+
+	return;
+};
+
 void AudioManager::checkErrors(FMOD_RESULT res, const char *file, int line) 
 {
 	if(res != FMOD_OK)
@@ -264,6 +273,8 @@ void AudioManager::checkErrors(FMOD_RESULT res, const char *file, int line)
 
 		globals.setExecutionState(LAZARUS_AUDIO_ERROR);
 	};
+
+	return;
 };
 
 AudioManager::~AudioManager()

@@ -98,7 +98,7 @@ class AudioManager
 			FMOD_VECTOR currentSourcePosition;
 			FMOD_VECTOR sourceVelocity;
 		};
-
+		void validateAudioHandle(AudioData &audioData);
 		void checkErrors(FMOD_RESULT res, const char *file, int line);
 
 		unsigned int audioDuration;
