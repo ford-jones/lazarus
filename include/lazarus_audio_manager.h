@@ -105,7 +105,7 @@ class AudioManager
 
 		FMOD_RESULT result;
 		FMOD::System *system;
-
+		FMOD::ChannelGroup *mixer;
 		FMOD_VECTOR prevListenerPosition;
 		FMOD_VECTOR currentListenerPosition;
 		FMOD_VECTOR listenerVelocity;
