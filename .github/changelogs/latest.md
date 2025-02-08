@@ -5,4 +5,3 @@
 * [76df429](https://github.com/ford-jones/lazarus/commit/76df429145c72301e480e872e7543d64959ffba9): Update: Refactored helper functions
 * [496dc31](https://github.com/ford-jones/lazarus/commit/496dc316062779a82e9a80c0a77821a065c6063b): Fix: Performs as-needed revalidation on fmod sound handles upon operation
 * [9d7b53f](https://github.com/ford-jones/lazarus/commit/9d7b53fb896f4786fa2c396335966c07e0f0c449): Update: Exposed audio durations
-* [a73eae6](https://github.com/ford-jones/lazarus/commit/a73eae6816dc5778437c99928f820488cfd44c16): Update: Lambda callback invoked on-audio-end
