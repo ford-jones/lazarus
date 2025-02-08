@@ -86,6 +86,7 @@ extern const int    LAZARUS_GLFW_NOINIT;
 extern const int    LAZARUS_WIN_EXCEEDS_MAX;
 extern const int    LAZARUS_AUDIO_ERROR;
 extern const int    LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR;
+extern const int    LAZARUS_AUDIO_LOAD_ERROR;
 extern const int    LAZARUS_INVALID_RADIANS;
 extern const int    LAZARUS_INVALID_CUBEMAP;
 extern const int    LAZARUS_INVALID_COORDINATE;
