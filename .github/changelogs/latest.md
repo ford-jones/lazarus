@@ -1,5 +1,6 @@
-# Version: 2025.02.08095448
+# Version: 2025.02.08095544
 
+* [dad9f12](https://github.com/ford-jones/lazarus/commit/dad9f129e5e1c592a11e2920fffff342f12d88f3): [Changelog CI] Add Changelog for Version 2025.02.08095448
 * [ff9dff3](https://github.com/ford-jones/lazarus/commit/ff9dff37abf0a58c8d5fc40a04013712ee491041): Docs: Updated status-codes documentation
 * [a77185d](https://github.com/ford-jones/lazarus/commit/a77185de1f34b602828494ac1beccf3cb4a2c209): Update: New audio load failure status code
 * [76df429](https://github.com/ford-jones/lazarus/commit/76df429145c72301e480e872e7543d64959ffba9): Update: Refactored helper functions
