@@ -1,6 +1,8 @@
-# Version: 2025.02.03043224
+# Version: 2025.02.08095448
 
-* [8b999d0](https://github.com/ford-jones/lazarus/commit/8b999d05f7a6bd8b586c4bc46f352fe235faf1be): Docs: Fixed documentation typos
-* [ab8abaa](https://github.com/ford-jones/lazarus/commit/ab8abaa7e1c47ad229103020325f4bbedf0b49a8): Docs: Updated camera documentation
-* [e95a5d0](https://github.com/ford-jones/lazarus/commit/e95a5d06df37126a5289ae78ef68699be9c06f28): Fix: Ensured consistent camera movement behaviour accross vector directions
-* [34a1e0c](https://github.com/ford-jones/lazarus/commit/34a1e0c7e546cb8937c01bbf6e56ff807b69726f): Fix: Matching camera creation function signatures, cleanup of unsanitised direction and location parameters
+* [ff9dff3](https://github.com/ford-jones/lazarus/commit/ff9dff37abf0a58c8d5fc40a04013712ee491041): Docs: Updated status-codes documentation
+* [a77185d](https://github.com/ford-jones/lazarus/commit/a77185de1f34b602828494ac1beccf3cb4a2c209): Update: New audio load failure status code
+* [76df429](https://github.com/ford-jones/lazarus/commit/76df429145c72301e480e872e7543d64959ffba9): Update: Refactored helper functions
+* [496dc31](https://github.com/ford-jones/lazarus/commit/496dc316062779a82e9a80c0a77821a065c6063b): Fix: Performs as-needed revalidation on fmod sound handles upon operation
+* [9d7b53f](https://github.com/ford-jones/lazarus/commit/9d7b53fb896f4786fa2c396335966c07e0f0c449): Update: Exposed audio durations
+* [a73eae6](https://github.com/ford-jones/lazarus/commit/a73eae6816dc5778437c99928f820488cfd44c16): Update: Lambda callback invoked on-audio-end
