@@ -31,22 +31,6 @@ OBJECTS = src/lazarus_common.o src/lazarus_shader.o src/lazarus_light.o src/laza
 					src/lazarus_image_loader.o src/lazarus_image_resize.o src/lazarus_audio_manager.o \
 					src/lazarus_text_manager.o src/lazarus_world_fx.o
 
-run : build
-	$(shell mv src/*.o build/)
-
-build : $(OBJECTS)
-	$(shell mkdir build && mkdir lib)
-	$(CXX) $(CXXFLAGS) -o $(OUT) $(OBJECTS) $(LDFLAGS)
-
-# This is linux specific: 
-# MacOS doesn't need to run ldconfig
-# Windows uses \ Program Files \ instead of /usr/local/*
-install : 
-	@echo "installing..." && sudo cp include/* /usr/local/include && sudo cp $(OUT) /usr/local/lib $(BUILDSTEPS)
-
-uninstall : 
-	@echo "uninstalling..." && sudo rm /usr/local/include/lazarus_*.h && sudo rm $(addprefix /usr/local/,$(OUT))
-
 lazarus_common.o := include/lazarus_common.h
 lazarus_shader.o := include/lazarus_shader.h
 lazarus_light.o := include/lazarus_light.h
@@ -62,5 +46,18 @@ lazarus_imageResize.o := /usr/local/include/stb_image_resize.h
 lazarus_text_manager.o := include/lazarus_text_manager.h
 lazarus_world_fx.o := include/lazarus_world_fx.h
 
+run : build
+	$(shell mv src/*.o build/)
+
+build : $(OBJECTS)
+	$(shell mkdir build && mkdir lib)
+	$(CXX) $(CXXFLAGS) -o $(OUT) $(OBJECTS) $(LDFLAGS)
+
 clean : 
 	@echo "Destroying latest build files." && rm -R lib/ && rm -R build/
+
+install : 
+	@echo "installing..." && sudo cp include/* /usr/local/include && sudo cp $(OUT) /usr/local/lib $(BUILDSTEPS)
+
+uninstall : 
+	@echo "uninstalling..." && sudo rm /usr/local/include/lazarus_*.h && sudo rm $(addprefix /usr/local/,$(OUT))
