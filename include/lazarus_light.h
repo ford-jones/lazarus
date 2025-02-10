@@ -20,12 +20,11 @@
     #include "lazarus_gl_includes.h"
 #endif
 
-#ifndef LAZARUS_CONSTANTS_H
-    #include "lazarus_constants.h"
+#ifndef LAZARUS_COMMON_H
+    #include "lazarus_common.h"
 #endif
 
 #include <iostream>
-#include "lazarus_globals_manager.h"
 
 #ifndef LAZARUS_LIGHT_H
 #define LAZARUS_LIGHT_H

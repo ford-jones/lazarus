@@ -21,15 +21,13 @@
     #include "lazarus_gl_includes.h"
 #endif
 
-#ifndef LAZARUS_CONSTANTS_H
-    #include "lazarus_constants.h"
+#ifndef LAZARUS_COMMON_H
+    #include "lazarus_common.h"
 #endif
 
 #include <iostream>
 #include <stdlib.h>
 #include <memory>
-
-#include "lazarus_globals_manager.h"
 
 using std::shared_ptr;
 using glm::vec3;

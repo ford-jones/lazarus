@@ -20,12 +20,8 @@
     #include "lazarus_gl_includes.h"
 #endif
 
-#ifndef LAZARUS_CONSTANTS_H
-	#include "lazarus_constants.h"
-#endif
-
-#ifndef LAZARUS_GLOBALS_MANAGER_H
-    #include "lazarus_globals_manager.h"
+#ifndef LAZARUS_COMMON_H
+	#include "lazarus_common.h"
 #endif
 
 #include <iostream>
@@ -37,12 +33,58 @@
 #ifndef LAZARUS_WINDOW_MANAGER_H
 #define LAZARUS_WINDOW_MANAGER_H
 
-class WindowManager
+class FpsCounter
+{
+	public:
+		FpsCounter();
+		void monitorFPS();
+		
+		double framesPerSecond;
+		double durationTillRendered;
+		
+	private:
+		double currentMs;
+		double prevMs;
+		double timePassed;
+		int numberOfFrames;		
+};
+
+class EventManager
+{
+    public:
+    	//	TODO:
+    	//	Create a constructor / destructor
+
+        EventManager();
+
+    	void eventsInit();
+        void monitorEvents();
+
+        string keyEventString;
+        int keyEventCode;
+		int keyEventOsCode;
+
+		int mouseEventCode;
+		int mousePositionX;
+		int mousePositionY;
+		
+		int scrollEventCode;
+		
+    private:
+        void updateKeyboardState();
+        void updateMouseState();
+
+        GLFWwindow *win;
+
+		GlobalsManager globals;
+};
+
+class WindowManager : public EventManager, public FpsCounter
 {
     public:
         WindowManager(const char *title, int width = 800, int height = 600);
 
-        int initialise();
+        int createWindow();
 		int loadConfig(GLuint shader);
 
         int open();
@@ -51,7 +93,7 @@ class WindowManager
 		int createCursor(int sizeX, int sizeY, int hotX, int hotY, std::string filepath);
         int snapCursor(float moveX, float moveY);
 
-        int handleBuffers();
+        int presentNextFrame();
 
         bool isOpen;
 

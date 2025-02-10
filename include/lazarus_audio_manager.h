@@ -16,12 +16,9 @@
 //               (.           .,,,,,                                                                                        .*#%%(                      
 //                                                                                                      .***,.   . .,/##%###(/.  ...,,.      
 /*  LAZARUS ENGINE */
-#ifndef LAZARUS_CONSTANTS_H
-	#include "lazarus_constants.h"
-#endif
 
-#ifndef LAZARUS_GLOBALS_MANAGER_H
-	#include "lazarus_globals_manager.h"
+#ifndef LAZARUS_COMMON_H
+	#include "lazarus_common.h"
 #endif
 
 #include <iostream>

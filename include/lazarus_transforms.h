@@ -20,12 +20,15 @@
     #include "lazarus_gl_includes.h"
 #endif
 
+#ifndef LAZARUS_COMMON_H
+	#include "lazarus_common.h"
+#endif
+
 #include <memory>
 
 #include "lazarus_mesh.h"
 #include "lazarus_camera.h"
 #include "lazarus_light.h"
-#include "lazarus_globals_manager.h"
 
 using glm::vec3;
 using std::shared_ptr;

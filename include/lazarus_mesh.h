@@ -20,12 +20,8 @@
     #include "lazarus_gl_includes.h"
 #endif
 
-#ifndef LAZARUS_CONSTANTS_H
-	#include "lazarus_constants.h"
-#endif
-
-#ifndef LAZARUS_GLOBALS_MANAGER_H
-    #include "lazarus_globals_manager.h"
+#ifndef LAZARUS_COMMON_H
+	#include "lazarus_common.h"
 #endif
 
 #include <iostream>
@@ -33,9 +29,11 @@
 #include <string>
 #include <stdlib.h>
 #include <memory>
+#include <fstream>
+#include <sstream>
 
 #include "lazarus_file_reader.h"
-#include "lazarus_mesh_loader.h"
+// #include "lazarus_mesh_loader.h"
 #include "lazarus_texture_loader.h"
 
 using std::unique_ptr;
@@ -45,11 +43,79 @@ using std::vector;
 using glm::mat4;
 using glm::vec3;
 using glm::vec2;
+using std::ifstream;
+using std::stringstream;
 
 #ifndef LAZARUS_MESH_H
 #define LAZARUS_MESH_H
 
-class MeshManager
+class MaterialLoader
+{
+    public:        
+        MaterialLoader();
+        bool loadMaterial(vector<vec3> &out, vector<vector<int>> data, string materialPath);
+        virtual ~MaterialLoader();
+
+    private:
+        unique_ptr<FileReader> fileReader;
+    	unique_ptr<TextureLoader> textureLoader;
+        
+        vec3 diffuse;                                           //  Diffuse colour, the main / dominant colour of a face
+        ifstream file;
+        char currentLine[256];
+        int diffuseCount;                                    //  The number of times an instance of `char[]="Kd"`(diffuse color) has appeared since the last invocation
+        int texCount;
+
+        GlobalsManager globals;
+};
+
+class MeshLoader : private MaterialLoader
+{
+    public:
+        ifstream file;
+
+        vector<unsigned int> vertexIndices, uvIndices, normalIndices;
+        vector<vec3> tempVertexPositions;
+        vector<vec2> tempUvs;
+        vector<vec3> tempNormals;
+        vector<vec3> tempDiffuse;
+    	
+    	MeshLoader();	
+    	    
+        bool parseWavefrontObj(
+            vector<vec3> &outAttributes,
+            vector<vec3> &outDiffuse,
+            const char *meshPath,
+            const char *materialPath
+        );
+        
+        virtual ~MeshLoader();
+
+    private:
+        vector<string> splitTokensFromLine(const char *wavefrontData, char delim);
+        void interleaveBufferData(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, int numOfAttributes);
+        void constructTriangle();
+
+        vector<string> coordinates;
+
+        vector<vector<int>> materialBuffer;
+        vector<int> materialData;
+        int materialIdentifierIndex;
+        int triangleCount;
+        
+        char currentLine[256];
+        vector<string> attributeIndexes;
+        
+        vec3 vertex;
+        vec2 uv;
+        vec3 normal;
+
+		// unique_ptr<MaterialLoader> matLoader;
+
+        GlobalsManager globals;
+};
+
+class MeshManager : private MeshLoader
 {
     public:
         struct Mesh
@@ -122,7 +188,7 @@ class MeshManager
 		GLuint shaderProgram;
 
         unique_ptr<FileReader> finder;
-        unique_ptr<MeshLoader> meshLoader;
+        // unique_ptr<MeshLoader> meshLoader;
         unique_ptr<TextureLoader> texLoader;
         
         Mesh mesh;
