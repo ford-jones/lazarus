@@ -198,7 +198,8 @@ TextManager::TextManager(GLuint shader)
     this->cameraBuilder = nullptr;
     
     this->textureLoader = nullptr;
-    // this->fontLoader = nullptr;
+    
+    this->textOut = {};
     this->word = {};
 
     this->translationStride = 0;
@@ -238,7 +239,6 @@ int TextManager::extendFontStack(std::string filepath, int ptSize)
         single row.
     ======================================================= */
     this->textureLoader = std::make_unique<TextureLoader>();
-    // this->fontLoader = std::make_unique<FontLoader>();
     
     this->loaderInit();
 
@@ -266,7 +266,7 @@ int TextManager::extendFontStack(std::string filepath, int ptSize)
     return fontIndex;
 };
 
-int TextManager::loadText(std::string targetText, int posX, int posY, int letterSpacing, float red, float green, float blue, int layoutID)
+TextManager::Text TextManager::loadText(std::string targetText, int posX, int posY, int letterSpacing, float red, float green, float blue, TextManager::Text textIn)
 {
     /* =================================================
         Dereference and re-assign these on each call so
@@ -282,6 +282,10 @@ int TextManager::loadText(std::string targetText, int posX, int posY, int letter
     };
     
     this->setTextColor(red, green, blue);
+    textOut.color = glm::vec3(red, green, blue);
+    textOut.targetString = targetText;
+    textOut.locationX = posX;
+    textOut.locationY = posY;
 
     for(unsigned int i = 0; i < targetText.size(); i++)
     {   
@@ -322,30 +326,27 @@ int TextManager::loadText(std::string targetText, int posX, int posY, int letter
         entity coordinates or any other string which 
         might update on-the-fly.
     ==================================================== */
-    if(layoutID != -1)
+    if(textIn.layoutIndex)
     {
-        layout.erase(layoutID);
-        layout.insert_or_assign(layoutID, this->word);
+        layout.erase(textIn.layoutIndex);
+        layout.insert_or_assign(textIn.layoutIndex, this->word);
         
         this->translationStride = 0;
-        
-        return layoutID;
-
     } 
     else 
     {
         this->layoutIndex += 1;
-
+        textOut.layoutIndex = this->layoutIndex;
         this->layoutEntry = std::pair<int, std::vector<MeshManager::Mesh>>(this->layoutIndex, this->word);
         layout.insert(this->layoutEntry);
 
         this->translationStride = 0;
-
-        return this->layoutIndex;
     };
+
+    return textOut;
 };
 
-void TextManager::drawText(int layoutIndex)
+void TextManager::drawText(TextManager::Text text)
 {
     /* ===============================================
         Unlike other mesh assets (i.e. 3D mesh or 
@@ -359,7 +360,7 @@ void TextManager::drawText(int layoutIndex)
     ================================================== */
     this->camera = cameraBuilder->createOrthoCam(globals.getDisplayWidth(), globals.getDisplayHeight());
     
-    this->word = layout.at(layoutIndex);
+    this->word = layout.at(text.layoutIndex);
 
     for(auto i: this->word)
     {

@@ -83,12 +83,21 @@ class TextManager : public FontLoader
 {
     public:
         TextManager(GLuint shader);
+
+        struct Text
+        {
+            int layoutIndex, locationX, locationY;
+            std::string targetString;
+            glm::vec3 color;
+        };
+
         int extendFontStack(std::string filepath, int ptSize = 12);
-        int loadText(std::string targetText, int posX, int posY, int letterSpacing = 1, float red = 0.0f, float green = 0.0f, float blue = 0.0f, int layoutID = -1);
-        void drawText(int layoutIndex = 0);
+        Text loadText(std::string targetText, int posX, int posY, int letterSpacing = 1, float red = 0.0f, float green = 0.0f, float blue = 0.0f, Text textIn = {});
+        void drawText(Text text);
         virtual ~TextManager();
 
     private: 
+        Text textOut;
         void identifyAlphabetDimensions();
         void setActiveGlyph(char target, int spacing);
         void setTextColor(float r, float g, float b);
