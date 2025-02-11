@@ -42,6 +42,13 @@ MeshManager::MeshManager(GLuint shader)
     glUniform1i(glGetUniformLocation(this->shaderProgram, "textureAtlas"), 1);
     glUniform1i(glGetUniformLocation(this->shaderProgram, "textureArray"), 2);
     glUniform1i(glGetUniformLocation(this->shaderProgram, "textureCube"), 3);
+
+    this->modelMatrixUniformLocation = glGetUniformLocation(this->shaderProgram, "modelMatrix");
+    this->is3DUniformLocation = glGetUniformLocation(this->shaderProgram, "spriteAsset");
+    this->isGlyphUniformLocation = glGetUniformLocation(this->shaderProgram, "glyphAsset");
+    this->isSkyBoxUniformLocation = glGetUniformLocation(this->shaderProgram, "isSkyBox");
+
+    this->textureLayerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureLayer");  
 };
 
 MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPath, string texturePath)
@@ -54,7 +61,6 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     mesh.isGlyph = 0;
     mesh.isSkybox = 0;
 
-    this->lookupUniforms(mesh);
 
 
     mesh.textureUnit = GL_TEXTURE2;
@@ -104,7 +110,6 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
     mesh.isGlyph = 0;
     mesh.isSkybox = 0;
 
-    this->lookupUniforms(mesh);
 
     
     mesh.textureUnit = GL_TEXTURE2;
@@ -192,7 +197,6 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath)
     this->mesh = {};
     mesh.isGlyph = 0;
 
-    this->lookupUniforms(mesh);
     this->resolveFilepaths(mesh, texturePath);
 
         /* ==================================================
@@ -290,7 +294,7 @@ void MeshManager::initialiseMesh(MeshManager::Mesh &asset)
     glGenVertexArrays(1, &asset.VAO);
    	glBindVertexArray(asset.VAO);
 
-    if(asset.modelMatrixUniformLocation >= 0)
+    if(this->modelMatrixUniformLocation >= 0)
     {
         glGenBuffers(1, &asset.VBO);
         glBindBuffer(GL_ARRAY_BUFFER, asset.VBO);
@@ -345,16 +349,16 @@ void MeshManager::prepareTextures()
 
 void MeshManager::loadMesh(MeshManager::Mesh &asset)
 {
-    if(asset.modelMatrixUniformLocation >= 0)
+    if(this->modelMatrixUniformLocation >= 0)
     {
-        glUniformMatrix4fv(asset.modelMatrixUniformLocation, 1, GL_FALSE, &asset.modelMatrix[0][0]);
-        glUniform1i(asset.is3DUniformLocation, asset.is3D);
-        glUniform1i(asset.isGlyphUniformLocation, asset.isGlyph);
-        glUniform1i(asset.isSkyBoxUniformLocation, asset.isSkybox);
+        glUniformMatrix4fv(this->modelMatrixUniformLocation, 1, GL_FALSE, &asset.modelMatrix[0][0]);
+        glUniform1i(this->is3DUniformLocation, asset.is3D);
+        glUniform1i(this->isGlyphUniformLocation, asset.isGlyph);
+        glUniform1i(this->isSkyBoxUniformLocation, asset.isSkybox);
     
         if(asset.textureId != 0)
         {
-            glUniform1f(asset.textureLayerUniformLocation, (asset.textureLayer - 1));
+            glUniform1f(this->textureLayerUniformLocation, (asset.textureLayer - 1));
         };
 
         this->checkErrors(__FILE__, __LINE__);
@@ -455,18 +459,6 @@ void MeshManager::setInherentProperties(MeshManager::Mesh &asset)
 
    return;
 }
-
-void MeshManager::lookupUniforms(MeshManager::Mesh &asset)
-{
-    asset.modelMatrixUniformLocation = glGetUniformLocation(this->shaderProgram, "modelMatrix");
-    asset.is3DUniformLocation = glGetUniformLocation(this->shaderProgram, "spriteAsset");
-    asset.isGlyphUniformLocation = glGetUniformLocation(this->shaderProgram, "glyphAsset");
-    asset.isSkyBoxUniformLocation = glGetUniformLocation(this->shaderProgram, "isSkyBox");
-
-    asset.textureLayerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureLayer");    
-
-    return;
-};
 
 void MeshManager::checkErrors(const char *file, int line)
 {

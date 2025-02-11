@@ -22,10 +22,14 @@
 CameraManager::CameraManager(GLuint shader)
 {
     std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
-    this->shader = shader;
+    this->shader                            = shader;
 
-    this->monitorX = globals.getDisplayWidth();
-    this->monitorY = globals.getDisplayHeight();
+    this->monitorX                          = globals.getDisplayWidth();
+    this->monitorY                          = globals.getDisplayHeight();
+
+    this->viewLocation                      = glGetUniformLocation(shader, "viewMatrix");
+    this->perspectiveProjectionLocation     = glGetUniformLocation(shader, "perspectiveProjectionMatrix");
+    this->orthographicProjectionLocation    = glGetUniformLocation(shader, "orthoProjectionMatrix");
 };
 
 CameraManager::Camera CameraManager::createPerspectiveCam(int arX, int arY)
@@ -60,9 +64,6 @@ CameraManager::Camera CameraManager::createPerspectiveCam(int arX, int arY)
     camera.viewMatrix           = glm::lookAt(camera.position, (camera.position + camera.direction), camera.upVector);
     camera.projectionMatrix     = glm::perspective(glm::radians(45.0f), camera.aspectRatio, 0.1f, 100.0f);
 
-    camera.viewLocation         = glGetUniformLocation(shader, "viewMatrix");
-    camera.projectionLocation   = glGetUniformLocation(shader, "perspectiveProjectionMatrix");
-
     camera.usesPerspective      = 1;
 
     return camera;
@@ -93,9 +94,6 @@ CameraManager::Camera CameraManager::createOrthoCam(int arX, int arY)
     camera.viewMatrix           = glm::lookAt(camera.position, (camera.position + camera.direction), camera.upVector);
     camera.projectionMatrix     = glm::ortho(0.0f, static_cast<float>(arX), 0.0f, static_cast<float>(arY));
 
-    camera.viewLocation         = glGetUniformLocation(shader, "viewMatrix");
-    camera.projectionLocation   = glGetUniformLocation(shader, "orthoProjectionMatrix");
-
     camera.usesPerspective      = 0;
 
     return camera;
@@ -103,10 +101,13 @@ CameraManager::Camera CameraManager::createOrthoCam(int arX, int arY)
 
 void CameraManager::loadCamera(CameraManager::Camera &cameraData)
 {
-    if(cameraData.projectionLocation >= 0)
+    if(this->perspectiveProjectionLocation >= 0 && this->orthographicProjectionLocation >= 0)
     {
-        glUniformMatrix4fv     (cameraData.viewLocation, 1, GL_FALSE, &cameraData.viewMatrix[0][0]);
-        glUniformMatrix4fv     (cameraData.projectionLocation, 1, GL_FALSE, &cameraData.projectionMatrix[0][0]);
+        glUniformMatrix4fv     (this->viewLocation, 1, GL_FALSE, &cameraData.viewMatrix[0][0]);
+
+        cameraData.usesPerspective == 1
+        ? glUniformMatrix4fv     (this->perspectiveProjectionLocation, 1, GL_FALSE, &cameraData.projectionMatrix[0][0])
+        : glUniformMatrix4fv     (this->orthographicProjectionLocation, 1, GL_FALSE, &cameraData.projectionMatrix[0][0]);
 
         glUniform1i(glGetUniformLocation(this->shader, "usesPerspective"), cameraData.usesPerspective);
     }

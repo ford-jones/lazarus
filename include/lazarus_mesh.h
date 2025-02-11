@@ -33,7 +33,6 @@
 #include <sstream>
 
 #include "lazarus_file_reader.h"
-// #include "lazarus_mesh_loader.h"
 #include "lazarus_texture_loader.h"
 
 using std::unique_ptr;
@@ -110,8 +109,6 @@ class MeshLoader : private MaterialLoader
         vec2 uv;
         vec3 normal;
 
-		// unique_ptr<MaterialLoader> matLoader;
-
         GlobalsManager globals;
 };
 
@@ -146,13 +143,7 @@ class MeshManager : private MeshLoader
 
             FileReader::Image textureData;
 
-            mat4 modelMatrix;                                                                                    //  A modelview matrix matrice passed into the shader program as a uniform
-
-            GLint modelMatrixUniformLocation;                                                                        //  The location / index of the modelview matrix inside the vert shader program
-            GLint textureLayerUniformLocation;
-            GLint is3DUniformLocation;
-            GLint isGlyphUniformLocation;
-            GLint isSkyBoxUniformLocation;
+            mat4 modelMatrix;
 
             int is3D;
             int isGlyph;
@@ -177,7 +168,6 @@ class MeshManager : private MeshLoader
     private:
         void resolveFilepaths(Mesh &asset, string texPath = LAZARUS_DIFFUSE_MESH, string mtlPath = LAZARUS_TEXTURED_MESH, string objPath = LAZARUS_PRIMITIVE_MESH);
         void setInherentProperties(Mesh &asset);
-        void lookupUniforms(Mesh &asset);
         void initialiseMesh(Mesh &meshData);
         
         void checkErrors(const char *file, int line);
@@ -186,9 +176,13 @@ class MeshManager : private MeshLoader
         int layerCount;
 
 		GLuint shaderProgram;
+        GLint modelMatrixUniformLocation;                                                                        //  The location / index of the modelview matrix inside the vert shader program
+        GLint textureLayerUniformLocation;
+        GLint is3DUniformLocation;
+        GLint isGlyphUniformLocation;
+        GLint isSkyBoxUniformLocation;
 
         unique_ptr<FileReader> finder;
-        // unique_ptr<MeshLoader> meshLoader;
         unique_ptr<TextureLoader> texLoader;
         
         Mesh mesh;

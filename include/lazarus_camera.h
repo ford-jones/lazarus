@@ -44,17 +44,14 @@ class CameraManager
         {
             int id;
 			
-            vec3 position;                                                                //  The (x,y,z) location of the camera                                                                  
-            vec3 direction;                                                                     //  where the camera is looking                             
+            vec3 position;
+            vec3 direction;
             vec3 upVector;
 
-            float aspectRatio;                                                                  //  The viewport aspect ratio
+            float aspectRatio;
 
-            GLuint viewLocation;                                                                //  The location / index of the view matrix inside the vert shader program
-            GLuint projectionLocation;                                                          //  The location / index of the projection matrix inside the vert shader program
-
-            mat4 viewMatrix;                                                                    //  A view matrix matrice passed into the shader program as a uniform
-            mat4 projectionMatrix;                                                              //  A projection matrix matrice passed into the shader program as a uniform
+            mat4 viewMatrix;
+            mat4 projectionMatrix;
 
             int usesPerspective;
         };
@@ -66,6 +63,9 @@ class CameraManager
         virtual ~CameraManager();
 
     private:
+        GLuint viewLocation;
+        GLuint perspectiveProjectionLocation;
+        GLuint orthographicProjectionLocation;
         GlobalsManager globals;
         int monitorX;
         int monitorY;

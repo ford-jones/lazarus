@@ -366,19 +366,9 @@ void TextManager::drawText(TextManager::Text text)
     {
         quad = i;
 
-        if((quad.modelMatrixUniformLocation >= 0) && (camera.projectionLocation >= 0))
-        {            
-            cameraBuilder->loadCamera(camera);
-
-            meshLoader->loadMesh(quad);
-            meshLoader->drawMesh(quad);
-            continue;
-        } 
-        else 
-        {
-            globals.setExecutionState(LAZARUS_UNIFORM_NOT_FOUND);
-            break;
-        };
+        cameraBuilder->loadCamera(camera);
+        meshLoader->loadMesh(quad);
+        meshLoader->drawMesh(quad);
     };
 
     return;
