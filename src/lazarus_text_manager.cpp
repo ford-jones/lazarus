@@ -194,9 +194,7 @@ TextManager::TextManager(GLuint shader) : TextManager::MeshManager(shader)
 {
     std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
     this->shaderProgram = shader;
-    // this->meshLoader = nullptr;
     this->cameraBuilder = std::make_unique<CameraManager>(this->shaderProgram);
-    // this->textureLoader = nullptr;
     
     this->textOut = {};
     this->word = {};
@@ -237,8 +235,6 @@ int TextManager::extendFontStack(std::string filepath, int ptSize)
         it will be like a stack - currently it's just a
         single row.
     ======================================================= */
-    // this->textureLoader = std::make_unique<TextureLoader>();
-    
     this->loaderInit();
 
     this->fontIndex = this->loadTrueTypeFont(filepath, ptSize, 0);
@@ -267,14 +263,9 @@ int TextManager::extendFontStack(std::string filepath, int ptSize)
 TextManager::Text TextManager::loadText(std::string targetText, int posX, int posY, int letterSpacing, float red, float green, float blue, TextManager::Text textIn)
 {
     /* =================================================
-        Dereference and re-assign these on each call so
-        as to reduce their internal child trackers from
-        bloating.
+        Clear internal child trackers to stop bloat.
     ==================================================== */
-    // this->meshLoader = std::make_unique<MeshManager>(this->shaderProgram);
-    // this->dataStore.clear();
     this->clearMeshStorage();
-    // this->cameraBuilder = std::make_unique<CameraManager>(this->shaderProgram);
 
     if(word.size() > 0)
     {

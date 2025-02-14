@@ -67,6 +67,7 @@ const int    LAZARUS_NO_CONTEXT                     = 302;
 const int    LAZARUS_WINDOW_ERROR                   = 303;
 const int    LAZARUS_GLFW_NOINIT                    = 304;
 const int    LAZARUS_WIN_EXCEEDS_MAX                = 305;
+const int    LAZARUS_TIME_ERROR                     = 306;
 const int    LAZARUS_AUDIO_ERROR                    = 401;
 const int    LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR  = 402;
 const int    LAZARUS_AUDIO_LOAD_ERROR               = 403;
