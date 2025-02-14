@@ -112,22 +112,19 @@ class MeshLoader : private MaterialLoader
         GlobalsManager globals;
 };
 
-class MeshManager : private MeshLoader
+class MeshManager : private MeshLoader, public TextureLoader
 {
     public:
         struct Mesh
         {
-            GLuint VAO;                                                                         //  The OpenGL Vertex Array Object
-            GLuint VBO;
-            GLuint textureId;
-            GLuint textureLayer;
+            int id;
 
             int numOfVertices;
             int numOfFaces;
             /* ===============================
             	TODO | Things to add:
                 - Material count
-                - VBO & VAO (persisted)
+                - Scale
             ================================== */
             
             string meshFilepath;
@@ -138,18 +135,11 @@ class MeshManager : private MeshLoader
             float locationY;
             float locationZ;
 
-            vector<vec3> attributes;
-            vector<vec3> diffuse;                                                               //  Buffer to store diffusion color data
-
-            FileReader::Image textureData;
-
             mat4 modelMatrix;
 
             int is3D;
             int isGlyph;
             int isSkybox;
-
-            int textureUnit;
         };
 		
 		MeshManager(GLuint shader);
@@ -159,16 +149,29 @@ class MeshManager : private MeshLoader
         Mesh createCube(float scale, string texturePath = LAZARUS_SKYBOX_CUBE);
 
         void prepareTextures();
+        void clearMeshStorage();
 
-        void loadMesh(Mesh &meshData);
-        void drawMesh(Mesh &meshData);
+        void loadMesh(Mesh &meshIn);
+        void drawMesh(Mesh &meshIn);
 
         virtual ~MeshManager();
-
     private:
-        void resolveFilepaths(Mesh &asset, string texPath = LAZARUS_DIFFUSE_MESH, string mtlPath = LAZARUS_TEXTURED_MESH, string objPath = LAZARUS_PRIMITIVE_MESH);
-        void setInherentProperties(Mesh &asset);
-        void initialiseMesh(Mesh &meshData);
+        struct MeshData
+        {
+            int textureUnit;
+            FileReader::Image textureData;
+            GLuint textureId;
+            GLuint textureLayer;
+            GLuint VAO;                                                                         //  The OpenGL Vertex Array Object
+            GLuint VBO;
+
+            vector<vec3> attributes;
+            vector<vec3> diffuse;
+        };
+
+        void resolveFilepaths(string texPath = LAZARUS_DIFFUSE_MESH, string mtlPath = LAZARUS_TEXTURED_MESH, string objPath = LAZARUS_PRIMITIVE_MESH);
+        void setInherentProperties();
+        void initialiseMesh();
         
         void checkErrors(const char *file, int line);
 
@@ -183,10 +186,10 @@ class MeshManager : private MeshLoader
         GLint isSkyBoxUniformLocation;
 
         unique_ptr<FileReader> finder;
-        unique_ptr<TextureLoader> texLoader;
         
-        Mesh mesh;
-        vector<Mesh> meshStore;
+        Mesh meshOut;
+        MeshData meshData;
+        vector<MeshData> dataStore;
 
         GlobalsManager globals;
 

@@ -190,14 +190,13 @@ FontLoader::~FontLoader()
         the entire layout should be drawn.
     ========================================================== */
 
-TextManager::TextManager(GLuint shader)
+TextManager::TextManager(GLuint shader) : TextManager::MeshManager(shader)
 {
     std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
     this->shaderProgram = shader;
-    this->meshLoader = nullptr;
-    this->cameraBuilder = nullptr;
-    
-    this->textureLoader = nullptr;
+    // this->meshLoader = nullptr;
+    this->cameraBuilder = std::make_unique<CameraManager>(this->shaderProgram);
+    // this->textureLoader = nullptr;
     
     this->textOut = {};
     this->word = {};
@@ -238,7 +237,7 @@ int TextManager::extendFontStack(std::string filepath, int ptSize)
         it will be like a stack - currently it's just a
         single row.
     ======================================================= */
-    this->textureLoader = std::make_unique<TextureLoader>();
+    // this->textureLoader = std::make_unique<TextureLoader>();
     
     this->loaderInit();
 
@@ -246,9 +245,8 @@ int TextManager::extendFontStack(std::string filepath, int ptSize)
 
     this->identifyAlphabetDimensions();
 
-    textureLoader->storeBitmapTexture(atlasX, atlasY);
+    this->storeBitmapTexture(atlasX, atlasY);
 
-    this->textureId = textureLoader->bitmapTexture;
     /* ===========================================================================
         The expression (n - 33) AKA (i = 33 && i < 128) occurs in several places 
         and is used to skip control keys as well as calculate the span offset for 
@@ -258,7 +256,7 @@ int TextManager::extendFontStack(std::string filepath, int ptSize)
     for(int i = 33; i < 128; i++)
     {
         this->glyph = this->loadCharacter(static_cast<char>(i), fontIndex);
-        textureLoader->loadBitmapToTexture(this->glyph);
+        this->loadBitmapToTexture(this->glyph);
 
         textures.emplace((i - 33), this->glyph);
     };
@@ -273,8 +271,10 @@ TextManager::Text TextManager::loadText(std::string targetText, int posX, int po
         as to reduce their internal child trackers from
         bloating.
     ==================================================== */
-    this->meshLoader = std::make_unique<MeshManager>(this->shaderProgram);
-    this->cameraBuilder = std::make_unique<CameraManager>(this->shaderProgram);
+    // this->meshLoader = std::make_unique<MeshManager>(this->shaderProgram);
+    // this->dataStore.clear();
+    this->clearMeshStorage();
+    // this->cameraBuilder = std::make_unique<CameraManager>(this->shaderProgram);
 
     if(word.size() > 0)
     {
@@ -290,21 +290,8 @@ TextManager::Text TextManager::loadText(std::string targetText, int posX, int po
     for(unsigned int i = 0; i < targetText.size(); i++)
     {   
         this->setActiveGlyph(targetText[i], letterSpacing);
-
-        quad = meshLoader->createQuad(static_cast<float>(this->glyph.width), static_cast<float>(this->atlasY), LAZARUS_GLYPH_QUAD, this->uvL, this->uvR, this->uvH);
         
-        /* =============================================
-            Note: The uniform location of this texture
-            unit's corresponding sampler is *actually*
-            set during the construction of the MeshManager
-            class when it is imported and referenced in 
-            the Lazarus namespace at lazarus.h.
-        ================================================ */
-        quad.textureUnit = GL_TEXTURE1;
-        quad.textureId = this->textureId;
-        quad.textureLayer = 0;
-        quad.textureData = this->glyph;
-        quad.isGlyph = 1;
+        quad = this->createQuad(static_cast<float>(this->glyph.width), static_cast<float>(this->atlasY), LAZARUS_GLYPH_QUAD, this->uvL, this->uvR, this->uvH);
 
         /* =============================================
             Add ((createQuad input's x & y) / 2) to the 
@@ -343,11 +330,6 @@ TextManager::Text TextManager::loadText(std::string targetText, int posX, int po
         this->translationStride = 0;
     };
 
-    return textOut;
-};
-
-void TextManager::drawText(TextManager::Text text)
-{
     /* ===============================================
         Unlike other mesh assets (i.e. 3D mesh or 
         sprites), quads which are wrapped with a glyph
@@ -359,16 +341,21 @@ void TextManager::drawText(TextManager::Text text)
         gives the effect of 2D / HUD text.
     ================================================== */
     this->camera = cameraBuilder->createOrthoCam(globals.getDisplayWidth(), globals.getDisplayHeight());
-    
+
+    return textOut;
+};
+
+void TextManager::drawText(TextManager::Text text)
+{    
     this->word = layout.at(text.layoutIndex);
 
     for(auto i: this->word)
     {
         quad = i;
-
+        
         cameraBuilder->loadCamera(camera);
-        meshLoader->loadMesh(quad);
-        meshLoader->drawMesh(quad);
+        this->loadMesh(quad);
+        this->drawMesh(quad);
     };
 
     return;

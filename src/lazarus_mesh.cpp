@@ -22,19 +22,10 @@
 MeshManager::MeshManager(GLuint shader)
 {
 	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
-	this->shaderProgram = shader;
-	
-	this->finder = std::make_unique<FileReader>();
-    this->texLoader = std::make_unique<TextureLoader>();
+    this->shaderProgram = shader;
+    this->finder = std::make_unique<FileReader>();
 
-	// meshLoader = nullptr;
-
-    this->mesh = {};
-    this->meshStore = {};
-	
-	this->errorCode = GL_NO_ERROR;
-
-    this->layerCount = 0;
+    this->clearMeshStorage();
 
     //  TODO: 
     //  Remove locations from mesh struct
@@ -53,32 +44,29 @@ MeshManager::MeshManager(GLuint shader)
 
 MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPath, string texturePath)
 {
-    this->mesh = {};
+    this->meshOut = {};
+    this->meshData = {};
 
-    // this->meshLoader = std::make_unique<MeshLoader>();
+    meshOut.is3D = 1;
+    meshOut.isGlyph = 0;
+    meshOut.isSkybox = 0;
 
-    mesh.is3D = 1;
-    mesh.isGlyph = 0;
-    mesh.isSkybox = 0;
+    meshData.textureUnit = GL_TEXTURE2;
+    glActiveTexture(meshData.textureUnit);
 
-
-
-    mesh.textureUnit = GL_TEXTURE2;
-    glActiveTexture(mesh.textureUnit);
-
-    this->resolveFilepaths(mesh, texturePath, materialPath, meshPath);
+    this->resolveFilepaths(texturePath, materialPath, meshPath);
     
     this->parseWavefrontObj(
-        mesh.attributes,
-        mesh.diffuse,
-        mesh.meshFilepath.c_str(),
-        mesh.materialFilepath.c_str()
+        meshData.attributes,
+        meshData.diffuse,
+        meshOut.meshFilepath.c_str(),
+        meshOut.materialFilepath.c_str()
     );
 
-    this->setInherentProperties(mesh);
-    this->initialiseMesh(mesh);
+    this->setInherentProperties();
+    this->initialiseMesh();
 
-    return mesh;
+    return meshOut;
 };
 
 /* ========================================================================================
@@ -104,18 +92,17 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
         globals.setExecutionState(LAZARUS_INVALID_DIMENSIONS);
     };
     
-    this->mesh = {};
+    this->meshOut = {};
+    this->meshData = {};
 
-    mesh.is3D = 0;
-    mesh.isGlyph = 0;
-    mesh.isSkybox = 0;
-
-
+    meshOut.is3D = 0;
+    meshOut.isGlyph = 0;
+    meshOut.isSkybox = 0;
     
-    mesh.textureUnit = GL_TEXTURE2;
-    glActiveTexture(mesh.textureUnit);
+    meshData.textureUnit = GL_TEXTURE2;
+    glActiveTexture(meshData.textureUnit);
 
-    this->resolveFilepaths(mesh, texturePath);
+    this->resolveFilepaths(texturePath);
 
     /* ======================================================
         Ensure that the origin is centered.
@@ -139,7 +126,7 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
     /* ======================================================================================================
             Vertex positions,           Diffuse colors,             Normals,                    UVs 
     ========================================================================================================= */
-        mesh.attributes = {                                                                                          
+        meshData.attributes = {                                                                                          
             vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, 0.0f, 0.0f),
             vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, 0.0f, 0.0f), 
             vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, uvY, 0.0f),
@@ -165,7 +152,7 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
             unwinding / culling type of issue. Note the sign
             of the normals.
         ===================================================== */
-        mesh.attributes = {
+        meshData.attributes = {
             vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 0.0f, 0.0f),
             vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 0.0f, 0.0f),
             vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 1.0f, 0.0f),
@@ -184,43 +171,45 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
         };
     };
 
-    this->setInherentProperties(mesh);
-    this->initialiseMesh(mesh);
+    this->setInherentProperties();
+    this->initialiseMesh();
 
-    return mesh;
+    return meshOut;
 }
 
 MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath)
 {
     float vertexPosition = scale / 2; 
 
-    this->mesh = {};
-    mesh.isGlyph = 0;
+    this->meshOut = {};
+    this->meshData = {};
 
-    this->resolveFilepaths(mesh, texturePath);
+    meshOut.isGlyph = 0;
+
+    this->resolveFilepaths(texturePath);
 
         /* ==================================================
             Default texture unit is GL_TEXTURE1, which is the
             samplerArray. Reset it appropriately here.
         ===================================================== */
-    if(mesh.textureFilepath == LAZARUS_SKYBOX_CUBE)
+    if(meshOut.textureFilepath == LAZARUS_SKYBOX_CUBE)
     {
-        mesh.is3D = 0;
-        mesh.isSkybox = 1;
+        meshOut.is3D = 0;
+        meshOut.isSkybox = 1;
 
-        mesh.textureUnit = GL_TEXTURE3;
+        meshData.textureUnit = GL_TEXTURE3;
     }
     else
     {
-        mesh.is3D = 1;
-        mesh.isSkybox = 0;
+        meshOut.is3D = 1;
+        meshOut.isSkybox = 0;
 
-        mesh.textureUnit = GL_TEXTURE2;
+        meshData.textureUnit = GL_TEXTURE2;
     };
 
-    glActiveTexture(mesh.textureUnit);
+    glActiveTexture(meshData.textureUnit);
 
-    mesh.attributes = {                                                                                          
+    meshData.attributes = {                                                                                          
         /* ===========================================
 
                POS                      ST
@@ -283,23 +272,23 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath)
         vec3(-vertexPosition, -vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f)
     };
 
-    this->setInherentProperties(mesh);
-    this->initialiseMesh(mesh);
+    this->setInherentProperties();
+    this->initialiseMesh();
 
-    return this->mesh;
+    return this->meshOut;
 };
 
-void MeshManager::initialiseMesh(MeshManager::Mesh &asset)
+void MeshManager::initialiseMesh()
 {	
-    glGenVertexArrays(1, &asset.VAO);
-   	glBindVertexArray(asset.VAO);
+    glGenVertexArrays(1, &meshData.VAO);
+   	glBindVertexArray(meshData.VAO);
 
     if(this->modelMatrixUniformLocation >= 0)
     {
-        glGenBuffers(1, &asset.VBO);
-        glBindBuffer(GL_ARRAY_BUFFER, asset.VBO);
+        glGenBuffers(1, &meshData.VBO);
+        glBindBuffer(GL_ARRAY_BUFFER, meshData.VBO);
 
-        glBufferData(GL_ARRAY_BUFFER, asset.attributes.size() * sizeof(vec3), &asset.attributes[0], GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, meshData.attributes.size() * sizeof(vec3), &meshData.attributes[0], GL_STATIC_DRAW);
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)0);
         glEnableVertexAttribArray(0);
@@ -315,9 +304,13 @@ void MeshManager::initialiseMesh(MeshManager::Mesh &asset)
 
         this->checkErrors(__FILE__, __LINE__);
 
-        this->meshStore.push_back(asset);
+        this->dataStore.push_back(meshData);
+        meshOut.id = (dataStore.size() - 1);
 
-        if(asset.isSkybox != 1)
+        /* ===============================================================
+            Reload the entire texture stack / array if meshData is generic 
+        ================================================================== */
+        if(meshOut.isSkybox != 1 && meshOut.isGlyph != 1)
         {
             this->prepareTextures();
         };
@@ -332,33 +325,52 @@ void MeshManager::initialiseMesh(MeshManager::Mesh &asset)
 
 void MeshManager::prepareTextures()
 {
-    texLoader->extendTextureStack(globals.getMaxImageWidth(), globals.getMaxImageHeight(), this->layerCount);
+    this->extendTextureStack(globals.getMaxImageWidth(), globals.getMaxImageHeight(), this->layerCount);
 
-    for(auto i: meshStore)
+    for(auto i: dataStore)
     {
         glActiveTexture(i.textureUnit);
     
-        if((i.textureFilepath != LAZARUS_DIFFUSE_MESH))
+        if((meshOut.textureFilepath != LAZARUS_DIFFUSE_MESH))
         {
-            texLoader->loadImageToTextureStack(i.textureData, i.textureLayer);
+            this->loadImageToTextureStack(i.textureData, i.textureLayer);
         };
     };
 
     return;
 };
 
-void MeshManager::loadMesh(MeshManager::Mesh &asset)
+void MeshManager::clearMeshStorage()
+{	
+    for(auto i: dataStore)
+    {
+        glDeleteBuffers         (1, &i.VBO);
+        glDeleteVertexArrays    (1, &i.VAO);
+    };
+    
+    this->meshOut = {};
+    this->meshData = {};
+    this->dataStore = {};
+	
+	this->errorCode = GL_NO_ERROR;
+
+    this->layerCount = 0;
+};
+
+void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
 {
+    MeshManager::MeshData &data = dataStore[meshIn.id];
+
     if(this->modelMatrixUniformLocation >= 0)
     {
-        glUniformMatrix4fv(this->modelMatrixUniformLocation, 1, GL_FALSE, &asset.modelMatrix[0][0]);
-        glUniform1i(this->is3DUniformLocation, asset.is3D);
-        glUniform1i(this->isGlyphUniformLocation, asset.isGlyph);
-        glUniform1i(this->isSkyBoxUniformLocation, asset.isSkybox);
-    
-        if(asset.textureId != 0)
+        glUniformMatrix4fv(this->modelMatrixUniformLocation, 1, GL_FALSE, &meshIn.modelMatrix[0][0]);
+        glUniform1i(this->is3DUniformLocation, meshIn.is3D);
+        glUniform1i(this->isGlyphUniformLocation, meshIn.isGlyph);
+        glUniform1i(this->isSkyBoxUniformLocation, meshIn.isSkybox);
+        
+        if(data.textureId != 0)
         {
-            glUniform1f(this->textureLayerUniformLocation, (asset.textureLayer - 1));
+            glUniform1f(this->textureLayerUniformLocation, (data.textureLayer - 1));
         };
 
         this->checkErrors(__FILE__, __LINE__);
@@ -371,91 +383,110 @@ void MeshManager::loadMesh(MeshManager::Mesh &asset)
     return;
 };
 
-void MeshManager::drawMesh(MeshManager::Mesh &asset)
+void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
 {
-    glBindVertexArray(asset.VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, asset.VBO);
+    MeshManager::MeshData &data = dataStore[meshIn.id];
 
-    glActiveTexture(asset.textureUnit);
+    glBindVertexArray(data.VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, data.VBO);
 
-    if((asset.textureFilepath == LAZARUS_GLYPH_QUAD))
+    glActiveTexture(data.textureUnit);
+
+    if((meshIn.textureFilepath == LAZARUS_GLYPH_QUAD))
     {
-        glBindTexture(GL_TEXTURE_2D, asset.textureId);
+        glBindTexture(GL_TEXTURE_2D, data.textureId);
     }
-    else if((asset.textureFilepath == LAZARUS_SKYBOX_CUBE))
+    else if((meshIn.textureFilepath == LAZARUS_SKYBOX_CUBE))
     {
-        glBindTexture(GL_TEXTURE_CUBE_MAP, asset.textureId);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, data.textureId);
     }
-    else if((asset.textureFilepath != LAZARUS_DIFFUSE_MESH))
+    else if((meshIn.textureFilepath != LAZARUS_DIFFUSE_MESH))
     {
-        glBindTexture(GL_TEXTURE_2D_ARRAY, asset.textureId);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, data.textureId);
     };
 
-    glDrawArrays(GL_TRIANGLES, 0, asset.attributes.size());
+    glDrawArrays(GL_TRIANGLES, 0, data.attributes.size());
 
     this->checkErrors(__FILE__, __LINE__);
 
     return;
 };
 
-void MeshManager::resolveFilepaths(MeshManager::Mesh &asset, string texPath, string mtlPath, string objPath)
+void MeshManager::resolveFilepaths(string texPath, string mtlPath, string objPath)
 {
     objPath != LAZARUS_PRIMITIVE_MESH
-    ? asset.meshFilepath =  finder->relativePathToAbsolute(objPath)
-    : asset.meshFilepath = LAZARUS_PRIMITIVE_MESH;
+    ? meshOut.meshFilepath =  finder->relativePathToAbsolute(objPath)
+    : meshOut.meshFilepath = LAZARUS_PRIMITIVE_MESH;
 
     mtlPath != LAZARUS_TEXTURED_MESH
-    ? asset.materialFilepath =  finder->relativePathToAbsolute(mtlPath)
-    : asset.materialFilepath = LAZARUS_TEXTURED_MESH;
+    ? meshOut.materialFilepath =  finder->relativePathToAbsolute(mtlPath)
+    : meshOut.materialFilepath = LAZARUS_TEXTURED_MESH;
 
     switch (texPath[0])
     {
         //  Glyph atlas
         case 'G':
-            asset.textureFilepath = LAZARUS_GLYPH_QUAD;
+            meshOut.textureFilepath = LAZARUS_GLYPH_QUAD;
+            meshOut.isGlyph = 1;
+
+            meshData.textureUnit = GL_TEXTURE1;
+            meshData.textureId = this->bitmapTexture;;
+            meshData.textureLayer = 0;
+            meshData.textureData.pixelData = NULL;
+            meshData.textureData.height = 0;
+            meshData.textureData.width = 0;
             break;
         
         //  Skybox cubemap
         case 'S':
-            asset.textureFilepath = LAZARUS_SKYBOX_CUBE;
+            meshOut.textureFilepath = LAZARUS_SKYBOX_CUBE;
+            meshOut.isSkybox = 1;
+
+            meshData.textureUnit = GL_TEXTURE3;
+            meshData.textureId = this->cubeMapTexture;
+            meshData.textureLayer = 1;
+            meshData.textureData.pixelData = NULL;
+            meshData.textureData.height = 0;
+            meshData.textureData.width = 0;
             break;
 
         //  Diffuse color
         case 'D':
-            asset.textureLayer = 0;
-            asset.textureId = 0;
-    	    asset.textureFilepath = LAZARUS_DIFFUSE_MESH;
-          
-            asset.textureData.pixelData = NULL;
-            asset.textureData.height = 0;
-            asset.textureData.width = 0;
+    	    meshOut.textureFilepath = LAZARUS_DIFFUSE_MESH;
+
+            meshData.textureLayer = 0; 
+            meshData.textureId = 0;
+            meshData.textureData.pixelData = NULL;
+            meshData.textureData.height = 0;
+            meshData.textureData.width = 0;
             break;
         
         //  Image array
         default:
             this->layerCount += 1;
 
-	        asset.textureFilepath = finder->relativePathToAbsolute(texPath);
-            asset.textureData = finder->readFromImage(asset.textureFilepath);
-            
-            asset.textureLayer = this->layerCount;
-            asset.textureId = texLoader->textureStack;
+	        meshOut.textureFilepath = finder->relativePathToAbsolute(texPath);
+
+            meshData.textureUnit = GL_TEXTURE2;
+            meshData.textureId = this->textureStack;
+            meshData.textureLayer = this->layerCount;
+            meshData.textureData = finder->readFromImage(meshOut.textureFilepath);
             break;
     };
 
     return;
 };
 
-void MeshManager::setInherentProperties(MeshManager::Mesh &asset)
+void MeshManager::setInherentProperties()
 {
-    asset.locationX = 0;
-    asset.locationY = 0;
-    asset.locationZ = 0;
+    meshOut.locationX = 0;
+    meshOut.locationY = 0;
+    meshOut.locationZ = 0;
 
-    asset.modelMatrix = mat4(1.0f);
+    meshOut.modelMatrix = mat4(1.0f);
 
-    asset.numOfVertices = asset.attributes.size() / 4;
-    asset.numOfFaces = (asset.numOfVertices) / 3;
+    meshOut.numOfVertices = meshData.attributes.size() / 4;
+    meshOut.numOfFaces = (meshOut.numOfVertices) / 3;
 
    return;
 }
@@ -477,7 +508,7 @@ void MeshManager::checkErrors(const char *file, int line)
 
 MeshManager::~MeshManager()
 {
-    for(auto i: meshStore)
+    for(auto i: dataStore)
     {
         glDeleteBuffers         (1, &i.VBO);
         glDeleteVertexArrays    (1, &i.VAO);

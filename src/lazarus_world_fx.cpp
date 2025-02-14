@@ -19,13 +19,10 @@
 
 #include "../include/lazarus_world_fx.h"
 
-WorldFX::WorldFX(GLuint shaderProgram)
+WorldFX::WorldFX(GLuint shaderProgram) : WorldFX::MeshManager(shaderProgram)
 {
     std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
     this->shader = shaderProgram;
-
-    this->meshLoader = std::make_unique<MeshManager>(this->shader);
-    this->textureLoader = std::make_unique<TextureLoader>();
     this->imageLoader = nullptr;
     
     this->skyBox = {};
@@ -38,23 +35,10 @@ WorldFX::WorldFX(GLuint shaderProgram)
 ==================================================================== */
 WorldFX::SkyBox WorldFX::createSkyBox(std::string rightPath, std::string leftPath, std::string downPath, std::string upPath, std::string frontPath, std::string backPath)
 {
-    this->skyBox.cube = meshLoader->createCube(10.0f);
+    this->skyBox.cube = this->createCube(10.0f);
     this->skyBox.paths = {rightPath, leftPath, downPath, upPath, frontPath, backPath};
 
     this->loadSkyMap();
-
-    this->skyBox.cube.textureId = textureLoader->cubeMapTexture;
-    this->skyBox.cube.textureFilepath = LAZARUS_SKYBOX_CUBE;
-
-    /* =================================================
-        TODO:
-        There must surely be a way to store this better.
-        i.e. textureData in this case is 6 * textureData
-    ==================================================== */
-    this->skyBox.cube.textureLayer = 1;
-    this->skyBox.cube.textureData.pixelData = NULL;
-    this->skyBox.cube.textureData.height = 0;
-    this->skyBox.cube.textureData.width = 0;
 
     return this->skyBox;
 };
@@ -82,8 +66,8 @@ void WorldFX::drawSkyBox(WorldFX::SkyBox sky, CameraManager::Camera camera)
 
     glDepthMask(GL_FALSE);
 
-    meshLoader->loadMesh(sky.cube);
-    meshLoader->drawMesh(sky.cube);
+    this->loadMesh(sky.cube);
+    this->drawMesh(sky.cube);
     
     glDepthMask(GL_TRUE);
 
@@ -124,8 +108,13 @@ void WorldFX::loadSkyMap()
         this->skyBox.cubeMap.push_back(image);
     };
 
-    textureLoader->storeCubeMap(this->skyBox.cubeMap[0].width, this->skyBox.cubeMap[0].height);
-    textureLoader->loadCubeMap(this->skyBox.cubeMap);
+    /* =============================================================
+        Access the same texture ID values used by the skybox's mesh.
+        Do so by using the MeshManager's TextureManager inherited 
+        members to perform texture operations for this skybox.
+    ================================================================ */
+    this->storeCubeMap(this->skyBox.cubeMap[0].width, this->skyBox.cubeMap[0].height);
+    this->loadCubeMap(this->skyBox.cubeMap);
 };
 
 WorldFX::~WorldFX()

@@ -36,7 +36,7 @@
 #ifndef LAZARUS_WORLD_FX_H
 #define LAZARUS_WORLD_FX_H
 
-class WorldFX 
+class WorldFX : private MeshManager
 {
     public:
         WorldFX(GLuint shaderProgram);
@@ -62,9 +62,9 @@ class WorldFX
 
         SkyBox skyBox;
 
-        std::unique_ptr<MeshManager> meshLoader;
+        // std::unique_ptr<MeshManager> meshLoader;
         std::unique_ptr<FileReader> imageLoader;
-        std::unique_ptr<TextureLoader> textureLoader;
+        // std::unique_ptr<TextureLoader> textureLoader;
 
         GlobalsManager globals;
 

@@ -79,7 +79,7 @@ class FontLoader
         std::string absolutePath;
 };
 
-class TextManager : public FontLoader
+class TextManager : private FontLoader, private MeshManager
 {
     public:
         TextManager(GLuint shader);
@@ -119,7 +119,7 @@ class TextManager : public FontLoader
         float uvH;
 
         unsigned int fontIndex;
-        unsigned int layoutIndex;
+        unsigned int layoutIndex; 
 
         GLuint textureId;
         GLuint shaderProgram;
@@ -130,9 +130,8 @@ class TextManager : public FontLoader
         GlobalsManager globals;
         FileReader::Image glyph;
 
-        std::unique_ptr<MeshManager> meshLoader;
-        std::unique_ptr<TextureLoader> textureLoader;
-        // std::unique_ptr<FontLoader> fontLoader;
+        // std::unique_ptr<MeshManager> meshLoader;
+        // std::unique_ptr<TextureLoader> textureLoader;
         std::unique_ptr<CameraManager> cameraBuilder;
 
         MeshManager::Mesh quad;
