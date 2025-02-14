@@ -37,16 +37,20 @@ class FpsCounter
 {
 	public:
 		FpsCounter();
+        void monitorElapsedUptime();
+        void monitorTimeDelta();
 		void monitorFPS();
 		
-		double framesPerSecond;
-		double durationTillRendered;
+		float framesPerSecond;
+		float timeDelta;
+		float elapsedTime;
 		
 	private:
-		double currentMs;
-		double prevMs;
-		double timePassed;
-		int numberOfFrames;		
+        GlobalsManager globals;
+
+		float msSinceLastRender;
+		float internalSeconds;
+		int frameCount;		
 };
 
 class EventManager

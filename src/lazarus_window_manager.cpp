@@ -21,29 +21,42 @@
 
 FpsCounter::FpsCounter()
 {
-	this->numberOfFrames 		= 0;
+	this->frameCount 			= 0;
 	this->framesPerSecond 		= 0;
 
-	this->currentMs 			= 0.0;
-	this->prevMs 				= 0.0;
-	this->timePassed 			= 0.0;
-	this->durationTillRendered 	= 0.0;
+	this->elapsedTime 			= 0.0;
+	this->internalSeconds 				= 0.0;
+	this->msSinceLastRender 			= 0.0;
+	this->timeDelta 			= 0.0;
+};
+
+void FpsCounter::monitorElapsedUptime()
+{
+	this->elapsedTime = glfwGetTime();
+	if(elapsedTime <= 0.0) globals.setExecutionState(LAZARUS_TIME_ERROR);
+
+	this->msSinceLastRender = (this->elapsedTime - this->internalSeconds);
+};
+
+void FpsCounter::monitorTimeDelta()
+{
+	this->monitorFPS();
+
+	this->timeDelta = (1000 / this->framesPerSecond);
+	if(timeDelta <= 0.0) globals.setExecutionState(LAZARUS_TIME_ERROR);
 };
 
 void FpsCounter::monitorFPS()
 {
-	this->numberOfFrames++;	
-	this->currentMs = glfwGetTime();
-	
-	this->timePassed = (this->currentMs - this->prevMs);
-	
-	if(this->timePassed >= 1.0)
+	this->frameCount++;	
+	this->monitorElapsedUptime();
+	if(this->msSinceLastRender >= 1.0)
 	{
-		this->framesPerSecond = this->numberOfFrames;
-		this->durationTillRendered=(1000 / this->numberOfFrames);
-		
-		this->numberOfFrames = 0;
-		this->prevMs += 1.0;
+		this->framesPerSecond = this->frameCount;
+		if(this->framesPerSecond <= 0) globals.setExecutionState(LAZARUS_TIME_ERROR);
+
+		this->frameCount = 0;
+		this->internalSeconds += 1.0;
 	};
 };
 
