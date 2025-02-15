@@ -22,19 +22,10 @@
 MeshManager::MeshManager(GLuint shader)
 {
 	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
-	this->shaderProgram = shader;
-	
-	this->finder = std::make_unique<FileReader>();
-    this->texLoader = std::make_unique<TextureLoader>();
+    this->shaderProgram = shader;
+    this->finder = std::make_unique<FileReader>();
 
-	meshLoader = nullptr;
-
-    this->mesh = {};
-    this->meshStore = {};
-	
-	this->errorCode = GL_NO_ERROR;
-
-    this->layerCount = 0;
+    this->clearMeshStorage();
 
     //  TODO: 
     //  Remove locations from mesh struct
@@ -42,37 +33,40 @@ MeshManager::MeshManager(GLuint shader)
     glUniform1i(glGetUniformLocation(this->shaderProgram, "textureAtlas"), 1);
     glUniform1i(glGetUniformLocation(this->shaderProgram, "textureArray"), 2);
     glUniform1i(glGetUniformLocation(this->shaderProgram, "textureCube"), 3);
+
+    this->modelMatrixUniformLocation = glGetUniformLocation(this->shaderProgram, "modelMatrix");
+    this->is3DUniformLocation = glGetUniformLocation(this->shaderProgram, "spriteAsset");
+    this->isGlyphUniformLocation = glGetUniformLocation(this->shaderProgram, "glyphAsset");
+    this->isSkyBoxUniformLocation = glGetUniformLocation(this->shaderProgram, "isSkyBox");
+
+    this->textureLayerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureLayer");  
 };
 
 MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPath, string texturePath)
 {
-    this->mesh = {};
+    this->meshOut = {};
+    this->meshData = {};
 
-    this->meshLoader = std::make_unique<MeshLoader>();
+    meshOut.is3D = 1;
+    meshOut.isGlyph = 0;
+    meshOut.isSkybox = 0;
 
-    mesh.is3D = 1;
-    mesh.isGlyph = 0;
-    mesh.isSkybox = 0;
+    meshData.textureUnit = GL_TEXTURE2;
+    glActiveTexture(meshData.textureUnit);
 
-    this->lookupUniforms(mesh);
-
-
-    mesh.textureUnit = GL_TEXTURE2;
-    glActiveTexture(mesh.textureUnit);
-
-    this->resolveFilepaths(mesh, texturePath, materialPath, meshPath);
+    this->resolveFilepaths(texturePath, materialPath, meshPath);
     
-    meshLoader->parseWavefrontObj(
-        mesh.attributes,
-        mesh.diffuse,
-        mesh.meshFilepath.c_str(),
-        mesh.materialFilepath.c_str()
+    this->parseWavefrontObj(
+        meshData.attributes,
+        meshData.diffuse,
+        meshOut.meshFilepath.c_str(),
+        meshOut.materialFilepath.c_str()
     );
 
-    this->setInherentProperties(mesh);
-    this->initialiseMesh(mesh);
+    this->setInherentProperties();
+    this->initialiseMesh();
 
-    return mesh;
+    return meshOut;
 };
 
 /* ========================================================================================
@@ -98,19 +92,17 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
         globals.setExecutionState(LAZARUS_INVALID_DIMENSIONS);
     };
     
-    this->mesh = {};
+    this->meshOut = {};
+    this->meshData = {};
 
-    mesh.is3D = 0;
-    mesh.isGlyph = 0;
-    mesh.isSkybox = 0;
-
-    this->lookupUniforms(mesh);
-
+    meshOut.is3D = 0;
+    meshOut.isGlyph = 0;
+    meshOut.isSkybox = 0;
     
-    mesh.textureUnit = GL_TEXTURE2;
-    glActiveTexture(mesh.textureUnit);
+    meshData.textureUnit = GL_TEXTURE2;
+    glActiveTexture(meshData.textureUnit);
 
-    this->resolveFilepaths(mesh, texturePath);
+    this->resolveFilepaths(texturePath);
 
     /* ======================================================
         Ensure that the origin is centered.
@@ -134,7 +126,7 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
     /* ======================================================================================================
             Vertex positions,           Diffuse colors,             Normals,                    UVs 
     ========================================================================================================= */
-        mesh.attributes = {                                                                                          
+        meshData.attributes = {                                                                                          
             vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, 0.0f, 0.0f),
             vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, 0.0f, 0.0f), 
             vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, uvY, 0.0f),
@@ -160,7 +152,7 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
             unwinding / culling type of issue. Note the sign
             of the normals.
         ===================================================== */
-        mesh.attributes = {
+        meshData.attributes = {
             vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 0.0f, 0.0f),
             vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 0.0f, 0.0f),
             vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 1.0f, 0.0f),
@@ -179,44 +171,45 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
         };
     };
 
-    this->setInherentProperties(mesh);
-    this->initialiseMesh(mesh);
+    this->setInherentProperties();
+    this->initialiseMesh();
 
-    return mesh;
+    return meshOut;
 }
 
 MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath)
 {
     float vertexPosition = scale / 2; 
 
-    this->mesh = {};
-    mesh.isGlyph = 0;
+    this->meshOut = {};
+    this->meshData = {};
 
-    this->lookupUniforms(mesh);
-    this->resolveFilepaths(mesh, texturePath);
+    meshOut.isGlyph = 0;
+
+    this->resolveFilepaths(texturePath);
 
         /* ==================================================
             Default texture unit is GL_TEXTURE1, which is the
             samplerArray. Reset it appropriately here.
         ===================================================== */
-    if(mesh.textureFilepath == LAZARUS_SKYBOX_CUBE)
+    if(meshOut.textureFilepath == LAZARUS_SKYBOX_CUBE)
     {
-        mesh.is3D = 0;
-        mesh.isSkybox = 1;
+        meshOut.is3D = 0;
+        meshOut.isSkybox = 1;
 
-        mesh.textureUnit = GL_TEXTURE3;
+        meshData.textureUnit = GL_TEXTURE3;
     }
     else
     {
-        mesh.is3D = 1;
-        mesh.isSkybox = 0;
+        meshOut.is3D = 1;
+        meshOut.isSkybox = 0;
 
-        mesh.textureUnit = GL_TEXTURE2;
+        meshData.textureUnit = GL_TEXTURE2;
     };
 
-    glActiveTexture(mesh.textureUnit);
+    glActiveTexture(meshData.textureUnit);
 
-    mesh.attributes = {                                                                                          
+    meshData.attributes = {                                                                                          
         /* ===========================================
 
                POS                      ST
@@ -279,23 +272,23 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath)
         vec3(-vertexPosition, -vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f)
     };
 
-    this->setInherentProperties(mesh);
-    this->initialiseMesh(mesh);
+    this->setInherentProperties();
+    this->initialiseMesh();
 
-    return this->mesh;
+    return this->meshOut;
 };
 
-void MeshManager::initialiseMesh(MeshManager::Mesh &asset)
+void MeshManager::initialiseMesh()
 {	
-    glGenVertexArrays(1, &asset.VAO);
-   	glBindVertexArray(asset.VAO);
+    glGenVertexArrays(1, &meshData.VAO);
+   	glBindVertexArray(meshData.VAO);
 
-    if(asset.modelMatrixUniformLocation >= 0)
+    if(this->modelMatrixUniformLocation >= 0)
     {
-        glGenBuffers(1, &asset.VBO);
-        glBindBuffer(GL_ARRAY_BUFFER, asset.VBO);
+        glGenBuffers(1, &meshData.VBO);
+        glBindBuffer(GL_ARRAY_BUFFER, meshData.VBO);
 
-        glBufferData(GL_ARRAY_BUFFER, asset.attributes.size() * sizeof(vec3), &asset.attributes[0], GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, meshData.attributes.size() * sizeof(vec3), &meshData.attributes[0], GL_STATIC_DRAW);
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)0);
         glEnableVertexAttribArray(0);
@@ -311,9 +304,13 @@ void MeshManager::initialiseMesh(MeshManager::Mesh &asset)
 
         this->checkErrors(__FILE__, __LINE__);
 
-        this->meshStore.push_back(asset);
+        this->dataStore.push_back(meshData);
+        meshOut.id = (dataStore.size() - 1);
 
-        if(asset.isSkybox != 1)
+        /* ===============================================================
+            Reload the entire texture stack / array if meshData is generic 
+        ================================================================== */
+        if(meshOut.isSkybox != 1 && meshOut.isGlyph != 1)
         {
             this->prepareTextures();
         };
@@ -328,33 +325,52 @@ void MeshManager::initialiseMesh(MeshManager::Mesh &asset)
 
 void MeshManager::prepareTextures()
 {
-    texLoader->extendTextureStack(globals.getMaxImageWidth(), globals.getMaxImageHeight(), this->layerCount);
+    this->extendTextureStack(globals.getMaxImageWidth(), globals.getMaxImageHeight(), this->layerCount);
 
-    for(auto i: meshStore)
+    for(auto i: dataStore)
     {
         glActiveTexture(i.textureUnit);
     
-        if((i.textureFilepath != LAZARUS_DIFFUSE_MESH))
+        if((meshOut.textureFilepath != LAZARUS_DIFFUSE_MESH))
         {
-            texLoader->loadImageToTextureStack(i.textureData, i.textureLayer);
+            this->loadImageToTextureStack(i.textureData, i.textureLayer);
         };
     };
 
     return;
 };
 
-void MeshManager::loadMesh(MeshManager::Mesh &asset)
-{
-    if(asset.modelMatrixUniformLocation >= 0)
+void MeshManager::clearMeshStorage()
+{	
+    for(auto i: dataStore)
     {
-        glUniformMatrix4fv(asset.modelMatrixUniformLocation, 1, GL_FALSE, &asset.modelMatrix[0][0]);
-        glUniform1i(asset.is3DUniformLocation, asset.is3D);
-        glUniform1i(asset.isGlyphUniformLocation, asset.isGlyph);
-        glUniform1i(asset.isSkyBoxUniformLocation, asset.isSkybox);
+        glDeleteBuffers         (1, &i.VBO);
+        glDeleteVertexArrays    (1, &i.VAO);
+    };
     
-        if(asset.textureId != 0)
+    this->meshOut = {};
+    this->meshData = {};
+    this->dataStore = {};
+	
+	this->errorCode = GL_NO_ERROR;
+
+    this->layerCount = 0;
+};
+
+void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
+{
+    MeshManager::MeshData &data = dataStore[meshIn.id];
+
+    if(this->modelMatrixUniformLocation >= 0)
+    {
+        glUniformMatrix4fv(this->modelMatrixUniformLocation, 1, GL_FALSE, &meshIn.modelMatrix[0][0]);
+        glUniform1i(this->is3DUniformLocation, meshIn.is3D);
+        glUniform1i(this->isGlyphUniformLocation, meshIn.isGlyph);
+        glUniform1i(this->isSkyBoxUniformLocation, meshIn.isSkybox);
+        
+        if(data.textureId != 0)
         {
-            glUniform1f(asset.textureLayerUniformLocation, (asset.textureLayer - 1));
+            glUniform1f(this->textureLayerUniformLocation, (data.textureLayer - 1));
         };
 
         this->checkErrors(__FILE__, __LINE__);
@@ -367,106 +383,113 @@ void MeshManager::loadMesh(MeshManager::Mesh &asset)
     return;
 };
 
-void MeshManager::drawMesh(MeshManager::Mesh &asset)
+void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
 {
-    glBindVertexArray(asset.VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, asset.VBO);
+    MeshManager::MeshData &data = dataStore[meshIn.id];
 
-    glActiveTexture(asset.textureUnit);
+    glBindVertexArray(data.VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, data.VBO);
 
-    if((asset.textureFilepath == LAZARUS_GLYPH_QUAD))
+    glActiveTexture(data.textureUnit);
+
+    if((meshIn.textureFilepath == LAZARUS_GLYPH_QUAD))
     {
-        glBindTexture(GL_TEXTURE_2D, asset.textureId);
+        glBindTexture(GL_TEXTURE_2D, data.textureId);
     }
-    else if((asset.textureFilepath == LAZARUS_SKYBOX_CUBE))
+    else if((meshIn.textureFilepath == LAZARUS_SKYBOX_CUBE))
     {
-        glBindTexture(GL_TEXTURE_CUBE_MAP, asset.textureId);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, data.textureId);
     }
-    else if((asset.textureFilepath != LAZARUS_DIFFUSE_MESH))
+    else if((meshIn.textureFilepath != LAZARUS_DIFFUSE_MESH))
     {
-        glBindTexture(GL_TEXTURE_2D_ARRAY, asset.textureId);
+        glBindTexture(GL_TEXTURE_2D_ARRAY, data.textureId);
     };
 
-    glDrawArrays(GL_TRIANGLES, 0, asset.attributes.size());
+    glDrawArrays(GL_TRIANGLES, 0, data.attributes.size());
 
     this->checkErrors(__FILE__, __LINE__);
 
     return;
 };
 
-void MeshManager::resolveFilepaths(MeshManager::Mesh &asset, string texPath, string mtlPath, string objPath)
+void MeshManager::resolveFilepaths(string texPath, string mtlPath, string objPath)
 {
     objPath != LAZARUS_PRIMITIVE_MESH
-    ? asset.meshFilepath =  finder->relativePathToAbsolute(objPath)
-    : asset.meshFilepath = LAZARUS_PRIMITIVE_MESH;
+    ? meshOut.meshFilepath =  finder->relativePathToAbsolute(objPath)
+    : meshOut.meshFilepath = LAZARUS_PRIMITIVE_MESH;
 
     mtlPath != LAZARUS_TEXTURED_MESH
-    ? asset.materialFilepath =  finder->relativePathToAbsolute(mtlPath)
-    : asset.materialFilepath = LAZARUS_TEXTURED_MESH;
+    ? meshOut.materialFilepath =  finder->relativePathToAbsolute(mtlPath)
+    : meshOut.materialFilepath = LAZARUS_TEXTURED_MESH;
 
     switch (texPath[0])
     {
         //  Glyph atlas
         case 'G':
-            asset.textureFilepath = LAZARUS_GLYPH_QUAD;
+            meshOut.textureFilepath = LAZARUS_GLYPH_QUAD;
+            meshOut.isGlyph = 1;
+
+            meshData.textureUnit = GL_TEXTURE1;
+            meshData.textureId = this->bitmapTexture;;
+            meshData.textureLayer = 0;
+            meshData.textureData.pixelData = NULL;
+            meshData.textureData.height = 0;
+            meshData.textureData.width = 0;
             break;
         
         //  Skybox cubemap
         case 'S':
-            asset.textureFilepath = LAZARUS_SKYBOX_CUBE;
+            meshOut.textureFilepath = LAZARUS_SKYBOX_CUBE;
+            meshOut.isSkybox = 1;
+
+            meshData.textureUnit = GL_TEXTURE3;
+            meshData.textureId = this->cubeMapTexture;
+            meshData.textureLayer = 1;
+            meshData.textureData.pixelData = NULL;
+            meshData.textureData.height = 0;
+            meshData.textureData.width = 0;
             break;
 
         //  Diffuse color
         case 'D':
-            asset.textureLayer = 0;
-            asset.textureId = 0;
-    	    asset.textureFilepath = LAZARUS_DIFFUSE_MESH;
-          
-            asset.textureData.pixelData = NULL;
-            asset.textureData.height = 0;
-            asset.textureData.width = 0;
+    	    meshOut.textureFilepath = LAZARUS_DIFFUSE_MESH;
+
+            meshData.textureLayer = 0; 
+            meshData.textureId = 0;
+            meshData.textureData.pixelData = NULL;
+            meshData.textureData.height = 0;
+            meshData.textureData.width = 0;
             break;
         
         //  Image array
         default:
             this->layerCount += 1;
 
-	        asset.textureFilepath = finder->relativePathToAbsolute(texPath);
-            asset.textureData = finder->readFromImage(asset.textureFilepath);
-            
-            asset.textureLayer = this->layerCount;
-            asset.textureId = texLoader->textureStack;
+	        meshOut.textureFilepath = finder->relativePathToAbsolute(texPath);
+
+            meshData.textureUnit = GL_TEXTURE2;
+            meshData.textureId = this->textureStack;
+            meshData.textureLayer = this->layerCount;
+            meshData.textureData = finder->readFromImage(meshOut.textureFilepath);
             break;
     };
 
     return;
 };
 
-void MeshManager::setInherentProperties(MeshManager::Mesh &asset)
+void MeshManager::setInherentProperties()
 {
-    asset.locationX = 0;
-    asset.locationY = 0;
-    asset.locationZ = 0;
+    meshOut.locationX = 0;
+    meshOut.locationY = 0;
+    meshOut.locationZ = 0;
 
-    asset.modelMatrix = mat4(1.0f);
+    meshOut.modelMatrix = mat4(1.0f);
 
-    asset.numOfVertices = asset.attributes.size() / 4;
-    asset.numOfFaces = (asset.numOfVertices) / 3;
+    meshOut.numOfVertices = meshData.attributes.size() / 4;
+    meshOut.numOfFaces = (meshOut.numOfVertices) / 3;
 
    return;
 }
-
-void MeshManager::lookupUniforms(MeshManager::Mesh &asset)
-{
-    asset.modelMatrixUniformLocation = glGetUniformLocation(this->shaderProgram, "modelMatrix");
-    asset.is3DUniformLocation = glGetUniformLocation(this->shaderProgram, "spriteAsset");
-    asset.isGlyphUniformLocation = glGetUniformLocation(this->shaderProgram, "glyphAsset");
-    asset.isSkyBoxUniformLocation = glGetUniformLocation(this->shaderProgram, "isSkyBox");
-
-    asset.textureLayerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureLayer");    
-
-    return;
-};
 
 void MeshManager::checkErrors(const char *file, int line)
 {
@@ -485,7 +508,7 @@ void MeshManager::checkErrors(const char *file, int line)
 
 MeshManager::~MeshManager()
 {
-    for(auto i: meshStore)
+    for(auto i: dataStore)
     {
         glDeleteBuffers         (1, &i.VBO);
         glDeleteVertexArrays    (1, &i.VAO);
@@ -493,5 +516,352 @@ MeshManager::~MeshManager()
 
     this->checkErrors(__FILE__, __LINE__);
 
+    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+};
+
+MeshLoader::MeshLoader()
+{
+	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+	this->materialIdentifierIndex	=	0;
+	this->triangleCount				=	0;
+};
+
+bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, const char* meshPath, const char* materialPath) 
+{
+    this->coordinates.clear();
+    this->vertexIndices.clear();
+    this->normalIndices.clear();
+    this->uvIndices.clear();
+    this->attributeIndexes.clear();
+    this->materialBuffer.clear();
+    this->materialData.clear();
+	//  Temps are probably no longer needed
+    this->tempVertexPositions.clear();
+    this->tempNormals.clear();
+    this->tempUvs.clear();
+    this->tempDiffuse.clear();
+	
+    this->materialIdentifierIndex = 0;
+    this->triangleCount = 0;
+
+    file.open(meshPath);
+
+    if( !file.is_open() )
+    {
+        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+        
+        return false;
+    }
+
+    while( file.getline(currentLine, 256) )
+    {
+        switch (currentLine[0])
+        {
+        case 'v':
+            /* =============================================
+                v = Vertex Position Coordinates (location)
+            ================================================ */
+            if ( currentLine[1] == ' ' )
+            {
+                coordinates = splitTokensFromLine(currentLine, ' ');
+
+                this->vertex.x = stof(coordinates[1]);
+                this->vertex.y = stof(coordinates[2]);
+                this->vertex.z = stof(coordinates[3]);
+
+                this->tempVertexPositions.push_back(this->vertex);
+            } 
+            /* =============================================
+                vt = Vertex Texture Coordinates (UV / ST)
+            ================================================ */
+            else if ( currentLine[1] == 't' )
+            {
+                coordinates = splitTokensFromLine(currentLine, ' ');
+
+                this->uv.x = stof(coordinates[1]);
+                this->uv.y = stof(coordinates[2]);
+
+                this->tempUvs.push_back(this->uv);
+            }
+            /* ==============================================
+                vn = Vertex Normal coordinates (direction)
+            ================================================= */
+            else if ( currentLine[1] == 'n' )
+            {
+                coordinates = splitTokensFromLine(currentLine, ' ');
+
+                this->normal.x = stof(coordinates[1]);
+                this->normal.y = stof(coordinates[2]);
+                this->normal.z = stof(coordinates[3]);
+
+                this->tempNormals.push_back(this->normal);
+            }
+            break;
+        /* ==============================================
+            f = Face
+        ================================================= */
+        case 'f':
+            this->triangleCount += 1;
+
+            coordinates = splitTokensFromLine(currentLine, ' ');
+            for(auto i: coordinates) 
+            {
+                stringstream ssJ(i);
+                string tokenJ;
+
+                /* ============================================
+                    Unlike the other identifiers on the current
+                    line which are folliowed by xyz coordinates; 
+                    values following a face identifier contain 
+                    the indexes describing which v, vt and vn
+                    lines define the properties of *this* face.
+
+                    Note / TODO:
+                    Some editors deliminate face data with a 
+                    dash character '-', others use whitespace
+                    ' '. Blender uses a forward-slash '/'.
+                =============================================== */
+                while(getline(ssJ, tokenJ, '/')) 
+                {
+                    if (tokenJ != "f") 
+                    {
+                        attributeIndexes.push_back(tokenJ);
+                    }
+                }
+            }            
+
+            this->constructTriangle();
+
+            break;
+        /* ===============================================
+            usemtl = Use material identifier
+        ================================================== */
+        case 'u':
+            this->materialData = {materialIdentifierIndex, triangleCount};
+			this->materialBuffer.push_back(this->materialData);
+			
+            this->materialIdentifierIndex += 1;
+            this->triangleCount = 0;
+            break;
+
+        default:
+            break;
+        }
+    }
+
+    if (file.eof())
+    {
+        file.close();
+        this->materialData = {materialIdentifierIndex, triangleCount};
+		this->materialBuffer.push_back(this->materialData);
+        
+        this->loadMaterial(outDiffuse, materialBuffer, materialPath);
+    }
+
+    this->interleaveBufferData(outAttributes, outDiffuse, this->vertexIndices.size());
+
+    return true;
+};
+
+vector<string> MeshLoader::splitTokensFromLine(const char *wavefrontData, char delim)
+{
+    string token;
+    string currentString = wavefrontData;
+    stringstream ss(currentString);
+
+    vector<string> tokenStore;
+
+    while(getline(ss, token, delim)) 
+    {
+        tokenStore.push_back(token);
+    }
+
+    return tokenStore;
+}
+
+void MeshLoader::interleaveBufferData(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, int numOfAttributes)
+{
+    for( int i = 0; i < numOfAttributes; i++ )
+    {
+
+        unsigned int vertexIndex    =   vertexIndices[i];
+        unsigned int normalIndex    =   normalIndices[i];
+        unsigned int uvIndex        =   uvIndices[i];
+        
+        /* =========================================
+            uv is extended from its generic xy components
+            to include a z value here to meet the expected
+            stride range for attributes in the vertex buffer.
+            
+            i.e: (4 * sizeof(vec3)) = 12
+
+            Once in the shaders it is disregarded. 
+        ============================================ */
+        vec3 vertex                 =   tempVertexPositions[vertexIndex - 1];
+        vec3 diffuse                =   outDiffuse[i];
+        vec3 normal                 =   tempNormals[normalIndex - 1];
+        vec3 uv                     =   vec3(tempUvs[uvIndex - 1].x, tempUvs[uvIndex - 1].y, 0.0f);
+
+        outAttributes.push_back(vertex);
+        outAttributes.push_back(diffuse);
+        outAttributes.push_back(normal);
+        outAttributes.push_back(uv);
+    }
+
+    return;
+}
+
+void MeshLoader::constructTriangle()
+{
+    /* =======================================================
+        A face should have 3 points, each with 3 
+        different vertex attributes. If the face data contains
+        any more than 9 vertex attribute indexes we know this 
+        mesh hasn't been triangulated and can't be rendered 
+        correctly.
+    ========================================================== */
+    if ( this->attributeIndexes.size() !=  9)
+    {
+        std::cout << RED_TEXT << "ERROR::MESH::MESH_LOADER " << std::endl;
+        std::cout << "Status: " << LAZARUS_FILE_UNREADABLE << RESET_TEXT << std::endl;
+
+        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+
+        return;
+    }
+
+    this->vertexIndices.push_back(stoi(this->attributeIndexes[0]));
+    this->vertexIndices.push_back(stoi(this->attributeIndexes[3]));
+    this->vertexIndices.push_back(stoi(this->attributeIndexes[6]));
+    this->uvIndices    .push_back(stoi(this->attributeIndexes[1]));
+    this->uvIndices    .push_back(stoi(this->attributeIndexes[4]));
+    this->uvIndices    .push_back(stoi(this->attributeIndexes[7]));
+    this->normalIndices.push_back(stoi(this->attributeIndexes[2]));
+    this->normalIndices.push_back(stoi(this->attributeIndexes[5]));
+    this->normalIndices.push_back(stoi(this->attributeIndexes[8]));
+
+    attributeIndexes.clear();
+
+    return;
+}
+
+MeshLoader::~MeshLoader()
+{
+    if( file.is_open() )
+    {
+        file.close();
+    }
+	std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+};
+
+MaterialLoader::MaterialLoader()
+{
+	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+	
+	textureLoader = nullptr;
+	diffuseCount = 0;
+    texCount = 0;
+};
+
+bool MaterialLoader::loadMaterial(vector<vec3> &out, vector<vector<int>> data ,string materialPath)
+{
+    diffuseCount = 0;
+    texCount = 0;
+
+    file.open(materialPath.c_str());
+    
+    if( !file.is_open() )
+    {
+        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+        return false;
+    }   
+
+    while( file.getline(currentLine, 256) ) 
+    {        
+        /* =============================================
+            Kd = diffuse colors
+        ================================================ */
+        if( (currentLine[0] == 'K') && (currentLine[1] == 'd') )
+        {
+            diffuseCount += 1;
+            for(auto i: data)
+            {
+            	int index = i[0];
+            	int faceCount = i[1];
+            	
+	            if(diffuseCount == index) {
+                    string currentString = currentLine;
+                    stringstream ss(currentString);
+                    string token;
+
+                    vector<string> tokenStore;
+                    while(getline(ss, token, ' ')) 
+                    {
+                        tokenStore.push_back(token);
+                    }
+
+                    diffuse.r = stof(tokenStore[1]);
+                    diffuse.g = stof(tokenStore[2]);
+                    diffuse.b = stof(tokenStore[3]);
+                    /* ====================================================
+                        Push the current diffuse object into the out
+                        out parameter N times.
+
+                        N = The number of vertices which use this color.
+                        (faceCount * 3)
+                    ======================================================= */
+    	            for(int j = 0; j < faceCount * 3; j++)
+    	            {
+    	                out.push_back(diffuse);
+    	            };
+    	        };        
+            };
+        }
+        /* ==========================================
+            map_Kd = Image texture
+        ============================================= */
+        if( ((currentLine[0] == 'm') && (currentLine[1] == 'a') && (currentLine[2] == 'p')))
+        {
+            texCount += 1;
+            if( diffuseCount == 0 )
+            {
+                for(auto i: data)
+                {
+                    int faceCount = i[1];
+                    for(int j = 0; j < faceCount * 3; j++)
+                    {
+                        /* ===========================================
+                            Negative values passed here are an indicator
+                            to the fragment shader that it should instead 
+                            interpret the desired frag color of this face
+                            from the current layer of the sampler array 
+                            (an image) instead of a diffuse texture.
+
+                            i.e: 
+                                positiveDiffuseValues
+                                ? fragColor(positiveDiffuseValues.xyz) 
+                                : fragColor(images[layer].xyz)
+                        ============================================== */
+                        out.push_back(vec3(-0.1f, -0.1f, -0.1f));
+                    }
+                }
+            }
+        }
+    };
+
+    if (file.eof())
+    {
+        file.close();
+    }
+
+    return true;
+};
+
+MaterialLoader::~MaterialLoader()
+{
+    if( file.is_open() )
+    {
+        file.close();
+    }
     std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 };

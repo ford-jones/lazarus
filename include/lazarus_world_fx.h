@@ -20,12 +20,8 @@
     #include "lazarus_gl_includes.h"
 #endif
 
-#ifndef LAZARUS_CONSTANTS_H
-	#include "lazarus_constants.h"
-#endif
-
-#ifndef LAZARUS_GLOBALS_MANAGER_H
-	#include "lazarus_globals_manager.h"
+#ifndef LAZARUS_COMMON_H
+	#include "lazarus_common.h"
 #endif
 
 #include <iostream>
@@ -40,7 +36,7 @@
 #ifndef LAZARUS_WORLD_FX_H
 #define LAZARUS_WORLD_FX_H
 
-class WorldFX 
+class WorldFX : private MeshManager
 {
     public:
         WorldFX(GLuint shaderProgram);
@@ -64,15 +60,11 @@ class WorldFX
     private:
         void loadSkyMap();
 
-        SkyBox skyBox;
-
-        std::unique_ptr<MeshManager> meshLoader;
-        std::unique_ptr<FileReader> imageLoader;
-        std::unique_ptr<TextureLoader> textureLoader;
-
-        GlobalsManager globals;
-
         GLuint shader;
+
+        SkyBox skyBox;
+        GlobalsManager globals;
+        std::unique_ptr<FileReader> imageLoader;
 };
 
 #endif

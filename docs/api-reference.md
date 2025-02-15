@@ -98,6 +98,15 @@ params:
 #### int getExecutionState()
 Returns the current value of `LAZARUS_EXECUTION_STATUS`. Any errors that occur inside the engine should update this value to be one of any lazarus status code.
 
+#### void setNumberOfActiveLights(int count)
+Sets the value of `LAZARUS_LIGHT_COUNT`. Updates the total number of lightsources known to the render context. Don't do this.
+
+params:
+>**count:** *The total number of lights.*
+
+#### int getNumberOfActiveLights()
+Returns the number of lights known accross all `LightManager` instances.
+
 ## WindowManager:
 A class for making and managing the program's window(s). 
 
@@ -110,15 +119,14 @@ Params:
 > **height**: *The height of the window. (default: `600`)* \
 
 ### Functions:
-#### int initialise()
-Creates a new instance of a window, initialises OpenGL and creates a GL context.
+#### int createWindow()
+Initialises OpenGL and supplementary libraries. Creates a window and rendering context.
 
 #### int loadConfig(GLuint shader)
 Binds a shader program to the current active window's OpenGL Context and loads a render configuration based on values set in the global scope (see: `GlobalsManager`).
 
 Params:
 > **shader:** *The id of the engine's shader program. This can be acquired from a call to `Shader::initialiseShader()` or by compiling your own shader program. (default: `0`)* 
-
 
 #### int open()
 Opens the active window.
@@ -136,35 +144,56 @@ Params:
 > **hotY:** *The y-axis cursor hotspot.* \
 > **filepath:** *The relative path to the desired cursor image. Ideally the image should be of 32x32 resolution.* 
 
-#### int handleBuffers()
+#### int presentNextFrame()
 Bring the back buffer to the front (into user view) and moves the front buffer to the back. \
 Clears the back buffer's depth and color bits so that they can be given new values for the next draw.
 
 ### Members:
 > **isOpen:** *Whether or not the active window is open. See also: `GlobalsManager::getContextWindowOpen()`. (type: `bool`, default: `false`)* \
 
-## EventManager
+## WindowManager::Events
 A class for tracking, storing and managing window events as well as their values.
 
 ### Functions:
-#### void initialise()
+#### void eventsInit()
 Locates the programs active window and loads the following event-handler callbacks into it's context's event loop: 
 - keydown 
 - mousedown 
 - mousemove 
 - scroll
 
-#### void listen()
+#### void monitorEvents()
 Polls GLFW for the head of the active window's event queue and then updates the values of the event managers members.
 
 ### Members:
-> **keyString:** *The key currently being pressed, expressed as a string. (type: `std::string`)* \
-> **keyCode:** *The openGL code of the string currently being pressed. (type: `int`)* \
-> **osCode:** *The operating-system specific "scancode" of the key currently being pressed. (type `int`)* \
-> **mouseCode:** *An integer in the range of 0 to 8 expressing which mouse button is currently being clicked / pressed. (type: `int`)* \
-> **mouseX:** *The current x-axis coordinate of the cursor. (type: `int`)* \
-> **mouseY:** *The current y-axis coordinate of the cursor. (type: `int`)* \
-> **scrollCode:** *An integer in the range of -1 to 1 expressing the scrollwheel's y-offset.* 
+> **keyEventString:** *The key currently being pressed, expressed as a string. (type: `std::string`)* \
+> **keyEventCode:** *The openGL code of the string currently being pressed. (type: `int`)* \
+> **keyEventOsCode:** *The operating-system specific "scancode" of the key currently being pressed. (type `int`)* \
+> **mouseEventCode:** *An integer in the range of 0 to 8 expressing which mouse button is currently being clicked / pressed. (type: `int`)* \
+> **mousePositionX:** *The current x-axis coordinate of the cursor. (type: `int`)* \
+> **mousePositionY:** *The current y-axis coordinate of the cursor. (type: `int`)* \
+> **scrollEventCode:** *An integer in the range of -1 to 1 expressing the scrollwheel's y-offset.* 
+
+## WindowManager::Time
+Interface for managing and monitoring internal engine time.
+
+### Functions:
+#### void monitorFPS()
+Calculates the number of frame presentations occuring per second. \
+Access the result(s) via `WindowManager::Time::framesPerSecond`.
+
+#### void monitorTimeDelta()
+Calculate the time taken in milliseconds to draw and present a single frame. \
+Access the result(s) via `WindowManager::Time::timeDelta`.
+
+#### void monitorElapsedTime()
+Begin active monitoring of the total number of seconds passed since the time of calling. \
+Access the result(s) via `WindowManager::Time::elapsedTime`.
+
+### Members:
+> **framesPerSecond:** *Current number of frames being drawn per second. (type: `int`)* \
+> **timeDelta:** *The duration of time taken in milliseconds to draw a single frame. (type: `float`)* 
+> **elapsedTime:** *The amount of seconds passed since `WindowManager::Time::monitorElapsedTime()` was first called. (type: `float`)*
 
 ## Shader:
 A class for the lazarus default shader program which, simply maps vertex positions to their coordinates and draws the fragments; following the lambertian lighting model.
@@ -174,25 +203,17 @@ A class for the lazarus default shader program which, simply maps vertex positio
 Default-initialises this classes members.
 
 ### Functions:
-#### GLuint initialiseShader()
-Invokes the parsing, compiling, attatching and linking of the Lazarus vert and frag shaders. \
-Returns the Id (OpenGL unsigned integer) of the shader program which can then be passed to the various constructors which need it.
+#### int compileShaders(std::string vertexShader, std::string fragmentShader)
+Invokes the parsing, compiling, attatching and linking of the specified shaders. If none are specified, `LAZARUS_DEFAULT_VERT_SHADER` and `LAZARUS_DEFAULT_FRAG_SHADER` are used. \
+Returns the ID of the shader program which can then be passed to the various constructors which need it.
 
 *Note:* \
-*Failure to pass the return value of this function as an argument into `WindowManager::loadConfig()` will cause the program to use the GL default shader program.* \
+*Failure to pass the return value of this function as an argument into `WindowManager::loadConfig()` will cause the program to use the OpenGL default shader program.* \
 *While this may still render graphics in some limitted capacity, it is not reccomended to do so.* \
-*Loading your own program should work fine, so long as you note the return GLuint value of the call to `glCreateProgram()`*
 
-## FpsCounter:
-A simple frames-per-second listener class.
-
-### Functions:
-#### void calculateFramesPerSec();
-Calculates the current frames per second, as well as the number of milliseconds taken to render a single frame.
-
-### Members:
-> **framesPerSecond:** *Current number of frames being drawn per second. (type: `double`)* \
-> **durationTillRendered:** *The duration of time taken in milliseconds to draw a single frame. (type: `double`)* 
+Params:
+> **vertexShader:** *The relative path to a glsl vertex shader program. (optional)* \
+> **fragmentShader:** *The relative path to a glsl fragment shader program. (optional)* \
 
 ## FileReader:
 A utility class for locating files and reading their contents.
@@ -239,7 +260,6 @@ Params:
 >	- **width:** *The images pixel-width.. (type: `int`)* 
 >	- **height:** *The images pixel-height. (type: `int`)* 
 >	- **pixelData:** *The actual image data / texels tightly packed in RGBA order. (type: `unsigned char *`)* 
-
 
 ## Transform:
 A class built to handle transformations of different world assets such as mesh, cameras and lights.
@@ -295,7 +315,6 @@ Params:
 Applies a translation transformation (movement) to a light asset along the x, y and z axis from an offset of 0.0. \
 Updates the `locationX`, `locationY` and `locationZ` properties of a `LightManager::Light` object in real time. 
 
-
 Params:
 > **light:** *The light asset to be acted upon. (type: `LightManager::Light`)* \
 > **x:** *A floating point number used to increment / decrement the x-axis locative value of the light.* \
@@ -338,23 +357,37 @@ Params:
 > **uvXR:** *The normalised x-axis coordinate of the UV's right-side. Used for text rendering. (optional)*
 > **uvY:** *The normalised y-axis coordinate of the UV's top edge. Used for text rendering. (optional)*
 
-#### MeshManager::Mesh loadMesh(MeshManager::Mesh meshData)
+#### MeshManager::Mesh createCube(float scale, std::string texturePath)
+Creates a cube (equal height, width and depth) of size `scale`. Note that without specification of a relative path to a texture asset, this function will assume the cube is to be used for a skybox which; is likely to cause problems in your program without manually setting the required texture data for the cubemap texture.
+
+Returns a new mesh entity.
+
+Params:
+> **scale:** *The desired height, width and depth of the cube. Values of 0 or less will set the engines execution state to `LAZARUS_INVALID_DIMENSIONS`.*
+> **texturePath:** *The relative path to an image texture asset. (optional)*
+
+#### MeshManager::Mesh loadMesh(MeshManager::Mesh meshIn)
 Loads a mesh object's buffer data into their correct GPU uniform positions located inside the shader program that was referenced in the class constructor.
 
 Params:
-> **meshData:** *The mesh object who's buffer data you wish to pass into the shader program.*
+> **meshIn:** *The mesh object who's buffer data you wish to pass into the shader program.*
 
-#### MeshManager::Mesh drawMesh(MeshManager::Mesh meshData)
+#### MeshManager::Mesh drawMesh(MeshManager::Mesh meshIn)
 Draws the mesh object contents of the shader program's uniforms onto the render loops back buffer (see: `WindowManager::handleBuffers()`). \
 Be sure to bring the back buffer forward to see the draw result.
 
 > Params:
-> **meshData:** *The mesh object you wish to draw.*
+> **meshIn:** *The mesh object you wish to draw.*
+
+#### void clearMeshStorage()
+Clears the manager's internal child tracker which includes: Associated texture handles, resource ID's, vertex buffer objects and shader flags. All `MeshManager::Mesh` object's created by this manager previously become invalid and their ID's can be reused.
 
 ### Members:
 > **Mesh:** *A collection of properties which make up a mesh entity. (type: `struct`)* 
->	- **textureId:** *The serialised id of the mesh objects texture. The layer depth of the texture. (type: `int`)* 
+>   - **id:** *The meshes serialised ID. Unique only to the manager instance which created it. (type: `int`)*
 >   - **is3D:** *Literal 0 (false) or 1 (true). Flags the shader to treat the mesh as a sprite, discarding fragments with an alpha value higher than 0.1 (type: `int`)*
+>   - **isGlyph:** *Literal 0 (false) or 1 (true). Flags the shader to treat the quad as a UTF-8 ascii glyph. (type: `int`)*
+>   - **isSkybox:** *Literal 0 (false) or 1 (true). Flags the shader to treat the mesh as a skybox. (type: `int`)*
 >	- **numOfFaces:** *The number of faces that make up the mesh. (type: `int`)* 
 >	- **numOfVertices:** *The number of vertices that make up the mesh. (type: `int`)* 
 >	- **meshFilepath:** *The absolute path (from system root) to the wavefront file containing this mesh's vertex data. (type: `std::string`)*
@@ -363,70 +396,8 @@ Be sure to bring the back buffer forward to see the draw result.
 >	- **locationX:** *The x-axis coordinate of the mesh's position in world space. (type: float)*
 >	- **locationY:** *The y-axis coordinate of the mesh's position in world space. (type: float)*
 >	- **locationZ:** *The z-axis coordinate of the mesh's position in world space. (type: float)*
->	- **attributes:** *This mesh's vertex attributes interleaved in order of position, diffuse color, normal coords and finally uv coords. (type: `glm::vector<glm::vec3>>`)*
->	- **diffuse:** *Diffuse material (colour) data extracted from the wavefront material (mtl) file. (type: `glm::vector<glm::vec3>>`)*
->   - **textureData:** *A struct containing image data. (type: `FileReader::Image`)*
->	- **modelViewMatrix:** *A 4x4 modelview matrix to be passed into the shader program at the uniform location of `modelViewUniformLocation`. (type: `glm::mat4`)*
->	- **modelViewUniformLocation:** *The uniform location / index of the vert shader's modelview matrice. (type: GLuint)*
->   - **samplerUniformLocation:** *The location inside of the shader program of the texture array uniform which holds this mesh's texture data (if any). (type: `GLint`)*
->   - **textureLayerUniformLocation:** *The location inside of the shader program of the uniform in which the active texture layer is passed.*
-
-## MeshLoader:
-A simple loader class for loading wavefront (obj) files and marshalling their contents into variables.
-
-### Contructor:
-#### MeshLoader()
-Default-initialises this classes members.
-
-### Functions:
-#### bool parseWavefrontObj(const char* path, std::vector\<glm::vec3> &outAttributes, std::vector\<glm::vec3> &outDiffuse, GLuint &outTextureId, FileReader::Image &imageData, const char *meshPath, const char *materialPath, const char *texturePath = "")
-Parses a wavefront (obj) file.
-
-Returns a boolean, if an error occurs or the file cannot be loaded this value will be `false`.
-
-Params:
-> **outAttributes:** *A vector to store interleaved vertex attribute data in AOS format in the following order: vertex positions, diffuse colors, normal coordinates, uv coordinates.* \
-> **outDiffuse:** *A vector for storing diffuse color data. Literal `-0.01f` values indicate the use of an image texture.* \
-> **outTextureId:** *The serialised ID of a valid named texture. Returns 0 if no textures are used. Otherwise returns an integer used to indicate where the texture is stored in the shader programs texture array.* \
-> **imageData:** *A struct containing texel data, image width and height.* \
-> **meshPath:** *The absolute path to this mesh's wavefront (.obj) file* \
-> **materialPath:** *The absolute path to this mesh's wavefront material (.mtl) file.* \
-> **texturePath:** *The absolute path to this mesh's texture file (optional).* 
-
-### Members:
-> **foundMaterial:** *The absolute path to this mesh's matertial (.mtl) file. (type: `std::string`)* \
-> **file:** *A pointer to the material file stored in your local filesystem. (type: `std::ifstream*`)* \
-> **vertexIndices:** *Grouped indexes / locations of relevant vertex coordinate data who's values make up the geometry of one of the mesh's faces. (type: `std::vector<unsigned int>`)* \
-> **uvIndices:** *Grouped indexes / locations of relevant vertex texture data who's values make up the texture wrap of one of the mesh's faces. (type: `std::vector<unsigned int>`)* \
-> **normalIndices:** *Grouped indexes / locations of relevant vertex normal data who's values make up the direction that one of the mesh's faces is facing. (type: `std::vector<unsigned int>`)* \
-> **tempVertices:** *A vector to store the actual vertex coordinate values found at the `vertexIndices` indexes. (type: `std::vector<glm::vec3>`)* \
-> **tempUvs:** *A vector to store the actual texture values found at the `uvIndices` indexes. (type: `std::vector<glm::vec2>`)* \
-> **tempNormals:** *A vector to store the actual vertex normal values found at the `normalIndices` indexes. (type: `std::vector<glm::vec3>`)* \
-> **tempDiffuse:** *A vector to store diffuse colour data returned from a call to `MaterialLoader::loadMaterial()`. (type: `std::vector<glm::vec3>`)*
-
-## MaterialLoader:
-A simple loader class for loading wavefront (obj) files and marshalling their contents into variables.
-
-### Contructor:
-#### MaterialLoader()
-Default-initialises this classes members.
-
-### Functions: 
-#### bool loadMaterial(std::vector\<glm::vec3> &out, std::vector<std::vector<int>> data, std::string materialPath, GLuint &textureId, FileReader::Image imageData, std::string texturePath = "")
-Parses a wavefront material (mtl) file for it's diffuse colour values, which are converted to `float` and stored inside a `glm::vec3`. \
-
-Returns a boolean, if an error occurs or the file cannot be loaded this value will be `false`.
-
-Params:
-> **out:** *A vector for storing diffuse colour data.* \
-> **data:** *another vector which; at index 0 holds a material id and at index 1 is the number of faces using it.*
-> **materialPath:** *The absolute path to this mesh's matertial (.mtl) file.* \
-> **textureId:** *The serialised ID of a valid named texture. Returns 0 if no textures are used. Otherwise returns an integer used to indicate where the texture is stored in the shader programs texture array.* \
-> **imageData:** *A struct containing texel data, image width and height.* \
-> **texturePath:** *The absolute path to this mesh's texture file (optional).*
 
 ## CameraManager:
-
 ### Constructor:
 Default initialises this class's members.
 
@@ -470,8 +441,6 @@ Params:
 >	- **direction:** *Which direction the camera is facing. (type: `glm::vec3`)*
 >	- **upVector:** *Which way is considered up. (type: `glm::vec3`)*
 >	- **aspectRatio:** *The camera's aspect ratio. (type: `float`)*
->	- **viewLocation:** *The uniform location / index vert shader's view matrice. (type: `GLuint`)*
->	- **projectionLocation:** *The uniform location / index vert shader's projection matrice. (type: `GLuint`)*
 >	- **viewMatrix:** *The view matrix to be passed into the shader program at the uniform location of `viewLocation`. (type: `glm::mat4`)*
 >	- **projectionMatrix:** *The projection matrix to be passed into the shader program at the uniform location of `projectionLocation`. (type: `glm::mat4`)*
 
@@ -514,9 +483,6 @@ Params:
 >   - **brightness**: *The intensity of the light.*
 >	- **lightPosition:** *The x, y, z location of the light. (type: glm::vec3)*
 >	- **lightColor:** *The r, g, b color values of the light. (type: glm::vec3)*
->	- **lightPositionUniformLocation:** *The location / index of the vertex shader position uniform. (type: `GLint`)*
->	- **lightColorUniformLocation:** *The location / index of the fragment shader diffuse uniform. (type: `GLint`)*
->   - **lightBrightnessUniformLocation:** *The location / index of the fragment shader brightness uniform. (type: `GLint`)*
 
 ## AudioManager:
 A management class using an `FMOD` backend for loading audio, as well as handling audio locations and listeners. 
@@ -562,7 +528,6 @@ Set the playback position of the target audio in milliseconds.
 Params:
 > **audioIn** *A reference to the target audio sample* \
 > **milliseconds** *Target number of elapsed milliseconds since the audios beginning (0) to playback from.*
-
 
 #### AudioManager::Audio updateSourceLocation(AudioManager::Audio audioIn, float x, float y, float z)
 Updates the location in 3D of a `AudioManager::Audio` source; using `FMOD` to calculate the sound's doppler, relative to the listener's current positioning (*see*: `AudioManager::listenerLocationX`, `AudioManager::listenerLocationY` and `AudioManager::listenerLocationZ`).
@@ -615,13 +580,13 @@ params:
 > **filepath:** *The relative path to the TrueType `.ttf` font file.* \
 > **ptSize:** *The desired character pt size. (default: `12`)*
 
-#### int loadText(std::string targetText, int posX, int posY, int letterSpacing, float red, float green, float blue, int layoutID)
+#### TextManager::Text loadText(std::string targetText, int posX, int posY, int letterSpacing, float red, float green, float blue, TextManager::Text textIn)
 Loads the desired text using glyphs from the selected font. Sets the text's colour, position on the screen and letterspacing. It's worth noting \
 here that a space `' '` is equal to `letterSpacing * 8`.
 
 Pushes the text string into *this* `TextManager`' layout container. Optionally overwrite / update the contents of an existing piece of text by specifying an existing `layoutID` / layout index.
 
-Returns the word(s) layout index.
+Returns a new `TextManager::Text` object.
 
 Params:
 > **targetText:** *The desired string to load to memory.* \
@@ -631,13 +596,21 @@ Params:
 > **red:** *Set the decimal value of the text's red colour channel. (default: `0.0`)* \
 > **green:** *Set the decimal value of the text's green colour channel. (default: `0.0`)* \
 > **blue:** *Set the decimal value of the text's blue colour channel. (default: `0.0`)* \
-> **layoutID** *The ID of an existing text string in the layout container. (default: `-1`)*
+> **textIn** *An existing text string in the layout container to update/replace upon successful load. (optional)*
 
-#### void drawText(int layoutIndex)
-Draws text that has been loaded into the layout at `layoutIndex` onto the screen.
+#### void drawText(TextManager::Text text)
+Draws text that has been loaded into the layout at the location of `text.layoutIndex` onto the screen.
 
 Params:
-> **layoutIndex:** *The identifier of a string previously loaded by `TextManager::loadText`.*
+> **text:** *A text object previously loaded by `TextManager::loadText`.*
+
+### Members:
+> **Text:** *A collection of properties which make up a string of text.*
+>   - **layoutIndex:** *An identifier for performing lookup on strings loaded into the layout container. (type: `int`)*
+>   - **locationX:** *The x-axis coordinate of the bottom left bounds of the string's first character. (type: `int`)*
+>   - **locationY:** *The y-axis coordinate of the bottom left bounds of the string's first character. (type: `int`)*
+>   - **targetString:** *The UTF-8 Ascii string literal to be rendered. (type: `std::string`)*
+>   - **color:** *The text color. (type: `glm::vec3`)*
 
 ## WorldFX:
 A management class for handling environmental effects such as skyboxes and soon; particles.
@@ -668,6 +641,12 @@ Params:
 > **sky** The target skybox object to be drawn. \
 > **camera** The camera object used to determine the target uvw coordinate of the texel to the sampled from the bound cubemap image texture.
 
+### Members:
+> **SkyBox**: *A collection of properties which make up a skybox object.*
+>   - **paths:** *The absolute filepaths to the 6 image textures used to construct the skymap. (type: `std::vector<std::string>`)*
+>   - **cubeMap:** *The image data for each of the cubes 6 faces. (type: `std::vector<FileReader::Image>`)*
+>   - **cube:** *The skybox's mesh. (type : `MeshManager::Mesh`)*
+
 ## Status Codes:
 - **LAZARUS_OK** *The engines default state. No problems. (Code: 0)* 
 - **LAZARUS_FILE_NOT_FOUND** *The specified asset couldn't be found (Code: 101)* 
@@ -689,6 +668,7 @@ Params:
 - **LAZARUS_WINDOW_ERROR** *An error occured in the GLFW window API. (Code: 303)*
 - **LAZARUS_GLFW_NOINIT** *GL framework wrangler failed to initialise. (Code: 304)*
 - **LAZARUS_WIN_EXCEEDS_MAX** *The requested window size is larger than the dimensions of the primary monitor. (Code: 305)*
+- **LAZARUS_TIME_ERROR** *Lazarus tried to perform a time operation but the windows running time was 0ms.*
 - **LAZARUS_AUDIO_ERROR** *An error occured in the FMOD audio backend. (Code: 401)*
 - **LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR** *Desired audio playback location was less than 0 seconds or more than AudioManager::Audio::length. (Code: 402)*
 - **LAZARUS_AUDIO_LOAD_ERROR** *Unable to load audio sample into a channel. (Code: 403)*

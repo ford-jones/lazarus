@@ -21,16 +21,13 @@
     #include "lazarus_gl_includes.h"
 #endif
 
-#ifndef LAZARUS_CONSTANTS_H
-	#include "lazarus_constants.h"
-#endif
-
-#ifndef LAZARUS_GLOBALS_MANAGER_H
-    #include "lazarus_globals_manager.h"
+#ifndef LAZARUS_COMMON_H
+	#include "lazarus_common.h"
 #endif
 
 #include <iostream>
 #include <memory>
+#include <string>
 
 #include "lazarus_file_reader.h"
 
@@ -39,26 +36,29 @@ using std::unique_ptr;
 #ifndef LAZARUS_SHADER_H
 #define LAZARUS_SHADER_H
 
+extern const char *LAZARUS_DEFAULT_VERT_SHADER;
+extern const char *LAZARUS_DEFAULT_FRAG_SHADER;
+
 class Shader 
 {
     public:
     	Shader();
-        GLuint initialiseShader();
+        int compileShaders(std::string vertexShader = "", std::string fragmentShader = "");
         virtual ~Shader();
 
     private: 
-        unique_ptr<FileReader> vertReader;                                                             //  Vertex GLSL file reader 
-        unique_ptr<FileReader> fragReader;                                                             //  Fragment GLSL file reader
+        unique_ptr<FileReader> vertReader;
+        unique_ptr<FileReader> fragReader;
 
-        const char *vertShaderProgram;                                                      //  GLSL Vertex shader program read from stringstream
-        const char *fragShaderProgram;                                                      //  GLSL Fragment shader program read from stringstream
+        const char *vertShaderProgram;
+        const char *fragShaderProgram;
 
-        GLuint shaderProgram;                                                               //  Stores the shader program being passed to OpenGL
-        GLuint vertShader;                                                                  //  Stores the vertex shader
-        GLuint fragShader;                                                                  //  Stores the fragment shader
+        GLuint shaderProgram;
+        GLuint vertShader;
+        GLuint fragShader;
 
-        char infoLog[512];                                                                  //  Handler passed to OpenGL to store any logs
-        int accepted;                                                                       //  Handler passed to OpenGL to store the status of an attempt to locate the shader
+        char infoLog[512];
+        int accepted;
 
         GlobalsManager globals;
         

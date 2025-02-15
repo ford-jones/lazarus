@@ -18,6 +18,48 @@
 /*  LAZARUS ENGINE */
 
 #include "../include/lazarus_window_manager.h"
+
+Time::Time()
+{
+	this->frameCount 			= 0;
+	this->framesPerSecond 		= 0;
+
+	this->elapsedTime 			= 0.0;
+	this->internalSeconds 		= 0.0;
+	this->msSinceLastRender 	= 0.0;
+	this->timeDelta 			= 0.0;
+};
+
+void Time::monitorElapsedUptime()
+{
+	this->elapsedTime = glfwGetTime();
+	if(elapsedTime <= 0.0) globals.setExecutionState(LAZARUS_TIME_ERROR);
+
+	this->msSinceLastRender = (this->elapsedTime - this->internalSeconds);
+};
+
+void Time::monitorTimeDelta()
+{
+	this->monitorFPS();
+
+	this->timeDelta = (1000 / this->framesPerSecond);
+	if(timeDelta <= 0.0) globals.setExecutionState(LAZARUS_TIME_ERROR);
+};
+
+void Time::monitorFPS()
+{
+	this->frameCount++;	
+	this->monitorElapsedUptime();
+	if(this->msSinceLastRender >= 1.0)
+	{
+		this->framesPerSecond = this->frameCount;
+		if(this->framesPerSecond <= 0) globals.setExecutionState(LAZARUS_TIME_ERROR);
+
+		this->frameCount = 0;
+		this->internalSeconds += 1.0;
+	};
+};
+
 /* =======================================
 	TODO: 
     - Initialise image
@@ -25,6 +67,182 @@
     - Handle resizing
     - Click location (see: glReadPixels())
 ========================================== */
+Events::Events()
+{
+	keyEventString	    = "";
+
+	keyEventCode 	    = 0;
+	keyEventOsCode 		= 0;
+	mouseEventCode 	    = 0;
+	mousePositionX 		= 0;
+	mousePositionY 		= 0;
+	scrollEventCode 	= 0;
+
+	win 		        = NULL;
+};
+
+void Events::eventsInit()
+{
+	win = glfwGetCurrentContext();
+
+	if(win != NULL)
+	{
+		glfwSetKeyCallback(win, [](GLFWwindow *win, int key, int scancode, int action, int mods){
+			switch(action)
+			{
+				case GLFW_PRESS :
+					LAZARUS_LISTENER_KEYCODE = key;
+					LAZARUS_LISTENER_SCANCODE = scancode;
+					break;
+				case GLFW_RELEASE :
+					LAZARUS_LISTENER_KEYCODE = 0;
+					LAZARUS_LISTENER_SCANCODE = 0;
+					break;
+				default:
+					break;
+			};
+			return;
+		});
+
+		glfwSetCursorPosCallback(win, [](GLFWwindow *win, double xpos, double ypos){
+			LAZARUS_LISTENER_MOUSEX = xpos;
+			LAZARUS_LISTENER_MOUSEY = ypos;
+			return;
+		});
+
+		glfwSetMouseButtonCallback(win, [](GLFWwindow *win, int button, int action, int mods){
+			switch(action)
+			{
+				case GLFW_PRESS :
+					LAZARUS_LISTENER_MOUSECODE = button;
+					break;
+				case GLFW_RELEASE :
+					LAZARUS_LISTENER_MOUSECODE = LAZARUS_MOUSE_NOCLICK;
+					break;
+				default :
+					break;
+			};
+			return;
+		});
+
+		glfwSetScrollCallback(win, [](GLFWwindow *win, double xoffset, double yoffset){
+			LAZARUS_LISTENER_SCROLLCODE = yoffset;
+			return;
+		});
+
+	}
+	else 
+	{
+		globals.setExecutionState(LAZARUS_NO_CONTEXT);
+	};
+};
+
+void Events::monitorEvents()
+{	
+    glfwPollEvents();
+	
+    this->updateKeyboardState();
+    this->updateMouseState();
+};
+
+void Events::updateKeyboardState()
+{
+	/* ==============================
+		TODO: 
+		Create cases and unique strings for remaining weird keys:
+		- capslock 
+		- pgup/down 
+		- screenshot 
+	================================= */
+	
+	this->keyEventString = "";
+	this->keyEventCode = 0;
+	this->keyEventOsCode = 0;
+	
+	this->keyEventCode = LAZARUS_LISTENER_KEYCODE;
+	this->keyEventOsCode = LAZARUS_LISTENER_SCANCODE;
+	
+	if(keyEventCode > 0)
+	{
+		switch(keyEventCode)
+		{
+			case GLFW_KEY_UP :
+				this->keyEventString = "up";
+				break;
+			case GLFW_KEY_DOWN :
+				this->keyEventString = "down";
+				break;
+			case GLFW_KEY_LEFT :
+				this->keyEventString = "left";
+				break;
+			case GLFW_KEY_RIGHT :
+				this->keyEventString = "right";
+				break;
+			case GLFW_KEY_ENTER :
+				this->keyEventString = "enter";
+				break;
+			case GLFW_KEY_SPACE :
+				this->keyEventString = "space";
+				break;
+			case GLFW_KEY_TAB :
+				this->keyEventString = "tab";
+				break;
+			case GLFW_KEY_LEFT_SHIFT :
+				this->keyEventString = "shift-l";
+				break;
+			case GLFW_KEY_RIGHT_SHIFT :
+				this->keyEventString = "shift-r";
+				break;
+			case GLFW_KEY_LEFT_CONTROL :
+				this->keyEventString = "ctrl-l";
+				break;
+			case GLFW_KEY_RIGHT_CONTROL :
+				this->keyEventString = "ctrl-r";
+				break;
+			/* ==================================
+				TODO: 
+				alt and super keys seem buggy?
+				investigate.
+			===================================== */
+			
+			case GLFW_KEY_LEFT_ALT :
+				this->keyEventString = "alt-l";
+				break;
+			case GLFW_KEY_RIGHT_ALT :
+				this->keyEventString = "alt-r";
+				break;
+			case GLFW_KEY_LEFT_SUPER :
+				this->keyEventString = "fn-l";
+				break;
+			case GLFW_KEY_RIGHT_SUPER :
+				this->keyEventString = "fn-r";
+				break;
+			default :
+				this->keyEventString = glfwGetKeyName(keyEventCode, keyEventOsCode);
+				break;
+		};
+	};
+};
+
+void Events::updateMouseState()
+{
+	this->mouseEventCode = LAZARUS_MOUSE_NOCLICK;
+	this->mousePositionX = 0.0;
+	this->mousePositionY = 0.0;
+	
+	this->mouseEventCode = LAZARUS_LISTENER_MOUSECODE;
+	this->mousePositionX = static_cast<int>(LAZARUS_LISTENER_MOUSEX + 0.5);
+	this->mousePositionY = static_cast<int>(LAZARUS_LISTENER_MOUSEY + 0.5);		
+	
+	/* =========================================================
+		TODO: 
+		Right now scroll can only be either 1 (up) || -1 (down)
+		It will do for now, but should probably be changed to some sort of incrementing / decrementing number
+		At the very least, it should be reset to 0 when the scrollwheel is not in motion
+	============================================================ */
+	this->scrollEventCode = static_cast<int>(LAZARUS_LISTENER_SCROLLCODE);
+};
+
 WindowManager::WindowManager(const char *title, int width, int height)
 {
 	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
@@ -49,11 +267,9 @@ WindowManager::WindowManager(const char *title, int width, int height)
     this->cursor = NULL;
 
     this->isOpen = false;
-
-
 };
 
-int WindowManager::initialise()
+int WindowManager::createWindow()
 {
     if(!glfwInit())
     {
@@ -249,7 +465,7 @@ int WindowManager::snapCursor(float moveX, float moveY)
 };
 
 
-int WindowManager::handleBuffers()
+int WindowManager::presentNextFrame()
 {
 	glfwSwapBuffers(this->window);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
