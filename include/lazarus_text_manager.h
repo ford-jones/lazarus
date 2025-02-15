@@ -86,7 +86,9 @@ class TextManager : private FontLoader, private MeshManager
 
         struct Text
         {
-            int layoutIndex, locationX, locationY;
+            int layoutIndex;
+            int locationX;
+            int locationY;
             std::string targetString;
             glm::vec3 color;
         };
@@ -130,13 +132,10 @@ class TextManager : private FontLoader, private MeshManager
         GlobalsManager globals;
         FileReader::Image glyph;
 
-        // std::unique_ptr<MeshManager> meshLoader;
-        // std::unique_ptr<TextureLoader> textureLoader;
         std::unique_ptr<CameraManager> cameraBuilder;
 
         MeshManager::Mesh quad;
         CameraManager::Camera camera;
-
         std::vector<MeshManager::Mesh> word;
         
         std::map<int, FileReader::Image> textures;

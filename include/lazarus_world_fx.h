@@ -60,15 +60,11 @@ class WorldFX : private MeshManager
     private:
         void loadSkyMap();
 
-        SkyBox skyBox;
-
-        // std::unique_ptr<MeshManager> meshLoader;
-        std::unique_ptr<FileReader> imageLoader;
-        // std::unique_ptr<TextureLoader> textureLoader;
-
-        GlobalsManager globals;
-
         GLuint shader;
+
+        SkyBox skyBox;
+        GlobalsManager globals;
+        std::unique_ptr<FileReader> imageLoader;
 };
 
 #endif

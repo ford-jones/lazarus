@@ -33,10 +33,10 @@
 #ifndef LAZARUS_WINDOW_MANAGER_H
 #define LAZARUS_WINDOW_MANAGER_H
 
-class FpsCounter
+class Time
 {
 	public:
-		FpsCounter();
+		Time();
         void monitorElapsedUptime();
         void monitorTimeDelta();
 		void monitorFPS();
@@ -53,13 +53,13 @@ class FpsCounter
 		int frameCount;		
 };
 
-class EventManager
+class Events
 {
     public:
     	//	TODO:
     	//	Create a constructor / destructor
 
-        EventManager();
+        Events();
 
     	void eventsInit();
         void monitorEvents();
@@ -83,7 +83,7 @@ class EventManager
 		GlobalsManager globals;
 };
 
-class WindowManager : public EventManager, public FpsCounter
+class WindowManager : public Events, public Time
 {
     public:
         WindowManager(const char *title, int width = 800, int height = 600);

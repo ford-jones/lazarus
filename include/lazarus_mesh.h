@@ -148,7 +148,6 @@ class MeshManager : private MeshLoader, public TextureLoader
         Mesh createQuad(float width, float height, string texturePath = LAZARUS_DIFFUSE_MESH, float uvXL = 0.0, float uvXR = 0.0, float uvY = 0.0);
         Mesh createCube(float scale, string texturePath = LAZARUS_SKYBOX_CUBE);
 
-        void prepareTextures();
         void clearMeshStorage();
 
         void loadMesh(Mesh &meshIn);
@@ -172,6 +171,7 @@ class MeshManager : private MeshLoader, public TextureLoader
         void resolveFilepaths(string texPath = LAZARUS_DIFFUSE_MESH, string mtlPath = LAZARUS_TEXTURED_MESH, string objPath = LAZARUS_PRIMITIVE_MESH);
         void setInherentProperties();
         void initialiseMesh();
+        void prepareTextures();
         
         void checkErrors(const char *file, int line);
 

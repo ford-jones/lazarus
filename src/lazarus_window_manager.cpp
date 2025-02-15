@@ -19,18 +19,18 @@
 
 #include "../include/lazarus_window_manager.h"
 
-FpsCounter::FpsCounter()
+Time::Time()
 {
 	this->frameCount 			= 0;
 	this->framesPerSecond 		= 0;
 
 	this->elapsedTime 			= 0.0;
-	this->internalSeconds 				= 0.0;
-	this->msSinceLastRender 			= 0.0;
+	this->internalSeconds 		= 0.0;
+	this->msSinceLastRender 	= 0.0;
 	this->timeDelta 			= 0.0;
 };
 
-void FpsCounter::monitorElapsedUptime()
+void Time::monitorElapsedUptime()
 {
 	this->elapsedTime = glfwGetTime();
 	if(elapsedTime <= 0.0) globals.setExecutionState(LAZARUS_TIME_ERROR);
@@ -38,7 +38,7 @@ void FpsCounter::monitorElapsedUptime()
 	this->msSinceLastRender = (this->elapsedTime - this->internalSeconds);
 };
 
-void FpsCounter::monitorTimeDelta()
+void Time::monitorTimeDelta()
 {
 	this->monitorFPS();
 
@@ -46,7 +46,7 @@ void FpsCounter::monitorTimeDelta()
 	if(timeDelta <= 0.0) globals.setExecutionState(LAZARUS_TIME_ERROR);
 };
 
-void FpsCounter::monitorFPS()
+void Time::monitorFPS()
 {
 	this->frameCount++;	
 	this->monitorElapsedUptime();
@@ -67,7 +67,7 @@ void FpsCounter::monitorFPS()
     - Handle resizing
     - Click location (see: glReadPixels())
 ========================================== */
-EventManager::EventManager()
+Events::Events()
 {
 	keyEventString	    = "";
 
@@ -81,7 +81,7 @@ EventManager::EventManager()
 	win 		        = NULL;
 };
 
-void EventManager::eventsInit()
+void Events::eventsInit()
 {
 	win = glfwGetCurrentContext();
 
@@ -137,7 +137,7 @@ void EventManager::eventsInit()
 	};
 };
 
-void EventManager::monitorEvents()
+void Events::monitorEvents()
 {	
     glfwPollEvents();
 	
@@ -145,7 +145,7 @@ void EventManager::monitorEvents()
     this->updateMouseState();
 };
 
-void EventManager::updateKeyboardState()
+void Events::updateKeyboardState()
 {
 	/* ==============================
 		TODO: 
@@ -224,7 +224,7 @@ void EventManager::updateKeyboardState()
 	};
 };
 
-void EventManager::updateMouseState()
+void Events::updateMouseState()
 {
 	this->mouseEventCode = LAZARUS_MOUSE_NOCLICK;
 	this->mousePositionX = 0.0;
