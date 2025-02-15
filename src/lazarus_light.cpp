@@ -24,43 +24,52 @@ LightManager::LightManager(GLuint shader)
     std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 	this->shaderProgram = shader;
 
+    this->lightOut = {};
+    this->lightData = {};
+    this->lightStore = {};
+
     this->lightCountLocation = glGetUniformLocation(this->shaderProgram, "lightCount");
     this->lightCount = globals.getNumberOfActiveLights();
 }
 
 LightManager::Light LightManager::createLightSource(float x, float y, float z, float r, float g, float b, float brightness)
 {	
+    this->lightOut = {};
+    this->lightData = {};
+    
+    lightOut.id             = lightStore.size();
+    lightOut.locationX      = x;
+    lightOut.locationY      = y;
+    lightOut.locationZ      = z;
+    lightOut.brightness     = brightness;
+    lightOut.lightPosition  = glm::vec3(lightOut.locationX, lightOut.locationY, lightOut.locationZ);
+    lightOut.lightColor     = glm::vec3(r, g, b);
+    
     this->lightCount += 1;
-    light.id             =   (this->lightCount - 1);
-    
-    light.locationX = x;
-    light.locationY = y;
-    light.locationZ = z;
-    light.brightness = brightness;
+    lightData.uniformIndex                   =   (this->lightCount - 1);
+    lightData.lightPositionUniformLocation   =   glGetUniformLocation(shaderProgram, (std::string("lightPositions[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+    lightData.lightColorUniformLocation      =   glGetUniformLocation(shaderProgram, (std::string("lightColors[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+    lightData.brightnessUniformLocation      =   glGetUniformLocation(shaderProgram, (std::string("lightBrightness[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
 
-    light.lightPosition  =   glm::vec3(light.locationX, light.locationY, light.locationZ);
-    light.lightColor     =   glm::vec3(r, g, b);
-    
-    light.lightPositionUniformLocation   =   glGetUniformLocation(shaderProgram, (std::string("lightPositions[").append(std::to_string(light.id)) + "]").c_str());
-    light.lightColorUniformLocation      =   glGetUniformLocation(shaderProgram, (std::string("lightColors[").append(std::to_string(light.id)) + "]").c_str());
-    light.brightnessUniformLocation      =   glGetUniformLocation(shaderProgram, (std::string("lightBrightness[").append(std::to_string(light.id)) + "]").c_str());
+    lightStore.push_back(lightData);
 
     globals.setNumberOfActiveLights(this->lightCount);
-    return light;
+    return lightOut;
 };
 
-void LightManager::loadLightSource(LightManager::Light &lightData)
+void LightManager::loadLightSource(LightManager::Light &lightIn)
 {
+    this->lightData = lightStore[lightIn.id];
     if(
-        lightData.brightnessUniformLocation >= 0    &&
-        lightData.lightColorUniformLocation >= 0    &&
-        lightData.lightPositionUniformLocation >= 0 
+        lightData.brightnessUniformLocation     >= 0 &&
+        lightData.lightColorUniformLocation     >= 0 &&
+        lightData.lightPositionUniformLocation  >= 0 
     )
     {
         glUniform1i         (this->lightCountLocation, this->lightCount);
-        glUniform1f         (lightData.brightnessUniformLocation, lightData.brightness);
-        glUniform3fv        (lightData.lightPositionUniformLocation, 1, &lightData.lightPosition[0]);
-        glUniform3fv        (lightData.lightColorUniformLocation, 1, &lightData.lightColor[0]);
+        glUniform1f         (lightData.brightnessUniformLocation, lightIn.brightness);
+        glUniform3fv        (lightData.lightPositionUniformLocation, 1, &lightIn.lightPosition[0]);
+        glUniform3fv        (lightData.lightColorUniformLocation, 1, &lightIn.lightColor[0]);
     }
     else
     {
