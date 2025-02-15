@@ -1,5 +1,6 @@
-# Version: 2025.02.15231011
+# Version: 2025.02.15231102
 
+* [ebaf076](https://github.com/ford-jones/lazarus/commit/ebaf076862cb09bbfc9b349baa4f22d0a01e1bf8): [Changelog CI] Add Changelog for Version 2025.02.15231011
 * [c406e62](https://github.com/ford-jones/lazarus/commit/c406e6269ea0c22f7f314b08fe61b0f64c067558): Docs: Updated API reference
 * [7e6b7d7](https://github.com/ford-jones/lazarus/commit/7e6b7d7bd124953e5a20b9d3530f710b9b0d8f26): Fix: Track global light count independant of manager internal resource counting
 * [64e27d2](https://github.com/ford-jones/lazarus/commit/64e27d2d466b0bff2196558af1983b501a957886): Clean: Updated code comments
