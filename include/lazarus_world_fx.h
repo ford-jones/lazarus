@@ -49,11 +49,22 @@ class WorldFX : private MeshManager
             MeshManager::Mesh cube;
         };
 
+        struct Fog
+        {
+            glm::vec3 color;
+            float minDistance;
+            float maxDistance;
+            float density;
+        };
+
         /* ==================================================================================================================================================
                                             +x                    -x                    -y                  +y                    +z                    -z
         ===================================================================================================================================================== */
         SkyBox createSkyBox(std::string rightPath, std::string leftPath, std::string downPath, std::string upPath, std::string frontPath, std::string backPath);
-        void drawSkyBox(SkyBox sky, CameraManager::Camera camera);
+        void drawSkyBox(SkyBox skyboxIn, CameraManager::Camera camera);
+
+        Fog createFog(float minDistance, float maxDistance, float thickness, float r, float g, float b);
+        void drawFog(Fog fogIn);
 
         virtual ~WorldFX();
 
@@ -62,9 +73,17 @@ class WorldFX : private MeshManager
 
         GLuint shader;
 
-        SkyBox skyBox;
+        GLint fogColorUniformLocation;
+        GLint fogMaxDistUniformLocation;
+        GLint fogMinDistUniformLocation;
+        GLint fogDensityUniformLocation;
+
+        SkyBox skyBoxOut;
+        Fog fogOut;
         GlobalsManager globals;
         std::unique_ptr<FileReader> imageLoader;
+
+        int status;
 };
 
 #endif

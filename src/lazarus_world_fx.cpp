@@ -22,10 +22,16 @@
 WorldFX::WorldFX(GLuint shaderProgram) : WorldFX::MeshManager(shaderProgram)
 {
     std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
-    this->shader = shaderProgram;
-    this->imageLoader = nullptr;
-    
-    this->skyBox = {};
+    this->status = 0;
+    this->shader        = shaderProgram;
+    this->imageLoader   = nullptr;
+    this->skyBoxOut     = {};
+    this->fogOut        = {};
+
+    this->fogColorUniformLocation   = glGetUniformLocation(this->shader, "fogColor");
+    this->fogMaxDistUniformLocation = glGetUniformLocation(this->shader, "fogMaxDist");
+    this->fogMinDistUniformLocation = glGetUniformLocation(this->shader, "fogMinDist");
+    this->fogDensityUniformLocation = glGetUniformLocation(this->shader, "fogDensity");
 };
 
 /* =================================================================
@@ -35,15 +41,16 @@ WorldFX::WorldFX(GLuint shaderProgram) : WorldFX::MeshManager(shaderProgram)
 ==================================================================== */
 WorldFX::SkyBox WorldFX::createSkyBox(std::string rightPath, std::string leftPath, std::string downPath, std::string upPath, std::string frontPath, std::string backPath)
 {
-    this->skyBox.cube = this->createCube(10.0f);
-    this->skyBox.paths = {rightPath, leftPath, downPath, upPath, frontPath, backPath};
+    this->skyBoxOut = {};
+    this->skyBoxOut.cube = this->createCube(10.0f);
+    this->skyBoxOut.paths = {rightPath, leftPath, downPath, upPath, frontPath, backPath};
 
     this->loadSkyMap();
 
-    return this->skyBox;
+    return this->skyBoxOut;
 };
 
-void WorldFX::drawSkyBox(WorldFX::SkyBox sky, CameraManager::Camera camera)
+void WorldFX::drawSkyBox(WorldFX::SkyBox skyboxIn, CameraManager::Camera camera)
 {
     /* ===========================================================
         For the illusion of infinite depth of the skybox  tp work, 
@@ -61,13 +68,17 @@ void WorldFX::drawSkyBox(WorldFX::SkyBox sky, CameraManager::Camera camera)
 
     glm::mat4 viewFromOrigin = glm::mat4(glm::mat3(camera.viewMatrix)); 
     GLuint uniform = glGetUniformLocation(this->shader, "viewMatrix");
+    this->status = glGetError();
+    if(this->status != 0) globals.setExecutionState(LAZARUS_UNIFORM_NOT_FOUND);
 
     glUniformMatrix4fv(uniform, 1, GL_FALSE, &viewFromOrigin[0][0]);
+    this->status = glGetError();
+    if(this->status != 0) globals.setExecutionState(LAZARUS_MATRIX_LOCATION_ERROR);
 
     glDepthMask(GL_FALSE);
 
-    this->loadMesh(sky.cube);
-    this->drawMesh(sky.cube);
+    this->loadMesh(skyboxIn.cube);
+    this->drawMesh(skyboxIn.cube);
     
     glDepthMask(GL_TRUE);
 
@@ -78,13 +89,37 @@ void WorldFX::drawSkyBox(WorldFX::SkyBox sky, CameraManager::Camera camera)
     };
 
     glUniformMatrix4fv(uniform, 1, GL_FALSE, &camera.viewMatrix[0][0]);
+    this->status = glGetError();
+    if(this->status != 0) globals.setExecutionState(LAZARUS_MATRIX_LOCATION_ERROR);
+};
+
+WorldFX::Fog WorldFX::createFog(float minDistance, float maxDistance, float thickness, float r, float g, float b)
+{
+    this->fogOut = {};
+    this->fogOut.color = glm::vec3(r, g, b);
+    this->fogOut.density = thickness;
+    this->fogOut.maxDistance = maxDistance;
+    this->fogOut.minDistance = minDistance;
+
+    return this->fogOut;
+};
+
+void WorldFX::drawFog(WorldFX::Fog fogIn)
+{
+    glUniform3fv(this->fogColorUniformLocation, 1, &fogIn.color[0]);
+    glUniform1f(this->fogMaxDistUniformLocation, fogIn.maxDistance);
+    glUniform1f(this->fogMinDistUniformLocation, fogIn.minDistance);
+    glUniform1f(this->fogDensityUniformLocation, fogIn.density);
+
+    this->status = glGetError();
+    if(this->status != 0) globals.setExecutionState(LAZARUS_UNIFORM_NOT_FOUND);
 };
 
 void WorldFX::loadSkyMap()
 {
     this->imageLoader = std::make_unique<FileReader>();
 
-    for(auto path: this->skyBox.paths)
+    for(auto path: this->skyBoxOut.paths)
     {
         std::string absolute = imageLoader->relativePathToAbsolute(path);
         FileReader::Image image = imageLoader->readFromImage(absolute);
@@ -100,12 +135,12 @@ void WorldFX::loadSkyMap()
             with 301 (LAZARUS_OPENGL_ERROR) by the textureLoader's 
             checkErrors subroutine.
         ========================================================== */
-        if(this->skyBox.cubeMap.size() > 0 && (image.width != image.height || image.width != this->skyBox.cubeMap[0].width))
+        if(this->skyBoxOut.cubeMap.size() > 0 && (image.width != image.height || image.width != this->skyBoxOut.cubeMap[0].width))
         {
             globals.setExecutionState(LAZARUS_INVALID_CUBEMAP);
         };
         
-        this->skyBox.cubeMap.push_back(image);
+        this->skyBoxOut.cubeMap.push_back(image);
     };
 
     /* =============================================================
@@ -113,8 +148,8 @@ void WorldFX::loadSkyMap()
         Do so by using the MeshManager's TextureManager inherited 
         members to perform texture operations for this skybox.
     ================================================================ */
-    this->storeCubeMap(this->skyBox.cubeMap[0].width, this->skyBox.cubeMap[0].height);
-    this->loadCubeMap(this->skyBox.cubeMap);
+    this->storeCubeMap(this->skyBoxOut.cubeMap[0].width, this->skyBoxOut.cubeMap[0].height);
+    this->loadCubeMap(this->skyBoxOut.cubeMap);
 };
 
 WorldFX::~WorldFX()
