@@ -52,6 +52,8 @@ class WorldFX : private MeshManager
         struct Fog
         {
             glm::vec3 color;
+            glm::vec3 viewpoint;
+
             float minDistance;
             float maxDistance;
             float density;
@@ -60,11 +62,28 @@ class WorldFX : private MeshManager
         /* ==================================================================================================================================================
                                             +x                    -x                    -y                  +y                    +z                    -z
         ===================================================================================================================================================== */
-        SkyBox createSkyBox(std::string rightPath, std::string leftPath, std::string downPath, std::string upPath, std::string frontPath, std::string backPath);
+        SkyBox createSkyBox(
+            std::string rightPath, 
+            std::string leftPath, 
+            std::string downPath, 
+            std::string upPath, 
+            std::string frontPath, 
+            std::string backPath
+        );
         void drawSkyBox(SkyBox skyboxIn, CameraManager::Camera camera);
 
-        Fog createFog(float minDistance, float maxDistance, float thickness, float r, float g, float b);
-        void drawFog(Fog fogIn);
+        Fog createFog(
+            float minDistance, 
+            float maxDistance, 
+            float thickness, 
+            float r, 
+            float g, 
+            float b, 
+            float x = 0.0f, 
+            float y = 0.0f, 
+            float z = 0.0f
+        );
+        void loadFog(Fog fogIn);
 
         virtual ~WorldFX();
 
@@ -74,6 +93,7 @@ class WorldFX : private MeshManager
         GLuint shader;
 
         GLint fogColorUniformLocation;
+        GLint fogViewpointUniformLocation;
         GLint fogMaxDistUniformLocation;
         GLint fogMinDistUniformLocation;
         GLint fogDensityUniformLocation;

@@ -28,10 +28,11 @@ WorldFX::WorldFX(GLuint shaderProgram) : WorldFX::MeshManager(shaderProgram)
     this->skyBoxOut     = {};
     this->fogOut        = {};
 
-    this->fogColorUniformLocation   = glGetUniformLocation(this->shader, "fogColor");
-    this->fogMaxDistUniformLocation = glGetUniformLocation(this->shader, "fogMaxDist");
-    this->fogMinDistUniformLocation = glGetUniformLocation(this->shader, "fogMinDist");
-    this->fogDensityUniformLocation = glGetUniformLocation(this->shader, "fogDensity");
+    this->fogColorUniformLocation       = glGetUniformLocation(this->shader, "fogColor");
+    this->fogViewpointUniformLocation   = glGetUniformLocation(this->shader, "fogViewpoint");
+    this->fogMaxDistUniformLocation     = glGetUniformLocation(this->shader, "fogMaxDist");
+    this->fogMinDistUniformLocation     = glGetUniformLocation(this->shader, "fogMinDist");
+    this->fogDensityUniformLocation     = glGetUniformLocation(this->shader, "fogDensity");
 };
 
 /* =================================================================
@@ -93,10 +94,11 @@ void WorldFX::drawSkyBox(WorldFX::SkyBox skyboxIn, CameraManager::Camera camera)
     if(this->status != 0) globals.setExecutionState(LAZARUS_MATRIX_LOCATION_ERROR);
 };
 
-WorldFX::Fog WorldFX::createFog(float minDistance, float maxDistance, float thickness, float r, float g, float b)
+WorldFX::Fog WorldFX::createFog(float minDistance, float maxDistance, float thickness, float r, float g, float b, float x, float y, float z)
 {
     this->fogOut = {};
     this->fogOut.color = glm::vec3(r, g, b);
+    this->fogOut.viewpoint = glm::vec3(x, y, z);
     this->fogOut.density = thickness;
     this->fogOut.maxDistance = maxDistance;
     this->fogOut.minDistance = minDistance;
@@ -104,9 +106,10 @@ WorldFX::Fog WorldFX::createFog(float minDistance, float maxDistance, float thic
     return this->fogOut;
 };
 
-void WorldFX::drawFog(WorldFX::Fog fogIn)
+void WorldFX::loadFog(WorldFX::Fog fogIn)
 {
     glUniform3fv(this->fogColorUniformLocation, 1, &fogIn.color[0]);
+    glUniform3fv(this->fogViewpointUniformLocation, 1, &fogIn.viewpoint[0]);
     glUniform1f(this->fogMaxDistUniformLocation, fogIn.maxDistance);
     glUniform1f(this->fogMinDistUniformLocation, fogIn.minDistance);
     glUniform1f(this->fogDensityUniformLocation, fogIn.density);
