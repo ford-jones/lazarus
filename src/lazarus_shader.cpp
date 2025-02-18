@@ -119,16 +119,19 @@ vec3 calculateLambertianDeflection (vec4 colorData, vec3 lightPosition, vec3 lig
 
 float calculateFog()
 {
-    //  Calculate the distance between two points in a volume
+    //  Establish distance between fragment and visibility epicenter
     float diffX         = pow(fragPosition.x - fogViewpoint.x, 2);
     float diffY         = pow(fragPosition.y - fogViewpoint.y, 2);
     float diffZ         = pow(fragPosition.z - fogViewpoint.z, 2);
     float difference    = sqrt((diffX + diffY + diffZ));
 
+    //  Establish fog thickness: 0.0 = 100%
+    float strength = 1.0 - (clamp(fogDensity, 0.1, 0.9));
+
     //  Establish fragment's fog-depth
     float visibilityBounds  = fogMaxDist - difference;
     float fogBounds         = fogMaxDist - fogMinDist;
-    float fogFactor         = clamp((visibilityBounds / fogBounds), 0.0, 1.0);
+    float fogFactor         = clamp((visibilityBounds / fogBounds), 0.0, strength);
 
     return fogFactor;
 };

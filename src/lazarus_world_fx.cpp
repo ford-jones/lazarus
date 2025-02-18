@@ -108,6 +108,8 @@ WorldFX::Fog WorldFX::createFog(float minDistance, float maxDistance, float thic
 
 void WorldFX::loadFog(WorldFX::Fog fogIn)
 {
+    if(fogIn.density < 0.0) globals.setExecutionState(LAZARUS_INVALID_INTENSITY);
+    
     glUniform3fv(this->fogColorUniformLocation, 1, &fogIn.color[0]);
     glUniform3fv(this->fogViewpointUniformLocation, 1, &fogIn.viewpoint[0]);
     glUniform1f(this->fogMaxDistUniformLocation, fogIn.maxDistance);
