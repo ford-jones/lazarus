@@ -1,5 +1,6 @@
-# Version: 2025.02.19001301
+# Version: 2025.02.19001410
 
+* [a613d18](https://github.com/ford-jones/lazarus/commit/a613d18a0d8d17bb0240af0293473d25f028e9ce): [Changelog CI] Add Changelog for Version 2025.02.19001301
 * [7c15795](https://github.com/ford-jones/lazarus/commit/7c15795d85fdcc330807081a22cbea472a72e338): Docs: Updated api reference
 * [b3ece77](https://github.com/ford-jones/lazarus/commit/b3ece77e029d5056d623c2405e2a8bccff075002): Feat: Fog thickness variability
 * [d39dab8](https://github.com/ford-jones/lazarus/commit/d39dab80edc9d6c3d4568cab7041814b78bc77d6): Fix: Perform validation on brightness inputs
