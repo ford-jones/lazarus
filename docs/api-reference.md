@@ -641,11 +641,31 @@ Params:
 > **sky** The target skybox object to be drawn. \
 > **camera** The camera object used to determine the target uvw coordinate of the texel to the sampled from the bound cubemap image texture.
 
+#### WorldFX::Fog createFog()
+Creates and a initialises a cloud of fog into the scene with radial visibility bounds. I.e. spherical area of non-fog.
+
+Params: 
+> **minDistance:** *The radius from xyz wherein fog's attenuation / opacity begins taking effect.*
+> **maxDistance:** *The radius from xyz wherein fog reaches full opacity.*
+> **thickness:** *The fog's density.*
+> **r:** *The fog-color's red value.*
+> **g:** *The fog-color's green value.*
+> **b:** *The fog-color's blue value.*
+> **x:** *The viewpoint's x-axis position. (default: `0.0`).*
+> **y:** *The viewpoint's y-axis position. (default: `0.0`).*
+> **z:** *The viewpoint's z-axis position. (default: `0.0`).*
+
 ### Members:
-> **SkyBox**: *A collection of properties which make up a skybox object.*
+> **SkyBox**: *A collection of properties which make up a skybox object. (type: `struct`.)*
 >   - **paths:** *The absolute filepaths to the 6 image textures used to construct the skymap. (type: `std::vector<std::string>`)*
 >   - **cubeMap:** *The image data for each of the cubes 6 faces. (type: `std::vector<FileReader::Image>`)*
->   - **cube:** *The skybox's mesh. (type : `MeshManager::Mesh`)*
+>   - **cube:** *The skybox's mesh. (type: `MeshManager::Mesh`)*
+> **Fog** *A collection of properties which quanitify world fog and it's visibility. (type: `struct`).* 
+>   - **color:** *The fog's RGB color values. (type: `glm::vec3`).*
+>   - **viewpoint:** *The epicenter of the fog's sphere of visibility in worldspace. Defines where the fog can be seen from. (type: `glm::vec3`).*
+>   - **minDistance:** *From the viewpoint, at which distance the fog's attenuation / opacity begins taking effect. (type: `float`).*
+>   - **maxDistance:** *From the viewpoint, at which distance the fog reaches full opacity / coverage. (type: `float`).*
+>   - **density:** *The fog's thickness. Note that this only acts as a modifier of the other visibility values. The fog will still eventually reach full opacity. (type: `float`).*
 
 ## Status Codes:
 - **LAZARUS_OK** *The engines default state. No problems. (Code: 0)* 
@@ -675,3 +695,4 @@ Params:
 - **LAZARUS_INVALID_RADIANS** *Lazarus recieved a rotational value which exceeds 360.0. (Code: 501)*
 - **LAZARUS_INVALID_CUBEMAP** *The images recieved to construct a cubemap texture are not all of equal height and width (Code: 502)*
 - **LAZARUS_INVALID_DIMENSIONS** *Lazarus recieved a mesh creation input with value(s) below 0.0 (Code: 504).*
+- **LAZARUS_INVALID_INTENSITY** *Lazarus recieved a asset-strength multiplier with a value below 0 (Code: 505).*
