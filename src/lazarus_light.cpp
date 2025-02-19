@@ -60,6 +60,9 @@ LightManager::Light LightManager::createLightSource(float x, float y, float z, f
 void LightManager::loadLightSource(LightManager::Light &lightIn)
 {
     this->lightData = lightStore[lightIn.id];
+
+    if(lightIn.brightness < 0.0) globals.setExecutionState(LAZARUS_INVALID_INTENSITY);
+    
     if(
         lightData.brightnessUniformLocation     >= 0 &&
         lightData.lightColorUniformLocation     >= 0 &&

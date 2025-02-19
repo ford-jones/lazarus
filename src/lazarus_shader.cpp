@@ -82,6 +82,12 @@ uniform vec3 lightPositions[MAX_LIGHTS];
 uniform vec3 lightColors[MAX_LIGHTS];
 uniform float lightBrightness[MAX_LIGHTS];
 
+uniform vec3 fogColor;
+uniform vec3 fogViewpoint;
+uniform float fogMaxDist;
+uniform float fogMinDist;
+uniform float fogDensity;
+
 uniform vec3 textColor;
 
 uniform int spriteAsset;
@@ -110,6 +116,25 @@ vec3 calculateLambertianDeflection (vec4 colorData, vec3 lightPosition, vec3 lig
     //  This is better maybe: return illuminatedFrag * min(1.0 / pow(dot(displacement, displacement), 0.5), 1.0);
     return illuminatedFrag / (dot(displacement, displacement));
 }
+
+float calculateFog()
+{
+    //  Establish distance between fragment and visibility epicenter
+    float diffX         = pow(fragPosition.x - fogViewpoint.x, 2);
+    float diffY         = pow(fragPosition.y - fogViewpoint.y, 2);
+    float diffZ         = pow(fragPosition.z - fogViewpoint.z, 2);
+    float difference    = sqrt((diffX + diffY + diffZ));
+
+    //  Establish fog thickness: 0.0 = 100%
+    float strength = 1.0 - (clamp(fogDensity, 0.1, 0.9));
+
+    //  Establish fragment's fog-depth
+    float visibilityBounds  = fogMaxDist - difference;
+    float fogBounds         = fogMaxDist - fogMinDist;
+    float fogFactor         = clamp((visibilityBounds / fogBounds), 0.0, strength);
+
+    return fogFactor;
+};
 
 vec4 interpretColorData ()
 {
@@ -166,7 +191,7 @@ vec4 interpretColorData ()
 void main ()
 {
     vec4 fragColor = interpretColorData();
-            
+
     //  When the fragment is part of a skybox or is observed by an orthographic camera, use color as-is.
     if(isSkyBox == 1 || isUnderPerspective == 0)
     {
@@ -183,10 +208,17 @@ void main ()
         };
 
         outFragment = vec4(illuminationResult, 1.0);
+
+        if(fogDensity > 0.0)
+        {
+            float fogFactor = calculateFog();
+            outFragment = vec4((mix(fogColor.xyz, illuminationResult, fogFactor)), 1.0);
+        }
     }
 
     return;
 })"; 
+
 Shader::Shader()
 {
     std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;

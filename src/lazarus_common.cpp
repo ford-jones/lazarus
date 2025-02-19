@@ -75,6 +75,7 @@ const int    LAZARUS_INVALID_RADIANS                = 501;
 const int    LAZARUS_INVALID_CUBEMAP                = 502;
 const int    LAZARUS_INVALID_COORDINATE             = 503;
 const int    LAZARUS_INVALID_DIMENSIONS             = 504;
+const int    LAZARUS_INVALID_INTENSITY              = 505;
 
 void GlobalsManager::setEnforceImageSanity(bool shouldEnforce)
 {

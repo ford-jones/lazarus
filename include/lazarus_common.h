@@ -94,6 +94,7 @@ extern const int    LAZARUS_INVALID_RADIANS;
 extern const int    LAZARUS_INVALID_CUBEMAP;
 extern const int    LAZARUS_INVALID_COORDINATE;
 extern const int    LAZARUS_INVALID_DIMENSIONS;
+extern const int    LAZARUS_INVALID_INTENSITY;
 
 class GlobalsManager
 {
