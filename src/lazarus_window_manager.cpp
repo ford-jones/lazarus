@@ -362,6 +362,16 @@ int WindowManager::createWindow()
     return GLFW_NO_ERROR;
 };
 
+int WindowManager::setBackgroundColor(float r, float g, float b)
+{
+	glClearColor(r, g, b, 1.0);
+	this->checkErrors(__FILE__, __LINE__);
+
+	this->frame.backgroundColor = glm::vec3(r, g, b);
+
+	return GLFW_NO_ERROR;
+};
+
 int WindowManager::loadConfig(GLuint shader)
 {	
 	if(enableCursor == true)
@@ -398,19 +408,9 @@ int WindowManager::loadConfig(GLuint shader)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 
     glFrontFace(GL_CCW);
 
-    glClearColor        (0.0, 0.0, 0.0, 0.0);
+	this->setBackgroundColor(0.0, 0.0, 0.0);
 
-    /* ===============================================
-        TODO:
-        Allow color transparency / overlap 
-        e.g.
-
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glBlendEquation(GL_FUNC_ADD);
-    ================================================== */
-	glUseProgram(shader);
-	
+	glUseProgram(shader);	
 	this->checkErrors(__FILE__, __LINE__);
 	
 	return GLFW_NO_ERROR;
