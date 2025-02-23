@@ -27,7 +27,7 @@
 #define RED_TEXT  "\x1b[31m"
 
 
-/* Engine Status */
+/* Engine Codes */
 
 extern int          LAZARUS_EXECUTION_STATUS;
 extern int          LAZARUS_PRIMARY_DISPLAY_WIDTH;
@@ -42,6 +42,7 @@ extern bool         LAZARUS_CULL_BACK_FACES;
 extern bool         LAZARUS_DEPTH_TEST_FRAGS;
 extern bool         LAZARUS_LAUNCH_IN_FULLSCREEN;
 extern bool         LAZARUS_DISABLE_VSYNC;
+extern bool         LAZARUS_DO_STENCIL_BUFFER;
 extern int          LAZARUS_MAX_IMAGE_WIDTH;
 extern int          LAZARUS_MAX_IMAGE_HEIGHT;
 
@@ -95,6 +96,7 @@ extern const int    LAZARUS_INVALID_CUBEMAP;
 extern const int    LAZARUS_INVALID_COORDINATE;
 extern const int    LAZARUS_INVALID_DIMENSIONS;
 extern const int    LAZARUS_INVALID_INTENSITY;
+extern const int    LAZARUS_FEATURE_DISABLED;
 
 class GlobalsManager
 {
@@ -130,6 +132,9 @@ class GlobalsManager
         void setDisplaySize(int width, int height);
         int getDisplayWidth();
         int getDisplayHeight();
+
+        void setManageStencilBuffer(bool shouldManage);
+        bool getManageStencilBuffer();
 };
 
 #endif

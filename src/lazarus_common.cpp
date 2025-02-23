@@ -30,6 +30,7 @@ bool         LAZARUS_ENFORCE_IMAGE_SANITY           = false;
 bool         LAZARUS_DISABLE_CURSOR_VISIBILITY      = false;
 bool         LAZARUS_LAUNCH_IN_FULLSCREEN           = false;
 bool         LAZARUS_DISABLE_VSYNC                  = false;
+bool         LAZARUS_DO_STENCIL_BUFFER              = false;
 bool         LAZARUS_CULL_BACK_FACES                = true;
 bool         LAZARUS_DEPTH_TEST_FRAGS               = true;
 
@@ -76,6 +77,7 @@ const int    LAZARUS_INVALID_CUBEMAP                = 502;
 const int    LAZARUS_INVALID_COORDINATE             = 503;
 const int    LAZARUS_INVALID_DIMENSIONS             = 504;
 const int    LAZARUS_INVALID_INTENSITY              = 505;
+const int    LAZARUS_FEATURE_DISABLED               = 506;
 
 void GlobalsManager::setEnforceImageSanity(bool shouldEnforce)
 {
@@ -203,4 +205,14 @@ void GlobalsManager::setNumberOfActiveLights(int count)
 int GlobalsManager::getNumberOfActiveLights()
 {
     return LAZARUS_LIGHT_COUNT;
+};
+
+void GlobalsManager::setManageStencilBuffer(bool shouldManage)
+{
+    LAZARUS_DO_STENCIL_BUFFER = shouldManage;
+};
+
+bool GlobalsManager::getManageStencilBuffer()
+{
+    return LAZARUS_DO_STENCIL_BUFFER;
 };
