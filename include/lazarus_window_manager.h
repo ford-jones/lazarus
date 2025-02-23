@@ -99,6 +99,7 @@ class WindowManager : public Events, public Time
         int snapCursor(float moveX, float moveY);
 
         int presentNextFrame();
+        int monitorPixelOccupants();
 
         bool isOpen;
 
