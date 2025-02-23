@@ -87,10 +87,7 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
 
 MeshManager::Mesh MeshManager::createQuad(float width, float height, string texturePath, float uvXL, float uvXR, float uvY)
 {
-    if(width < 0.0f || height < 0.0f)
-    {
-        globals.setExecutionState(LAZARUS_INVALID_DIMENSIONS);
-    };
+    if(width < 0.0f || height < 0.0f) globals.setExecutionState(LAZARUS_INVALID_DIMENSIONS);
     
     this->meshOut = {};
     this->meshData = {};
@@ -360,6 +357,21 @@ void MeshManager::clearMeshStorage()
 void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
 {
     MeshManager::MeshData &data = dataStore[meshIn.id];
+
+    //  TODO:
+    //  Ensure id's are 1-indexed and unique
+
+    /* ===================================================
+        Fill the stencil buffer with 0's. Wherever an 
+        entity is occupying screenspace, fill the buffer
+        with mesh uuid.
+    ====================================================== */
+    if(globals.getManageStencilBuffer() && !meshIn.isGlyph && !meshIn.isSkybox)
+    {
+        glStencilMask(0xFF);
+        glClearStencil(0x00);
+        glStencilFunc(GL_ALWAYS, (meshIn.id + 1), 0xFF);
+    }
 
     if(this->modelMatrixUniformLocation >= 0)
     {

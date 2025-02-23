@@ -24,12 +24,15 @@ CameraManager::CameraManager(GLuint shader)
     std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
     this->shader                            = shader;
 
-    this->monitorX                          = globals.getDisplayWidth();
-    this->monitorY                          = globals.getDisplayHeight();
+    this->pixelHeight                       = globals.getDisplayWidth();
+    this->pixelWidth                        = globals.getDisplayHeight();
 
     this->viewLocation                      = glGetUniformLocation(shader, "viewMatrix");
     this->perspectiveProjectionLocation     = glGetUniformLocation(shader, "perspectiveProjectionMatrix");
     this->orthographicProjectionLocation    = glGetUniformLocation(shader, "orthoProjectionMatrix");
+
+    this->pixel                             = 0;
+    this->errorCode                         = 0;
 };
 
 CameraManager::Camera CameraManager::createPerspectiveCam(int arX, int arY)
@@ -48,7 +51,7 @@ CameraManager::Camera CameraManager::createPerspectiveCam(int arX, int arY)
     }
     else
     {
-        camera.aspectRatio      = static_cast<float>(monitorX) / static_cast<float>(monitorY);
+        camera.aspectRatio      = static_cast<float>(pixelHeight) / static_cast<float>(pixelWidth);
     };
 
     /* ===============================================
@@ -80,7 +83,7 @@ CameraManager::Camera CameraManager::createOrthoCam(int arX, int arY)
     }
     else
     {
-        camera.aspectRatio      = static_cast<float>(monitorX) / static_cast<float>(monitorY);
+        camera.aspectRatio      = static_cast<float>(pixelHeight) / static_cast<float>(pixelWidth);
     };
 
     /* ================================================
@@ -99,22 +102,96 @@ CameraManager::Camera CameraManager::createOrthoCam(int arX, int arY)
     return camera;
 };
 
-void CameraManager::loadCamera(CameraManager::Camera &cameraData)
+void CameraManager::loadCamera(CameraManager::Camera &cameraIn)
 {
     if(this->perspectiveProjectionLocation >= 0 && this->orthographicProjectionLocation >= 0)
     {
-        glUniformMatrix4fv     (this->viewLocation, 1, GL_FALSE, &cameraData.viewMatrix[0][0]);
+        glUniformMatrix4fv     (this->viewLocation, 1, GL_FALSE, &cameraIn.viewMatrix[0][0]);
 
-        cameraData.usesPerspective == 1
-        ? glUniformMatrix4fv     (this->perspectiveProjectionLocation, 1, GL_FALSE, &cameraData.projectionMatrix[0][0])
-        : glUniformMatrix4fv     (this->orthographicProjectionLocation, 1, GL_FALSE, &cameraData.projectionMatrix[0][0]);
+        cameraIn.usesPerspective == 1
+        ? glUniformMatrix4fv     (this->perspectiveProjectionLocation, 1, GL_FALSE, &cameraIn.projectionMatrix[0][0])
+        : glUniformMatrix4fv     (this->orthographicProjectionLocation, 1, GL_FALSE, &cameraIn.projectionMatrix[0][0]);
 
-        glUniform1i(glGetUniformLocation(this->shader, "usesPerspective"), cameraData.usesPerspective);
+        glUniform1i(glGetUniformLocation(this->shader, "usesPerspective"), cameraIn.usesPerspective);
+
+        this->checkErrors(__FILE__, __LINE__);
     }
     else
     {
         globals.setExecutionState(LAZARUS_MATRIX_LOCATION_ERROR);
     };
+};
+
+/* ==============================================
+    TODO:
+    Create a function for ray-picking positions
+    in worldspace out from the camera.
+================================================= */
+
+int CameraManager::getPixelOccupant(int positionX, int positionY)
+{
+    this->pixel = 0;
+    if(globals.getManageStencilBuffer())
+    {
+        if(positionX < pixelWidth && positionY < pixelHeight) {
+            /* ============================================
+                Perform an inversion of the window's y-axis
+                to accomidate for FBO's measure of 
+                pixel's from the top-left corner of the
+                screen as opposed to bottom-left.
+            =============================================== */
+            int inverseY = pixelWidth - positionY;
+        
+            /* =================================================
+                Read entity ID's if present from the back-buffer's 
+                stencil-depth buffer. If none are present at the
+                pixel site the result will be 0.
+    
+                Note: Minus positions by 1 because the pixels 
+                are zero-indexed inside the framebuffer.
+            ==================================================== */
+            glReadBuffer(GL_BACK);
+            glReadPixels((positionX - 1), (inverseY - 1), 1, 1, GL_STENCIL_INDEX, GL_INT, &this->pixel);
+    
+            this->checkErrors(__FILE__, __LINE__);
+        }
+        /* =================================================
+            Would be great to validate these inputs like so:
+
+            else
+            {
+                globals.setExecutionState(LAZARUS_INVALID_COORDINATE);
+            };
+
+            Problem is, theres really no going back to 
+            LAZARUS_OK once the execution state has been 
+            changed. Status codes should be instead passed
+            out of the return parameter of each function so 
+            results can be validated and responded to
+            appropriately from userspace.
+        ==================================================== */
+    }
+    else
+    {
+        globals.setExecutionState(LAZARUS_FEATURE_DISABLED);
+    }
+
+    return pixel;
+};
+
+void CameraManager::checkErrors(const char *file, int line)
+{
+    this->errorCode = glGetError();
+    
+    if(this->errorCode != 0)
+    {
+        std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
+        std::cerr << RED_TEXT << "ERROR::GL_ERROR::CODE " << RESET_TEXT << this->errorCode << std::endl;
+
+        globals.setExecutionState(LAZARUS_OPENGL_ERROR);
+    }
+
+    return;
 };
 
 CameraManager::~CameraManager()
