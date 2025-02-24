@@ -152,30 +152,30 @@ int CameraManager::getPixelOccupant(int positionX, int positionY)
             ==================================================== */
             glReadBuffer(GL_BACK);
             glReadPixels((positionX - 1), (inverseY - 1), 1, 1, GL_STENCIL_INDEX, GL_INT, &this->pixel);
-    
+
+            if(pixel)
+            {
+                int stencilId = globals.getPickableEntity(pixel);
+                pixel = stencilId;
+            };
+            
             this->checkErrors(__FILE__, __LINE__);
         }
         /* =================================================
-            Would be great to validate these inputs like so:
-
             else
             {
                 globals.setExecutionState(LAZARUS_INVALID_COORDINATE);
             };
 
-            Problem is, theres really no going back to 
-            LAZARUS_OK once the execution state has been 
-            changed. Status codes should be instead passed
-            out of the return parameter of each function so 
-            results can be validated and responded to
-            appropriately from userspace.
+            Would be good to have this here but out of frame
+            cursor positions continue being recorded...
         ==================================================== */
     }
     else
     {
         globals.setExecutionState(LAZARUS_FEATURE_DISABLED);
     }
-
+    
     return pixel;
 };
 
