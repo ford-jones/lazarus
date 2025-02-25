@@ -1,8 +1,10 @@
-# Version: 2025.02.19001301
+# Version: 2025.02.25060058
 
-* [7c15795](https://github.com/ford-jones/lazarus/commit/7c15795d85fdcc330807081a22cbea472a72e338): Docs: Updated api reference
-* [b3ece77](https://github.com/ford-jones/lazarus/commit/b3ece77e029d5056d623c2405e2a8bccff075002): Feat: Fog thickness variability
-* [d39dab8](https://github.com/ford-jones/lazarus/commit/d39dab80edc9d6c3d4568cab7041814b78bc77d6): Fix: Perform validation on brightness inputs
-* [16dc0e8](https://github.com/ford-jones/lazarus/commit/16dc0e835bd7e5e25e4710c72e405127bbbe815e): Feat: Lazarus embeded shaders fog rendering support
-* [8ce667b](https://github.com/ford-jones/lazarus/commit/8ce667bc9a95abada822fbc9d7798c048b199e8e): Update: Positioning of fog epicenter relative to worldspace
-* [1f06169](https://github.com/ford-jones/lazarus/commit/1f06169513f40e8f61440f98ff8d0df298fb55cc): Feat: New fog creation world management functions
+* [e79f057](https://github.com/ford-jones/lazarus/commit/e79f0577d043f629c9d763f208ec02cc9033e8cd): Docs: Updated window documentation
+* [d8992d1](https://github.com/ford-jones/lazarus/commit/d8992d1e9bcd2ef56965ffe5e82b983a49070938): Docs: Selection by-pixel documentation
+* [8bd3bff](https://github.com/ford-jones/lazarus/commit/8bd3bffe06106fa9a8b85bac37251aba54b7a0d6): Update: Validation of resource buffer size constraints
+* [2f52201](https://github.com/ford-jones/lazarus/commit/2f5220102d067b291c18beb650a23ca060640296): Update: Allow specifying and tracking of desired pickable objects to mitigate stencil buffer max-value
+* [bbbea57](https://github.com/ford-jones/lazarus/commit/bbbea57f5dd43c5c701cae9741452ce51694f4be): Feat: Color picking with stencil-depth buffer and pixel occupant lookup by-id
+* [6eca41d](https://github.com/ford-jones/lazarus/commit/6eca41db3ff20afddc4476d0f53c4d985dc43df2): Feat: Monitoring of screenspace occupants via window
+* [aa2262f](https://github.com/ford-jones/lazarus/commit/aa2262fac00ecebec665f303df49222d9d50194a): Update: New status codes and flag for conditional stencil rendering
+* [5f90e43](https://github.com/ford-jones/lazarus/commit/5f90e43d6245c2c195e10667502a46923ccdeb8d): Feat: Allowed window background color updates from userspace
