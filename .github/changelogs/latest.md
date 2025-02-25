@@ -1,5 +1,6 @@
-# Version: 2025.02.25060058
+# Version: 2025.02.25060142
 
+* [654661d](https://github.com/ford-jones/lazarus/commit/654661d8562ccefba36a45d21411f72c4d5e7721): [Changelog CI] Add Changelog for Version 2025.02.25060058
 * [e79f057](https://github.com/ford-jones/lazarus/commit/e79f0577d043f629c9d763f208ec02cc9033e8cd): Docs: Updated window documentation
 * [d8992d1](https://github.com/ford-jones/lazarus/commit/d8992d1e9bcd2ef56965ffe5e82b983a49070938): Docs: Selection by-pixel documentation
 * [8bd3bff](https://github.com/ford-jones/lazarus/commit/8bd3bffe06106fa9a8b85bac37251aba54b7a0d6): Update: Validation of resource buffer size constraints
