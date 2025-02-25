@@ -151,6 +151,14 @@ Params:
 > **moveX:** *The x-axis pixel coordinate from the bottom left corner of the display (Not the window).*
 > **moveY:** *The y-axis pixel coordinate from the bottom left corner of the display (Not the window).*
 
+#### int setBackgroundColor(float r, float g, float b)
+Sets the window's background color which is black by default. Can be called without reloading the window.
+
+Params:
+> **r:** *The background colors red value.*
+> **g:** *The background colors red value.*
+> **b:** *The background colors red value.*
+
 #### int presentNextFrame()
 Bring the back buffer to the front (into user view) and moves the front buffer to the back. \
 Clears the back buffer's depth and color bits so that they can be given new values for the next draw.
