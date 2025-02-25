@@ -89,6 +89,7 @@ class WindowManager : public Events, public Time
         WindowManager(const char *title, int width = 800, int height = 600);
 
         int createWindow();
+        int setBackgroundColor(float r, float g, float b);
 		int loadConfig(GLuint shader);
 
         int open();
@@ -98,6 +99,7 @@ class WindowManager : public Events, public Time
         int snapCursor(float moveX, float moveY);
 
         int presentNextFrame();
+        int monitorPixelOccupants();
 
         bool isOpen;
 
@@ -112,6 +114,7 @@ class WindowManager : public Events, public Time
         {
             int height, width;
             const char *title;
+            glm::vec3 backgroundColor;
         };
 
         std::unique_ptr<FileReader> fileReader;

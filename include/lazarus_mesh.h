@@ -140,13 +140,14 @@ class MeshManager : private MeshLoader, public TextureLoader
             int is3D;
             int isGlyph;
             int isSkybox;
+            bool isClickable;
         };
 		
 		MeshManager(GLuint shader);
 		
-        Mesh create3DAsset(string meshPath, string materialPath, string texturePath = LAZARUS_DIFFUSE_MESH);
-        Mesh createQuad(float width, float height, string texturePath = LAZARUS_DIFFUSE_MESH, float uvXL = 0.0, float uvXR = 0.0, float uvY = 0.0);
-        Mesh createCube(float scale, string texturePath = LAZARUS_SKYBOX_CUBE);
+        Mesh create3DAsset(string meshPath, string materialPath, string texturePath = LAZARUS_DIFFUSE_MESH, bool selectable = false);
+        Mesh createQuad(float width, float height, string texturePath = LAZARUS_DIFFUSE_MESH, float uvXL = 0.0, float uvXR = 0.0, float uvY = 0.0, bool selectable = false);
+        Mesh createCube(float scale, string texturePath = LAZARUS_SKYBOX_CUBE, bool selectable = false);
 
         void clearMeshStorage();
 
@@ -157,6 +158,8 @@ class MeshManager : private MeshLoader, public TextureLoader
     private:
         struct MeshData
         {
+            int id;
+            int stencilBufferId;
             int textureUnit;
             FileReader::Image textureData;
             GLuint textureId;
@@ -171,6 +174,7 @@ class MeshManager : private MeshLoader, public TextureLoader
         void resolveFilepaths(string texPath = LAZARUS_DIFFUSE_MESH, string mtlPath = LAZARUS_TEXTURED_MESH, string objPath = LAZARUS_PRIMITIVE_MESH);
         void setInherentProperties();
         void initialiseMesh();
+        void makeSelectable(bool selectable);
         void prepareTextures();
         
         void checkErrors(const char *file, int line);

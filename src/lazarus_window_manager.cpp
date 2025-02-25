@@ -362,6 +362,16 @@ int WindowManager::createWindow()
     return GLFW_NO_ERROR;
 };
 
+int WindowManager::setBackgroundColor(float r, float g, float b)
+{
+	glClearColor(r, g, b, 1.0);
+	this->checkErrors(__FILE__, __LINE__);
+
+	this->frame.backgroundColor = glm::vec3(r, g, b);
+
+	return GLFW_NO_ERROR;
+};
+
 int WindowManager::loadConfig(GLuint shader)
 {	
 	if(enableCursor == true)
@@ -398,19 +408,9 @@ int WindowManager::loadConfig(GLuint shader)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 
     glFrontFace(GL_CCW);
 
-    glClearColor        (0.0, 0.0, 0.0, 0.0);
+	this->setBackgroundColor(0.0, 0.0, 0.0);
 
-    /* ===============================================
-        TODO:
-        Allow color transparency / overlap 
-        e.g.
-
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glBlendEquation(GL_FUNC_ADD);
-    ================================================== */
-	glUseProgram(shader);
-	
+	glUseProgram(shader);	
 	this->checkErrors(__FILE__, __LINE__);
 	
 	return GLFW_NO_ERROR;
@@ -472,6 +472,46 @@ int WindowManager::presentNextFrame()
         
     this->checkErrors(__FILE__, __LINE__);
 
+	return GLFW_NO_ERROR;
+};
+
+/* =========================================
+	TODO:
+	Consider using color buffer instead of 
+	stencil buffer for this. Currently the 
+	max number of entities is 255 due to
+	only being able to store 8-bit numbers 
+	in the stencil-depth buffer.
+============================================ */
+int WindowManager::monitorPixelOccupants()
+{
+	/* ==========================================
+		Notifies MeshManager::drawMesh to draw 
+		not only VBO contents but also to draw to
+		the stencil buffer.
+	============================================= */
+	if(!globals.getManageStencilBuffer()) globals.setManageStencilBuffer(true);
+
+	/* ==========================================
+		Stop tests from last cycle.
+	============================================= */
+	glDisable(GL_STENCIL_TEST);
+    glDisable(GL_DEPTH_TEST);
+
+	/* ==========================================
+		Begin the stencil-depth test for the 
+		cycle. Fill the depth-buffer with 0's 
+		which are only replaced when the test is
+		passed. (I.e. The fragment(s) is actually 
+		occupying some pixel(s) in screenspace.)
+	============================================= */
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_STENCIL_TEST);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	glClearStencil(0x00);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+
+	this->checkErrors(__FILE__, __LINE__);
 	return GLFW_NO_ERROR;
 };
 

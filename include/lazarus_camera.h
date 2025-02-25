@@ -58,19 +58,27 @@ class CameraManager
 		
         Camera createPerspectiveCam(int arX = 0, int arY = 0);
         Camera createOrthoCam(int arX, int arY);
-        void loadCamera(Camera &cameraData);
+        void loadCamera(Camera &cameraIn);
+        
+        int getPixelOccupant(int windowX, int windowY);
 
         virtual ~CameraManager();
 
     private:
+        void checkErrors(const char *file, int line);
+
+        int errorCode;
+        int pixelWidth;
+        int pixelHeight;
+        
+        GLint pixel;
+        
+        GLuint shader;
         GLuint viewLocation;
         GLuint perspectiveProjectionLocation;
         GLuint orthographicProjectionLocation;
+        
         GlobalsManager globals;
-        int monitorX;
-        int monitorY;
-
-        GLuint shader;
         Camera camera;
 };
 

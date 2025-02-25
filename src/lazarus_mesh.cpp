@@ -27,9 +27,6 @@ MeshManager::MeshManager(GLuint shader)
 
     this->clearMeshStorage();
 
-    //  TODO: 
-    //  Remove locations from mesh struct
-    //  List here so they are all garaunteed a value
     glUniform1i(glGetUniformLocation(this->shaderProgram, "textureAtlas"), 1);
     glUniform1i(glGetUniformLocation(this->shaderProgram, "textureArray"), 2);
     glUniform1i(glGetUniformLocation(this->shaderProgram, "textureCube"), 3);
@@ -42,7 +39,7 @@ MeshManager::MeshManager(GLuint shader)
     this->textureLayerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureLayer");  
 };
 
-MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPath, string texturePath)
+MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPath, string texturePath, bool selectable)
 {
     this->meshOut = {};
     this->meshData = {};
@@ -50,10 +47,10 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     meshOut.is3D = 1;
     meshOut.isGlyph = 0;
     meshOut.isSkybox = 0;
-
+    
     meshData.textureUnit = GL_TEXTURE2;
     glActiveTexture(meshData.textureUnit);
-
+    
     this->resolveFilepaths(texturePath, materialPath, meshPath);
     
     this->parseWavefrontObj(
@@ -62,9 +59,10 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
         meshOut.meshFilepath.c_str(),
         meshOut.materialFilepath.c_str()
     );
-
+    
     this->setInherentProperties();
     this->initialiseMesh();
+    this->makeSelectable(selectable);
 
     return meshOut;
 };
@@ -78,19 +76,16 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     At the quads origin in worldspace, a "shadow" of the quad will render using texture 
     number 1 off of the xyzTextureStack. Not sure why.
 
-    This is *very* similar to the behaviour seen on MacOS and is possibly related. It might
-    just be that the bug doesn't present itself on linux.
+    This is *very* similar to the behaviour seen on MacOS and is possibly related. It 
+    doesn't present itself on linux.
 
     Worth mentioning that this doesn't seem to happen with glyphs - which are wrapped over
     a quad under the hood.
 =========================================================================================== */
 
-MeshManager::Mesh MeshManager::createQuad(float width, float height, string texturePath, float uvXL, float uvXR, float uvY)
+MeshManager::Mesh MeshManager::createQuad(float width, float height, string texturePath, float uvXL, float uvXR, float uvY, bool selectable)
 {
-    if(width < 0.0f || height < 0.0f)
-    {
-        globals.setExecutionState(LAZARUS_INVALID_DIMENSIONS);
-    };
+    if(width < 0.0f || height < 0.0f) globals.setExecutionState(LAZARUS_INVALID_DIMENSIONS);
     
     this->meshOut = {};
     this->meshData = {};
@@ -173,11 +168,12 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
 
     this->setInherentProperties();
     this->initialiseMesh();
+    this->makeSelectable(selectable);
 
     return meshOut;
 }
 
-MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath)
+MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, bool selectable)
 {
     float vertexPosition = scale / 2; 
 
@@ -274,6 +270,7 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath)
 
     this->setInherentProperties();
     this->initialiseMesh();
+    this->makeSelectable(selectable);
 
     return this->meshOut;
 };
@@ -305,12 +302,17 @@ void MeshManager::initialiseMesh()
         this->checkErrors(__FILE__, __LINE__);
 
         this->dataStore.push_back(meshData);
-        meshOut.id = (dataStore.size() - 1);
+        meshOut.id = dataStore.size();
+        meshData.id = meshOut.id;
 
         /* ===============================================================
-            Reload the entire texture stack / array if meshData is generic 
+            Reload the entire texture stack / array if the mesh isn't
+            being used for anything special. I.e. reallocate the space and
+            upload all of the textures again. In the cases where a mesh is 
+            used for some special purpose different texture loaders are 
+            used. 
         ================================================================== */
-        if(meshOut.isSkybox != 1 && meshOut.isGlyph != 1)
+        if(!meshOut.isSkybox && !meshOut.isGlyph)
         {
             this->prepareTextures();
         };
@@ -357,9 +359,46 @@ void MeshManager::clearMeshStorage()
     this->layerCount = 0;
 };
 
+void MeshManager::makeSelectable(bool selectable)
+{
+    if(selectable)
+    {
+        /* =============================================
+            Items which can be picked from the stencil-
+            depth buffer have their ID's stored in a
+            global vector. The index position is then 
+            used as the stencil function's reference 
+            parameter. When that ID is then downloaded f
+            rom the GPU after a draw call, it is used to 
+            perform a lookup on the vector for the mesh 
+            ID which; is then returned to userspace.
+        ================================================ */
+        meshOut.isClickable = true;
+        globals.setPickableEntity(meshOut.id);
+        dataStore[meshOut.id - 1].stencilBufferId = globals.getNumberOfPickableEntities();
+    }
+    else
+    {
+        meshOut.isClickable = false;
+        dataStore[meshOut.id - 1].stencilBufferId = 0;
+    };
+};
+
 void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
 {
-    MeshManager::MeshData &data = dataStore[meshIn.id];
+    MeshManager::MeshData &data = dataStore[meshIn.id - 1];
+
+    /* ===================================================
+        Fill the stencil buffer with 0's. Wherever an 
+        entity is occupying screenspace, fill the buffer
+        with mesh uuid.
+    ====================================================== */
+    if(globals.getManageStencilBuffer())
+    {
+        glStencilMask(0xFF);
+        glClearStencil(0x00);
+        glStencilFunc(GL_ALWAYS, data.stencilBufferId, 0xFF);
+    }
 
     if(this->modelMatrixUniformLocation >= 0)
     {
@@ -385,7 +424,7 @@ void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
 
 void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
 {
-    MeshManager::MeshData &data = dataStore[meshIn.id];
+    MeshManager::MeshData &data = dataStore[meshIn.id - 1];
 
     glBindVertexArray(data.VAO);
     glBindBuffer(GL_ARRAY_BUFFER, data.VBO);
