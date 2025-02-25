@@ -144,9 +144,19 @@ Params:
 > **hotY:** *The y-axis cursor hotspot.* \
 > **filepath:** *The relative path to the desired cursor image. Ideally the image should be of 32x32 resolution.* 
 
+#### int snapCursor(int moveX, int moveY)
+Programatically move the cursor to the specified pixel location.
+
+Params:
+> **moveX:** *The x-axis pixel coordinate from the bottom left corner of the display (Not the window).*
+> **moveY:** *The y-axis pixel coordinate from the bottom left corner of the display (Not the window).*
+
 #### int presentNextFrame()
 Bring the back buffer to the front (into user view) and moves the front buffer to the back. \
 Clears the back buffer's depth and color bits so that they can be given new values for the next draw.
+
+#### int monitorPixelOccupants()
+Enables picking of the window's pixels for objects which have been rendered to the screen following a call to `MeshManager::drawMesh(...)`. The ID's of objects with items with `MeshManager::Mesh::isClickable` set to `true` now become searchable at their pixel coordinates via a call to `CameraManager::getPixelOccupant(...)`.
 
 ### Members:
 > **isOpen:** *Whether or not the active window is open. See also: `GlobalsManager::getContextWindowOpen()`. (type: `bool`, default: `false`)* \
@@ -331,7 +341,7 @@ Params:
 > **shader:** *The id of the shader program used to render this mesh. Acquired from the return value of `Shader::initialiseShader()`*
 
 ### Functions:
-#### MeshManager::Mesh create3DAsset(std::string meshPath, std::string materialPath, std::string texturePath)
+#### MeshManager::Mesh create3DAsset(std::string meshPath, std::string materialPath, std::string texturePath, bool selectable)
 Finds and reads a wavefront (obj) file located at `meshPath`. \
 Creates a new instance of a `Mesh`, initialises the values of its properties and returns it. \
 Invokes the `MaterialLoader::loadMaterial()` function and passes on the `materialPath`.
@@ -342,8 +352,9 @@ Params:
 > **meshPath:** *The relative path to the wavefront mesh asset you wish to render.* 
 > **materialPath:** *The relative path to the wavefront material asset you wish to render.*
 > **texturePath:** *The relative path to the texture image. (optional)*
+> **selectable:** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (optional)*
 
-#### MeshManager::Mesh createQuad(float width, float height, std::string texturePath, float uvXL, float uvXR, float uvY)
+#### MeshManager::Mesh createQuad(float width, float height, std::string texturePath, float uvXL, float uvXR, float uvY, bool selectable)
 Creates a quad (2D plane) to the size of the specified height and width. \
 Textures loaded into a quad have their fragments discarded where the texture opacity is 0.0 - used for sprites.
 
@@ -356,8 +367,9 @@ Params:
 > **uvXL:** *The normalised x-axis coordinate of the UV's left-side. Used for text rendering. (optional)*
 > **uvXR:** *The normalised x-axis coordinate of the UV's right-side. Used for text rendering. (optional)*
 > **uvY:** *The normalised y-axis coordinate of the UV's top edge. Used for text rendering. (optional)*
+> **selectable:** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (optional)*
 
-#### MeshManager::Mesh createCube(float scale, std::string texturePath)
+#### MeshManager::Mesh createCube(float scale, std::string texturePath, bool selectable)
 Creates a cube (equal height, width and depth) of size `scale`. Note that without specification of a relative path to a texture asset, this function will assume the cube is to be used for a skybox which; is likely to cause problems in your program without manually setting the required texture data for the cubemap texture.
 
 Returns a new mesh entity.
@@ -365,6 +377,7 @@ Returns a new mesh entity.
 Params:
 > **scale:** *The desired height, width and depth of the cube. Values of 0 or less will set the engines execution state to `LAZARUS_INVALID_DIMENSIONS`.*
 > **texturePath:** *The relative path to an image texture asset. (optional)*
+> **selectable:** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (optional)*
 
 #### MeshManager::Mesh loadMesh(MeshManager::Mesh meshIn)
 Loads a mesh object's buffer data into their correct GPU uniform positions located inside the shader program that was referenced in the class constructor.
@@ -396,6 +409,7 @@ Clears the manager's internal child tracker which includes: Associated texture h
 >	- **locationX:** *The x-axis coordinate of the mesh's position in world space. (type: float)*
 >	- **locationY:** *The y-axis coordinate of the mesh's position in world space. (type: float)*
 >	- **locationZ:** *The z-axis coordinate of the mesh's position in world space. (type: float)*
+>   - **isClickable** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (type: `bool`)*
 
 ## CameraManager:
 ### Constructor:
@@ -433,6 +447,12 @@ Returns a new camera entity.
 
 Params:
 > **cameraData:** *The camera asset you would like to render.*
+
+#### int getPixelOccupant(int positionX, int positionY)
+Retrieves the ID of a pixel occupant in view which has `MeshManager::Mesh::isClickable` set to `true`.
+
+> **positionX:** *The x-axis pixel coordinate from the bottom left corner of the display (Not the window).*
+> **positionY:** *The y-axis pixel coordinate from the bottom left corner of the display (Not the window).*
 
 ### Members:
 > **Camera:** *A collection of properties which make up a camera entity. (type: `struct`)* 
@@ -688,7 +708,7 @@ Params:
 - **LAZARUS_WINDOW_ERROR** *An error occured in the GLFW window API. (Code: 303)*
 - **LAZARUS_GLFW_NOINIT** *GL framework wrangler failed to initialise. (Code: 304)*
 - **LAZARUS_WIN_EXCEEDS_MAX** *The requested window size is larger than the dimensions of the primary monitor. (Code: 305)*
-- **LAZARUS_TIME_ERROR** *Lazarus tried to perform a time operation but the windows running time was 0ms.*
+- **LAZARUS_TIME_ERROR** *Lazarus tried to perform a time operation but the windows running time was 0ms. (Code: 306)*
 - **LAZARUS_AUDIO_ERROR** *An error occured in the FMOD audio backend. (Code: 401)*
 - **LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR** *Desired audio playback location was less than 0 seconds or more than AudioManager::Audio::length. (Code: 402)*
 - **LAZARUS_AUDIO_LOAD_ERROR** *Unable to load audio sample into a channel. (Code: 403)*
@@ -696,3 +716,4 @@ Params:
 - **LAZARUS_INVALID_CUBEMAP** *The images recieved to construct a cubemap texture are not all of equal height and width (Code: 502)*
 - **LAZARUS_INVALID_DIMENSIONS** *Lazarus recieved a mesh creation input with value(s) below 0.0 (Code: 504).*
 - **LAZARUS_INVALID_INTENSITY** *Lazarus recieved a asset-strength multiplier with a value below 0 (Code: 505).*
+- **LAZARUS_FEATURE_DISABLED** *A function was invoked that relies on settings which are disabled. (Code: 506)*
