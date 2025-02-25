@@ -62,28 +62,7 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     
     this->setInherentProperties();
     this->initialiseMesh();
-    
-    if(selectable)
-    {
-        /* =============================================
-            Items which can be picked from the stencil-
-            depth buffer have their ID's stored in a
-            global vector. The index position is then 
-            used as the stencil function's reference 
-            parameter. When that ID is then downloaded f
-            rom the GPU after a draw call, it is used to 
-            perform a lookup on the vector for the mesh 
-            ID which; is then returned to userspace.
-        ================================================ */
-        meshOut.isClickable = true;
-        globals.setPickableEntity(meshOut.id);
-        dataStore[meshOut.id - 1].stencilBufferId = globals.getNumberOfPickableEntities();
-    }
-    else
-    {
-        meshOut.isClickable = false;
-        dataStore[meshOut.id - 1].stencilBufferId = 0;
-    };
+    this->makeSelectable(selectable);
 
     return meshOut;
 };
@@ -97,14 +76,14 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     At the quads origin in worldspace, a "shadow" of the quad will render using texture 
     number 1 off of the xyzTextureStack. Not sure why.
 
-    This is *very* similar to the behaviour seen on MacOS and is possibly related. It might
-    just be that the bug doesn't present itself on linux.
+    This is *very* similar to the behaviour seen on MacOS and is possibly related. It 
+    doesn't present itself on linux.
 
     Worth mentioning that this doesn't seem to happen with glyphs - which are wrapped over
     a quad under the hood.
 =========================================================================================== */
 
-MeshManager::Mesh MeshManager::createQuad(float width, float height, string texturePath, float uvXL, float uvXR, float uvY)
+MeshManager::Mesh MeshManager::createQuad(float width, float height, string texturePath, float uvXL, float uvXR, float uvY, bool selectable)
 {
     if(width < 0.0f || height < 0.0f) globals.setExecutionState(LAZARUS_INVALID_DIMENSIONS);
     
@@ -189,11 +168,12 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
 
     this->setInherentProperties();
     this->initialiseMesh();
+    this->makeSelectable(selectable);
 
     return meshOut;
 }
 
-MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath)
+MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, bool selectable)
 {
     float vertexPosition = scale / 2; 
 
@@ -290,6 +270,7 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath)
 
     this->setInherentProperties();
     this->initialiseMesh();
+    this->makeSelectable(selectable);
 
     return this->meshOut;
 };
@@ -376,6 +357,31 @@ void MeshManager::clearMeshStorage()
 	this->errorCode = GL_NO_ERROR;
 
     this->layerCount = 0;
+};
+
+void MeshManager::makeSelectable(bool selectable)
+{
+    if(selectable)
+    {
+        /* =============================================
+            Items which can be picked from the stencil-
+            depth buffer have their ID's stored in a
+            global vector. The index position is then 
+            used as the stencil function's reference 
+            parameter. When that ID is then downloaded f
+            rom the GPU after a draw call, it is used to 
+            perform a lookup on the vector for the mesh 
+            ID which; is then returned to userspace.
+        ================================================ */
+        meshOut.isClickable = true;
+        globals.setPickableEntity(meshOut.id);
+        dataStore[meshOut.id - 1].stencilBufferId = globals.getNumberOfPickableEntities();
+    }
+    else
+    {
+        meshOut.isClickable = false;
+        dataStore[meshOut.id - 1].stencilBufferId = 0;
+    };
 };
 
 void MeshManager::loadMesh(MeshManager::Mesh &meshIn)

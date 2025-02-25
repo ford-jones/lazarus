@@ -202,7 +202,7 @@ bool GlobalsManager::getVsyncDisabled()
 
 void GlobalsManager::setNumberOfActiveLights(int count)
 {
-    LAZARUS_LIGHT_COUNT = count;
+    if(count < LAZARUS_MAX_LIGHTS) LAZARUS_LIGHT_COUNT = count;
 };
 
 int GlobalsManager::getNumberOfActiveLights()
@@ -227,10 +227,7 @@ int GlobalsManager::getNumberOfPickableEntities()
 
 void GlobalsManager::setPickableEntity(int entityId)
 {
-    //  TODO:
-    //  Check capacity .. vec > 255
-    //  Docs
-    LAZARUS_SELECTABLE_ENTITIES.push_back(entityId);
+    if(LAZARUS_SELECTABLE_ENTITIES.size() < LAZARUS_MAX_SELECTABLE_ENTITIES) LAZARUS_SELECTABLE_ENTITIES.push_back(entityId);
 };
 
 int GlobalsManager::getPickableEntity(int index)
