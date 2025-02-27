@@ -83,30 +83,30 @@ void Transform::translateCameraAsset(CameraManager::Camera &camera, float x, flo
 		Restore orbit / handle both camera cases
 	============================================ */
 
-	float speed = 0;
-
+	
 	/* =============================================
-		Aggregate inputs to a single value and check
-		the sign (-/+). 
-
-		If the number is negative (i.e. 0.0f is
-		higher than the aggregate value), then apply
-		negation to the velocity input. (i.e. apply
-		a conversion for speed when moving either
-		left or backwards). 
+	Aggregate inputs to a single value and check
+	the sign (-/+). 
+	
+	If the number is negative (i.e. 0.0f is
+	higher than the aggregate value), then apply
+	negation to the velocity input. (i.e. apply
+	a conversion for speed when moving either
+	left or backwards). 
 	================================================ */
-	bool positiveSign = this->determineIsSigned(x, y, z);
+	// float speed = 0;
+	// bool positiveSign = this->determineIsSigned(x, y, z);
 
-	if(!positiveSign)
-	{
-		speed = velocity - (velocity * 2);		
-	}
-	else
-	{
-		speed = velocity;
-	};
+	// if(!positiveSign)
+	// {
+	// 	speed = velocity - (velocity * 2);		
+	// }
+	// else
+	// {
+	// 	speed = velocity;
+	// };
 
-	if(x != 0.0)
+	if(x != 0.0f)
 	{
 		/* ============================================
 			Note the coordinate system is right-handed.
@@ -116,25 +116,17 @@ void Transform::translateCameraAsset(CameraManager::Camera &camera, float x, flo
 			upward orientation vs direction. If pos,
 			we go right.
 		=============================================== */
-		camera.position += (glm::normalize(glm::cross(camera.direction, camera.upVector)) * speed);
+		camera.position += glm::normalize(glm::cross(camera.direction, camera.upVector)) * (x * velocity);
 	};
 
-	if(y != 0.0)
+	if(y != 0.0f)
 	{
-		/* =============================================
-			Using "velocity" here instead of "speed"
-			because the variable here should always be 
-			positively signed. Otherwise in the case of 
-			(-y * -speed) the result will be positive.
-			The matching sign is only relevant when 
-			mulitplying against a vector.
-		================================================ */
 		camera.position.y += (y * velocity);
 	};
 
-	if(z != 0.0)
+	if(z != 0.0f)
 	{
-		camera.position += (speed * camera.direction);
+		camera.position += (z * velocity) * camera.direction;
 	}
 
 	camera.viewMatrix = glm::lookAt(camera.position, (camera.position + camera.direction), camera.upVector);
