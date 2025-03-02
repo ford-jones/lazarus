@@ -26,6 +26,7 @@ int                 LAZARUS_LIGHT_COUNT                    = 0;
 std::vector<int>    LAZARUS_SELECTABLE_ENTITIES            = {};
 const int           LAZARUS_MAX_LIGHTS                     = 150;
 const int           LAZARUS_MAX_SELECTABLE_ENTITIES        = 254;
+const int           LAZARUS_MOUSE_NOCLICK                  = 999;
 
 int                 LAZARUS_MAX_IMAGE_WIDTH                = 0;
 int                 LAZARUS_MAX_IMAGE_HEIGHT               = 0;
@@ -39,11 +40,10 @@ bool                LAZARUS_DEPTH_TEST_FRAGS               = true;
 
 int                 LAZARUS_LISTENER_KEYCODE               = 0;
 int                 LAZARUS_LISTENER_SCANCODE              = 0;
-int                 LAZARUS_LISTENER_MOUSECODE             = 0;
+int                 LAZARUS_LISTENER_MOUSECODE             = LAZARUS_MOUSE_NOCLICK;
 double              LAZARUS_LISTENER_MOUSEX                = 0;
 double              LAZARUS_LISTENER_MOUSEY                = 0;
 double              LAZARUS_LISTENER_SCROLLCODE            = 0;
-const int           LAZARUS_MOUSE_NOCLICK                  = 999;
 
 const char*         LAZARUS_SKYBOX_CUBE                    = "Skybox target.";
 const char*         LAZARUS_GLYPH_QUAD                     = "Glyph target.";

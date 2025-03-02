@@ -73,7 +73,7 @@ Events::Events()
 
 	keyEventCode 	    = 0;
 	keyEventOsCode 		= 0;
-	mouseEventCode 	    = 0;
+	mouseEventCode 	    = LAZARUS_MOUSE_NOCLICK;
 	mousePositionX 		= 0;
 	mousePositionY 		= 0;
 	scrollEventCode 	= 0;
