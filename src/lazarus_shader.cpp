@@ -134,7 +134,7 @@ float calculateFog()
     float fogFactor         = clamp((visibilityBounds / fogBounds), 0.0, strength);
 
     return fogFactor;
-};
+}
 
 vec4 interpretColorData ()
 {
