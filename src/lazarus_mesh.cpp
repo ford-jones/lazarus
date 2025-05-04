@@ -56,6 +56,7 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     this->parseWavefrontObj(
         meshData.attributes,
         meshData.diffuse,
+        meshData.indexes,
         meshOut.meshFilepath.c_str(),
         meshOut.materialFilepath.c_str()
     );
@@ -282,20 +283,27 @@ void MeshManager::initialiseMesh()
 
     if(this->modelMatrixUniformLocation >= 0)
     {
+        glGenBuffers(1, &meshData.EBO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshData.EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, meshData.indexes.size() * sizeof(unsigned int), &meshData.indexes[0], GL_STATIC_DRAW);
+
         glGenBuffers(1, &meshData.VBO);
         glBindBuffer(GL_ARRAY_BUFFER, meshData.VBO);
-
         glBufferData(GL_ARRAY_BUFFER, meshData.attributes.size() * sizeof(vec3), &meshData.attributes[0], GL_STATIC_DRAW);
 
+        //  Vertex Positions
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)0);
         glEnableVertexAttribArray(0);
 
+        //  Diffuse Colors
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)(1 * sizeof(vec3)));
         glEnableVertexAttribArray(1);
 
+        //  Normals
         glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)(2 * sizeof(vec3)));
         glEnableVertexAttribArray(2);
 
+        //  UV Coordinates
         glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)(3 * sizeof(vec3)));
         glEnableVertexAttribArray(3);
 
@@ -347,6 +355,7 @@ void MeshManager::clearMeshStorage()
     for(auto i: dataStore)
     {
         glDeleteBuffers         (1, &i.VBO);
+        glDeleteBuffers         (1, &i.EBO);
         glDeleteVertexArrays    (1, &i.VAO);
     };
     
@@ -427,6 +436,7 @@ void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
     MeshManager::MeshData &data = dataStore[meshIn.id - 1];
 
     glBindVertexArray(data.VAO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.EBO);
     glBindBuffer(GL_ARRAY_BUFFER, data.VBO);
 
     glActiveTexture(data.textureUnit);
@@ -444,7 +454,8 @@ void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
         glBindTexture(GL_TEXTURE_2D_ARRAY, data.textureId);
     };
 
-    glDrawArrays(GL_TRIANGLES, 0, data.attributes.size());
+    // glDrawArrays(GL_TRIANGLES, 0, data.attributes.size());
+    glDrawElements(GL_TRIANGLES, data.indexes.size(), GL_UNSIGNED_INT, nullptr);
 
     this->checkErrors(__FILE__, __LINE__);
 
@@ -550,6 +561,7 @@ MeshManager::~MeshManager()
     for(auto i: dataStore)
     {
         glDeleteBuffers         (1, &i.VBO);
+        glDeleteBuffers         (1, &i.EBO);
         glDeleteVertexArrays    (1, &i.VAO);
     };
 
@@ -565,7 +577,7 @@ MeshLoader::MeshLoader()
 	this->triangleCount				=	0;
 };
 
-bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, const char* meshPath, const char* materialPath) 
+bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<unsigned int> &outIndexes, const char* meshPath, const char* materialPath) 
 {
     this->coordinates.clear();
     this->vertexIndices.clear();
@@ -643,6 +655,7 @@ bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &ou
             this->triangleCount += 1;
 
             coordinates = splitTokensFromLine(currentLine, ' ');
+
             for(auto i: coordinates) 
             {
                 stringstream ssJ(i);
@@ -697,7 +710,14 @@ bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &ou
         this->loadMaterial(outDiffuse, materialBuffer, materialPath);
     }
 
-    this->interleaveBufferData(outAttributes, outDiffuse, this->vertexIndices.size());
+    this->interleaveBufferData(outAttributes, outIndexes, outDiffuse, this->vertexIndices.size());
+
+    std::cout << "Num Attributes: " << outAttributes.size() << std::endl;
+    std::cout << "EBO:" << std::endl;
+    for(auto index : outIndexes )
+    {
+        std::cout << "Index: " << index << std::endl;
+    };
 
     return true;
 };
@@ -718,7 +738,7 @@ vector<string> MeshLoader::splitTokensFromLine(const char *wavefrontData, char d
     return tokenStore;
 }
 
-void MeshLoader::interleaveBufferData(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, int numOfAttributes)
+void MeshLoader::interleaveBufferData(vector<vec3> &outAttributes, vector<unsigned int> &outIndexes, vector<vec3> outDiffuse, int numOfAttributes)
 {
     for( int i = 0; i < numOfAttributes; i++ )
     {
@@ -745,10 +765,100 @@ void MeshLoader::interleaveBufferData(vector<vec3> &outAttributes, vector<vec3> 
         outAttributes.push_back(diffuse);
         outAttributes.push_back(normal);
         outAttributes.push_back(uv);
+
+        outIndexes.push_back(i);
     }
 
     return;
 }
+
+// void MeshLoader::interleaveBufferData(vector<vec3> &outAttributes, vector<unsigned int> &outIndexes, vector<vec3> outDiffuse, int numOfAttributes)
+// {
+//     for(unsigned int i = 0; i < numOfAttributes; i++)
+//     {
+//         std::cout << "Wavefront vertex number: " << i << std::endl;
+//         unsigned int vertexIndex    =   vertexIndices[i];
+//         unsigned int normalIndex    =   normalIndices[i];
+//         unsigned int uvIndex        =   uvIndices[i];
+        
+//         /* =========================================
+//             uv is extended from its generic xy components
+//             to include a z value here to meet the expected
+//             stride range for attributes in the vertex buffer.
+            
+//             i.e: (4 * sizeof(vec3)) = 12
+
+//             Once in the shaders it is disregarded. 
+//         ============================================ */
+//         vec3 vertex                 =   tempVertexPositions[vertexIndex - 1];
+//         vec3 diffuse                =   outDiffuse[i];
+//         vec3 normal                 =   tempNormals[normalIndex - 1];
+//         vec3 uv                     =   vec3(tempUvs[uvIndex - 1].x, tempUvs[uvIndex - 1].y, 0.0f);
+
+//         //  TODO:
+//         //  filter duplicates
+//         //  Find coordinates
+//         //  Store indexes
+//         //  construct EBO
+
+//         if(outAttributes.size() == 0)
+//         {
+//             outAttributes.push_back(vertex);
+//             outAttributes.push_back(diffuse);
+//             outAttributes.push_back(normal);
+//             outAttributes.push_back(uv);
+
+//             outIndexes.push_back(i);   
+//         }
+//         else
+//         {
+//             std::cout << "Comparing against [" << (outAttributes.size() / 4) << "] existing attributes." << std::endl;
+//             for(unsigned int j = 0; j < (outAttributes.size() / 4); j++)
+//             {
+//                 // if(j % 4 == 0)
+//                 // {
+//                     int location = j * 4;
+//                     std::cout << "At offset: [" << location << "]" << std::endl;
+//                     vec3 existingPosition = outAttributes[location];
+//                     vec3 existingDiffuse  = outAttributes[location + 1];
+//                     vec3 existingNormals  = outAttributes[location + 2];
+//                     vec3 existingUv       = outAttributes[location + 3];
+
+
+//                     //  Index 0 and 21 are the same here
+//                     //  Seems like something is wrong with the equality comparisson
+//                     // std::cout << "INCOMING [" << vertex.x << ", " << vertex.y << ", " << vertex.z << "] " << "VS COMPARISSON [" << outAttributes[location].x << ", " << outAttributes[location].y << ", " << outAttributes[location].z << "]" << std::endl;                             
+//                     // std::cout << "INCOMING [" << diffuse.x << ", " << diffuse.y << ", " << diffuse.z << "] " << "VS COMPARISSON [" << outAttributes[location + 1].x << ", " << outAttributes[location + 1].y << ", " << outAttributes[location + 1].z << "]" << std::endl;                     
+//                     // std::cout << "INCOMING [" << normal.x << ", " << normal.y << ", " << normal.z << "] " << "VS COMPARISSON [" << outAttributes[location + 2].x << ", " << outAttributes[location + 2].y << ", " << outAttributes[location + 2].z << "]" << std::endl;                     
+//                     // std::cout << "INCOMING [" << uv.x << ", " << uv.y << ", " << uv.z << "] " << "VS COMPARISSON [" << outAttributes[location + 3].x << ", " << outAttributes[location + 3].y << ", " << outAttributes[location + 3].z << "]" << std::endl;                     
+
+        
+//                     if(
+//                         vertex  == existingPosition &&
+//                         diffuse == existingDiffuse  &&
+//                         normal  == existingNormals  && 
+//                         uv      == existingUv
+//                     )
+//                     {
+//                         std::cout << "No push at [" << j << "] - existing vertices found" << std::endl;
+//                         outIndexes.push_back(j);
+//                     }
+//                     else
+//                     {
+//                         outAttributes.push_back(vertex);
+//                         outAttributes.push_back(diffuse);
+//                         outAttributes.push_back(normal);
+//                         outAttributes.push_back(uv);
+    
+//                         outIndexes.push_back(i);
+//                     }
+//                 // }
+//             };
+//         }
+//     }
+
+//     return;
+// }
 
 void MeshLoader::constructTriangle()
 {
