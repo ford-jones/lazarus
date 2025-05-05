@@ -1,5 +1,6 @@
-# Version: 2025.05.05071812
+# Version: 2025.05.05071917
 
+* [5b91606](https://github.com/ford-jones/lazarus/commit/5b91606d3bd71977e526897cd5326c4b0a3a7adf): [Changelog CI] Add Changelog for Version 2025.05.05071812
 * [c64f426](https://github.com/ford-jones/lazarus/commit/c64f4261033af416debdab8b8d2a814c95dedb87): Clean: Function renaming
 * [26753e6](https://github.com/ford-jones/lazarus/commit/26753e6b5c20ea6d7fa32c18cb398f91c34f9c4c): Clean: Removed unnecessary vector usage
 * [0331684](https://github.com/ford-jones/lazarus/commit/0331684ed3fcdd345ae1587220e3aad49b92ebb0): Feat: Deduplicate vertices using index buffer for cubes and skyboxes
