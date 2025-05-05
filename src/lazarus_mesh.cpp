@@ -118,7 +118,6 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
     ============================================================= */
     if(uvXL || uvXR || uvY > 0.0 )
     {
-
     /* ======================================================================================================
             Vertex positions,           Diffuse colors,             Normals,                    UVs 
     ========================================================================================================= */
@@ -165,6 +164,10 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
             vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(1.0f, 0.0f, 0.0f),
             vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(0.0f, 0.0f, 0.0f),
         };
+    };
+
+    meshData.indexes = {
+        0, 1, 2, 6, 7, 8, 5, 4, 3, 11, 10, 9
     };
 
     this->setInherentProperties();
@@ -799,9 +802,6 @@ void MeshLoader::interleaveBufferData(vector<vec3> &outAttributes, vector<unsign
             };
         }
     }
-
-    std::cout << "In vertexes: " << numOfAttributes << std::endl;
-    std::cout << "Out vertexes: " << tempVertexes.size() << std::endl;
 
     for(auto vert : tempVertexes)
     {
