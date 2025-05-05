@@ -84,6 +84,7 @@ class MeshLoader : private MaterialLoader
         bool parseWavefrontObj(
             vector<vec3> &outAttributes,
             vector<vec3> &outDiffuse,
+            vector<unsigned int> &outIndexes,
             const char *meshPath,
             const char *materialPath
         );
@@ -92,7 +93,7 @@ class MeshLoader : private MaterialLoader
 
     private:
         vector<string> splitTokensFromLine(const char *wavefrontData, char delim);
-        void interleaveBufferData(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, int numOfAttributes);
+        void constructIndexBuffer(vector<vec3> &outAttributes, vector<unsigned int> &outIndexes, vector<vec3> outDiffuse, int numOfAttributes);
         void constructTriangle();
 
         vector<string> coordinates;
@@ -166,7 +167,9 @@ class MeshManager : private MeshLoader, public TextureLoader
             GLuint textureLayer;
             GLuint VAO;                                                                         //  The OpenGL Vertex Array Object
             GLuint VBO;
+            GLuint EBO;
 
+            vector<unsigned int> indexes;
             vector<vec3> attributes;
             vector<vec3> diffuse;
         };

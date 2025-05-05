@@ -56,6 +56,7 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     this->parseWavefrontObj(
         meshData.attributes,
         meshData.diffuse,
+        meshData.indexes,
         meshOut.meshFilepath.c_str(),
         meshOut.materialFilepath.c_str()
     );
@@ -117,7 +118,6 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
     ============================================================= */
     if(uvXL || uvXR || uvY > 0.0 )
     {
-
     /* ======================================================================================================
             Vertex positions,           Diffuse colors,             Normals,                    UVs 
     ========================================================================================================= */
@@ -164,6 +164,10 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
             vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(1.0f, 0.0f, 0.0f),
             vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(0.0f, 0.0f, 0.0f),
         };
+    };
+
+    meshData.indexes = {
+        0, 1, 2, 6, 7, 8, 5, 4, 3, 11, 10, 9
     };
 
     this->setInherentProperties();
@@ -223,49 +227,46 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, 
         vec3(-vertexPosition, vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(0.0f, 0.0f, 0.0f),
         vec3(vertexPosition, vertexPosition,  vertexPosition),      vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(1.0f, 1.0f, 0.0f),
         vec3(vertexPosition,  vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(1.0f, 0.0f, 0.0f),
-        vec3(-vertexPosition, vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(0.0f, 0.0f, 0.0f),
         vec3(-vertexPosition,  vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(0.0f, 1.0f, 0.0f),
-        vec3(vertexPosition,    vertexPosition,  vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(1.0f, 1.0f, 0.0f),
 
         // Back face
         vec3(-vertexPosition, vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 0.0f, 0.0f),
         vec3(vertexPosition, -vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 1.0f, 0.0f),
         vec3(-vertexPosition,  -vertexPosition, -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 0.0f, 0.0f),
-        vec3(-vertexPosition, vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 0.0f, 0.0f),
         vec3(vertexPosition,  vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 1.0f, 0.0f),
-        vec3(vertexPosition,  -vertexPosition, -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 1.0f, 0.0f),
 
         // Right face
         vec3(vertexPosition, vertexPosition, -vertexPosition),      vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(0.0f, 0.0f, 0.0f),
         vec3(vertexPosition, -vertexPosition,  vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(1.0f, 1.0f, 0.0f),
         vec3(vertexPosition,  -vertexPosition,  -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(1.0f, 0.0f, 0.0f),
-        vec3(vertexPosition, vertexPosition, -vertexPosition),      vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(0.0f, 0.0f, 0.0f),
         vec3(vertexPosition,  vertexPosition,  vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(0.0f, 1.0f, 0.0f),
-        vec3(vertexPosition,  -vertexPosition, vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(1.0f, 1.0f, 0.0f),
 
         // Front face
         vec3(vertexPosition, vertexPosition, vertexPosition),       vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(0.0f, 0.0f, 0.0f),
         vec3(-vertexPosition, -vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(1.0f, 1.0f, 0.0f),
         vec3(vertexPosition,  -vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(1.0f, 0.0f, 0.0f),
-        vec3(vertexPosition, vertexPosition, vertexPosition),       vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(0.0f, 0.0f, 0.0f),
         vec3(-vertexPosition,  vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(0.0f, 1.0f, 0.0f),
-        vec3(-vertexPosition,  -vertexPosition, vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(1.0f, 1.0f, 0.0f),
 
         // Left face
         vec3(-vertexPosition,  vertexPosition, vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
         vec3(-vertexPosition,  -vertexPosition, -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
         vec3(-vertexPosition,  -vertexPosition,  vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 0.0f, 0.0f),
-        vec3(-vertexPosition,  vertexPosition, vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
         vec3(-vertexPosition,  vertexPosition,  -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f),
-        vec3(-vertexPosition,  -vertexPosition,  -vertexPosition),  vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
 
         // Bottom face
         vec3(vertexPosition, -vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
         vec3(-vertexPosition, -vertexPosition, vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
         vec3(-vertexPosition, -vertexPosition,  -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 0.0f, 0.0f),
-        vec3(vertexPosition, -vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
         vec3(vertexPosition, -vertexPosition,  vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f),
-        vec3(-vertexPosition, -vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f)
+    };
+
+    meshData.indexes = {
+        0, 1, 2, 0, 3, 1,
+        4, 5, 6, 4, 7, 5, 
+        8, 9, 10, 8, 11, 9,
+        12, 13, 14, 12, 15, 13,
+        16, 17, 18, 16, 19, 17,
+        20, 21, 22, 20, 23, 21
     };
 
     this->setInherentProperties();
@@ -282,20 +283,27 @@ void MeshManager::initialiseMesh()
 
     if(this->modelMatrixUniformLocation >= 0)
     {
+        glGenBuffers(1, &meshData.EBO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshData.EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, meshData.indexes.size() * sizeof(unsigned int), &meshData.indexes[0], GL_STATIC_DRAW);
+
         glGenBuffers(1, &meshData.VBO);
         glBindBuffer(GL_ARRAY_BUFFER, meshData.VBO);
-
         glBufferData(GL_ARRAY_BUFFER, meshData.attributes.size() * sizeof(vec3), &meshData.attributes[0], GL_STATIC_DRAW);
 
+        //  Vertex Positions
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)0);
         glEnableVertexAttribArray(0);
 
+        //  Diffuse Colors
         glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)(1 * sizeof(vec3)));
         glEnableVertexAttribArray(1);
 
+        //  Normals
         glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)(2 * sizeof(vec3)));
         glEnableVertexAttribArray(2);
 
+        //  UV Coordinates
         glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)(3 * sizeof(vec3)));
         glEnableVertexAttribArray(3);
 
@@ -347,6 +355,7 @@ void MeshManager::clearMeshStorage()
     for(auto i: dataStore)
     {
         glDeleteBuffers         (1, &i.VBO);
+        glDeleteBuffers         (1, &i.EBO);
         glDeleteVertexArrays    (1, &i.VAO);
     };
     
@@ -427,7 +436,7 @@ void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
     MeshManager::MeshData &data = dataStore[meshIn.id - 1];
 
     glBindVertexArray(data.VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, data.VBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.EBO);
 
     glActiveTexture(data.textureUnit);
 
@@ -444,7 +453,8 @@ void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
         glBindTexture(GL_TEXTURE_2D_ARRAY, data.textureId);
     };
 
-    glDrawArrays(GL_TRIANGLES, 0, data.attributes.size());
+    // glDrawArrays(GL_TRIANGLES, 0, data.attributes.size());
+    glDrawElements(GL_TRIANGLES, data.indexes.size(), GL_UNSIGNED_INT, nullptr);
 
     this->checkErrors(__FILE__, __LINE__);
 
@@ -550,6 +560,7 @@ MeshManager::~MeshManager()
     for(auto i: dataStore)
     {
         glDeleteBuffers         (1, &i.VBO);
+        glDeleteBuffers         (1, &i.EBO);
         glDeleteVertexArrays    (1, &i.VAO);
     };
 
@@ -565,7 +576,7 @@ MeshLoader::MeshLoader()
 	this->triangleCount				=	0;
 };
 
-bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, const char* meshPath, const char* materialPath) 
+bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<unsigned int> &outIndexes, const char* meshPath, const char* materialPath) 
 {
     this->coordinates.clear();
     this->vertexIndices.clear();
@@ -643,6 +654,7 @@ bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &ou
             this->triangleCount += 1;
 
             coordinates = splitTokensFromLine(currentLine, ' ');
+
             for(auto i: coordinates) 
             {
                 stringstream ssJ(i);
@@ -697,7 +709,7 @@ bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &ou
         this->loadMaterial(outDiffuse, materialBuffer, materialPath);
     }
 
-    this->interleaveBufferData(outAttributes, outDiffuse, this->vertexIndices.size());
+    this->constructIndexBuffer(outAttributes, outIndexes, outDiffuse, this->vertexIndices.size());
 
     return true;
 };
@@ -718,14 +730,15 @@ vector<string> MeshLoader::splitTokensFromLine(const char *wavefrontData, char d
     return tokenStore;
 }
 
-void MeshLoader::interleaveBufferData(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, int numOfAttributes)
+void MeshLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<unsigned int> &outIndexes, vector<vec3> outDiffuse, int numOfAttributes)
 {
+    int count = 0;
+
     for( int i = 0; i < numOfAttributes; i++ )
     {
-
-        unsigned int vertexIndex    =   vertexIndices[i];
-        unsigned int normalIndex    =   normalIndices[i];
-        unsigned int uvIndex        =   uvIndices[i];
+        unsigned int vertexIndex = vertexIndices[i];
+        unsigned int normalIndex = normalIndices[i];
+        unsigned int uvIndex     = uvIndices[i];
         
         /* =========================================
             uv is extended from its generic xy components
@@ -736,15 +749,55 @@ void MeshLoader::interleaveBufferData(vector<vec3> &outAttributes, vector<vec3> 
 
             Once in the shaders it is disregarded. 
         ============================================ */
-        vec3 vertex                 =   tempVertexPositions[vertexIndex - 1];
-        vec3 diffuse                =   outDiffuse[i];
-        vec3 normal                 =   tempNormals[normalIndex - 1];
-        vec3 uv                     =   vec3(tempUvs[uvIndex - 1].x, tempUvs[uvIndex - 1].y, 0.0f);
+        vec3 position          = tempVertexPositions[vertexIndex - 1];
+        vec3 diffuseColor      = outDiffuse[i];
+        vec3 normalCoordinates = tempNormals[normalIndex - 1];
+        vec3 uvCoordinates     = vec3(tempUvs[uvIndex - 1].x, tempUvs[uvIndex - 1].y, 0.0f);
 
-        outAttributes.push_back(vertex);
-        outAttributes.push_back(diffuse);
-        outAttributes.push_back(normal);
-        outAttributes.push_back(uv);
+        if(outAttributes.size() == 0)
+        {
+            outAttributes.push_back(position);
+            outAttributes.push_back(diffuseColor);
+            outAttributes.push_back(normalCoordinates);
+            outAttributes.push_back(uvCoordinates);
+
+            outIndexes.push_back(count);
+        }
+        else
+        {
+            int beforeSize = outIndexes.size();
+
+            for(unsigned int j = 0; j < (outAttributes.size() / 4); j++)
+            {
+                vec3 validatedPosition = outAttributes[(j * 4)];
+                vec3 validatedDiffuseColor = outAttributes[(j * 4) + 1];
+                vec3 validatedNormals = outAttributes[(j * 4) + 2];
+                vec3 validatedUvs = outAttributes[(j * 4) + 3];
+
+                if(
+                    (validatedPosition      == position)          &&
+                    (validatedDiffuseColor  == diffuseColor)      &&
+                    (validatedNormals       == normalCoordinates) && 
+                    (validatedUvs           == uvCoordinates)
+                )
+                {
+                    outIndexes.push_back(j);
+                }
+            };
+
+            int currentSize = outIndexes.size(); 
+
+            if(currentSize == beforeSize)
+            {
+                count += 1;
+                outAttributes.push_back(position);
+                outAttributes.push_back(diffuseColor);
+                outAttributes.push_back(normalCoordinates);
+                outAttributes.push_back(uvCoordinates);
+
+                outIndexes.push_back(count);
+            };
+        }
     }
 
     return;
