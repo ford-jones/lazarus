@@ -732,21 +732,11 @@ vector<string> MeshLoader::splitTokensFromLine(const char *wavefrontData, char d
 
 void MeshLoader::interleaveBufferData(vector<vec3> &outAttributes, vector<unsigned int> &outIndexes, vector<vec3> outDiffuse, int numOfAttributes)
 {
-    struct Vertex
-    {
-        vec3 position;
-        vec3 diffuseColor;
-        vec3 normalCoordinates;
-        vec3 uvCoordinates;
-    };
-
-    vector<Vertex> tempVertexes = {};
-
     int count = 0;
 
     for( int i = 0; i < numOfAttributes; i++ )
     {
-        Vertex vertex = {};
+        // Vertex vertex = {};
         unsigned int vertexIndex = vertexIndices[i];
         unsigned int normalIndex = normalIndices[i];
         unsigned int uvIndex     = uvIndices[i];
@@ -760,29 +750,36 @@ void MeshLoader::interleaveBufferData(vector<vec3> &outAttributes, vector<unsign
 
             Once in the shaders it is disregarded. 
         ============================================ */
-        vertex.position          = tempVertexPositions[vertexIndex - 1];
-        vertex.diffuseColor      = outDiffuse[i];
-        vertex.normalCoordinates = tempNormals[normalIndex - 1];
-        vertex.uvCoordinates     = vec3(tempUvs[uvIndex - 1].x, tempUvs[uvIndex - 1].y, 0.0f);
+        vec3 position          = tempVertexPositions[vertexIndex - 1];
+        vec3 diffuseColor      = outDiffuse[i];
+        vec3 normalCoordinates = tempNormals[normalIndex - 1];
+        vec3 uvCoordinates     = vec3(tempUvs[uvIndex - 1].x, tempUvs[uvIndex - 1].y, 0.0f);
 
-        if(tempVertexes.size() == 0)
+        if(outAttributes.size() == 0)
         {
-            tempVertexes.push_back(vertex);
+            outAttributes.push_back(position);
+            outAttributes.push_back(diffuseColor);
+            outAttributes.push_back(normalCoordinates);
+            outAttributes.push_back(uvCoordinates);
+
             outIndexes.push_back(count);
         }
         else
         {
             int beforeSize = outIndexes.size();
 
-            for(unsigned int j = 0; j < tempVertexes.size(); j++)
+            for(unsigned int j = 0; j < (outAttributes.size() / 4); j++)
             {
-                Vertex previouslyValidated = tempVertexes[j];
+                vec3 validatedPosition = outAttributes[(j * 4)];
+                vec3 validatedDiffuseColor = outAttributes[(j * 4) + 1];
+                vec3 validatedNormals = outAttributes[(j * 4) + 2];
+                vec3 validatedUvs = outAttributes[(j * 4) + 3];
 
                 if(
-                    (previouslyValidated.position          == vertex.position)          &&
-                    (previouslyValidated.diffuseColor      == vertex.diffuseColor)      &&
-                    (previouslyValidated.normalCoordinates == vertex.normalCoordinates) && 
-                    (previouslyValidated.uvCoordinates     == vertex.uvCoordinates)
+                    (validatedPosition      == position)          &&
+                    (validatedDiffuseColor  == diffuseColor)      &&
+                    (validatedNormals       == normalCoordinates) && 
+                    (validatedUvs           == uvCoordinates)
                 )
                 {
                     outIndexes.push_back(j);
@@ -793,19 +790,15 @@ void MeshLoader::interleaveBufferData(vector<vec3> &outAttributes, vector<unsign
 
             if(currentSize == beforeSize)
             {
-                tempVertexes.push_back(vertex);
                 count += 1;
+                outAttributes.push_back(position);
+                outAttributes.push_back(diffuseColor);
+                outAttributes.push_back(normalCoordinates);
+                outAttributes.push_back(uvCoordinates);
+
                 outIndexes.push_back(count);
             };
         }
-    }
-
-    for(auto vert : tempVertexes)
-    {
-        outAttributes.push_back(vert.position);
-        outAttributes.push_back(vert.diffuseColor);
-        outAttributes.push_back(vert.normalCoordinates);
-        outAttributes.push_back(vert.uvCoordinates);
     }
 
     return;
