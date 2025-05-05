@@ -709,7 +709,7 @@ bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &ou
         this->loadMaterial(outDiffuse, materialBuffer, materialPath);
     }
 
-    this->interleaveBufferData(outAttributes, outIndexes, outDiffuse, this->vertexIndices.size());
+    this->constructIndexBuffer(outAttributes, outIndexes, outDiffuse, this->vertexIndices.size());
 
     return true;
 };
@@ -730,13 +730,12 @@ vector<string> MeshLoader::splitTokensFromLine(const char *wavefrontData, char d
     return tokenStore;
 }
 
-void MeshLoader::interleaveBufferData(vector<vec3> &outAttributes, vector<unsigned int> &outIndexes, vector<vec3> outDiffuse, int numOfAttributes)
+void MeshLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<unsigned int> &outIndexes, vector<vec3> outDiffuse, int numOfAttributes)
 {
     int count = 0;
 
     for( int i = 0; i < numOfAttributes; i++ )
     {
-        // Vertex vertex = {};
         unsigned int vertexIndex = vertexIndices[i];
         unsigned int normalIndex = normalIndices[i];
         unsigned int uvIndex     = uvIndices[i];

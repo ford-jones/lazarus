@@ -93,7 +93,7 @@ class MeshLoader : private MaterialLoader
 
     private:
         vector<string> splitTokensFromLine(const char *wavefrontData, char delim);
-        void interleaveBufferData(vector<vec3> &outAttributes, vector<unsigned int> &outIndexes, vector<vec3> outDiffuse, int numOfAttributes);
+        void constructIndexBuffer(vector<vec3> &outAttributes, vector<unsigned int> &outIndexes, vector<vec3> outDiffuse, int numOfAttributes);
         void constructTriangle();
 
         vector<string> coordinates;
