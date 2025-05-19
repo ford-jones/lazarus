@@ -222,7 +222,8 @@ void main ()
 Shader::Shader()
 {
     std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
-	this->vertReader = nullptr;
+    this->reset();
+    this->vertReader = nullptr;
 	this->fragReader = nullptr;
 	this->vertShaderProgram = NULL;
 	this->fragShaderProgram = NULL;
@@ -236,6 +237,7 @@ Shader::Shader()
 
 int Shader::compileShaders(std::string vertexShader, std::string fragmentShader)
 {
+    this->reset();
     this->vertReader = std::make_unique<FileReader>();
     this->fragReader = std::make_unique<FileReader>();
 
@@ -259,8 +261,8 @@ int Shader::compileShaders(std::string vertexShader, std::string fragmentShader)
     glGetShaderiv(this->vertShader, GL_COMPILE_STATUS, &this->accepted);                                                            //   Check the compilation status
     if(!accepted)                                                                                                       //   If it failed
     {
-        glGetShaderInfoLog(this->vertShader, 512, NULL, this->infoLog);                                                             //   Retrieve the OpenGL shader logs if there are any and print them to the console
-        std::cout << RED_TEXT << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << RESET_TEXT << infoLog << std::endl;
+        glGetShaderInfoLog(this->vertShader, 512, NULL, this->message);                                                             //   Retrieve the OpenGL shader logs if there are any and print them to the console
+        std::cout << RED_TEXT << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << RESET_TEXT << this->message << std::endl;
 
         globals.setExecutionState(LAZARUS_VSHADER_COMPILE_FAILURE);
         return globals.getExecutionState();
@@ -271,8 +273,8 @@ int Shader::compileShaders(std::string vertexShader, std::string fragmentShader)
     glGetShaderiv(this->fragShader, GL_COMPILE_STATUS, &this->accepted);                                                            //   Check the compilation status
     if(!accepted)                                                                                                       //   If it failed
     {
-        glGetShaderInfoLog(this->fragShader, 512, NULL, this->infoLog);                                                             //   Retrieve the OpenGL shader logs if there are any and print them to the console
-        std::cout << RED_TEXT << "ERROR::SHADER::FRAG::COMPILATION_FAILED\n" << RESET_TEXT << this->infoLog << std::endl;
+        glGetShaderInfoLog(this->fragShader, 512, NULL, this->message);                                                             //   Retrieve the OpenGL shader logs if there are any and print them to the console
+        std::cout << RED_TEXT << "ERROR::SHADER::FRAG::COMPILATION_FAILED\n" << RESET_TEXT << this->message << std::endl;
 
         globals.setExecutionState(LAZARUS_FSHADER_COMPILE_FAILURE);
         return globals.getExecutionState();
@@ -284,23 +286,58 @@ int Shader::compileShaders(std::string vertexShader, std::string fragmentShader)
     glGetProgramiv(this->shaderProgram, GL_LINK_STATUS, &this->accepted);                                                           //   Check the link status
     if(!accepted)                                                                                                       //   If it failed
     {
-        glGetProgramInfoLog(this->shaderProgram, 512, NULL, this->infoLog);                                                         //   Retrieve the OpenGL shader logs if there are any and print them to the console
-        std::cout << RED_TEXT << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << RESET_TEXT << infoLog << std::endl;
+        glGetProgramInfoLog(this->shaderProgram, 512, NULL, this->message);                                                         //   Retrieve the OpenGL shader logs if there are any and print them to the console
+        std::cout << RED_TEXT << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << RESET_TEXT << message << std::endl;
 
         globals.setExecutionState(LAZARUS_SHADER_LINKING_FAILURE);
         return globals.getExecutionState();
     }
 
-    if(glIsProgram(this->shaderProgram) != GL_TRUE)                                                                           //   Check that the shader program now exists
+    this->verifyProgram(this->shaderProgram);
+
+    return shaderProgram;
+};
+
+void Shader::setActiveShader(int program)
+{
+    this->verifyProgram(program);
+    glUseProgram(program);
+
+    this->errorCode = glGetError(); 
+    if(this->errorCode != GL_NO_ERROR)
+    {
+        globals.setExecutionState(LAZARUS_SHADER_ERROR);
+    };
+};
+
+void Shader::verifyProgram(int program)
+{
+    if(glIsProgram(program) != GL_TRUE)                                                                           //   Check that the shader program now exists
     {
         std::cout << RED_TEXT << "ERROR::SHADER::PROGRAM::NOT_FOUND" << RESET_TEXT << std::endl;
 
         globals.setExecutionState(LAZARUS_SHADER_ERROR);
-        return globals.getExecutionState();
     }
-
-    return shaderProgram;
 };
+
+void Shader::reset()
+{
+	this->vertReader = nullptr;
+	this->fragReader = nullptr;
+	this->vertShaderProgram = NULL;
+	this->fragShaderProgram = NULL;
+	
+	this->accepted = 0;
+	
+	this->vertShader = 0;
+	this->fragShader = 0;
+	this->shaderProgram = 0;	
+};
+
+//  TODO:
+//  If user specifies their own vert / frag shaders:
+//      -   the default inputs should be appended to the beginning of the shader
+//      -   the inputs MUST be used so that they aren't optimised-out, otherwise errors will occur when glGetUniform is called later on
 
 Shader::~Shader()
 {

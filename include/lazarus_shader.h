@@ -44,9 +44,13 @@ class Shader
     public:
     	Shader();
         int compileShaders(std::string vertexShader = "", std::string fragmentShader = "");
+        void setActiveShader(int program);
         virtual ~Shader();
 
     private: 
+        void reset();
+        void verifyProgram(int program);
+
         unique_ptr<FileReader> vertReader;
         unique_ptr<FileReader> fragReader;
 
@@ -56,8 +60,10 @@ class Shader
         GLuint shaderProgram;
         GLuint vertShader;
         GLuint fragShader;
+        
+        char *message;
 
-        char infoLog[512];
+        int errorCode; 
         int accepted;
 
         GlobalsManager globals;
