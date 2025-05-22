@@ -18,29 +18,70 @@
 /*  LAZARUS ENGINE */
 #include "../include/lazarus_shader.h"
 
-const char *LAZARUS_DEFAULT_VERT_SHADER = R"(
-#version 410 core
+const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
+    #version 410 core
 
-layout(location = 0) in vec3 inVertex;
-layout(location = 1) in vec3 inDiffuse;
-layout(location = 2) in vec3 inNormal;
-layout(location = 3) in vec3 inTexCoord;
+    layout(location = 0) in vec3 inVertex;
+    layout(location = 1) in vec3 inDiffuse;
+    layout(location = 2) in vec3 inNormal;
+    layout(location = 3) in vec3 inTexCoord;
 
-uniform int usesPerspective;
+    uniform int usesPerspective;
 
-uniform mat4 modelMatrix;
-uniform mat4 viewMatrix;
-uniform mat4 perspectiveProjectionMatrix;
-uniform mat4 orthoProjectionMatrix;
+    uniform mat4 modelMatrix;
+    uniform mat4 viewMatrix;
+    uniform mat4 perspectiveProjectionMatrix;
+    uniform mat4 orthoProjectionMatrix;
 
-out vec3 fragPosition;
-out vec3 diffuseColor;
-out vec3 normalCoordinate;
-out vec3 textureCoordinate;
-out vec3 skyBoxTextureCoordinate;
+    out vec3 fragPosition;
+    out vec3 diffuseColor;
+    out vec3 normalCoordinate;
+    out vec3 textureCoordinate;
+    out vec3 skyBoxTextureCoordinate;
 
-flat out int isUnderPerspective;
+    flat out int isUnderPerspective;
+)";
 
+const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
+    #version 410 core
+
+    #define MAX_LIGHTS 150
+
+    in vec3 fragPosition;
+    in vec3 diffuseColor;
+    in vec3 normalCoordinate;
+    in vec3 textureCoordinate;
+    in vec3 skyBoxTextureCoordinate;
+
+    flat in int isUnderPerspective;
+
+    uniform int lightCount;
+    uniform vec3 lightPositions[MAX_LIGHTS];
+    uniform vec3 lightColors[MAX_LIGHTS];
+    uniform float lightBrightness[MAX_LIGHTS];
+
+    uniform vec3 fogColor;
+    uniform vec3 fogViewpoint;
+    uniform float fogMaxDist;
+    uniform float fogMinDist;
+    uniform float fogDensity;
+
+    uniform vec3 textColor;
+
+    uniform int spriteAsset;
+    uniform int glyphAsset;
+    uniform int isSkyBox;
+
+    uniform float textureLayer;
+
+    uniform sampler2D textureAtlas;
+    uniform sampler2DArray textureArray;
+    uniform samplerCube textureCube;
+
+    out vec4 outFragment;
+)";
+
+const char *LAZARUS_DEFAULT_VERT_SHADER =  R"(
 void main ()
 {
    vec4 worldPosition = modelMatrix * vec4(inVertex, 1.0);
@@ -65,43 +106,6 @@ void main ()
 })"; 
 
 const char *LAZARUS_DEFAULT_FRAG_SHADER = R"(
-#version 410 core
-
-#define MAX_LIGHTS 150
-
-in vec3 fragPosition;
-in vec3 diffuseColor;
-in vec3 normalCoordinate;
-in vec3 textureCoordinate;
-in vec3 skyBoxTextureCoordinate;
-
-flat in int isUnderPerspective;
-
-uniform int lightCount;
-uniform vec3 lightPositions[MAX_LIGHTS];
-uniform vec3 lightColors[MAX_LIGHTS];
-uniform float lightBrightness[MAX_LIGHTS];
-
-uniform vec3 fogColor;
-uniform vec3 fogViewpoint;
-uniform float fogMaxDist;
-uniform float fogMinDist;
-uniform float fogDensity;
-
-uniform vec3 textColor;
-
-uniform int spriteAsset;
-uniform int glyphAsset;
-uniform int isSkyBox;
-
-uniform float textureLayer;
-
-uniform sampler2D textureAtlas;
-uniform sampler2DArray textureArray;
-uniform samplerCube textureCube;
-
-out vec4 outFragment;
-
 //  Illuminate the fragment using the lambertian lighting model
 vec3 calculateLambertianDeflection (vec4 colorData, vec3 lightPosition, vec3 lightColor) 
 {
@@ -222,35 +226,36 @@ void main ()
 Shader::Shader()
 {
     std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+
     this->reset();
-    this->vertReader = nullptr;
-	this->fragReader = nullptr;
-	this->vertShaderProgram = NULL;
-	this->fragShaderProgram = NULL;
-	
-	this->accepted = 0;
-	
-	this->vertShader = 0;
-	this->fragShader = 0;
-	this->shaderProgram = 0;	
 };
 
-int Shader::compileShaders(std::string vertexShader, std::string fragmentShader)
+int Shader::compileShaders(std::string fragmentShader, std::string vertexShader)
 {
     this->reset();
     this->vertReader = std::make_unique<FileReader>();
     this->fragReader = std::make_unique<FileReader>();
 
-    if(vertexShader != "" && fragmentShader != "")
+    if(fragmentShader != "")
     {
-        this->vertShaderProgram   =   vertReader->readFromText(vertexShader.c_str());                                                      //  Retrieve the vertex shader file contents through stringstream
-        this->fragShaderProgram   =   fragReader->readFromText(fragmentShader.c_str());                                                      //  Retrieve the fragment shader file contents through stringstream
+        this->fragSource = fragReader->readFromText(fragmentShader.c_str());
     }
     else
     {
-        this->vertShaderProgram = LAZARUS_DEFAULT_VERT_SHADER;
-        this->fragShaderProgram = LAZARUS_DEFAULT_FRAG_SHADER;
+        this->fragSource = LAZARUS_DEFAULT_FRAG_SHADER;
     };
+
+    if(vertexShader != "")
+    {
+        this->vertSource = vertReader->readFromText(vertexShader.c_str());
+    }
+    else
+    {
+        this->vertSource = LAZARUS_DEFAULT_VERT_SHADER;
+    };
+
+    this->vertShaderProgram = vertLayout.append(vertSource).c_str();
+    this->fragShaderProgram = fragLayout.append(fragSource).c_str();
 
     this->vertShader      =   glCreateShader(GL_VERTEX_SHADER);                                                               //   Create a new instance of a vertex shader program in openGL
     this->fragShader      =   glCreateShader(GL_FRAGMENT_SHADER);                                                             //   Create a new instance of a fragment shader program in openGL
@@ -301,8 +306,8 @@ int Shader::compileShaders(std::string vertexShader, std::string fragmentShader)
 void Shader::setActiveShader(int program)
 {
     this->verifyProgram(program);
-    glUseProgram(program);
-
+    glUseProgram(this->shaderProgram);
+    
     this->errorCode = glGetError(); 
     if(this->errorCode != GL_NO_ERROR)
     {
@@ -310,18 +315,136 @@ void Shader::setActiveShader(int program)
     };
 };
 
+void Shader::uploadUniform(std::string identifier, void *data)
+{
+    const char *uniformName = identifier.c_str();
+
+    const GLchar *name[1] = {
+        uniformName
+    };
+    
+    GLuint index[1] = {
+        0
+    };
+    
+    GLenum type = 0;
+    GLint size = 0;
+    GLchar *n = NULL;
+
+
+    //  Lookup uniform location
+    GLuint uniformLocation = glGetUniformLocation(this->shaderProgram, uniformName);
+    
+    //  Lookup uniform index by name
+    glGetUniformIndices(
+        this->shaderProgram,
+        1,
+        name,
+        index
+    );
+
+    //  Lookup uniform data by index
+    glGetActiveUniform(
+        this->shaderProgram, 
+        index[0],
+        100,
+        NULL,
+        &size,
+        &type,
+        n
+    );
+
+    //  Upload uniform data
+    switch (type)
+    {
+        case GL_INT:
+        {
+            GLint *integerValue = static_cast<GLint *>(data);
+            glUniform1i(uniformLocation, *integerValue);
+
+            break;
+        }
+        case GL_UNSIGNED_INT:
+        {
+            GLuint *uIntegerValue = static_cast<GLuint *>(data);
+            glUniform1ui(uniformLocation, *uIntegerValue);
+
+            break;
+        }
+        case GL_FLOAT:
+        {
+            GLfloat *floatValue = static_cast<GLfloat *>(data);
+            glUniform1f(uniformLocation, *floatValue);
+
+            break;
+        }
+        case GL_FLOAT_VEC4:
+        {
+            auto *vectorValue = reinterpret_cast<glm::vec4 *>(data);
+            glm::vec4 vec = *vectorValue;
+            glUniform4fv(uniformLocation, 1, &vec[0]);
+
+            break;
+        }
+        case GL_FLOAT_VEC3:
+        {
+            auto *vectorValue = reinterpret_cast<glm::vec3 *>(data);
+            glm::vec3 vec = *vectorValue;
+            glUniform3fv(uniformLocation, 1, &vec[0]);
+
+            break;
+        }
+        case GL_FLOAT_VEC2:
+        {
+            auto *vectorValue = reinterpret_cast<glm::vec2 *>(data);
+            glm::vec2 vec = *vectorValue;
+            glUniform2fv(uniformLocation, 1, &vec[0]);
+
+            break;
+        };
+
+        default:
+            break;
+    }
+    //  TODO:
+    //  Compare types (switch) for float, int, unsigned int, vec3, iVec3, vec2 and iVec2
+    //  Check errors
+    //  Update docs:
+    //      API changes:
+    //      -   Window shader requirement removed
+    //      -   Shader plug & play (including default layout and appendage)
+    //      caveats: 
+    //      -   engine state = LAZARUS_UNIFORM_NOT_FOUND
+    //      -   locked glsl version
+    //      -   unusued uniforms optimised-out causes segfault on lookup
+    //      -   uniform arrays unsupported)
+}
+
 void Shader::verifyProgram(int program)
 {
-    if(glIsProgram(program) != GL_TRUE)                                                                           //   Check that the shader program now exists
+    //  Validate existence of the program
+    if(glIsProgram(program) != GL_TRUE)
     {
         std::cout << RED_TEXT << "ERROR::SHADER::PROGRAM::NOT_FOUND" << RESET_TEXT << std::endl;
 
         globals.setExecutionState(LAZARUS_SHADER_ERROR);
     }
+    else
+    {
+        this->shaderProgram = program;
+    };
+
+    return;
 };
 
 void Shader::reset()
 {
+    this->vertLayout = LAZARUS_DEFAULT_VERT_LAYOUT;
+    this->fragLayout = LAZARUS_DEFAULT_FRAG_LAYOUT;
+
+    this->vertSource.clear();
+    this->fragSource.clear();
+
 	this->vertReader = nullptr;
 	this->fragReader = nullptr;
 	this->vertShaderProgram = NULL;
@@ -335,8 +458,8 @@ void Shader::reset()
 };
 
 //  TODO:
+//  Consider enforcing lazarus vert shader
 //  If user specifies their own vert / frag shaders:
-//      -   the default inputs should be appended to the beginning of the shader
 //      -   the inputs MUST be used so that they aren't optimised-out, otherwise errors will occur when glGetUniform is called later on
 
 Shader::~Shader()
