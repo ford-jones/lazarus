@@ -1,8 +1,6 @@
-# Version: 2025.05.05071812
+# Version: 2025.05.23215806
 
-* [c64f426](https://github.com/ford-jones/lazarus/commit/c64f4261033af416debdab8b8d2a814c95dedb87): Clean: Function renaming
-* [26753e6](https://github.com/ford-jones/lazarus/commit/26753e6b5c20ea6d7fa32c18cb398f91c34f9c4c): Clean: Removed unnecessary vector usage
-* [0331684](https://github.com/ford-jones/lazarus/commit/0331684ed3fcdd345ae1587220e3aad49b92ebb0): Feat: Deduplicate vertices using index buffer for cubes and skyboxes
-* [da623d8](https://github.com/ford-jones/lazarus/commit/da623d8295cde3ef785ca5edd30d3a4af2ab9885): Feat: Indices construction for quads and glyphs
-* [7a3e800](https://github.com/ford-jones/lazarus/commit/7a3e8006d1fb88b472f51935e4d46e59c2e1e2b9): Feat: Dynamically calculated EBO indices
-* [2cfba3a](https://github.com/ford-jones/lazarus/commit/2cfba3a33fa38e8a394582518a9018d474fec1e6): Feat: Renderer implementation of index buffer
+* [6c7f943](https://github.com/ford-jones/lazarus/commit/6c7f943fd88337b212dc79b5a3aa80edb9ba333b): Docs: Updated API reference and examples
+* [aaa4e6d](https://github.com/ford-jones/lazarus/commit/aaa4e6d4d02d43db351c695d8bcc7f90270d62a3): Feat: Handles custom uniform variable lookups and uploads
+* [ab832cb](https://github.com/ford-jones/lazarus/commit/ab832cba1f3ba225e1a76914278d7df8f65ee508): Feat: Support for plug and play shader programs
+* [6c648af](https://github.com/ford-jones/lazarus/commit/6c648af5622f4ac774baf58ebeca54ae7d4e3c7c): Update: Decoupled shader activation from window creation
