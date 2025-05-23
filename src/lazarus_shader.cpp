@@ -404,20 +404,12 @@ void Shader::uploadUniform(std::string identifier, void *data)
         };
 
         default:
+            globals.setExecutionState(LAZARUS_SHADER_ERROR);
             break;
     }
     //  TODO:
-    //  Compare types (switch) for float, int, unsigned int, vec3, iVec3, vec2 and iVec2
-    //  Check errors
     //  Update docs:
-    //      API changes:
-    //      -   Window shader requirement removed
-    //      -   Shader plug & play (including default layout and appendage)
-    //      caveats: 
-    //      -   engine state = LAZARUS_UNIFORM_NOT_FOUND
-    //      -   locked glsl version
-    //      -   unusued uniforms optimised-out causes segfault on lookup
-    //      -   uniform arrays unsupported)
+    //      -   Shader default layout and appendage
 }
 
 void Shader::verifyProgram(int program)
@@ -456,11 +448,6 @@ void Shader::reset()
 	this->fragShader = 0;
 	this->shaderProgram = 0;	
 };
-
-//  TODO:
-//  Consider enforcing lazarus vert shader
-//  If user specifies their own vert / frag shaders:
-//      -   the inputs MUST be used so that they aren't optimised-out, otherwise errors will occur when glGetUniform is called later on
 
 Shader::~Shader()
 {

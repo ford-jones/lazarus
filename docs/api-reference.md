@@ -122,11 +122,8 @@ Params:
 #### int createWindow()
 Initialises OpenGL and supplementary libraries. Creates a window and rendering context.
 
-#### int loadConfig(GLuint shader)
+#### int loadConfig()
 Binds a shader program to the current active window's OpenGL Context and loads a render configuration based on values set in the global scope (see: `GlobalsManager`).
-
-Params:
-> **shader:** *The id of the engine's shader program. This can be acquired from a call to `Shader::initialiseShader()` or by compiling your own shader program. (default: `0`)* 
 
 #### int open()
 Opens the active window.
@@ -221,17 +218,28 @@ A class for the lazarus default shader program which, simply maps vertex positio
 Default-initialises this classes members.
 
 ### Functions:
-#### int compileShaders(std::string vertexShader, std::string fragmentShader)
+#### int compileShaders(std::string fragmentShader, std::string vertexShader)
 Invokes the parsing, compiling, attatching and linking of the specified shaders. If none are specified, `LAZARUS_DEFAULT_VERT_SHADER` and `LAZARUS_DEFAULT_FRAG_SHADER` are used. \
 Returns the ID of the shader program which can then be passed to the various constructors which need it.
-
-*Note:* \
-*Failure to pass the return value of this function as an argument into `WindowManager::loadConfig()` will cause the program to use the OpenGL default shader program.* \
-*While this may still render graphics in some limitted capacity, it is not reccomended to do so.* \
 
 Params:
 > **vertexShader:** *The relative path to a glsl vertex shader program. (optional)* \
 > **fragmentShader:** *The relative path to a glsl fragment shader program. (optional)* \
+
+*For notes on shader guidelines, layout and default variables see: [Using your own shaders](./lazarus-by-example.md#using-your-own-shaders) in the examples.*
+
+#### void setActiveShader(int program)
+Set the shader id in state that should be used to render subsequent draw calls. 
+
+Params:
+> **program:** *The ID of a shader program returned from `Shader::compileShaders()`*
+
+#### uploadUniform(std::string identifier, void *data)
+Uploads a value to the to the most recently activated shader program. If no uniform by the name of `identifier` is present, the execution state will be set to `LAZARUS_SHADER_ERROR`. 
+
+Params:
+> **identifier:** *The uniform variable's name within the shader program.* \
+> **data:** *The value to be uploaded to the GPU. Supported types are: `float`, `int`, `unsigned int`, `vec2`, `vec3` and `vec4`.*
 
 ## FileReader:
 A utility class for locating files and reading their contents.
