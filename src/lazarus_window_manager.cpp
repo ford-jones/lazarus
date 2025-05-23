@@ -372,7 +372,7 @@ int WindowManager::setBackgroundColor(float r, float g, float b)
 	return GLFW_NO_ERROR;
 };
 
-int WindowManager::loadConfig(GLuint shader)
+int WindowManager::loadConfig()
 {	
 	if(enableCursor == true)
 	{
@@ -407,11 +407,9 @@ int WindowManager::loadConfig(GLuint shader)
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 
     glFrontFace(GL_CCW);
+	this->checkErrors(__FILE__, __LINE__);
 
 	this->setBackgroundColor(0.0, 0.0, 0.0);
-
-	glUseProgram(shader);	
-	this->checkErrors(__FILE__, __LINE__);
 	
 	return GLFW_NO_ERROR;
 };

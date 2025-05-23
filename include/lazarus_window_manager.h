@@ -90,7 +90,7 @@ class WindowManager : public Events, public Time
 
         int createWindow();
         int setBackgroundColor(float r, float g, float b);
-		int loadConfig(GLuint shader);
+		int loadConfig();
 
         int open();
         int close();

@@ -36,19 +36,31 @@ using std::unique_ptr;
 #ifndef LAZARUS_SHADER_H
 #define LAZARUS_SHADER_H
 
+extern const char *LAZARUS_DEFAULT_VERT_LAYOUT;
+extern const char *LAZARUS_DEFAULT_FRAG_LAYOUT;
 extern const char *LAZARUS_DEFAULT_VERT_SHADER;
 extern const char *LAZARUS_DEFAULT_FRAG_SHADER;
 
-class Shader 
+class Shader
 {
     public:
     	Shader();
-        int compileShaders(std::string vertexShader = "", std::string fragmentShader = "");
+        int compileShaders(std::string fragmentShader = "", std::string vertexShader = "");
+        void uploadUniform(std::string identifier, void *data);
+        void setActiveShader(int program);
         virtual ~Shader();
 
     private: 
+        void reset();
+        void verifyProgram(int program);
+
         unique_ptr<FileReader> vertReader;
         unique_ptr<FileReader> fragReader;
+
+        std::string vertLayout; 
+        std::string vertSource; 
+        std::string fragLayout; 
+        std::string fragSource; 
 
         const char *vertShaderProgram;
         const char *fragShaderProgram;
@@ -57,7 +69,9 @@ class Shader
         GLuint vertShader;
         GLuint fragShader;
 
-        char infoLog[512];
+        char *message;
+
+        int errorCode; 
         int accepted;
 
         GlobalsManager globals;
