@@ -28,6 +28,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "lazarus_file_reader.h"
 
@@ -73,6 +74,9 @@ class Shader
 
         int errorCode; 
         int accepted;
+
+        std::vector<GLuint> linkedPrograms;
+        std::vector<GLuint> shaderSources;
 
         GlobalsManager globals;
         
