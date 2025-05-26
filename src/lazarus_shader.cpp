@@ -226,6 +226,8 @@ void main ()
 Shader::Shader()
 {
     std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    this->linkedPrograms = {};
+    this->shaderSources = {};
 
     this->reset();
 };
@@ -299,6 +301,10 @@ int Shader::compileShaders(std::string fragmentShader, std::string vertexShader)
     }
 
     this->verifyProgram(this->shaderProgram);
+    
+    this->linkedPrograms.push_back(this->shaderProgram);
+    this->shaderSources.push_back(this->vertShader);
+    this->shaderSources.push_back(this->fragShader);
 
     return shaderProgram;
 };
@@ -407,9 +413,6 @@ void Shader::uploadUniform(std::string identifier, void *data)
             globals.setExecutionState(LAZARUS_SHADER_ERROR);
             break;
     }
-    //  TODO:
-    //  Update docs:
-    //      -   Shader default layout and appendage
 }
 
 void Shader::verifyProgram(int program)
@@ -434,13 +437,14 @@ void Shader::reset()
     this->vertLayout = LAZARUS_DEFAULT_VERT_LAYOUT;
     this->fragLayout = LAZARUS_DEFAULT_FRAG_LAYOUT;
 
-    this->vertSource.clear();
-    this->fragSource.clear();
+    this->vertSource = "";
+    this->fragSource = "";
 
 	this->vertReader = nullptr;
 	this->fragReader = nullptr;
 	this->vertShaderProgram = NULL;
 	this->fragShaderProgram = NULL;
+    this->message = NULL;
 	
 	this->accepted = 0;
 	
@@ -452,7 +456,14 @@ void Shader::reset()
 Shader::~Shader()
 {
     std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
-    glDeleteShader          (this->vertShader);
-    glDeleteShader          (this->fragShader);
-    glDeleteProgram         (this->shaderProgram);
+
+    for(unsigned int i = 0; i < this->linkedPrograms.size(); i++)
+    {
+        glDeleteProgram         (this->linkedPrograms[i]);
+    };
+
+    for(unsigned int i = 0; i < this->shaderSources.size(); i++)
+    {
+        glDeleteProgram         (this->shaderSources[i]);
+    };
 };
