@@ -1,6 +1,5 @@
-# Version: 2025.05.23215806
+# Version: 2025.05.26044307
 
-* [6c7f943](https://github.com/ford-jones/lazarus/commit/6c7f943fd88337b212dc79b5a3aa80edb9ba333b): Docs: Updated API reference and examples
-* [aaa4e6d](https://github.com/ford-jones/lazarus/commit/aaa4e6d4d02d43db351c695d8bcc7f90270d62a3): Feat: Handles custom uniform variable lookups and uploads
-* [ab832cb](https://github.com/ford-jones/lazarus/commit/ab832cba1f3ba225e1a76914278d7df8f65ee508): Feat: Support for plug and play shader programs
-* [6c648af](https://github.com/ford-jones/lazarus/commit/6c648af5622f4ac774baf58ebeca54ae7d4e3c7c): Update: Decoupled shader activation from window creation
+* [d8fdeee](https://github.com/ford-jones/lazarus/commit/d8fdeeeb4f5eb033dd491694459696656e39020e): Docs: Update by-example guide
+* [8c5263a](https://github.com/ford-jones/lazarus/commit/8c5263a1d29b0618890386aa2df60512ae342151): Fix: Ensures proper cleanup of previously linked shader programs upon termination
+* [7571565](https://github.com/ford-jones/lazarus/commit/7571565b487ed28d40b6a1d1d8b689c3ea0c7b8d): Fix: Uninitialised variables in shader pipeline
