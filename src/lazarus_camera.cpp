@@ -22,6 +22,7 @@
 CameraManager::CameraManager(GLuint shader)
 {
     std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    this->camera = {};
     this->shader                            = shader;
 
     this->pixelHeight                       = globals.getDisplayWidth();
@@ -35,24 +36,15 @@ CameraManager::CameraManager(GLuint shader)
     this->errorCode                         = 0;
 };
 
-CameraManager::Camera CameraManager::createPerspectiveCam(int arX, int arY)
+CameraManager::Camera CameraManager::createPerspectiveCam(int aspectRatioX, int aspectRatioY)
 {
     srand(time((0)));
+    
+    this->camera = {};
+    
     camera.id                   = 1 + (rand() % 2147483647);
 
-    /* ===============================================
-        If a target aspect ratio has been defined then
-        use that. Otherwise use the dimensions 
-        returned from the machine's primary monitor.
-    ================================================== */
-    if((arX + arY) > 0)
-    {
-        camera.aspectRatio      = static_cast<float>(arX) / static_cast<float>(arY);
-    }
-    else
-    {
-        camera.aspectRatio      = static_cast<float>(pixelHeight) / static_cast<float>(pixelWidth);
-    };
+    this->setAspectRatio(aspectRatioX, aspectRatioY);
 
     /* ===============================================
         The direction of the back of the camera, so
@@ -72,30 +64,26 @@ CameraManager::Camera CameraManager::createPerspectiveCam(int arX, int arY)
     return camera;
 };
 
-CameraManager::Camera CameraManager::createOrthoCam(int arX, int arY)
+CameraManager::Camera CameraManager::createOrthoCam(int aspectRatioX, int aspectRatioY)
 {
     srand(time((0)));
+
+    this->camera = {};
+
     camera.id                   = 1 + (rand() % 2147483647);
 
-    if((arX + arY) > 0)
-    {
-        camera.aspectRatio      = static_cast<float>(arX) / static_cast<float>(arY);
-    }
-    else
-    {
-        camera.aspectRatio      = static_cast<float>(pixelHeight) / static_cast<float>(pixelWidth);
-    };
+    this->setAspectRatio(aspectRatioX, aspectRatioY);
 
     /* ================================================
         Negative Z so as to be "back" from the viewing
         plane.
     =================================================== */
     camera.position             = vec3(0.0f, 0.0f, -1.0f);
-    camera.direction            = glm::normalize(camera.position - vec3(0.0f, 0.0f, 0.0f));
+    camera.direction            = glm::normalize(camera.position);
     camera.upVector             = vec3(0.0f, 1.0f, 0.0f);
     
     camera.viewMatrix           = glm::lookAt(camera.position, (camera.position + camera.direction), camera.upVector);
-    camera.projectionMatrix     = glm::ortho(0.0f, static_cast<float>(arX), 0.0f, static_cast<float>(arY));
+    camera.projectionMatrix     = glm::ortho(0.0f, static_cast<float>(aspectRatioX), 0.0f, static_cast<float>(aspectRatioY));
 
     camera.usesPerspective      = 0;
 
@@ -177,6 +165,23 @@ int CameraManager::getPixelOccupant(int positionX, int positionY)
     }
     
     return pixel;
+};
+
+void CameraManager::setAspectRatio(int x, int y)
+{
+    /* ===============================================
+        If a target aspect ratio has been defined then
+        use that. Otherwise use the dimensions 
+        returned from the machine's primary monitor.
+    ================================================== */
+    if((x + y) > 0)
+    {
+        camera.aspectRatio      = static_cast<float>(x) / static_cast<float>(y);
+    }
+    else
+    {
+        camera.aspectRatio      = static_cast<float>(this->pixelHeight) / static_cast<float>(this->pixelWidth);
+    };   
 };
 
 void CameraManager::checkErrors(const char *file, int line)

@@ -56,8 +56,8 @@ class CameraManager
             int usesPerspective;
         };
 		
-        Camera createPerspectiveCam(int arX = 0, int arY = 0);
-        Camera createOrthoCam(int arX, int arY);
+        Camera createPerspectiveCam(int aspectRatioX = 0, int aspectRatioY = 0);
+        Camera createOrthoCam(int aspectRatioX  = 0, int aspectRatioY = 0);
         void loadCamera(Camera &cameraIn);
         
         int getPixelOccupant(int windowX, int windowY);
@@ -65,6 +65,7 @@ class CameraManager
         virtual ~CameraManager();
 
     private:
+        void setAspectRatio(int x, int y);
         void checkErrors(const char *file, int line);
 
         int errorCode;
