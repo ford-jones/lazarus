@@ -51,6 +51,7 @@ class Transform
 
 		void translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity = 1.0);
 		void rotateCameraAsset(CameraManager::Camera &camera, float x, float y, float z);
+		void orbitCameraAsset(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX = 0.0, float tarY = 0.0, float tarZ = 0.0);
 
 		void translateLightAsset(LightManager::Light &light, float x, float y, float z);
 
@@ -59,7 +60,7 @@ class Transform
 		bool determineIsSigned(float x, float y, float z);
 		float up;
 
-		glm::vec3 temp;
+		glm::vec3 rotation;
 
 		glm::vec3 localCoordinates;
 		glm::vec4 worldCoordinates;
