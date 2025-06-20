@@ -176,9 +176,8 @@ void Transform::orbitCameraAsset(CameraManager::Camera &camera, float azimuth, f
 		this->rotation.y = sin(glm::radians(azimuth));
 		this->rotation.z = sin(glm::radians(elevation)) * cos(glm::radians(azimuth)); 
 
-		glm::vec3 target = glm::vec3(tarX, tarY, tarZ);
-		camera.position = target + (this->rotation * radius);
-		camera.direction = target;
+		camera.direction = glm::vec3(tarX, tarY, tarZ);
+		camera.position = camera.direction + (this->rotation * radius);
 		
 		camera.viewMatrix = glm::lookAt(camera.position, camera.direction, camera.upVector);
 	}
