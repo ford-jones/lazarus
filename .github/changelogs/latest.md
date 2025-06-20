@@ -1,5 +1,5 @@
-# Version: 2025.05.26044307
+# Version: 2025.06.20103413
 
-* [d8fdeee](https://github.com/ford-jones/lazarus/commit/d8fdeeeb4f5eb033dd491694459696656e39020e): Docs: Update by-example guide
-* [8c5263a](https://github.com/ford-jones/lazarus/commit/8c5263a1d29b0618890386aa2df60512ae342151): Fix: Ensures proper cleanup of previously linked shader programs upon termination
-* [7571565](https://github.com/ford-jones/lazarus/commit/7571565b487ed28d40b6a1d1d8b689c3ea0c7b8d): Fix: Uninitialised variables in shader pipeline
+* [e5f2e04](https://github.com/ford-jones/lazarus/commit/e5f2e042b879517529b211c23538e4c08a81cf79): Update: Refactored orbit implementation
+* [8ecc430](https://github.com/ford-jones/lazarus/commit/8ecc430b39727d2c73a2106153e0ce23434a5a18): Feat: Arcball camera movement
+* [e245481](https://github.com/ford-jones/lazarus/commit/e2454814198ec7394ce86629b217a6e5b395588e): Fix: Makes aspect ratio definition / redefinition optional for orthographic cameras
