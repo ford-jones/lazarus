@@ -29,7 +29,7 @@ Transform::Transform()
 	this->localCoordinates = glm::vec3(0.0, 0.0, 0.0);
 	this->worldCoordinates = glm::vec4(localCoordinates, 0.0);
 
-	this->temp = vec3(0.0, 0.0, 0.0);
+	this->rotation = vec3(0.0, 0.0, 0.0);
 };
 
 void Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
@@ -128,7 +128,7 @@ void Transform::translateCameraAsset(CameraManager::Camera &camera, float x, flo
 	{
 		camera.position += (z * velocity) * camera.direction;
 	}
-
+	// camera.viewMatrix = glm::lookAt(sin(cos(camera.position)), glm::vec3(0.0, 0.0, 0.0), camera.upVector);
 	camera.viewMatrix = glm::lookAt(camera.position, (camera.position + camera.direction), camera.upVector);
 	
 	return;
@@ -136,7 +136,7 @@ void Transform::translateCameraAsset(CameraManager::Camera &camera, float x, flo
 
 void Transform::rotateCameraAsset(CameraManager::Camera &camera, float x, float y, float z)
 {	
-	temp = vec3(0.0, 0.0, 0.0);
+	this->rotation = vec3(0.0, 0.0, 0.0);
 
 	if((x > 360.0f) || (x < -360.0f))
 	{
@@ -147,13 +147,39 @@ void Transform::rotateCameraAsset(CameraManager::Camera &camera, float x, float 
 		this->up = this->determineUpVector(x);
 		camera.upVector = glm::vec3(0.0f, this->up, 0.0f);
 
-		temp.x = cos(glm::radians(y)) * cos(glm::radians(x));
-		temp.y = sin(glm::radians(-x));
-		temp.z = sin(glm::radians(y)) * cos(glm::radians(x)); 
+		this->rotation.x = cos(glm::radians(y)) * cos(glm::radians(x));
+		this->rotation.y = sin(glm::radians(-x));
+		this->rotation.z = sin(glm::radians(y)) * cos(glm::radians(x)); 
 
-		camera.direction = temp;
+		camera.direction = this->rotation;
 
 		camera.viewMatrix = glm::lookAt(camera.position, (camera.position + camera.direction), camera.upVector);
+	}
+	
+	return;
+};
+
+void Transform::orbitCameraAsset(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX, float tarY, float tarZ)
+{	
+	this->rotation = vec3(0.0, 0.0, 0.0);
+
+	if((azimuth > 360.0f) || (azimuth < -360.0f))
+	{
+		globals.setExecutionState(LAZARUS_INVALID_RADIANS);
+	}
+	else
+	{
+		this->up = this->determineUpVector(azimuth);
+		camera.upVector = glm::vec3(0.0f, this->up, 0.0f);
+
+		this->rotation.x = cos(glm::radians(elevation)) * cos(glm::radians(azimuth));
+		this->rotation.y = sin(glm::radians(azimuth));
+		this->rotation.z = sin(glm::radians(elevation)) * cos(glm::radians(azimuth)); 
+
+		camera.direction = glm::vec3(tarX, tarY, tarZ);
+		camera.position = camera.direction + (this->rotation * radius);
+		
+		camera.viewMatrix = glm::lookAt(camera.position, camera.direction, camera.upVector);
 	}
 	
 	return;
