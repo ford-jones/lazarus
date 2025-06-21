@@ -296,7 +296,7 @@ Applies a translation transformation (movement) to a mesh asset along the x, y a
 Updates the `locationX`, `locationY` and `locationZ` properties of a `MeshManager::Mesh` object in real time. 
 
 Params:
-> **mesh:** *The mesh asset to be acted upon. (type: `MeshManager::Mesh`)* \
+> **mesh:** *The mesh asset to be acted upon.* \
 > **x:** *A floating point number used to increment / decrement the x-axis locative value of the mesh.* \
 > **y:** *A floating point number used to increment / decrement the y-axis locative value of the mesh.* \
 > **z:** *A floating point number used to increment / decrement the z-axis locative value of the mesh.*
@@ -306,7 +306,7 @@ Applies a rotation transformation to a mesh asset on it's x, y and z axis from a
 This rotation affects the yaw, pitch and roll of the mesh. Not to be confused with an orbital rotation. 
 
 Params:
-> **mesh:** *The mesh asset to be acted upon. (type: `MeshManager::Mesh`)* \
+> **mesh:** *The mesh asset to be acted upon.* \
 > **x:** *A floating point number used to increment / decrement the x-axis (yaw) rotational value of the mesh.* \
 > **y:** *A floating point number used to increment / decrement the y-axis (pitch) rotational value of the mesh.* \
 > **z:** *A floating point number used to increment / decrement the z-axis (roll) rotational value of the mesh.*
@@ -320,10 +320,10 @@ Applies a translation transformation (movement) to a camera asset along the x, y
 Updates the `locationX`, `locationY` and `locationZ` properties of a `CameraManager::Camera` object in real time. 
 
 Params:
-> **camera:** *The camera asset to be acted upon. (type: `CameraManager::Camera`)* \
+> **camera:** *The camera asset to be acted upon.* \
 > **x:** *A floating point number used to increment / decrement the x-axis locative value of the camera.* \
 > **y:** *A floating point number used to increment / decrement the y-axis locative value of the camera.* \
-> **z:** *A floating point number used to increment / decrement the z-axis locative value of the camera.*
+> **z:** *A floating point number used to increment / decrement the z-axis locative value of the camera.* \
 > **velocity:** *The speed at which the camera should translate through space per update. (default: `0.1`)*
 
 #### void rotateCameraAsset(CameraManager::Camera &camera, float x, float y, float z)
@@ -332,17 +332,29 @@ This rotation affects the yaw, pitch and roll of the camera. Not to be confused 
 Will update the value returned by `GlobalsManager::getExecutionStatus()` to `LAZARUS_INVALID_RADIANS` if any of the values recieved are below `-360.0` or above `+360.0`.
 
 Params:
-> **camera:** *The camera asset to be acted upon. (type: `CameraManager::Camera`)* \
+> **camera:** *The camera asset to be acted upon.* \
 > **x:** *A floating point number used to increment / decrement the x-axis locative value of the camera.* \
 > **y:** *A floating point number used to increment / decrement the y-axis locative value of the camera.* \
 > **z:** *A floating point number used to increment / decrement the z-axis locative value of the camera.*
+
+#### void orbitCameraAsset(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX, float tarY, float tarZ)
+Apply arcball / orbital camera transformations to a camera asset; i.e. unit-sphere translation and rotation around a target.
+
+Params:
+> **camera:** *The camera asset to be acted upon.* \
+> **azimuth:** *Horizontal degrees of rotation around the origin.* \
+> **elevation:** *Vertical degreees of rotation around the origin.* \
+> **radius:** *Distance from the target / radius of the unit-sphere.* \
+> **tarX:** *The x-axis worldspace coordinate of the target location. (default: `0.0`)* \
+> **tarY:** *The y-axis worldspace coordinate of the target location. (default: `0.0`)* \
+> **tarZ:** *The z-axis worldspace coordinate of the target location. (default: `0.0`)*
 
 #### void translateLightAsset(LightManager::Light &light, float x, float y, float z)
 Applies a translation transformation (movement) to a light asset along the x, y and z axis from an offset of 0.0. \
 Updates the `locationX`, `locationY` and `locationZ` properties of a `LightManager::Light` object in real time. 
 
 Params:
-> **light:** *The light asset to be acted upon. (type: `LightManager::Light`)* \
+> **light:** *The light asset to be acted upon.* \
 > **x:** *A floating point number used to increment / decrement the x-axis locative value of the light.* \
 > **y:** *A floating point number used to increment / decrement the y-axis locative value of the light.* \
 > **z:** *A floating point number used to increment / decrement the z-axis locative value of the light.*
