@@ -25,6 +25,8 @@
 ==================================================== */
 Transform::Transform()
 {
+	this->pi = 3.1419;
+	this->outRadians = 0.0;
 	this->up = 0.0f;
 	this->localCoordinates = glm::vec3(0.0, 0.0, 0.0);
 	this->worldCoordinates = glm::vec4(localCoordinates, 0.0);
@@ -55,9 +57,9 @@ void Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, fl
 
 void Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
 {	
-    mesh.modelMatrix = glm::rotate(mesh.modelMatrix, glm::radians(x), glm::vec3(1.0f, 0.0f, 0.0f));
-    mesh.modelMatrix = glm::rotate(mesh.modelMatrix, glm::radians(y), glm::vec3(0.0f, 1.0f, 0.0f));
-	mesh.modelMatrix = glm::rotate(mesh.modelMatrix, glm::radians(z), glm::vec3(0.0f, 0.0f, 1.0f));
+    mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(x), glm::vec3(1.0f, 0.0f, 0.0f));
+    mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(y), glm::vec3(0.0f, 1.0f, 0.0f));
+	mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(z), glm::vec3(0.0f, 0.0f, 1.0f));
 	
     return;
 };
@@ -147,9 +149,12 @@ void Transform::rotateCameraAsset(CameraManager::Camera &camera, float x, float 
 		this->up = this->determineUpVector(x);
 		camera.upVector = glm::vec3(0.0f, this->up, 0.0f);
 
-		this->rotation.x = cos(glm::radians(y)) * cos(glm::radians(x));
-		this->rotation.y = sin(glm::radians(-x));
-		this->rotation.z = sin(glm::radians(y)) * cos(glm::radians(x)); 
+		float a = this->degreesToRadians(y, false);
+		float e = this->degreesToRadians(x);
+
+		this->rotation.x = cos(a) * cos(e);
+		this->rotation.y = sin(-e);
+		this->rotation.z = sin(a) * cos(e); 
 
 		camera.direction = this->rotation;
 
@@ -171,11 +176,14 @@ void Transform::orbitCameraAsset(CameraManager::Camera &camera, float azimuth, f
 	{
 		this->up = this->determineUpVector(azimuth);
 		camera.upVector = glm::vec3(0.0f, this->up, 0.0f);
-
-		this->rotation.x = cos(glm::radians(elevation)) * cos(glm::radians(azimuth));
-		this->rotation.y = sin(glm::radians(azimuth));
-		this->rotation.z = sin(glm::radians(elevation)) * cos(glm::radians(azimuth)); 
-
+		
+		float e = this->degreesToRadians(elevation, false);
+		float a = this->degreesToRadians(azimuth);
+		
+		this->rotation.x = cos(e) * cos(a);
+		this->rotation.y = sin(a);
+		this->rotation.z = sin(e) * cos(a); 
+		
 		camera.direction = glm::vec3(tarX, tarY, tarZ);
 		camera.position = camera.direction + (this->rotation * radius);
 		
@@ -194,7 +202,6 @@ void Transform::translateLightAsset(LightManager::Light &light, float x, float y
 	
 	return;
 };
-
 
 float Transform::determineUpVector(float rotation)
 {
@@ -218,4 +225,18 @@ bool Transform::determineIsSigned(float x, float y, float z)
 	{
 		return true;
 	};
+};
+
+float Transform::degreesToRadians(float in, bool enforceLimits)
+{
+	//	Optionally check range is valid
+	//	This is so that certain illegal / breaking calculations can't be made
+	if(enforceLimits && ((in > 360.0f) || (in < -360.0f)))	
+	{
+		globals.setExecutionState(LAZARUS_INVALID_RADIANS);
+	};
+
+	this->outRadians = in * this->pi / 180.0f;
+
+	return this->outRadians;
 };

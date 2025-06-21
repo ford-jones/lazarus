@@ -56,10 +56,14 @@ class Transform
 		void translateLightAsset(LightManager::Light &light, float x, float y, float z);
 
 	private:
-		float determineUpVector(float rotation);
 		bool determineIsSigned(float x, float y, float z);
-		float up;
+		float determineUpVector(float rotation);
+		float degreesToRadians(float in, bool enforceLimits = true);
 
+		double pi;
+		float outRadians;
+		float up;
+		
 		glm::vec3 rotation;
 
 		glm::vec3 localCoordinates;
