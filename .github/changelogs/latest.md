@@ -1,5 +1,4 @@
-# Version: 2025.06.20103413
+# Version: 2025.06.21052706
 
-* [e5f2e04](https://github.com/ford-jones/lazarus/commit/e5f2e042b879517529b211c23538e4c08a81cf79): Update: Refactored orbit implementation
-* [8ecc430](https://github.com/ford-jones/lazarus/commit/8ecc430b39727d2c73a2106153e0ce23434a5a18): Feat: Arcball camera movement
-* [e245481](https://github.com/ford-jones/lazarus/commit/e2454814198ec7394ce86629b217a6e5b395588e): Fix: Makes aspect ratio definition / redefinition optional for orthographic cameras
+* [588cec0](https://github.com/ford-jones/lazarus/commit/588cec08838ecb3a478f2a0b30cfe621aac53d10): Fix: Resolved sign inversions of orbital elevation transformations
+* [0a9f15d](https://github.com/ford-jones/lazarus/commit/0a9f15d5ae903d8e9f1c093b1fec858a4072a03b): Docs: Orbital camera documentation
