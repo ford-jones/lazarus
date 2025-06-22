@@ -26,12 +26,7 @@ jobs:
           gh release create "$tag" \
               --repo="$GITHUB_REPOSITORY" \
               --title="Lazarus Engine: $tag" \
-              --notes= 
-                "
-                  Release Notes: https://lazarusengine.xyz/changeLogs \
-                  Downloads: https://lazarusengine.xyz/changeLogs \
-                  ![lazarus](https://drive.google.com/thumbnail?id=1W4kcbj8nc3v4xfspq9N51FnPoDyxwsqy&sz=w500)
-                " \
+              --notes= "Release Notes: https://lazarusengine.xyz/changeLogs \Downloads: https://lazarusengine.xyz/downloads \![lazarus](https://drive.google.com/thumbnail?id=1W4kcbj8nc3v4xfspq9N51FnPoDyxwsqy&sz=w500)" \
               --latest
 
   update-blog:
