@@ -55,11 +55,11 @@ void Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, fl
 	return;
 };
 
-void Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
+void Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, float yaw, float roll)
 {	
-    mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(x), glm::vec3(1.0f, 0.0f, 0.0f));
-    mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(y), glm::vec3(0.0f, 1.0f, 0.0f));
-	mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(z), glm::vec3(0.0f, 0.0f, 1.0f));
+    mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
+    mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
+	mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(roll), glm::vec3(0.0f, 0.0f, 1.0f));
 	
     return;
 };
@@ -85,29 +85,6 @@ void Transform::translateCameraAsset(CameraManager::Camera &camera, float x, flo
 		Restore orbit / handle both camera cases
 	============================================ */
 
-	
-	/* =============================================
-	Aggregate inputs to a single value and check
-	the sign (-/+). 
-	
-	If the number is negative (i.e. 0.0f is
-	higher than the aggregate value), then apply
-	negation to the velocity input. (i.e. apply
-	a conversion for speed when moving either
-	left or backwards). 
-	================================================ */
-	// float speed = 0;
-	// bool positiveSign = this->determineIsSigned(x, y, z);
-
-	// if(!positiveSign)
-	// {
-	// 	speed = velocity - (velocity * 2);		
-	// }
-	// else
-	// {
-	// 	speed = velocity;
-	// };
-
 	if(x != 0.0f)
 	{
 		/* ============================================
@@ -130,31 +107,31 @@ void Transform::translateCameraAsset(CameraManager::Camera &camera, float x, flo
 	{
 		camera.position += (z * velocity) * camera.direction;
 	}
-	// camera.viewMatrix = glm::lookAt(sin(cos(camera.position)), glm::vec3(0.0, 0.0, 0.0), camera.upVector);
+
 	camera.viewMatrix = glm::lookAt(camera.position, (camera.position + camera.direction), camera.upVector);
 	
 	return;
 };
 
-void Transform::rotateCameraAsset(CameraManager::Camera &camera, float x, float y, float z)
+void Transform::rotateCameraAsset(CameraManager::Camera &camera, float pitch, float yaw, float roll)
 {	
 	this->rotation = vec3(0.0, 0.0, 0.0);
 
-	if((x > 360.0f) || (x < -360.0f))
+	if((pitch > 360.0f) || (pitch < -360.0f))
 	{
 		globals.setExecutionState(LAZARUS_INVALID_RADIANS);
 	}
 	else
 	{
-		this->up = this->determineUpVector(x);
+		this->up = this->determineUpVector(pitch);
 		camera.upVector = glm::vec3(0.0f, this->up, 0.0f);
 
-		float a = this->degreesToRadians(y, false);
-		float e = this->degreesToRadians(x);
+		float a = this->degreesToRadians(pitch);
+		float y = this->degreesToRadians(yaw, false);
 
-		this->rotation.x = cos(a) * cos(e);
-		this->rotation.y = sin(-e);
-		this->rotation.z = sin(a) * cos(e); 
+		this->rotation.x = cos(y) * cos(a);
+		this->rotation.y = sin(-a);
+		this->rotation.z = sin(y) * cos(a); 
 
 		camera.direction = this->rotation;
 
@@ -229,8 +206,10 @@ bool Transform::determineIsSigned(float x, float y, float z)
 
 float Transform::degreesToRadians(float in, bool enforceLimits)
 {
-	//	Optionally check range is valid
-	//	This is so that certain illegal / breaking calculations can't be made
+	/* =======================================================================
+		Optionally check range is valid
+		This is so that certain illegal / breaking calculations can't be made
+	========================================================================== */
 	if(enforceLimits && ((in > 360.0f) || (in < -360.0f)))	
 	{
 		globals.setExecutionState(LAZARUS_INVALID_RADIANS);

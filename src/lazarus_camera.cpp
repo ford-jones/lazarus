@@ -50,14 +50,17 @@ CameraManager::Camera CameraManager::createPerspectiveCam(int aspectRatioX, int 
         The direction of the back of the camera, so
         the camera is actually looking down +X
     ================================================== */
-    glm::vec3 inverseTarget = glm::vec3(-1.0f, 0.0f, 0.0f);
+    glm::vec3 inverseTarget     = glm::vec3(-1.0f, 0.0f, 0.0f);
 
     camera.position             = vec3(0.0f, 0.0f, 0.0f);
     camera.direction            = glm::normalize(camera.position - inverseTarget);
     camera.upVector             = vec3(0.0f, 1.0f, 0.0f);
     
     camera.viewMatrix           = glm::lookAt(camera.position, (camera.position + camera.direction), camera.upVector);
-    camera.projectionMatrix     = glm::perspective(glm::radians(45.0f), camera.aspectRatio, 0.1f, 100.0f);
+    /* ================================
+        45° = 0.785398 radians
+    =================================== */ 
+    camera.projectionMatrix     = glm::perspective(0.785398f, camera.aspectRatio, 0.1f, 100.0f);
 
     camera.usesPerspective      = 1;
 
