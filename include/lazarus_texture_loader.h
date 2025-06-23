@@ -69,8 +69,12 @@ class TextureLoader
 		int mipCount;
 		int loopCount;
 		int x, y;
+		int atlasRows;
+		int atlasHeight;
+		int atlasWidth;
 
-		int offset;
+		int xOffset;
+		int yOffset;
 
 		GlobalsManager globals;
 };

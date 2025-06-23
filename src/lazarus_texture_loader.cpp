@@ -47,7 +47,10 @@ TextureLoader::TextureLoader()
 	this->mipCount = 0;
 	this->errorCode = 0;
 	
-	this->offset = 0;
+	this->xOffset = 0;
+	this->yOffset = 0;
+	this->atlasHeight = 0;
+	this->atlasRows = 0;
 
 	glGenTextures(1, &this->textureStack);
 	glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureStack);
@@ -190,6 +193,7 @@ void TextureLoader::loadCubeMap(std::vector<FileReader::Image> faces)
 
 void TextureLoader::storeBitmapTexture(int maxWidth, int maxHeight)
 {
+	this->atlasRows += 1;
 	/* ===========================================
 		Hardcoded because this function is used 
 		specifically for glyph loading only. If 
@@ -209,11 +213,15 @@ void TextureLoader::storeBitmapTexture(int maxWidth, int maxHeight)
 		single-channel, which is later swizzled into the alpha value of a RGBA 4-channel color 
 		on the GPU side. The swizzle can and probably should be done here to make it clearer.
 	=========================================================================================== */
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, maxWidth, maxHeight, 0, GL_RED, GL_UNSIGNED_BYTE, 0);
+	this->xOffset = 0;
+	this->yOffset += this->atlasHeight;
+
+	this->atlasWidth = std::max(atlasWidth, maxWidth);
+	this->atlasHeight += maxHeight;
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, this->atlasWidth, this->atlasHeight, 0, GL_RED, GL_UNSIGNED_BYTE, 0);
 
 	this->checkErrors(__FILE__, __LINE__);
-
-	this->offset = 0;
 };
 
 void TextureLoader::loadBitmapToTexture(FileReader::Image imageData)
@@ -225,15 +233,15 @@ void TextureLoader::loadBitmapToTexture(FileReader::Image imageData)
 	/* ================================================================
 		Load the glyph's rendered bitmap into the previously allocated
 		texture at an offset equal to the current width of the texture
-		atlas.
+		atlas and the culmilative height of previous alphabet sets.
 	=================================================================== */
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 	glTexSubImage2D(
 		GL_TEXTURE_2D, 
 		0, 
-		this->offset, 
-		0, 
+		this->xOffset, 
+		this->yOffset, 
 		this->image.width, 
 		this->image.height, 
 		GL_RED, 
@@ -241,7 +249,7 @@ void TextureLoader::loadBitmapToTexture(FileReader::Image imageData)
 		(void *)this->image.pixelData
 	);
 
-	offset += imageData.width;
+	xOffset += imageData.width;
 
 	glGenerateMipmap(GL_TEXTURE_2D);
 
