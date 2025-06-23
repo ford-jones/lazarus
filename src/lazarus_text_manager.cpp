@@ -176,7 +176,11 @@ FontLoader::~FontLoader()
 {
     std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 
-    FT_Done_Face(this->fontFace);
+    for(size_t i = 0; i < fontStack.size(); i++)
+    {
+        this->fontFace = fontStack[i];
+        FT_Done_Face(this->fontFace);
+    };
     FT_Done_FreeType(this->lib);
 };
 
@@ -198,6 +202,7 @@ TextManager::TextManager(GLuint shader) : TextManager::MeshManager(shader)
     
     this->textOut = {};
     this->word = {};
+    this->characters = {};
 
     this->translationStride = 0;
     this->span = 0;
@@ -222,6 +227,8 @@ TextManager::TextManager(GLuint shader) : TextManager::MeshManager(shader)
 
 int TextManager::extendFontStack(std::string filepath, int ptSize)
 {
+    characters.clear();
+
     /* ====================================================
         The name of this function is slightly deceptive.
         This function extends new glyphs into the existing
@@ -238,29 +245,33 @@ int TextManager::extendFontStack(std::string filepath, int ptSize)
     this->loaderInit();
 
     this->fontIndex = this->loadTrueTypeFont(filepath, ptSize, 0);
-
+    
     this->identifyAlphabetDimensions();
-
     this->storeBitmapTexture(atlasX, atlasY);
-
+    
     /* ===========================================================================
         The expression (n - 33) AKA (i = 33 && i < 128) occurs in several places 
         and is used to skip control keys as well as calculate the span offset for 
         non-control characters (i.e. keycodes which don't have a unicode UTF-8 
         glyph associated with them. e.g. shift / ctrl).
     ============================================================================== */
-    for(int i = 33; i < 128; i++)
+    std::cout << "Font Index: " << fontIndex << std::endl;
+    for(size_t n = 0; n < this->fontIndex; n++)
     {
-        this->glyph = this->loadCharacter(static_cast<char>(i), fontIndex);
-        this->loadBitmapToTexture(this->glyph);
-
-        textures.emplace((i - 33), this->glyph);
+        for(size_t i = 33; i < 128; i++)
+        {
+            this->glyph = this->loadCharacter(static_cast<char>(i), (n + 1));
+            this->loadBitmapToTexture(this->glyph);
+    
+            characters.emplace((i - 33), this->glyph);
+        };
     };
+    fonts.push_back(characters);
 
-    return fontIndex;
+    return fonts.size() - 1;
 };
 
-TextManager::Text TextManager::loadText(std::string targetText, int posX, int posY, int letterSpacing, float red, float green, float blue, TextManager::Text textIn)
+TextManager::Text TextManager::loadText(std::string targetText, int fontId, int posX, int posY, int letterSpacing, float red, float green, float blue, TextManager::Text textIn)
 {
     /* =================================================
         Clear internal child trackers to stop bloat.
@@ -278,17 +289,16 @@ TextManager::Text TextManager::loadText(std::string targetText, int posX, int po
     textOut.locationX = posX;
     textOut.locationY = posY;
 
-    for(unsigned int i = 0; i < targetText.size(); i++)
+    for(size_t i = 0; i < targetText.size(); i++)
     {   
-        this->setActiveGlyph(targetText[i], letterSpacing);
-        
+        this->setActiveGlyph(targetText[i], fontId, letterSpacing);
         quad = this->createQuad(static_cast<float>(this->glyph.width), static_cast<float>(this->atlasY), LAZARUS_GLYPH_QUAD, this->uvL, this->uvR, this->uvH);
 
         /* =============================================
             Add ((createQuad input's x & y) / 2) to the 
             translation to offset from bottom left-most
             corner instead of the origin.
-        ================================================*/
+        ================================================ */
         transformer.translateMeshAsset(quad, static_cast<float>((posX + (this->glyph.width / 2.0f)) + this->translationStride), static_cast<float>((posY + (this->atlasY / 2.0f))), 0.0f);
         this->translationStride += (this->glyph.width + letterSpacing);
 
@@ -302,6 +312,7 @@ TextManager::Text TextManager::loadText(std::string targetText, int posX, int po
         is useful for text which needs to be updated 
         inside the render loop - for instance FPS, 
         entity coordinates or any other string which 
+
         might update on-the-fly.
     ==================================================== */
     if(textIn.layoutIndex)
@@ -314,9 +325,9 @@ TextManager::Text TextManager::loadText(std::string targetText, int posX, int po
     else 
     {
         this->layoutIndex += 1;
-        textOut.layoutIndex = this->layoutIndex;
+        this->textOut.layoutIndex = this->layoutIndex;
         this->layoutEntry = std::pair<int, std::vector<MeshManager::Mesh>>(this->layoutIndex, this->word);
-        layout.insert(this->layoutEntry);
+        this->layout.insert(this->layoutEntry);
 
         this->translationStride = 0;
     };
@@ -371,13 +382,14 @@ void TextManager::identifyAlphabetDimensions()
     return;
 };
 
-void TextManager::setActiveGlyph(char target, int spacing)
+void TextManager::setActiveGlyph(char target, int fontId, int spacing)
 {
     /* =====================================================
         If the active glyph is a space; set the UV coordinates
         to be outside of the texture atlas. That way the 
         sampled area of the atlas will contain nothing.
     ======================================================== */
+
     if(target == ' ')
     {
         this->uvL = -1.0f;
@@ -392,8 +404,9 @@ void TextManager::setActiveGlyph(char target, int spacing)
     {
         this->targetKey = static_cast<int>(target);
 
-        this->lookUpUVs(this->targetKey);
-        this->glyph = textures.at((this->targetKey - 33));
+        this->lookUpUVs(this->targetKey, fontId);
+        this->characters = this->fonts.at(fontId);
+        this->glyph = this->characters.at((this->targetKey - 33));
     };
 };
 
@@ -403,8 +416,9 @@ void TextManager::setTextColor(float r, float g, float b)
     glUniform3fv(glGetUniformLocation(this->shaderProgram, "textColor"), 1, &this->textColor[0]);
 };
 
-void TextManager::lookUpUVs(int keyCode)
+void TextManager::lookUpUVs(int keyCode, int fontId)
 {
+    this->characters = fonts.at(fontId);
     this->span = keyCode - 33;
     this->targetXL = 0;
 
@@ -413,13 +427,13 @@ void TextManager::lookUpUVs(int keyCode)
         the alphabet texture atlas. Divide by primary monitor dimensions to get 
         normalised value.
     ============================================================================== */
-    for (int i = 0; i < span; ++i)
+    for(int i = 0; i < span; ++i)
     {
-        this->glyph = textures.at(i);
+        this->glyph = characters.at(i);
         this->targetXL += this->glyph.width;
     };
 
-    this->glyph = textures.at(span);
+    this->glyph = characters.at(span);
     this->targetXR = targetXL + this->glyph.width;
 
     this->monitorWidth = static_cast<float>(atlasX);

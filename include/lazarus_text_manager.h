@@ -94,16 +94,16 @@ class TextManager : private FontLoader, private MeshManager
         };
 
         int extendFontStack(std::string filepath, int ptSize = 12);
-        Text loadText(std::string targetText, int posX, int posY, int letterSpacing = 1, float red = 0.0f, float green = 0.0f, float blue = 0.0f, Text textIn = {});
+        Text loadText(std::string targetText, int fontId, int posX, int posY, int letterSpacing = 1, float red = 0.0f, float green = 0.0f, float blue = 0.0f, Text textIn = {});
         void drawText(Text text);
         virtual ~TextManager();
 
     private: 
         Text textOut;
         void identifyAlphabetDimensions();
-        void setActiveGlyph(char target, int spacing);
+        void setActiveGlyph(char target, int fontId, int spacing);
         void setTextColor(float r, float g, float b);
-        void lookUpUVs(int keyCode);
+        void lookUpUVs(int keyCode, int fontId);
 
         int translationStride;
         int targetKey;
@@ -138,7 +138,9 @@ class TextManager : private FontLoader, private MeshManager
         CameraManager::Camera camera;
         std::vector<MeshManager::Mesh> word;
         
-        std::map<int, FileReader::Image> textures;
+
+        std::map<int, FileReader::Image> characters;
+        std::vector<std::map<int, FileReader::Image>> fonts;
         std::map<int, std::vector<MeshManager::Mesh>> layout;
         std::pair<int, std::vector<MeshManager::Mesh>> layoutEntry;
 };
