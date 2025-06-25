@@ -48,7 +48,7 @@ class TextureLoader
 		void loadCubeMap(std::vector<FileReader::Image> faces);
 
 		void storeBitmapTexture(int maxWidth, int maxHeight);
-		void loadBitmapToTexture(FileReader::Image imageData);
+		void loadBitmapToTexture(FileReader::Image imageData, int xOffset, int yOffset);
 
 		virtual ~TextureLoader();
 		
@@ -60,21 +60,20 @@ class TextureLoader
 		int countMipLevels(int width, int height);
 		void checkErrors(const char *file, int line);
 
-		shared_ptr<FileReader> loader;
-
-		FileReader::Image image;
-
-		GLenum errorCode;
-		
 		int mipCount;
 		int loopCount;
-		int x, y;
-		int atlasRows;
+		int x;
+		int y;
 		int atlasHeight;
 		int atlasWidth;
-
+		
 		int xOffset;
 		int yOffset;
+
+		GLenum errorCode;
+
+		shared_ptr<FileReader> loader;
+		FileReader::Image image;
 
 		GlobalsManager globals;
 };

@@ -50,7 +50,6 @@ TextureLoader::TextureLoader()
 	this->xOffset = 0;
 	this->yOffset = 0;
 	this->atlasHeight = 0;
-	this->atlasRows = 0;
 
 	glGenTextures(1, &this->textureStack);
 	glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureStack);
@@ -193,7 +192,6 @@ void TextureLoader::loadCubeMap(std::vector<FileReader::Image> faces)
 
 void TextureLoader::storeBitmapTexture(int maxWidth, int maxHeight)
 {
-	this->atlasRows += 1;
 	/* ===========================================
 		Hardcoded because this function is used 
 		specifically for glyph loading only. If 
@@ -207,24 +205,19 @@ void TextureLoader::storeBitmapTexture(int maxWidth, int maxHeight)
 
 	/* ========================================================================================
 		Allocate space for the texture atlas. The texture atlas hasn't been constructed yet so
-		0 is passed in for the meantime. 
+		0 is passed into the pixel parameter for the meantime. 
 
 		Note the use of GL_R8. The glyphs are monocolour bitmaps and so are loaded into a 
 		single-channel, which is later swizzled into the alpha value of a RGBA 4-channel color 
 		on the GPU side. The swizzle can and probably should be done here to make it clearer.
 	=========================================================================================== */
-	this->xOffset = 0;
-	this->yOffset += this->atlasHeight;
 
-	this->atlasWidth = std::max(atlasWidth, maxWidth);
-	this->atlasHeight += maxHeight;
-
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, this->atlasWidth, this->atlasHeight, 0, GL_RED, GL_UNSIGNED_BYTE, 0);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, maxWidth, maxHeight, 0, GL_RED, GL_UNSIGNED_BYTE, 0);
 
 	this->checkErrors(__FILE__, __LINE__);
 };
 
-void TextureLoader::loadBitmapToTexture(FileReader::Image imageData)
+void TextureLoader::loadBitmapToTexture(FileReader::Image imageData, int xOffset, int yOffset)
 {
 	this->image.width = imageData.width;
 	this->image.height = imageData.height;
@@ -240,8 +233,8 @@ void TextureLoader::loadBitmapToTexture(FileReader::Image imageData)
 	glTexSubImage2D(
 		GL_TEXTURE_2D, 
 		0, 
-		this->xOffset, 
-		this->yOffset, 
+		xOffset, 
+		yOffset, 
 		this->image.width, 
 		this->image.height, 
 		GL_RED, 
@@ -249,7 +242,11 @@ void TextureLoader::loadBitmapToTexture(FileReader::Image imageData)
 		(void *)this->image.pixelData
 	);
 
-	xOffset += imageData.width;
+	this->checkErrors(__FILE__, __LINE__);
+
+	std::cout << "X: " << xOffset << std::endl;
+	std::cout << "Y: " << yOffset << std::endl;
+	// xOffset += imageData.width;
 
 	glGenerateMipmap(GL_TEXTURE_2D);
 
@@ -258,7 +255,6 @@ void TextureLoader::loadBitmapToTexture(FileReader::Image imageData)
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);	
-	
 };
 
 int TextureLoader::countMipLevels(int width, int height)
