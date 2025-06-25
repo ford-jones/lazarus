@@ -203,6 +203,7 @@ TextManager::TextManager(GLuint shader) : TextManager::MeshManager(shader)
     this->textOut = {};
     this->word = {};
     this->characters = {};
+    this->fonts = {};
 
     this->translationStride = 0;
     this->span = 0;
@@ -215,8 +216,11 @@ TextManager::TextManager(GLuint shader) : TextManager::MeshManager(shader)
     this->fontIndex = 0;
     this->layoutIndex = 0;
 
-    this->atlasX = 0;
-    this->atlasY = 0;
+    this->rowWidth = 0;
+    this->rowHeight = 0;
+
+    this->atlasWidth = 0;
+    this->atlasHeight = 0;
 
     this->monitorWidth = 0.0;
 
@@ -227,27 +231,10 @@ TextManager::TextManager(GLuint shader) : TextManager::MeshManager(shader)
 
 int TextManager::extendFontStack(std::string filepath, int ptSize)
 {
-    characters.clear();
+    fonts.clear();
 
-    /* ====================================================
-        The name of this function is slightly deceptive.
-        This function extends new glyphs into the existing
-        alphabet texture atlas along the images' x-axis.
-        Essentially adding new columns.
-
-        In concept, it will be more like a stack when a new
-        font is added, a new row (on the y-axis) should be 
-        created. In memory they will all sit on top each-
-        other in one big texture atlas and so in that way
-        it will be like a stack - currently it's just a
-        single row.
-    ======================================================= */
     this->loaderInit();
-
     this->fontIndex = this->loadTrueTypeFont(filepath, ptSize, 0);
-    
-    this->identifyAlphabetDimensions();
-    this->storeBitmapTexture(atlasX, atlasY);
     
     /* ===========================================================================
         The expression (n - 33) AKA (i = 33 && i < 128) occurs in several places 
@@ -255,18 +242,50 @@ int TextManager::extendFontStack(std::string filepath, int ptSize)
         non-control characters (i.e. keycodes which don't have a unicode UTF-8 
         glyph associated with them. e.g. shift / ctrl).
     ============================================================================== */
-    std::cout << "Font Index: " << fontIndex << std::endl;
+    std::cout << "Call: " << fontIndex << std::endl;
+
+    rowWidth = 0;
+    rowHeight = 0;
+    atlasWidth = 0;
+    atlasHeight = 0;
+
+    int yOffset = 0;
+    int xOffset = 0;
+
+    std::vector<int> alphabetHeights = {};
+    
+    for(size_t n = 0; n < this->fontIndex; n++)
+    {   
+        rowHeight = 0;
+        yOffset = this->atlasHeight - rowHeight;
+        alphabetHeights.push_back(yOffset);
+
+        this->identifyAlphabetDimensions(n + 1);
+        this->atlasWidth = std::max(atlasWidth, rowWidth);
+        this->atlasHeight += rowHeight;
+        
+        this->storeBitmapTexture(atlasWidth, atlasHeight);
+    }
+    
     for(size_t n = 0; n < this->fontIndex; n++)
     {
+        std::cout << "Font Index: " << n << std::endl;
+        characters.clear();
+
+        yOffset = alphabetHeights[n];
+        xOffset = 0;
+        
         for(size_t i = 33; i < 128; i++)
         {
             this->glyph = this->loadCharacter(static_cast<char>(i), (n + 1));
-            this->loadBitmapToTexture(this->glyph);
+
+            this->loadBitmapToTexture(this->glyph, xOffset, yOffset);
+            xOffset += this->glyph.width;
     
             characters.emplace((i - 33), this->glyph);
         };
+        fonts.push_back(characters);
     };
-    fonts.push_back(characters);
 
     return fonts.size() - 1;
 };
@@ -292,14 +311,14 @@ TextManager::Text TextManager::loadText(std::string targetText, int fontId, int 
     for(size_t i = 0; i < targetText.size(); i++)
     {   
         this->setActiveGlyph(targetText[i], fontId, letterSpacing);
-        quad = this->createQuad(static_cast<float>(this->glyph.width), static_cast<float>(this->atlasY), LAZARUS_GLYPH_QUAD, this->uvL, this->uvR, this->uvH);
+        quad = this->createQuad(static_cast<float>(this->glyph.width), static_cast<float>(this->rowHeight), LAZARUS_GLYPH_QUAD, this->uvL, this->uvR, this->uvH);
 
         /* =============================================
             Add ((createQuad input's x & y) / 2) to the 
             translation to offset from bottom left-most
             corner instead of the origin.
         ================================================ */
-        transformer.translateMeshAsset(quad, static_cast<float>((posX + (this->glyph.width / 2.0f)) + this->translationStride), static_cast<float>((posY + (this->atlasY / 2.0f))), 0.0f);
+        transformer.translateMeshAsset(quad, static_cast<float>((posX + (this->glyph.width / 2.0f)) + this->translationStride), static_cast<float>((posY + (this->rowHeight / 2.0f))), 0.0f);
         this->translationStride += (this->glyph.width + letterSpacing);
 
         this->word.push_back(quad);
@@ -363,7 +382,7 @@ void TextManager::drawText(TextManager::Text text)
     return;
 };
 
-void TextManager::identifyAlphabetDimensions()
+void TextManager::identifyAlphabetDimensions(int fontId)
 {
     /* =====================================================
         Glyphs will be loaded into the texture atlas in a 
@@ -371,12 +390,15 @@ void TextManager::identifyAlphabetDimensions()
         the tallest glyph bitmap and the width is equal to 
         the culmilative width of each glyph's bitmap.
     ======================================================== */
+    this->rowWidth = 0;
+    this->rowHeight = 0;
+
     for(int i = 33; i < 128; i++)
     {
-        glyph = this->loadCharacter(static_cast<char>(i), fontIndex);
+        glyph = this->loadCharacter(static_cast<char>(i), fontId);
         
-        atlasX += glyph.width;
-        atlasY = std::max(atlasY, glyph.height);
+        rowWidth += glyph.width;
+        rowHeight = std::max(rowHeight, glyph.height);
     };
 
     return;
@@ -436,11 +458,17 @@ void TextManager::lookUpUVs(int keyCode, int fontId)
     this->glyph = characters.at(span);
     this->targetXR = targetXL + this->glyph.width;
 
-    this->monitorWidth = static_cast<float>(atlasX);
+    //  TODO:
+    //  monitorWidth? confusing name
+    //  Identify y-up and y-down
+
+    //  Note: Error occurs at initialiseMesh i.e. is invoked from the createQuad call above
+
+    this->monitorWidth = static_cast<float>(rowWidth);
     
     this->uvL = static_cast<float>(this->targetXL) / monitorWidth;
     this->uvR = static_cast<float>(this->targetXR) / monitorWidth;
-    this->uvH = static_cast<float>(this->fontIndex);
+    this->uvH = static_cast<float>(1.0f);
 
     this->targetXL = 0;
     this->targetXR = 0;

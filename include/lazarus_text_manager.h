@@ -100,7 +100,7 @@ class TextManager : private FontLoader, private MeshManager
 
     private: 
         Text textOut;
-        void identifyAlphabetDimensions();
+        void identifyAlphabetDimensions(int fontId);
         void setActiveGlyph(char target, int fontId, int spacing);
         void setTextColor(float r, float g, float b);
         void lookUpUVs(int keyCode, int fontId);
@@ -111,8 +111,12 @@ class TextManager : private FontLoader, private MeshManager
         int targetXR;
         int span;
 
-        int atlasX;
-        int atlasY;
+        int rowWidth;
+        int rowHeight;
+        int fontCount;
+
+        int atlasWidth;
+        int atlasHeight;
 
         float monitorWidth;
 
@@ -137,7 +141,6 @@ class TextManager : private FontLoader, private MeshManager
         MeshManager::Mesh quad;
         CameraManager::Camera camera;
         std::vector<MeshManager::Mesh> word;
-        
 
         std::map<int, FileReader::Image> characters;
         std::vector<std::map<int, FileReader::Image>> fonts;
