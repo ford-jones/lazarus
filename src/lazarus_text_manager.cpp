@@ -420,6 +420,7 @@ void TextManager::setActiveGlyph(char target, int fontId, int spacing)
         this->uvL = -1.0f;
         this->uvR = -1.0f;
         this->uvU = -1.0f;
+        this->uvD = -1.0f;
 
         this->glyph.pixelData = NULL;
         this->glyph.height = 0;
