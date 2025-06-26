@@ -204,6 +204,7 @@ TextManager::TextManager(GLuint shader) : TextManager::MeshManager(shader)
     this->word = {};
     this->characters = {};
     this->fonts = {};
+    this->alphabetHeights = {};
 
     this->translationStride = 0;
     this->span = 0;
@@ -222,16 +223,19 @@ TextManager::TextManager(GLuint shader) : TextManager::MeshManager(shader)
     this->atlasWidth = 0;
     this->atlasHeight = 0;
 
-    this->monitorWidth = 0.0;
+    this->uvRangeX = 0.0;
+    this->uvRangeY = 0.0;
 
     this->uvL = 0.0;
     this->uvR = 0.0;
-    this->uvH = 0.0;
+    this->uvU = 0.0;
+    this->uvD = 0.0;
 };
 
 int TextManager::extendFontStack(std::string filepath, int ptSize)
 {
     fonts.clear();
+    alphabetHeights.clear();
 
     this->loaderInit();
     this->fontIndex = this->loadTrueTypeFont(filepath, ptSize, 0);
@@ -251,18 +255,17 @@ int TextManager::extendFontStack(std::string filepath, int ptSize)
 
     int yOffset = 0;
     int xOffset = 0;
-
-    std::vector<int> alphabetHeights = {};
     
     for(size_t n = 0; n < this->fontIndex; n++)
     {   
         rowHeight = 0;
-        yOffset = this->atlasHeight - rowHeight;
+        yOffset = this->atlasHeight;
         alphabetHeights.push_back(yOffset);
 
         this->identifyAlphabetDimensions(n + 1);
         this->atlasWidth = std::max(atlasWidth, rowWidth);
         this->atlasHeight += rowHeight;
+        alphabetHeights.push_back(this->atlasHeight);
         
         this->storeBitmapTexture(atlasWidth, atlasHeight);
     }
@@ -272,7 +275,7 @@ int TextManager::extendFontStack(std::string filepath, int ptSize)
         std::cout << "Font Index: " << n << std::endl;
         characters.clear();
 
-        yOffset = alphabetHeights[n];
+        yOffset = alphabetHeights[n * 2];
         xOffset = 0;
         
         for(size_t i = 33; i < 128; i++)
@@ -311,7 +314,7 @@ TextManager::Text TextManager::loadText(std::string targetText, int fontId, int 
     for(size_t i = 0; i < targetText.size(); i++)
     {   
         this->setActiveGlyph(targetText[i], fontId, letterSpacing);
-        quad = this->createQuad(static_cast<float>(this->glyph.width), static_cast<float>(this->rowHeight), LAZARUS_GLYPH_QUAD, this->uvL, this->uvR, this->uvH);
+        quad = this->createQuad(static_cast<float>(this->glyph.width), static_cast<float>(this->rowHeight), LAZARUS_GLYPH_QUAD, this->uvL, this->uvR, this->uvU, this->uvD);
 
         /* =============================================
             Add ((createQuad input's x & y) / 2) to the 
@@ -416,7 +419,7 @@ void TextManager::setActiveGlyph(char target, int fontId, int spacing)
     {
         this->uvL = -1.0f;
         this->uvR = -1.0f;
-        this->uvH = -1.0f;
+        this->uvU = -1.0f;
 
         this->glyph.pixelData = NULL;
         this->glyph.height = 0;
@@ -458,17 +461,13 @@ void TextManager::lookUpUVs(int keyCode, int fontId)
     this->glyph = characters.at(span);
     this->targetXR = targetXL + this->glyph.width;
 
-    //  TODO:
-    //  monitorWidth? confusing name
-    //  Identify y-up and y-down
-
-    //  Note: Error occurs at initialiseMesh i.e. is invoked from the createQuad call above
-
-    this->monitorWidth = static_cast<float>(rowWidth);
+    this->uvRangeX = static_cast<float>(atlasWidth);
+    this->uvRangeY = static_cast<float>(atlasHeight);
     
-    this->uvL = static_cast<float>(this->targetXL) / monitorWidth;
-    this->uvR = static_cast<float>(this->targetXR) / monitorWidth;
-    this->uvH = static_cast<float>(1.0f);
+    this->uvL = static_cast<float>(this->targetXL) / this->uvRangeX;
+    this->uvR = static_cast<float>(this->targetXR) / this->uvRangeX;
+    this->uvU = static_cast<float>(alphabetHeights[(fontId * 2) + 1]) / this->uvRangeY;
+    this->uvD = static_cast<float>(alphabetHeights[(fontId * 2)]) / this->uvRangeY;
 
     this->targetXL = 0;
     this->targetXR = 0;
@@ -476,5 +475,5 @@ void TextManager::lookUpUVs(int keyCode, int fontId)
 
 TextManager::~TextManager()
 {
-        std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 };

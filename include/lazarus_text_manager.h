@@ -118,11 +118,13 @@ class TextManager : private FontLoader, private MeshManager
         int atlasWidth;
         int atlasHeight;
 
-        float monitorWidth;
+        float uvRangeX;
+        float uvRangeY;
 
         float uvL;
         float uvR;
-        float uvH;
+        float uvU;
+        float uvD;
 
         unsigned int fontIndex;
         unsigned int layoutIndex; 
@@ -141,6 +143,7 @@ class TextManager : private FontLoader, private MeshManager
         MeshManager::Mesh quad;
         CameraManager::Camera camera;
         std::vector<MeshManager::Mesh> word;
+        std::vector<int> alphabetHeights;
 
         std::map<int, FileReader::Image> characters;
         std::vector<std::map<int, FileReader::Image>> fonts;
