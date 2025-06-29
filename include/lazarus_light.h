@@ -41,22 +41,18 @@ class LightManager
     public:
         struct Light
         {
-            int id;
+            uint32_t id;
             
-            float locationX;
-            float locationY;
-            float locationZ;
-            
-            float brightness;
+            _Float32 brightness;
 
-            glm::vec3 lightPosition;                     //  The (x,y,z) location of the light source
-            glm::vec3 lightColor;                        //  The (r,g,b) color of the light
+            glm::vec3 position;                     //  The (x,y,z) location of the light source
+            glm::vec3 color;                        //  The (r,g,b) color of the light
         };
         
         LightManager(GLuint shader);
         virtual ~LightManager();
 
-        Light createLightSource(float x, float y, float z, float r, float g, float b, float brightness = 1.0f);
+        Light createLightSource(_Float32 x, _Float32 y, _Float32 z, _Float32 r, _Float32 g, _Float32 b, _Float32 brightness = 1.0f);
         void loadLightSource(Light &lightIn);
 
     private:
@@ -66,14 +62,14 @@ class LightManager
                 Used to traverse the point light uniform
                 array.
             ============================================= */
-            int uniformIndex;
+            uint32_t uniformIndex;
 
             GLint lightPositionUniformLocation;
             GLint lightColorUniformLocation;
             GLint brightnessUniformLocation;
         };
 
-        int lightCount;
+        uint32_t lightCount;
         GLint lightCountLocation;
     	GLint shaderProgram;
 

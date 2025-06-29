@@ -31,11 +31,13 @@ FileReader::FileReader()
     this->maxHeight = 0;
 
     this->outImage = {};
-	this->x = 0;
-	this->y = 0;
-	this->n = 0;	
+	this->imageHeight = 0;
+	this->imageHeight = 0;
+	this->channelCount = 0;	
 
-    img = NULL;
+    this->filepath = NULL;
+    this->textData = NULL;
+
 };
 
 string FileReader::relativePathToAbsolute(string filename) 
@@ -88,7 +90,7 @@ FileReader::Image FileReader::readFromImage(string filename)
     this->outResize = {};
 
     
-	img = filename.c_str();
+	filepath = filename.c_str();
 	
     /* ====================================================
         Images should be flipped on load due to the fact that 
@@ -99,7 +101,7 @@ FileReader::Image FileReader::readFromImage(string filename)
     ======================================================= */
     stbi_set_flip_vertically_on_load(true);
 
-	this->imageData = stbi_load(img, &x, &y, &n, 0);
+	this->imageData = stbi_load(filepath, &imageWidth, &imageHeight, &channelCount, 0);
 
     if(imageData != NULL) 
     {
@@ -130,13 +132,13 @@ FileReader::Image FileReader::readFromImage(string filename)
             array (unsigned char *) it has to do so as a side-
             effect. To do so the memory has to be allocated 
             manually so that we can pass stbir a pointer to the 
-            actual byte array pointer.
+            actual byte array.
 
             See: https://stackoverflow.com/a/65873156/23636614
         ==================================================== */
-            outResize = (unsigned char *) malloc(this->maxWidth * this->maxHeight * n);
+            outResize = (unsigned char *) malloc(this->maxWidth * this->maxHeight * channelCount);
 
-            resizeStatus = stbir_resize_uint8(imageData, x, y, 0, outResize, this->maxWidth, this->maxHeight, 0, n);
+            resizeStatus = stbir_resize_uint8(imageData, imageWidth, imageHeight, 0, outResize, this->maxWidth, this->maxHeight, 0, channelCount);
 
             if(resizeStatus == 1)
             {
@@ -147,8 +149,8 @@ FileReader::Image FileReader::readFromImage(string filename)
             else 
             {
                 outImage.pixelData = imageData;
-                outImage.height = y;
-                outImage.width = x;
+                outImage.height = imageHeight;
+                outImage.width = imageWidth;
 
                 std::cerr << RED_TEXT << "LAZARUS::ERROR::FILEREADER::IMAGE_LOADER " << LAZARUS_IMAGE_RESIZE_FAILURE << RESET_TEXT << std::endl;    
                 globals.setExecutionState(LAZARUS_IMAGE_RESIZE_FAILURE);
@@ -158,8 +160,8 @@ FileReader::Image FileReader::readFromImage(string filename)
         else
         {
             outImage.pixelData = imageData;
-            outImage.height = y;
-            outImage.width = x;
+            outImage.height = imageHeight;
+            outImage.width = imageWidth;
         }
     }
 	else

@@ -84,9 +84,12 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     a quad under the hood.
 =========================================================================================== */
 
-MeshManager::Mesh MeshManager::createQuad(float width, float height, string texturePath, float uvXL, float uvXR, float uvYU, float uvYD, bool selectable)
+MeshManager::Mesh MeshManager::createQuad(_Float32 width, _Float32 height, string texturePath, _Float32 uvXL, _Float32 uvXR, _Float32 uvYU, _Float32 uvYD, bool selectable)
 {
-    if(width < 0.0f || height < 0.0f) globals.setExecutionState(LAZARUS_INVALID_DIMENSIONS);
+    if(width < 0.0f || height < 0.0f)
+    {
+        globals.setExecutionState(LAZARUS_INVALID_DIMENSIONS);
+    };
     
     this->meshOut = {};
     this->meshData = {};
@@ -105,10 +108,10 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
         (E.g. width 2.0f, height 2.0f becomes 
         width -1.0f, height +1.0f) 
     ========================================================= */
-    float xMin = -(width / 2.0f);
-    float xMax = width / 2.0f;
-    float yMax = height / 2.0f;
-    float yMin = -(height / 2.0f);
+    _Float32 xMin = -(width / 2.0f);
+    _Float32 xMax = width / 2.0f;
+    _Float32 yMax = height / 2.0f;
+    _Float32 yMin = -(height / 2.0f);
     /* ==========================================================
         If the UV params aren't their default values (0.0) then
         this mesh is being created for a glyph which needs to be 
@@ -116,7 +119,7 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
 
         Otherwise it's a generic sprite.
     ============================================================= */
-    if(uvXL || uvXR || uvYU > 0.0 )
+    if(uvXL || uvXR || uvYU > 0.0f)
     {
     /* ======================================================================================================
             Vertex positions,           Diffuse colors,             Normals,                    UVs 
@@ -177,9 +180,9 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
     return meshOut;
 }
 
-MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, bool selectable)
+MeshManager::Mesh MeshManager::createCube(_Float32 scale, std::string texturePath, bool selectable)
 {
-    float vertexPosition = scale / 2; 
+    _Float32 vertexPosition = scale / 2; 
 
     this->meshOut = {};
     this->meshData = {};
@@ -285,11 +288,21 @@ void MeshManager::initialiseMesh()
     {
         glGenBuffers(1, &meshData.EBO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshData.EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, meshData.indexes.size() * sizeof(unsigned int), &meshData.indexes[0], GL_STATIC_DRAW);
+        glBufferData(
+            GL_ELEMENT_ARRAY_BUFFER, 
+            meshData.indexes.size() * sizeof(uint32_t), 
+            &meshData.indexes[0], 
+            GL_STATIC_DRAW
+        );
 
         glGenBuffers(1, &meshData.VBO);
         glBindBuffer(GL_ARRAY_BUFFER, meshData.VBO);
-        glBufferData(GL_ARRAY_BUFFER, meshData.attributes.size() * sizeof(vec3), &meshData.attributes[0], GL_STATIC_DRAW);
+        glBufferData(
+            GL_ARRAY_BUFFER, 
+            meshData.attributes.size() * sizeof(vec3), 
+            &meshData.attributes[0], 
+            GL_STATIC_DRAW
+        );
 
         //  Vertex Positions
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)0);
@@ -366,6 +379,8 @@ void MeshManager::clearMeshStorage()
 	this->errorCode = GL_NO_ERROR;
 
     this->layerCount = 0;
+
+    return;
 };
 
 void MeshManager::makeSelectable(bool selectable)
@@ -391,6 +406,8 @@ void MeshManager::makeSelectable(bool selectable)
         meshOut.isClickable = false;
         dataStore[meshOut.id - 1].stencilBufferId = 0;
     };
+
+    return;
 };
 
 void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
@@ -407,11 +424,18 @@ void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
         glStencilMask(0xFF);
         glClearStencil(0x00);
         glStencilFunc(GL_ALWAYS, data.stencilBufferId, 0xFF);
+
+        this->checkErrors(__FILE__, __LINE__);
     }
 
     if(this->modelMatrixUniformLocation >= 0)
     {
-        glUniformMatrix4fv(this->modelMatrixUniformLocation, 1, GL_FALSE, &meshIn.modelMatrix[0][0]);
+        glUniformMatrix4fv(
+            this->modelMatrixUniformLocation, 
+            1, 
+            GL_FALSE, 
+            &meshIn.modelMatrix[0][0]
+        );
         glUniform1i(this->is3DUniformLocation, meshIn.is3D);
         glUniform1i(this->isGlyphUniformLocation, meshIn.isGlyph);
         glUniform1i(this->isSkyBoxUniformLocation, meshIn.isSkybox);
@@ -453,7 +477,6 @@ void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
         glBindTexture(GL_TEXTURE_2D_ARRAY, data.textureId);
     };
 
-    // glDrawArrays(GL_TRIANGLES, 0, data.attributes.size());
     glDrawElements(GL_TRIANGLES, data.indexes.size(), GL_UNSIGNED_INT, nullptr);
 
     this->checkErrors(__FILE__, __LINE__);
@@ -576,7 +599,7 @@ MeshLoader::MeshLoader()
 	this->triangleCount				=	0;
 };
 
-bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<unsigned int> &outIndexes, const char* meshPath, const char* materialPath) 
+bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, const char* meshPath, const char* materialPath) 
 {
     this->coordinates.clear();
     this->vertexIndices.clear();
@@ -730,15 +753,15 @@ vector<string> MeshLoader::splitTokensFromLine(const char *wavefrontData, char d
     return tokenStore;
 }
 
-void MeshLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<unsigned int> &outIndexes, vector<vec3> outDiffuse, int numOfAttributes)
+void MeshLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> outDiffuse, uint32_t numOfAttributes)
 {
-    int count = 0;
+    uint32_t count = 0;
 
-    for( int i = 0; i < numOfAttributes; i++ )
+    for(size_t i = 0; i < numOfAttributes; i++)
     {
-        unsigned int vertexIndex = vertexIndices[i];
-        unsigned int normalIndex = normalIndices[i];
-        unsigned int uvIndex     = uvIndices[i];
+        uint32_t vertexIndex = vertexIndices[i];
+        uint32_t normalIndex = normalIndices[i];
+        uint32_t uvIndex     = uvIndices[i];
         
         /* =========================================
             uv is extended from its generic xy components
@@ -765,9 +788,9 @@ void MeshLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<unsign
         }
         else
         {
-            int beforeSize = outIndexes.size();
+            size_t beforeSize = outIndexes.size();
 
-            for(unsigned int j = 0; j < (outAttributes.size() / 4); j++)
+            for(size_t j = 0; j < (outAttributes.size() / 4); j++)
             {
                 vec3 validatedPosition = outAttributes[(j * 4)];
                 vec3 validatedDiffuseColor = outAttributes[(j * 4) + 1];
@@ -785,7 +808,7 @@ void MeshLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<unsign
                 }
             };
 
-            int currentSize = outIndexes.size(); 
+            size_t currentSize = outIndexes.size(); 
 
             if(currentSize == beforeSize)
             {
@@ -855,7 +878,7 @@ MaterialLoader::MaterialLoader()
     texCount = 0;
 };
 
-bool MaterialLoader::loadMaterial(vector<vec3> &out, vector<vector<int>> data ,string materialPath)
+bool MaterialLoader::loadMaterial(vector<vec3> &out, vector<vector<uint32_t>> data ,string materialPath)
 {
     diffuseCount = 0;
     texCount = 0;
@@ -878,8 +901,8 @@ bool MaterialLoader::loadMaterial(vector<vec3> &out, vector<vector<int>> data ,s
             diffuseCount += 1;
             for(auto i: data)
             {
-            	int index = i[0];
-            	int faceCount = i[1];
+            	uint32_t index = i[0];
+            	uint32_t faceCount = i[1];
             	
 	            if(diffuseCount == index) {
                     string currentString = currentLine;
@@ -902,7 +925,7 @@ bool MaterialLoader::loadMaterial(vector<vec3> &out, vector<vector<int>> data ,s
                         N = The number of vertices which use this color.
                         (faceCount * 3)
                     ======================================================= */
-    	            for(int j = 0; j < faceCount * 3; j++)
+    	            for(size_t j = 0; j < faceCount * 3; j++)
     	            {
     	                out.push_back(diffuse);
     	            };
@@ -912,15 +935,18 @@ bool MaterialLoader::loadMaterial(vector<vec3> &out, vector<vector<int>> data ,s
         /* ==========================================
             map_Kd = Image texture
         ============================================= */
-        if( ((currentLine[0] == 'm') && (currentLine[1] == 'a') && (currentLine[2] == 'p')))
+        if(
+            (currentLine[0] == 'm') && 
+            (currentLine[1] == 'a') && 
+            (currentLine[2] == 'p'))
         {
             texCount += 1;
             if( diffuseCount == 0 )
             {
                 for(auto i: data)
                 {
-                    int faceCount = i[1];
-                    for(int j = 0; j < faceCount * 3; j++)
+                    uint32_t faceCount = i[1];
+                    for(size_t j = 0; j < faceCount * 3; j++)
                     {
                         /* ===========================================
                             Negative values passed here are an indicator

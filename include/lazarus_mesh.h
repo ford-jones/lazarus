@@ -52,7 +52,7 @@ class MaterialLoader
 {
     public:        
         MaterialLoader();
-        bool loadMaterial(vector<vec3> &out, vector<vector<int>> data, string materialPath);
+        bool loadMaterial(vector<vec3> &out, vector<vector<uint32_t>> data, string materialPath);
         virtual ~MaterialLoader();
 
     private:
@@ -62,8 +62,8 @@ class MaterialLoader
         vec3 diffuse;                                           //  Diffuse colour, the main / dominant colour of a face
         ifstream file;
         char currentLine[256];
-        int diffuseCount;                                    //  The number of times an instance of `char[]="Kd"`(diffuse color) has appeared since the last invocation
-        int texCount;
+        uint32_t diffuseCount;                                    //  The number of times an instance of `char[]="Kd"`(diffuse color) has appeared since the last invocation
+        uint32_t texCount;
 
         GlobalsManager globals;
 };
@@ -73,7 +73,9 @@ class MeshLoader : private MaterialLoader
     public:
         ifstream file;
 
-        vector<unsigned int> vertexIndices, uvIndices, normalIndices;
+        vector<uint32_t> vertexIndices;
+        vector<uint32_t> uvIndices;
+        vector<uint32_t> normalIndices;
         vector<vec3> tempVertexPositions;
         vector<vec2> tempUvs;
         vector<vec3> tempNormals;
@@ -84,7 +86,7 @@ class MeshLoader : private MaterialLoader
         bool parseWavefrontObj(
             vector<vec3> &outAttributes,
             vector<vec3> &outDiffuse,
-            vector<unsigned int> &outIndexes,
+            vector<uint32_t> &outIndexes,
             const char *meshPath,
             const char *materialPath
         );
@@ -93,15 +95,15 @@ class MeshLoader : private MaterialLoader
 
     private:
         vector<string> splitTokensFromLine(const char *wavefrontData, char delim);
-        void constructIndexBuffer(vector<vec3> &outAttributes, vector<unsigned int> &outIndexes, vector<vec3> outDiffuse, int numOfAttributes);
+        void constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> outDiffuse, uint32_t numOfAttributes);
         void constructTriangle();
 
         vector<string> coordinates;
 
-        vector<vector<int>> materialBuffer;
-        vector<int> materialData;
-        int materialIdentifierIndex;
-        int triangleCount;
+        vector<vector<uint32_t>> materialBuffer;
+        vector<uint32_t> materialData;
+        uint32_t materialIdentifierIndex;
+        uint32_t triangleCount;
         
         char currentLine[256];
         vector<string> attributeIndexes;
@@ -118,10 +120,10 @@ class MeshManager : private MeshLoader, public TextureLoader
     public:
         struct Mesh
         {
-            int id;
+            uint32_t id;
 
-            int numOfVertices;
-            int numOfFaces;
+            uint32_t numOfVertices;
+            uint32_t numOfFaces;
             /* ===============================
             	TODO | Things to add:
                 - Material count
@@ -132,23 +134,23 @@ class MeshManager : private MeshLoader, public TextureLoader
             string materialFilepath;
             string textureFilepath;
 
-            float locationX;
-            float locationY;
-            float locationZ;
+            _Float32 locationX;
+            _Float32 locationY;
+            _Float32 locationZ;
 
             mat4 modelMatrix;
 
-            int is3D;
-            int isGlyph;
-            int isSkybox;
+            uint8_t is3D;
+            uint8_t isGlyph;
+            uint8_t isSkybox;
             bool isClickable;
         };
 		
 		MeshManager(GLuint shader);
 		
         Mesh create3DAsset(string meshPath, string materialPath, string texturePath = LAZARUS_DIFFUSE_MESH, bool selectable = false);
-        Mesh createQuad(float width, float height, string texturePath = LAZARUS_DIFFUSE_MESH, float uvXL = 0.0, float uvXR = 0.0, float uvYU = 0.0, float uvYD = 0.0, bool selectable = false);
-        Mesh createCube(float scale, string texturePath = LAZARUS_SKYBOX_CUBE, bool selectable = false);
+        Mesh createQuad(_Float32 width, _Float32 height, string texturePath = LAZARUS_DIFFUSE_MESH, _Float32 uvXL = 0.0, _Float32 uvXR = 0.0, _Float32 uvYU = 0.0, _Float32 uvYD = 0.0, bool selectable = false);
+        Mesh createCube(_Float32 scale, string texturePath = LAZARUS_SKYBOX_CUBE, bool selectable = false);
 
         void clearMeshStorage();
 
@@ -159,9 +161,11 @@ class MeshManager : private MeshLoader, public TextureLoader
     private:
         struct MeshData
         {
-            int id;
-            int stencilBufferId;
-            int textureUnit;
+            uint32_t id;
+
+            int32_t stencilBufferId;
+            int32_t textureUnit;
+
             FileReader::Image textureData;
             GLuint textureId;
             GLuint textureLayer;
@@ -169,7 +173,7 @@ class MeshManager : private MeshLoader, public TextureLoader
             GLuint VBO;
             GLuint EBO;
 
-            vector<unsigned int> indexes;
+            vector<uint32_t> indexes;
             vector<vec3> attributes;
             vector<vec3> diffuse;
         };
@@ -180,10 +184,10 @@ class MeshManager : private MeshLoader, public TextureLoader
         void makeSelectable(bool selectable);
         void prepareTextures();
         
-        void checkErrors(const char *file, int line);
+        void checkErrors(const char *file, int32_t line);
 
-        int errorCode;
-        int layerCount;
+        int32_t errorCode;
+        int32_t layerCount;
 
 		GLuint shaderProgram;
         GLint modelMatrixUniformLocation;                                                                        //  The location / index of the modelview matrix inside the vert shader program

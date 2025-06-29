@@ -24,18 +24,23 @@ Time::Time()
 	this->frameCount 			= 0;
 	this->framesPerSecond 		= 0;
 
-	this->elapsedTime 			= 0.0;
-	this->internalSeconds 		= 0.0;
-	this->msSinceLastRender 	= 0.0;
-	this->timeDelta 			= 0.0;
+	this->elapsedTime 			= 0.0f;
+	this->internalSeconds 		= 0.0f;
+	this->msSinceLastRender 	= 0.0f;
+	this->timeDelta 			= 0.0f;
 };
 
 void Time::monitorElapsedUptime()
 {
 	this->elapsedTime = glfwGetTime();
-	if(elapsedTime <= 0.0) globals.setExecutionState(LAZARUS_TIME_ERROR);
+	if(elapsedTime <= 0.0f)
+	{
+ 		globals.setExecutionState(LAZARUS_TIME_ERROR);
+	};
 
 	this->msSinceLastRender = (this->elapsedTime - this->internalSeconds);
+
+	return;
 };
 
 void Time::monitorTimeDelta()
@@ -43,21 +48,32 @@ void Time::monitorTimeDelta()
 	this->monitorFPS();
 
 	this->timeDelta = (1000 / this->framesPerSecond);
-	if(timeDelta <= 0.0) globals.setExecutionState(LAZARUS_TIME_ERROR);
+	if(timeDelta <= 0.0f)
+	{
+		globals.setExecutionState(LAZARUS_TIME_ERROR);
+	};
+
+	return;
 };
 
 void Time::monitorFPS()
 {
 	this->frameCount++;	
 	this->monitorElapsedUptime();
-	if(this->msSinceLastRender >= 1.0)
+
+	if(this->msSinceLastRender >= 1.0f)
 	{
 		this->framesPerSecond = this->frameCount;
-		if(this->framesPerSecond <= 0) globals.setExecutionState(LAZARUS_TIME_ERROR);
+		if(this->framesPerSecond <= 0) 
+		{
+			globals.setExecutionState(LAZARUS_TIME_ERROR);
+		};
 
 		this->frameCount = 0;
-		this->internalSeconds += 1.0;
+		this->internalSeconds += 1.0f;
 	};
+
+	return;
 };
 
 /* =======================================
@@ -78,6 +94,9 @@ Events::Events()
 	mousePositionY 		= 0;
 	scrollEventCode 	= 0;
 
+	errorCode 			= 0;
+	errorMessage 		= NULL;
+
 	win 		        = NULL;
 };
 
@@ -85,6 +104,8 @@ void Events::eventsInit()
 {
 	win = glfwGetCurrentContext();
 
+	this->checkErrors(__FILE__, __LINE__);
+	
 	if(win != NULL)
 	{
 		glfwSetKeyCallback(win, [](GLFWwindow *win, int key, int scancode, int action, int mods){
@@ -130,10 +151,13 @@ void Events::eventsInit()
 			return;
 		});
 
+		this->checkErrors(__FILE__, __LINE__);
 	}
 	else 
 	{
 		globals.setExecutionState(LAZARUS_NO_CONTEXT);
+
+		return;
 	};
 };
 
@@ -143,6 +167,10 @@ void Events::monitorEvents()
 	
     this->updateKeyboardState();
     this->updateMouseState();
+
+	this->checkErrors(__FILE__, __LINE__);
+	
+	return;
 };
 
 void Events::updateKeyboardState()
@@ -222,17 +250,19 @@ void Events::updateKeyboardState()
 				break;
 		};
 	};
+
+	return;
 };
 
 void Events::updateMouseState()
 {
 	this->mouseEventCode = LAZARUS_MOUSE_NOCLICK;
-	this->mousePositionX = 0.0;
-	this->mousePositionY = 0.0;
+	this->mousePositionX = 0.0f;
+	this->mousePositionY = 0.0f;
 	
 	this->mouseEventCode = LAZARUS_LISTENER_MOUSECODE;
-	this->mousePositionX = static_cast<int>(LAZARUS_LISTENER_MOUSEX + 0.5);
-	this->mousePositionY = static_cast<int>(LAZARUS_LISTENER_MOUSEY + 0.5);		
+	this->mousePositionX = static_cast<int>(LAZARUS_LISTENER_MOUSEX + 0.5f);
+	this->mousePositionY = static_cast<int>(LAZARUS_LISTENER_MOUSEY + 0.5f);		
 	
 	/* =========================================================
 		TODO: 
@@ -241,9 +271,29 @@ void Events::updateMouseState()
 		At the very least, it should be reset to 0 when the scrollwheel is not in motion
 	============================================================ */
 	this->scrollEventCode = static_cast<int>(LAZARUS_LISTENER_SCROLLCODE);
+
+	return;
 };
 
-WindowManager::WindowManager(const char *title, int width, int height)
+int32_t Events::checkErrors(const char *file, int line)
+{
+    errorCode = glfwGetError(errorMessage); 
+    if(errorCode != GLFW_NO_ERROR)
+    {
+        std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
+        std::cerr << RED_TEXT << "ERROR::GLFW::WINDOW " << RESET_TEXT << errorMessage << std::endl;
+
+        globals.setExecutionState(LAZARUS_EVENT_ERROR);
+        
+        return errorCode;
+    }
+    else 
+    {
+    	return GLFW_NO_ERROR;
+    }
+};
+
+WindowManager::WindowManager(const char *title, uint32_t width, uint32_t height)
 {
 	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 	this->errorCode = GLFW_NO_ERROR;
@@ -269,7 +319,7 @@ WindowManager::WindowManager(const char *title, int width, int height)
     this->isOpen = false;
 };
 
-int WindowManager::createWindow()
+int32_t WindowManager::createWindow()
 {
     if(!glfwInit())
     {
@@ -302,14 +352,17 @@ int WindowManager::createWindow()
     this->monitor = glfwGetPrimaryMonitor();
     this->videoMode = glfwGetVideoMode(this->monitor);
     
-    if((this->frame.width > videoMode->width) || (this->frame.height > videoMode->height))
+    if(
+		(static_cast<int32_t>(this->frame.width) > videoMode->width) || 
+		(static_cast<int32_t>(this->frame.height) > videoMode->height)
+	)
     {
         globals.setExecutionState(LAZARUS_WIN_EXCEEDS_MAX);
         return -1;
     };
 
-    int targetWidth = 0;
-    int targetHeight = 0;
+    int32_t targetWidth = 0;
+    int32_t targetHeight = 0;
 
     launchFullscreen
     ? (((targetWidth = videoMode->width) && (targetHeight = videoMode->height)) 
@@ -336,10 +389,13 @@ int WindowManager::createWindow()
 
     globals.setDisplaySize(targetWidth, targetHeight);
 
-    glfwSetWindowPos(this->window, floor((videoMode->width - this->frame.width) / 2), floor((videoMode->height - this->frame.height) / 2));
+	int32_t windowLocationX = floor((videoMode->width - this->frame.width) / 2);
+	int32_t windowLocationY = floor((videoMode->height - this->frame.height) / 2);
+    glfwSetWindowPos(this->window, windowLocationX, windowLocationY);
 
     glfwMakeContextCurrent(this->window);
 
+	this->checkErrors(__FILE__, __LINE__);
     /* ========================================================================== 
         Note that alot of the GL ecosystem uses C-style callbacks. The repercussion
         being that pointers such as "this" cannot be used because of the required
@@ -354,25 +410,25 @@ int WindowManager::createWindow()
     glfwSetWindowCloseCallback(this->window, [](GLFWwindow *win){
         WindowManager *window = (WindowManager *) glfwGetWindowUserPointer(win);
         window->close();
+
         return;
     });
 
 	this->initialiseGLEW();
     
-    return GLFW_NO_ERROR;
+    return this->checkErrors(__FILE__, __LINE__);;
 };
 
-int WindowManager::setBackgroundColor(float r, float g, float b)
+int32_t WindowManager::setBackgroundColor(_Float32 r, _Float32 g, _Float32 b)
 {
 	glClearColor(r, g, b, 1.0);
-	this->checkErrors(__FILE__, __LINE__);
 
 	this->frame.backgroundColor = glm::vec3(r, g, b);
 
-	return GLFW_NO_ERROR;
+	return this->checkErrors(__FILE__, __LINE__);;
 };
 
-int WindowManager::loadConfig()
+int32_t WindowManager::loadConfig()
 {	
 	if(enableCursor == true)
 	{
@@ -411,26 +467,26 @@ int WindowManager::loadConfig()
 
 	this->setBackgroundColor(0.0, 0.0, 0.0);
 	
-	return GLFW_NO_ERROR;
+	return this->checkErrors(__FILE__, __LINE__);;
 };
 
-int WindowManager::open()
+int32_t WindowManager::open()
 {
     glfwSetWindowShouldClose(this->window, GLFW_FALSE);
     this->isOpen = true;
 
-    return GLFW_NO_ERROR;
+    return this->checkErrors(__FILE__, __LINE__);;
 }
 
-int WindowManager::close()
+int32_t WindowManager::close()
 {
     glfwSetWindowShouldClose(this->window, GLFW_TRUE);
     this->isOpen = false;
 
-    return GLFW_NO_ERROR;
+    return this->checkErrors(__FILE__, __LINE__);;
 }
 
-int WindowManager::createCursor(int sizeX, int sizeY, int hotX, int hotY, std::string filepath)
+int32_t WindowManager::createCursor(uint32_t sizeX, uint32_t sizeY, uint32_t targetX, uint32_t targetY, std::string filepath)
 {		
     fileReader = std::make_unique<FileReader>();
     this->image = fileReader->readFromImage(filepath);
@@ -439,38 +495,33 @@ int WindowManager::createCursor(int sizeX, int sizeY, int hotX, int hotY, std::s
 	this->glfwImage.height = sizeY;
 	this->glfwImage.pixels = this->image.pixelData;
 	
-	this->cursor = glfwCreateCursor(&this->glfwImage, hotX, hotY);
+	this->cursor = glfwCreateCursor(&this->glfwImage, targetX, targetY);
 	glfwSetCursor(this->window, this->cursor);
 	
-	this->checkErrors(__FILE__, __LINE__);
-	
-	return GLFW_NO_ERROR;
+	return this->checkErrors(__FILE__, __LINE__);
 };
 
-int WindowManager::snapCursor(float moveX, float moveY)
+int32_t WindowManager::snapCursor(float moveX, float moveY)
 {
     if(moveX > globals.getDisplayWidth() || moveY > globals.getDisplayHeight())
     {
         globals.setExecutionState(LAZARUS_INVALID_COORDINATE);
+		return -1;
     }
     else
     {
         glfwSetCursorPos(this->window, moveX, moveY);
-        this->checkErrors(__FILE__, __LINE__);
+        return this->checkErrors(__FILE__, __LINE__);
     };
-
-    return GLFW_NO_ERROR;
 };
 
 
-int WindowManager::presentNextFrame()
+int32_t WindowManager::presentNextFrame()
 {
 	glfwSwapBuffers(this->window);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-    this->checkErrors(__FILE__, __LINE__);
-
-	return GLFW_NO_ERROR;
+    return this->checkErrors(__FILE__, __LINE__);
 };
 
 /* =========================================
@@ -481,14 +532,17 @@ int WindowManager::presentNextFrame()
 	only being able to store 8-bit numbers 
 	in the stencil-depth buffer.
 ============================================ */
-int WindowManager::monitorPixelOccupants()
+int32_t WindowManager::monitorPixelOccupants()
 {
 	/* ==========================================
 		Notifies MeshManager::drawMesh to draw 
 		not only VBO contents but also to draw to
 		the stencil buffer.
 	============================================= */
-	if(!globals.getManageStencilBuffer()) globals.setManageStencilBuffer(true);
+	if(!globals.getManageStencilBuffer()) 
+	{
+		globals.setManageStencilBuffer(true);
+	};
 
 	/* ==========================================
 		Stop tests from last cycle.
@@ -509,11 +563,10 @@ int WindowManager::monitorPixelOccupants()
 	glClearStencil(0x00);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
-	this->checkErrors(__FILE__, __LINE__);
-	return GLFW_NO_ERROR;
+	return this->checkErrors(__FILE__, __LINE__);
 };
 
-int WindowManager::checkErrors(const char *file, int line)
+int32_t WindowManager::checkErrors(const char *file, int line)
 {
     errorCode = glfwGetError(errorMessage); 
     if(errorCode != GLFW_NO_ERROR)
