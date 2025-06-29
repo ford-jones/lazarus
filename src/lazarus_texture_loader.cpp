@@ -55,6 +55,7 @@ TextureLoader::TextureLoader()
 
 void TextureLoader::extendTextureStack(uint32_t maxWidth, uint32_t maxHeight, uint32_t textureLayers)
 {
+	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureStack);
 
 	/* =========================================================================
@@ -85,10 +86,13 @@ void TextureLoader::loadImageToTextureStack(FileReader::Image imageData, GLuint 
 	this->image.height = imageData.height;
 	this->image.pixelData = imageData.pixelData;
 
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureStack);
+
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+
 	if(this->image.pixelData != NULL)
-	{
-		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-		
+	{	
 		glTexSubImage3D(
 			GL_TEXTURE_2D_ARRAY, 									//	target
 			0, 														// 	mipmap level (leave as 0 if openGL is generating the mipmaps)
@@ -205,7 +209,6 @@ void TextureLoader::storeBitmapTexture(uint32_t maxWidth, uint32_t maxHeight)
 		glActiveTexture calls.
 	============================================== */
 	glActiveTexture(GL_TEXTURE1);
-	
 	glBindTexture(GL_TEXTURE_2D, this->bitmapTexture);
 
 	/* ========================================================================================
@@ -241,10 +244,13 @@ void TextureLoader::loadBitmapToTexture(FileReader::Image imageData, uint32_t xO
 	this->image.pixelData = imageData.pixelData;
 
 	/* ================================================================
-		Load the glyph's rendered bitmap into the previously allocated
-		texture at an offset equal to the current width of the texture
-		atlas and the culmilative height of previous alphabet sets.
+	Load the glyph's rendered bitmap into the previously allocated
+	texture at an offset equal to the current width of the texture
+	atlas and the culmilative height of previous alphabet sets.
 	=================================================================== */
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, this->bitmapTexture);
+	
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 	glTexSubImage2D(
