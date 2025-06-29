@@ -45,24 +45,24 @@ class Transform
 {	
     public:
 		Transform();
-		void translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z);
-    	void rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, float yaw, float roll);
-		void scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z);
+		void translateMeshAsset(MeshManager::Mesh &mesh, _Float32 x, _Float32 y, _Float32 z);
+    	void rotateMeshAsset(MeshManager::Mesh &mesh, _Float32 pitch, _Float32 yaw, _Float32 roll);
+		void scaleMeshAsset(MeshManager::Mesh &mesh, _Float32 x, _Float32 y, _Float32 z);
 
-		void translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity = 1.0);
-		void rotateCameraAsset(CameraManager::Camera &camera, float pitch, float yaw, float roll);
-		void orbitCameraAsset(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX = 0.0, float tarY = 0.0, float tarZ = 0.0);
+		void translateCameraAsset(CameraManager::Camera &camera, _Float32 x, _Float32 y, _Float32 z, _Float32 velocity = 1.0);
+		void rotateCameraAsset(CameraManager::Camera &camera, _Float32 pitch, _Float32 yaw, _Float32 roll);
+		void orbitCameraAsset(CameraManager::Camera &camera, _Float32 azimuth, _Float32 elevation, _Float32 radius, _Float32 tarX = 0.0, _Float32 tarY = 0.0, _Float32 tarZ = 0.0);
 
-		void translateLightAsset(LightManager::Light &light, float x, float y, float z);
+		void translateLightAsset(LightManager::Light &light, _Float32 x, _Float32 y, _Float32 z);
 
 	private:
-		bool determineIsSigned(float x, float y, float z);
-		float determineUpVector(float rotation);
-		float degreesToRadians(float in, bool enforceLimits = true);
+		bool determineIsSigned(_Float32 x, _Float32 y, _Float32 z);
+		_Float32 determineUpVector(_Float32 rotation);
+		_Float32 degreesToRadians(_Float32 in, bool enforceLimits = true);
 
-		double pi;
-		float outRadians;
-		float up;
+		_Float64 pi;
+		_Float32 outRadians;
+		_Float32 up;
 		
 		glm::vec3 rotation;
 

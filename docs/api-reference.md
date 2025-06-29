@@ -733,10 +733,11 @@ Params:
 - **LAZARUS_MATRIX_LOCATION_ERROR** *Lazarus failed to perform a shader lookup on the desired modelview, projection or view-matrix required to render the target entity. (Code: 206)*
 - **LAZARUS_OPENGL_ERROR** *An error occured in the OpenGL graphics pipeline. (Code: 301)*
 - **LAZARUS_NO_CONTEXT** *Unable to find a window with an active OpenGL context. (Code: 302)*
-- **LAZARUS_WINDOW_ERROR** *An error occured in the GLFW window API. (Code: 303)*
-- **LAZARUS_GLFW_NOINIT** *GL framework wrangler failed to initialise. (Code: 304)*
-- **LAZARUS_WIN_EXCEEDS_MAX** *The requested window size is larger than the dimensions of the primary monitor. (Code: 305)*
-- **LAZARUS_TIME_ERROR** *Lazarus tried to perform a time operation but the windows running time was 0ms. (Code: 306)*
+- **LAZARUS_WINDOW_ERROR** *An error occured in the window API. (Code: 303)*
+- **LAZARUS_EVENT_ERROR** *An error occured in the events API (Code: 304)*
+- **LAZARUS_GLFW_NOINIT** *GL framework wrangler failed to initialise. (Code: 305)*
+- **LAZARUS_WIN_EXCEEDS_MAX** *The requested window size is larger than the dimensions of the primary monitor. (Code: 306)*
+- **LAZARUS_TIME_ERROR** *Lazarus tried to perform a time operation but the windows running time was 0ms. (Code: 307)*
 - **LAZARUS_AUDIO_ERROR** *An error occured in the FMOD audio backend. (Code: 401)*
 - **LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR** *Desired audio playback location was less than 0 seconds or more than AudioManager::Audio::length. (Code: 402)*
 - **LAZARUS_AUDIO_LOAD_ERROR** *Unable to load audio sample into a channel. (Code: 403)*

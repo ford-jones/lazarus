@@ -232,7 +232,7 @@ Shader::Shader()
     this->reset();
 };
 
-int Shader::compileShaders(std::string fragmentShader, std::string vertexShader)
+uint32_t Shader::compileShaders(std::string fragmentShader, std::string vertexShader)
 {
     this->reset();
     this->vertReader = std::make_unique<FileReader>();
@@ -309,7 +309,7 @@ int Shader::compileShaders(std::string fragmentShader, std::string vertexShader)
     return shaderProgram;
 };
 
-void Shader::setActiveShader(int program)
+void Shader::setActiveShader(uint32_t program)
 {
     this->verifyProgram(program);
     glUseProgram(this->shaderProgram);
@@ -319,6 +319,8 @@ void Shader::setActiveShader(int program)
     {
         globals.setExecutionState(LAZARUS_SHADER_ERROR);
     };
+
+    return;
 };
 
 void Shader::uploadUniform(std::string identifier, void *data)
@@ -413,9 +415,11 @@ void Shader::uploadUniform(std::string identifier, void *data)
             globals.setExecutionState(LAZARUS_SHADER_ERROR);
             break;
     }
-}
 
-void Shader::verifyProgram(int program)
+    return;
+};
+
+void Shader::verifyProgram(uint32_t program)
 {
     //  Validate existence of the program
     if(glIsProgram(program) != GL_TRUE)
@@ -451,18 +455,20 @@ void Shader::reset()
 	this->vertShader = 0;
 	this->fragShader = 0;
 	this->shaderProgram = 0;	
+
+    return;
 };
 
 Shader::~Shader()
 {
     std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 
-    for(unsigned int i = 0; i < this->linkedPrograms.size(); i++)
+    for(size_t i = 0; i < this->linkedPrograms.size(); i++)
     {
         glDeleteProgram         (this->linkedPrograms[i]);
     };
 
-    for(unsigned int i = 0; i < this->shaderSources.size(); i++)
+    for(size_t i = 0; i < this->shaderSources.size(); i++)
     {
         glDeleteProgram         (this->shaderSources[i]);
     };

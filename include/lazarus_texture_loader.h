@@ -41,14 +41,14 @@ class TextureLoader
 {
 	public:
 		TextureLoader();
-		void extendTextureStack(int maxWidth, int maxHeight, int textureLayers);
+		void extendTextureStack(uint32_t maxWidth, uint32_t maxHeight, uint32_t textureLayers);
 		void loadImageToTextureStack(FileReader::Image imageData, GLuint textureLayer);
 
-		void storeCubeMap(int width, int height);
+		void storeCubeMap(uint32_t width, uint32_t height);
 		void loadCubeMap(std::vector<FileReader::Image> faces);
 
-		void storeBitmapTexture(int maxWidth, int maxHeight);
-		void loadBitmapToTexture(FileReader::Image imageData, int xOffset, int yOffset);
+		void storeBitmapTexture(uint32_t maxWidth, uint32_t maxHeight);
+		void loadBitmapToTexture(FileReader::Image imageData, uint32_t xOffset, uint32_t yOffset);
 
 		virtual ~TextureLoader();
 		
@@ -57,18 +57,8 @@ class TextureLoader
 		GLuint cubeMapTexture;
 
 	private:		
-		int countMipLevels(int width, int height);
-		void checkErrors(const char *file, int line);
-
-		int mipCount;
-		int loopCount;
-		int x;
-		int y;
-		int atlasHeight;
-		int atlasWidth;
-		
-		int xOffset;
-		int yOffset;
+		uint32_t calculateMipLevels(uint32_t width, uint32_t height);
+		void checkErrors(const char *file, uint32_t line);
 
 		GLenum errorCode;
 

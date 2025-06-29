@@ -47,15 +47,18 @@ class FileReader
         {
             unsigned char *pixelData;
 
-            int height;
-            int width;
+            uint32_t height;
+            uint32_t width;
         };
 
 		string relativePathToAbsolute(string filepath);
         Image readFromImage(string filepath);
         const char *readFromText(string filepath);
         
-		int x, y, n;
+		int32_t imageWidth;
+        int32_t imageHeight;
+        int32_t channelCount;
+
         virtual ~FileReader();
         
 	private:
@@ -63,9 +66,9 @@ class FileReader
         unsigned char *outResize;
         
 		const char *textData;
-        const char *img;
+        const char *filepath;
 
-        int resizeStatus;
+        int32_t resizeStatus;
 		
         std::stringstream stringstream;
         std::filesystem::path path;
@@ -78,8 +81,8 @@ class FileReader
         Image outImage;
 
         bool enforceResize;
-        int maxWidth;
-        int maxHeight;
+        uint32_t maxWidth;
+        uint32_t maxHeight;
 
         GlobalsManager globals;
 };

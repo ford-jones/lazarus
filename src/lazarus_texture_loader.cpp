@@ -41,15 +41,7 @@ TextureLoader::TextureLoader()
 	this->bitmapTexture = 0;
 	this->textureStack = 0;
 
-	this->x = 0;
-	this->y = 0;
-	this->loopCount = 0;
-	this->mipCount = 0;
 	this->errorCode = 0;
-	
-	this->xOffset = 0;
-	this->yOffset = 0;
-	this->atlasHeight = 0;
 
 	glGenTextures(1, &this->textureStack);
 	glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureStack);
@@ -61,7 +53,7 @@ TextureLoader::TextureLoader()
 	glBindTexture(GL_TEXTURE_CUBE_MAP, this->cubeMapTexture);
 };
 
-void TextureLoader::extendTextureStack(int maxWidth, int maxHeight, int textureLayers)
+void TextureLoader::extendTextureStack(uint32_t maxWidth, uint32_t maxHeight, uint32_t textureLayers)
 {
 	glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureStack);
 
@@ -102,7 +94,8 @@ void TextureLoader::loadImageToTextureStack(FileReader::Image imageData, GLuint 
 			0, 														// 	mipmap level (leave as 0 if openGL is generating the mipmaps)
 			0, 0, 													// 	xy offset into the layer
 			(textureLayer - 1), 									// 	layer depth to set this texture, zero-indexed
-			this->image.width, this->image.height,					//	actual texture width / height
+			this->image.width, 										//	actual texture width
+			this->image.height,										//	actual texture height
 			1, 														// 	number of layers being passed each time this is called
 			GL_RGBA, 												//	texel data format
 			GL_UNSIGNED_BYTE, 										//	texel data type
@@ -119,9 +112,11 @@ void TextureLoader::loadImageToTextureStack(FileReader::Image imageData, GLuint 
 	}
 
 	this->checkErrors(__FILE__, __LINE__);
+
+	return;
 };
 
-void TextureLoader::storeCubeMap(int width, int height)
+void TextureLoader::storeCubeMap(uint32_t width, uint32_t height)
 {
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, this->cubeMapTexture);
@@ -135,10 +130,18 @@ void TextureLoader::storeCubeMap(int width, int height)
 		each mip of each face.
 	============================================================== */
 
-	this->mipCount = this->countMipLevels(width, height);
-	glTexStorage2D(GL_TEXTURE_CUBE_MAP, this->mipCount, GL_RGBA8, width, height);
+	uint32_t mipCount = this->calculateMipLevels(width, height);
+	glTexStorage2D(
+		GL_TEXTURE_CUBE_MAP, 
+		mipCount, 
+		GL_RGBA8, 
+		width, 
+		height
+	);
 
 	this->checkErrors(__FILE__, __LINE__);
+
+	return;
 };
 
 void TextureLoader::loadCubeMap(std::vector<FileReader::Image> faces)
@@ -154,7 +157,7 @@ void TextureLoader::loadCubeMap(std::vector<FileReader::Image> faces)
 	}
 	else
 	{
-		for(unsigned int i = 0; i < 6; i++)
+		for(uint8_t i = 0; i < 6; i++)
 		{
 			/* ===================================================
 				For each face; buffer the images pixel data to 
@@ -188,9 +191,11 @@ void TextureLoader::loadCubeMap(std::vector<FileReader::Image> faces)
 
 		this->checkErrors(__FILE__, __LINE__);
 	};
+
+	return;
 };
 
-void TextureLoader::storeBitmapTexture(int maxWidth, int maxHeight)
+void TextureLoader::storeBitmapTexture(uint32_t maxWidth, uint32_t maxHeight)
 {
 	/* ===========================================
 		Hardcoded because this function is used 
@@ -212,12 +217,24 @@ void TextureLoader::storeBitmapTexture(int maxWidth, int maxHeight)
 		on the GPU side. The swizzle can and probably should be done here to make it clearer.
 	=========================================================================================== */
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R8, maxWidth, maxHeight, 0, GL_RED, GL_UNSIGNED_BYTE, 0);
+	glTexImage2D(
+		GL_TEXTURE_2D, 
+		0, 
+		GL_R8, 
+		maxWidth, 
+		maxHeight, 
+		0, 
+		GL_RED, 
+		GL_UNSIGNED_BYTE, 
+		0
+	);
 
 	this->checkErrors(__FILE__, __LINE__);
+
+	return;
 };
 
-void TextureLoader::loadBitmapToTexture(FileReader::Image imageData, int xOffset, int yOffset)
+void TextureLoader::loadBitmapToTexture(FileReader::Image imageData, uint32_t xOffset, uint32_t yOffset)
 {
 	this->image.width = imageData.width;
 	this->image.height = imageData.height;
@@ -241,12 +258,7 @@ void TextureLoader::loadBitmapToTexture(FileReader::Image imageData, int xOffset
 		GL_UNSIGNED_BYTE, 
 		(void *)this->image.pixelData
 	);
-
 	this->checkErrors(__FILE__, __LINE__);
-
-	std::cout << "X: " << xOffset << std::endl;
-	std::cout << "Y: " << yOffset << std::endl;
-	// xOffset += imageData.width;
 
 	glGenerateMipmap(GL_TEXTURE_2D);
 
@@ -255,43 +267,52 @@ void TextureLoader::loadBitmapToTexture(FileReader::Image imageData, int xOffset
 
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);	
+
+	this->checkErrors(__FILE__, __LINE__);
+
+	return;
 };
 
-int TextureLoader::countMipLevels(int width, int height)
+uint32_t TextureLoader::calculateMipLevels(uint32_t width, uint32_t height)
 {
-	this->loopCount = 0;
+	uint32_t loopCount = 0;
 
-	this->x = width;
-	this->y = height;
+	uint32_t mipWidth = width;
+	uint32_t mipHeight = height;
 
-	this->loopCount += 1;
+	loopCount += 1;
 
+	/* ===============================================
+		Repeatedly halve the image's dimensions until
+		it is 1x1 px in size to calculate the number
+		of mips.
+	================================================== */
 	while( 1 )
 	{
-		this->loopCount += 1;
+		loopCount += 1;
 
-		if(this->x != 1)
+		if(mipWidth != 1)
 		{
-			int xResult = floor(this->x / 2);
-			this->x = xResult;
+			uint32_t xResult = static_cast<uint32_t>(floor(mipWidth / 2));
+			mipWidth = xResult;
 		}
 
-		if (this->y != 1)
+		if (mipHeight != 1)
 		{
-			int yResult = floor(this->y / 2);
-			this->y = yResult;
+			uint32_t yResult = static_cast<uint32_t>(floor(mipHeight / 2));
+			mipHeight = yResult;
 		}
 
-		if ( (this->x == 1) && (this->y == 1) )
+		if ( (mipWidth == 1) && (mipHeight == 1) )
 		{
 			break;
 		}
 	}
 
-	return this->loopCount;
+	return loopCount;
 };
 
-void TextureLoader::checkErrors(const char *file, int line)
+void TextureLoader::checkErrors(const char *file, uint32_t line)
 {
     this->errorCode = glGetError();
     
@@ -312,4 +333,5 @@ TextureLoader::~TextureLoader()
 
 	glDeleteTextures(1, &textureStack);
 	glDeleteTextures(1, &bitmapTexture);
+	glDeleteTextures(1, &cubeMapTexture);
 };

@@ -41,16 +41,16 @@ class Time
         void monitorTimeDelta();
 		void monitorFPS();
 		
-		float framesPerSecond;
-		float timeDelta;
-		float elapsedTime;
+		_Float32 framesPerSecond;
+		_Float32 timeDelta;
+		_Float32 elapsedTime;
 		
 	private:
         GlobalsManager globals;
 
-		float msSinceLastRender;
-		float internalSeconds;
-		int frameCount;		
+		_Float32 msSinceLastRender;
+		_Float32 internalSeconds;
+		_Float32 frameCount;		
 };
 
 class Events
@@ -64,19 +64,23 @@ class Events
     	void eventsInit();
         void monitorEvents();
 
-        string keyEventString;
-        int keyEventCode;
-		int keyEventOsCode;
+        std::string keyEventString;
+        uint32_t keyEventCode;
+		uint32_t keyEventOsCode;
 
-		int mouseEventCode;
-		int mousePositionX;
-		int mousePositionY;
+		uint32_t mouseEventCode;
+		uint32_t mousePositionX;
+		uint32_t mousePositionY;
 		
-		int scrollEventCode;
+		int8_t scrollEventCode;
 		
     private:
+        int32_t checkErrors(const char *file, int line);
         void updateKeyboardState();
         void updateMouseState();
+
+        int32_t errorCode;
+        const char** errorMessage;
 
         GLFWwindow *win;
 
@@ -86,33 +90,34 @@ class Events
 class WindowManager : public Events, public Time
 {
     public:
-        WindowManager(const char *title, int width = 800, int height = 600);
+        WindowManager(const char *title, uint32_t width = 800, uint32_t height = 600);
 
-        int createWindow();
-        int setBackgroundColor(float r, float g, float b);
-		int loadConfig();
+        int32_t createWindow();
+        int32_t setBackgroundColor(_Float32 r, _Float32 g, _Float32 b);
+		int32_t loadConfig();
 
-        int open();
-        int close();
+        int32_t open();
+        int32_t close();
 
-		int createCursor(int sizeX, int sizeY, int hotX, int hotY, std::string filepath);
-        int snapCursor(float moveX, float moveY);
+		int32_t createCursor(uint32_t sizeX, uint32_t sizeY, uint32_t targetX, uint32_t targetY, std::string filepath);
+        int32_t snapCursor(_Float32 moveX, _Float32 moveY);
 
-        int presentNextFrame();
-        int monitorPixelOccupants();
+        int32_t presentNextFrame();
+        int32_t monitorPixelOccupants();
 
         bool isOpen;
 
         virtual ~WindowManager();
         
 	private:
-		int initialiseGLEW();
-        int checkErrors(const char *file, int line);
+		int32_t initialiseGLEW();
+        int32_t checkErrors(const char *file, int line);
 
         //  Dont know why I made this private
         struct Window
         {
-            int height, width;
+            uint32_t height;
+            uint32_t width;
             const char *title;
             glm::vec3 backgroundColor;
         };
@@ -128,7 +133,7 @@ class WindowManager : public Events, public Time
         bool testDepth;
         bool disableVsync;
 
-        int errorCode;
+        int32_t errorCode;
         const char** errorMessage;
         
         const GLFWvidmode *videoMode;

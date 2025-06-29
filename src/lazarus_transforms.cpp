@@ -19,10 +19,6 @@
 
 #include "../include/lazarus_transforms.h"
 
-/* =================================================
-	TODO: 
-	Create scaling translation
-==================================================== */
 Transform::Transform()
 {
 	this->pi = 3.1419;
@@ -34,7 +30,7 @@ Transform::Transform()
 	this->rotation = vec3(0.0, 0.0, 0.0);
 };
 
-void Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
+void Transform::translateMeshAsset(MeshManager::Mesh &mesh, _Float32 x, _Float32 y, _Float32 z)
 {
 	this->localCoordinates = glm::vec3(x, y, z);
     mesh.modelMatrix = glm::translate(mesh.modelMatrix, this->localCoordinates);
@@ -55,7 +51,7 @@ void Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, fl
 	return;
 };
 
-void Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, float yaw, float roll)
+void Transform::rotateMeshAsset(MeshManager::Mesh &mesh, _Float32 pitch, _Float32 yaw, _Float32 roll)
 {	
     mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
     mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -64,10 +60,10 @@ void Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, float yaw,
     return;
 };
 
-void Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
+void Transform::scaleMeshAsset(MeshManager::Mesh &mesh, _Float32 x, _Float32 y, _Float32 z)
 {
-	bool positiveSign = this->determineIsSigned(x, y, z);
-	if(!positiveSign)
+	bool negativeSign = this->determineIsSigned(x, y, z);
+	if(negativeSign)
 	{
 		globals.setExecutionState(LAZARUS_INVALID_DIMENSIONS);	
 	}
@@ -75,14 +71,15 @@ void Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float 
 	{
 		mesh.modelMatrix = glm::scale(mesh.modelMatrix, glm::vec3(x, y, z));
 	};
+
+	return;
 };
 
-void Transform::translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity)
+void Transform::translateCameraAsset(CameraManager::Camera &camera, _Float32 x, _Float32 y, _Float32 z, _Float32 velocity)
 {
 	/* =========================================
 		TODO:
 		Handle camera roll
-		Restore orbit / handle both camera cases
 	============================================ */
 
 	if(x != 0.0f)
@@ -113,7 +110,7 @@ void Transform::translateCameraAsset(CameraManager::Camera &camera, float x, flo
 	return;
 };
 
-void Transform::rotateCameraAsset(CameraManager::Camera &camera, float pitch, float yaw, float roll)
+void Transform::rotateCameraAsset(CameraManager::Camera &camera, _Float32 pitch, _Float32 yaw, _Float32 roll)
 {	
 	this->rotation = vec3(0.0, 0.0, 0.0);
 
@@ -126,12 +123,12 @@ void Transform::rotateCameraAsset(CameraManager::Camera &camera, float pitch, fl
 		this->up = this->determineUpVector(pitch);
 		camera.upVector = glm::vec3(0.0f, this->up, 0.0f);
 
-		float a = this->degreesToRadians(pitch);
-		float y = this->degreesToRadians(yaw, false);
+		_Float32 p = this->degreesToRadians(pitch);
+		_Float32 y = this->degreesToRadians(yaw, false);
 
-		this->rotation.x = cos(y) * cos(a);
-		this->rotation.y = sin(-a);
-		this->rotation.z = sin(y) * cos(a); 
+		this->rotation.x = cos(y) * cos(p);
+		this->rotation.y = sin(-p);
+		this->rotation.z = sin(y) * cos(p); 
 
 		camera.direction = this->rotation;
 
@@ -141,7 +138,7 @@ void Transform::rotateCameraAsset(CameraManager::Camera &camera, float pitch, fl
 	return;
 };
 
-void Transform::orbitCameraAsset(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX, float tarY, float tarZ)
+void Transform::orbitCameraAsset(CameraManager::Camera &camera, _Float32 azimuth, _Float32 elevation, _Float32 radius, _Float32 tarX, _Float32 tarY, _Float32 tarZ)
 {	
 	this->rotation = vec3(0.0, 0.0, 0.0);
 
@@ -154,8 +151,8 @@ void Transform::orbitCameraAsset(CameraManager::Camera &camera, float azimuth, f
 		this->up = this->determineUpVector(azimuth);
 		camera.upVector = glm::vec3(0.0f, this->up, 0.0f);
 		
-		float e = this->degreesToRadians(elevation, false);
-		float a = this->degreesToRadians(azimuth);
+		_Float32 e = this->degreesToRadians(elevation, false);
+		_Float32 a = this->degreesToRadians(azimuth);
 		
 		this->rotation.x = cos(e) * cos(a);
 		this->rotation.y = sin(a);
@@ -170,19 +167,18 @@ void Transform::orbitCameraAsset(CameraManager::Camera &camera, float azimuth, f
 	return;
 };
 
-void Transform::translateLightAsset(LightManager::Light &light, float x, float y, float z)
+void Transform::translateLightAsset(LightManager::Light &light, _Float32 x, _Float32 y, _Float32 z)
 {
-	light.lightPosition += vec3(x, y, z);
-	light.locationX += x;
-	light.locationY += y;
-	light.locationZ += z;
+	light.position += vec3(x, y, z);
 	
 	return;
 };
 
-float Transform::determineUpVector(float rotation)
+_Float32 Transform::determineUpVector(_Float32 rotation)
 {
-	if((rotation >= 90.0f && rotation <= 270.0f) || (rotation <= -90.0f && rotation >= -270.0f))
+	if(
+		(rotation >= 90.0f && rotation <= 270.0f) || 
+		(rotation <= -90.0f && rotation >= -270.0f))
 	{
 		return -1.0f;
 	}
@@ -192,25 +188,29 @@ float Transform::determineUpVector(float rotation)
 	};
 };
 
-bool Transform::determineIsSigned(float x, float y, float z)
+bool Transform::determineIsSigned(_Float32 x, _Float32 y, _Float32 z)
 {
-	if(std::max(0.0f, (x + y + z)) == 0.0f)
+	_Float32 subject = (x + y + z);
+
+	if(subject < 0.0f)
 	{
-		return false;
+		return true;
 	}
 	else
 	{
-		return true;
+		return false;
 	};
 };
 
-float Transform::degreesToRadians(float in, bool enforceLimits)
+_Float32 Transform::degreesToRadians(_Float32 in, bool enforceLimits)
 {
 	/* =======================================================================
 		Optionally check range is valid
 		This is so that certain illegal / breaking calculations can't be made
 	========================================================================== */
-	if(enforceLimits && ((in > 360.0f) || (in < -360.0f)))	
+	if(
+		enforceLimits && 
+		((in > 360.0f) || (in < -360.0f)))	
 	{
 		globals.setExecutionState(LAZARUS_INVALID_RADIANS);
 	};

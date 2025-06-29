@@ -36,7 +36,7 @@ CameraManager::CameraManager(GLuint shader)
     this->errorCode                         = 0;
 };
 
-CameraManager::Camera CameraManager::createPerspectiveCam(int aspectRatioX, int aspectRatioY)
+CameraManager::Camera CameraManager::createPerspectiveCam(uint32_t aspectRatioX, uint32_t aspectRatioY)
 {
     srand(time((0)));
     
@@ -67,7 +67,7 @@ CameraManager::Camera CameraManager::createPerspectiveCam(int aspectRatioX, int 
     return camera;
 };
 
-CameraManager::Camera CameraManager::createOrthoCam(int aspectRatioX, int aspectRatioY)
+CameraManager::Camera CameraManager::createOrthoCam(uint32_t aspectRatioX, uint32_t aspectRatioY)
 {
     srand(time((0)));
 
@@ -86,7 +86,7 @@ CameraManager::Camera CameraManager::createOrthoCam(int aspectRatioX, int aspect
     camera.upVector             = vec3(0.0f, 1.0f, 0.0f);
     
     camera.viewMatrix           = glm::lookAt(camera.position, (camera.position + camera.direction), camera.upVector);
-    camera.projectionMatrix     = glm::ortho(0.0f, static_cast<float>(aspectRatioX), 0.0f, static_cast<float>(aspectRatioY));
+    camera.projectionMatrix     = glm::ortho(0.0f, static_cast<_Float32>(aspectRatioX), 0.0f, static_cast<_Float32>(aspectRatioY));
 
     camera.usesPerspective      = 0;
 
@@ -95,7 +95,10 @@ CameraManager::Camera CameraManager::createOrthoCam(int aspectRatioX, int aspect
 
 void CameraManager::loadCamera(CameraManager::Camera &cameraIn)
 {
-    if(this->perspectiveProjectionLocation >= 0 && this->orthographicProjectionLocation >= 0)
+    if(
+        this->perspectiveProjectionLocation >= 0 && 
+        this->orthographicProjectionLocation >= 0
+    )
     {
         glUniformMatrix4fv     (this->viewLocation, 1, GL_FALSE, &cameraIn.viewMatrix[0][0]);
 
@@ -111,6 +114,8 @@ void CameraManager::loadCamera(CameraManager::Camera &cameraIn)
     {
         globals.setExecutionState(LAZARUS_MATRIX_LOCATION_ERROR);
     };
+
+    return;
 };
 
 /* ==============================================
@@ -119,7 +124,7 @@ void CameraManager::loadCamera(CameraManager::Camera &cameraIn)
     in worldspace out from the camera.
 ================================================= */
 
-int CameraManager::getPixelOccupant(int positionX, int positionY)
+int8_t CameraManager::getPixelOccupant(uint32_t positionX, uint32_t positionY)
 {
     this->pixel = 0;
     if(globals.getManageStencilBuffer())
@@ -131,7 +136,7 @@ int CameraManager::getPixelOccupant(int positionX, int positionY)
                 pixel's from the top-left corner of the
                 screen as opposed to bottom-left.
             =============================================== */
-            int inverseY = pixelWidth - positionY;
+            uint32_t inverseY = pixelWidth - positionY;
         
             /* =================================================
                 Read entity ID's if present from the back-buffer's 
@@ -142,11 +147,18 @@ int CameraManager::getPixelOccupant(int positionX, int positionY)
                 are zero-indexed inside the framebuffer.
             ==================================================== */
             glReadBuffer(GL_BACK);
-            glReadPixels((positionX - 1), (inverseY - 1), 1, 1, GL_STENCIL_INDEX, GL_INT, &this->pixel);
+            glReadPixels(
+                (positionX - 1), 
+                (inverseY - 1), 
+                1, 1, 
+                GL_STENCIL_INDEX, 
+                GL_INT, 
+                &this->pixel
+            );
 
             if(pixel)
             {
-                int stencilId = globals.getPickableEntity(pixel);
+                int8_t stencilId = globals.getPickableEntity(pixel);
                 pixel = stencilId;
             };
             
@@ -170,7 +182,7 @@ int CameraManager::getPixelOccupant(int positionX, int positionY)
     return pixel;
 };
 
-void CameraManager::setAspectRatio(int x, int y)
+void CameraManager::setAspectRatio(uint32_t x, uint32_t y)
 {
     /* ===============================================
         If a target aspect ratio has been defined then
@@ -179,15 +191,17 @@ void CameraManager::setAspectRatio(int x, int y)
     ================================================== */
     if((x + y) > 0)
     {
-        camera.aspectRatio      = static_cast<float>(x) / static_cast<float>(y);
+        camera.aspectRatio      = static_cast<_Float32>(x) / static_cast<_Float32>(y);
     }
     else
     {
-        camera.aspectRatio      = static_cast<float>(this->pixelHeight) / static_cast<float>(this->pixelWidth);
+        camera.aspectRatio      = static_cast<_Float32>(this->pixelHeight) / static_cast<_Float32>(this->pixelWidth);
     };   
+
+    return;
 };
 
-void CameraManager::checkErrors(const char *file, int line)
+void CameraManager::checkErrors(const char *file, uint32_t line)
 {
     this->errorCode = glGetError();
     

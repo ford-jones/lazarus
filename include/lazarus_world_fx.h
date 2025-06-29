@@ -54,9 +54,9 @@ class WorldFX : private MeshManager
             glm::vec3 color;
             glm::vec3 viewpoint;
 
-            float minDistance;
-            float maxDistance;
-            float density;
+            _Float32 minDistance;
+            _Float32 maxDistance;
+            _Float32 density;
         };
 
         /* ==================================================================================================================================================
@@ -73,15 +73,15 @@ class WorldFX : private MeshManager
         void drawSkyBox(SkyBox skyboxIn, CameraManager::Camera camera);
 
         Fog createFog(
-            float minDistance, 
-            float maxDistance, 
-            float thickness, 
-            float r, 
-            float g, 
-            float b, 
-            float x = 0.0f, 
-            float y = 0.0f, 
-            float z = 0.0f
+            _Float32 minDistance, 
+            _Float32 maxDistance, 
+            _Float32 thickness, 
+            _Float32 r, 
+            _Float32 g, 
+            _Float32 b, 
+            _Float32 x = 0.0f, 
+            _Float32 y = 0.0f, 
+            _Float32 z = 0.0f
         );
         void loadFog(Fog fogIn);
 
@@ -103,7 +103,7 @@ class WorldFX : private MeshManager
         GlobalsManager globals;
         std::unique_ptr<FileReader> imageLoader;
 
-        int status;
+        int32_t status;
 };
 
 #endif
