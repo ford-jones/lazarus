@@ -30,7 +30,7 @@ Transform::Transform()
 	this->rotation = vec3(0.0, 0.0, 0.0);
 };
 
-void Transform::translateMeshAsset(MeshManager::Mesh &mesh, _Float32 x, _Float32 y, _Float32 z)
+void Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
 {
 	this->localCoordinates = glm::vec3(x, y, z);
     mesh.modelMatrix = glm::translate(mesh.modelMatrix, this->localCoordinates);
@@ -51,7 +51,7 @@ void Transform::translateMeshAsset(MeshManager::Mesh &mesh, _Float32 x, _Float32
 	return;
 };
 
-void Transform::rotateMeshAsset(MeshManager::Mesh &mesh, _Float32 pitch, _Float32 yaw, _Float32 roll)
+void Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, float yaw, float roll)
 {	
     mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
     mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -60,7 +60,7 @@ void Transform::rotateMeshAsset(MeshManager::Mesh &mesh, _Float32 pitch, _Float3
     return;
 };
 
-void Transform::scaleMeshAsset(MeshManager::Mesh &mesh, _Float32 x, _Float32 y, _Float32 z)
+void Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
 {
 	bool negativeSign = this->determineIsSigned(x, y, z);
 	if(negativeSign)
@@ -75,7 +75,7 @@ void Transform::scaleMeshAsset(MeshManager::Mesh &mesh, _Float32 x, _Float32 y, 
 	return;
 };
 
-void Transform::translateCameraAsset(CameraManager::Camera &camera, _Float32 x, _Float32 y, _Float32 z, _Float32 velocity)
+void Transform::translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity)
 {
 	/* =========================================
 		TODO:
@@ -110,7 +110,7 @@ void Transform::translateCameraAsset(CameraManager::Camera &camera, _Float32 x, 
 	return;
 };
 
-void Transform::rotateCameraAsset(CameraManager::Camera &camera, _Float32 pitch, _Float32 yaw, _Float32 roll)
+void Transform::rotateCameraAsset(CameraManager::Camera &camera, float pitch, float yaw, float roll)
 {	
 	this->rotation = vec3(0.0, 0.0, 0.0);
 
@@ -123,8 +123,8 @@ void Transform::rotateCameraAsset(CameraManager::Camera &camera, _Float32 pitch,
 		this->up = this->determineUpVector(pitch);
 		camera.upVector = glm::vec3(0.0f, this->up, 0.0f);
 
-		_Float32 p = this->degreesToRadians(pitch);
-		_Float32 y = this->degreesToRadians(yaw, false);
+		float p = this->degreesToRadians(pitch);
+		float y = this->degreesToRadians(yaw, false);
 
 		this->rotation.x = cos(y) * cos(p);
 		this->rotation.y = sin(-p);
@@ -138,7 +138,7 @@ void Transform::rotateCameraAsset(CameraManager::Camera &camera, _Float32 pitch,
 	return;
 };
 
-void Transform::orbitCameraAsset(CameraManager::Camera &camera, _Float32 azimuth, _Float32 elevation, _Float32 radius, _Float32 tarX, _Float32 tarY, _Float32 tarZ)
+void Transform::orbitCameraAsset(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX, float tarY, float tarZ)
 {	
 	this->rotation = vec3(0.0, 0.0, 0.0);
 
@@ -151,8 +151,8 @@ void Transform::orbitCameraAsset(CameraManager::Camera &camera, _Float32 azimuth
 		this->up = this->determineUpVector(azimuth);
 		camera.upVector = glm::vec3(0.0f, this->up, 0.0f);
 		
-		_Float32 e = this->degreesToRadians(elevation, false);
-		_Float32 a = this->degreesToRadians(azimuth);
+		float e = this->degreesToRadians(elevation, false);
+		float a = this->degreesToRadians(azimuth);
 		
 		this->rotation.x = cos(e) * cos(a);
 		this->rotation.y = sin(a);
@@ -167,14 +167,14 @@ void Transform::orbitCameraAsset(CameraManager::Camera &camera, _Float32 azimuth
 	return;
 };
 
-void Transform::translateLightAsset(LightManager::Light &light, _Float32 x, _Float32 y, _Float32 z)
+void Transform::translateLightAsset(LightManager::Light &light, float x, float y, float z)
 {
 	light.position += vec3(x, y, z);
 	
 	return;
 };
 
-_Float32 Transform::determineUpVector(_Float32 rotation)
+float Transform::determineUpVector(float rotation)
 {
 	if(
 		(rotation >= 90.0f && rotation <= 270.0f) || 
@@ -188,9 +188,9 @@ _Float32 Transform::determineUpVector(_Float32 rotation)
 	};
 };
 
-bool Transform::determineIsSigned(_Float32 x, _Float32 y, _Float32 z)
+bool Transform::determineIsSigned(float x, float y, float z)
 {
-	_Float32 subject = (x + y + z);
+	float subject = (x + y + z);
 
 	if(subject < 0.0f)
 	{
@@ -202,7 +202,7 @@ bool Transform::determineIsSigned(_Float32 x, _Float32 y, _Float32 z)
 	};
 };
 
-_Float32 Transform::degreesToRadians(_Float32 in, bool enforceLimits)
+float Transform::degreesToRadians(float in, bool enforceLimits)
 {
 	/* =======================================================================
 		Optionally check range is valid

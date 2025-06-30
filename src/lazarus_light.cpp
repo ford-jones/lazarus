@@ -32,7 +32,7 @@ LightManager::LightManager(GLuint shader)
     this->lightCount = globals.getNumberOfActiveLights();
 }
 
-LightManager::Light LightManager::createLightSource(_Float32 x, _Float32 y, _Float32 z, _Float32 r, _Float32 g, _Float32 b, _Float32 brightness)
+LightManager::Light LightManager::createLightSource(float x, float y, float z, float r, float g, float b, float brightness)
 {	
     this->lightOut = {};
     this->lightData = {};

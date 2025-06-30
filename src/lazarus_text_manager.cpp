@@ -301,7 +301,7 @@ uint32_t TextManager::extendFontStack(std::string filepath, uint32_t ptSize)
     return fonts.size() - 1;
 };
 
-TextManager::Text TextManager::loadText(std::string targetText, uint32_t fontId, uint32_t posX, uint32_t posY, uint32_t letterSpacing, _Float32 red, _Float32 green, _Float32 blue, TextManager::Text textIn)
+TextManager::Text TextManager::loadText(std::string targetText, uint32_t fontId, uint32_t posX, uint32_t posY, uint32_t letterSpacing, float red, float green, float blue, TextManager::Text textIn)
 {
     /* =================================================
         Clear internal child trackers to stop bloat.
@@ -461,7 +461,7 @@ void TextManager::setActiveGlyph(char target, uint32_t fontId, uint32_t spacing)
     };
 };
 
-void TextManager::setTextColor(_Float32 r, _Float32 g, _Float32 b)
+void TextManager::setTextColor(float r, float g, float b)
 {
     this->textColor = glm::vec3(r, g, b);
     glUniform3fv(glGetUniformLocation(this->shaderProgram, "textColor"), 1, &this->textColor[0]);
@@ -488,8 +488,8 @@ void TextManager::lookUpUVs(uint8_t keyCode, uint32_t fontId)
     this->glyph = characters.at(range);
     targetXR = targetXL + this->glyph.width;
 
-    _Float32 uvRangeX = static_cast<float>(this->atlasWidth);
-    _Float32 uvRangeY = static_cast<float>(this->atlasHeight);
+    float uvRangeX = static_cast<float>(this->atlasWidth);
+    float uvRangeY = static_cast<float>(this->atlasHeight);
     
     /* ===================================================
         Normalise the values of the pixel locations within

@@ -26,6 +26,7 @@
 
 #include <iostream>
 #include <vector>
+#include <string>
 
 #ifndef LAZARUS_LIGHT_H
 #define LAZARUS_LIGHT_H
@@ -43,7 +44,7 @@ class LightManager
         {
             uint32_t id;
             
-            _Float32 brightness;
+            float brightness;
 
             glm::vec3 position;                     //  The (x,y,z) location of the light source
             glm::vec3 color;                        //  The (r,g,b) color of the light
@@ -52,7 +53,7 @@ class LightManager
         LightManager(GLuint shader);
         virtual ~LightManager();
 
-        Light createLightSource(_Float32 x, _Float32 y, _Float32 z, _Float32 r, _Float32 g, _Float32 b, _Float32 brightness = 1.0f);
+        Light createLightSource(float x, float y, float z, float r, float g, float b, float brightness = 1.0f);
         void loadLightSource(Light &lightIn);
 
     private:

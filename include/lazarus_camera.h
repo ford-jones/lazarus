@@ -48,7 +48,7 @@ class CameraManager
             vec3 direction;
             vec3 upVector;
 
-            _Float32 aspectRatio;
+            float aspectRatio;
 
             mat4 viewMatrix;
             mat4 projectionMatrix;

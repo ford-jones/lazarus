@@ -92,7 +92,7 @@ class TextManager : private FontLoader, private MeshManager
         };
         
         uint32_t extendFontStack(std::string filepath, uint32_t ptSize = 12);
-        Text loadText(std::string targetText, uint32_t fontId, uint32_t posX, uint32_t posY, uint32_t letterSpacing = 1, _Float32 red = 0.0f, _Float32 green = 0.0f, _Float32 blue = 0.0f, Text textIn = {});
+        Text loadText(std::string targetText, uint32_t fontId, uint32_t posX, uint32_t posY, uint32_t letterSpacing = 1, float red = 0.0f, float green = 0.0f, float blue = 0.0f, Text textIn = {});
         void drawText(Text text);
         virtual ~TextManager();
         
@@ -102,7 +102,7 @@ class TextManager : private FontLoader, private MeshManager
         Text textOut;
         void identifyAlphabetDimensions(uint32_t fontId);
         void setActiveGlyph(char target, uint32_t fontId, uint32_t spacing);
-        void setTextColor(_Float32 r, _Float32 g, _Float32 b);
+        void setTextColor(float r, float g, float b);
         void lookUpUVs(uint8_t keyCode, uint32_t fontId);
         
         uint8_t targetKey;
@@ -115,12 +115,12 @@ class TextManager : private FontLoader, private MeshManager
         uint32_t fontIndex;
         uint32_t layoutIndex; 
         
-        _Float32 translationStride;
+        float translationStride;
         
-        _Float32 uvL;
-        _Float32 uvR;
-        _Float32 uvU;
-        _Float32 uvD;
+        float uvL;
+        float uvR;
+        float uvU;
+        float uvD;
         
         GLuint textureId;
         GLuint shaderProgram;

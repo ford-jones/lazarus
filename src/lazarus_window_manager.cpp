@@ -419,7 +419,7 @@ int32_t WindowManager::createWindow()
     return this->checkErrors(__FILE__, __LINE__);;
 };
 
-int32_t WindowManager::setBackgroundColor(_Float32 r, _Float32 g, _Float32 b)
+int32_t WindowManager::setBackgroundColor(float r, float g, float b)
 {
 	glClearColor(r, g, b, 1.0);
 

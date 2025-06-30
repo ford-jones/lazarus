@@ -175,7 +175,7 @@ void AudioManager::pauseAudio(AudioManager::Audio &audioIn)
 	return;
 };
 
-void AudioManager::updateSourceLocation(AudioManager::Audio &audioIn, _Float32 x, _Float32 y, _Float32 z)
+void AudioManager::updateSourceLocation(AudioManager::Audio &audioIn, float x, float y, float z)
 {
 	AudioData &audioData = this->audioStore[audioIn.audioIndex - 1];
 
@@ -205,7 +205,7 @@ void AudioManager::updateSourceLocation(AudioManager::Audio &audioIn, _Float32 x
 	return;
 };
 
-void AudioManager::updateListenerLocation(_Float32 x, _Float32 y, _Float32 z)
+void AudioManager::updateListenerLocation(float x, float y, float z)
 {
 	this->currentListenerPosition = {x, y, z};
 

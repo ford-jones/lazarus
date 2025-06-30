@@ -86,7 +86,7 @@ CameraManager::Camera CameraManager::createOrthoCam(uint32_t aspectRatioX, uint3
     camera.upVector             = vec3(0.0f, 1.0f, 0.0f);
     
     camera.viewMatrix           = glm::lookAt(camera.position, (camera.position + camera.direction), camera.upVector);
-    camera.projectionMatrix     = glm::ortho(0.0f, static_cast<_Float32>(aspectRatioX), 0.0f, static_cast<_Float32>(aspectRatioY));
+    camera.projectionMatrix     = glm::ortho(0.0f, static_cast<float>(aspectRatioX), 0.0f, static_cast<float>(aspectRatioY));
 
     camera.usesPerspective      = 0;
 
@@ -191,11 +191,11 @@ void CameraManager::setAspectRatio(uint32_t x, uint32_t y)
     ================================================== */
     if((x + y) > 0)
     {
-        camera.aspectRatio      = static_cast<_Float32>(x) / static_cast<_Float32>(y);
+        camera.aspectRatio      = static_cast<float>(x) / static_cast<float>(y);
     }
     else
     {
-        camera.aspectRatio      = static_cast<_Float32>(this->pixelHeight) / static_cast<_Float32>(this->pixelWidth);
+        camera.aspectRatio      = static_cast<float>(this->pixelHeight) / static_cast<float>(this->pixelWidth);
     };   
 
     return;

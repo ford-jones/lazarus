@@ -41,16 +41,16 @@ class Time
         void monitorTimeDelta();
 		void monitorFPS();
 		
-		_Float32 framesPerSecond;
-		_Float32 timeDelta;
-		_Float32 elapsedTime;
+		float framesPerSecond;
+		float timeDelta;
+		float elapsedTime;
 		
 	private:
         GlobalsManager globals;
 
-		_Float32 msSinceLastRender;
-		_Float32 internalSeconds;
-		_Float32 frameCount;		
+		float msSinceLastRender;
+		float internalSeconds;
+		float frameCount;		
 };
 
 class Events
@@ -93,14 +93,14 @@ class WindowManager : public Events, public Time
         WindowManager(const char *title, uint32_t width = 800, uint32_t height = 600);
 
         int32_t createWindow();
-        int32_t setBackgroundColor(_Float32 r, _Float32 g, _Float32 b);
+        int32_t setBackgroundColor(float r, float g, float b);
 		int32_t loadConfig();
 
         int32_t open();
         int32_t close();
 
 		int32_t createCursor(uint32_t sizeX, uint32_t sizeY, uint32_t targetX, uint32_t targetY, std::string filepath);
-        int32_t snapCursor(_Float32 moveX, _Float32 moveY);
+        int32_t snapCursor(float moveX, float moveY);
 
         int32_t presentNextFrame();
         int32_t monitorPixelOccupants();
