@@ -51,15 +51,34 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     meshData.textureUnit = GL_TEXTURE2;
     glActiveTexture(meshData.textureUnit);
     
+    /* ==========================================
+        Determine whether the file is wavefront
+        or gltf/glb.
+    ============================================= */
+    uint32_t suffixDelimiter = meshPath.find_last_of(".");
+    std::string suffix = meshPath.substr(suffixDelimiter + 1);
+
     this->resolveFilepaths(texturePath, materialPath, meshPath);
-    
-    this->parseWavefrontObj(
-        meshData.attributes,
-        meshData.diffuse,
-        meshData.indexes,
-        meshOut.meshFilepath.c_str(),
-        meshOut.materialFilepath.c_str()
-    );
+
+    if(suffix.compare("obj") == 0)
+    {
+        this->parseWavefrontObj(
+            meshData.attributes,
+            meshData.diffuse,
+            meshData.indexes,
+            meshOut.meshFilepath.c_str(),
+            meshOut.materialFilepath.c_str()
+        );
+    }
+    else if(suffix.compare("glb") == 0)
+    {
+        this->parseGlBinary(
+            meshData.attributes, 
+            meshData.diffuse, 
+            meshData.indexes, 
+            meshOut.meshFilepath.c_str()
+        );
+    };
     
     this->setInherentProperties();
     this->initialiseMesh();
@@ -84,7 +103,7 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     a quad under the hood.
 =========================================================================================== */
 
-MeshManager::Mesh MeshManager::createQuad(_Float32 width, _Float32 height, string texturePath, _Float32 uvXL, _Float32 uvXR, _Float32 uvYU, _Float32 uvYD, bool selectable)
+MeshManager::Mesh MeshManager::createQuad(float width, float height, string texturePath, float uvXL, float uvXR, float uvYU, float uvYD, bool selectable)
 {
     if(width < 0.0f || height < 0.0f)
     {
@@ -108,10 +127,10 @@ MeshManager::Mesh MeshManager::createQuad(_Float32 width, _Float32 height, strin
         (E.g. width 2.0f, height 2.0f becomes 
         width -1.0f, height +1.0f) 
     ========================================================= */
-    _Float32 xMin = -(width / 2.0f);
-    _Float32 xMax = width / 2.0f;
-    _Float32 yMax = height / 2.0f;
-    _Float32 yMin = -(height / 2.0f);
+    float xMin = -(width / 2.0f);
+    float xMax = width / 2.0f;
+    float yMax = height / 2.0f;
+    float yMin = -(height / 2.0f);
     /* ==========================================================
         If the UV params aren't their default values (0.0) then
         this mesh is being created for a glyph which needs to be 
@@ -180,9 +199,9 @@ MeshManager::Mesh MeshManager::createQuad(_Float32 width, _Float32 height, strin
     return meshOut;
 }
 
-MeshManager::Mesh MeshManager::createCube(_Float32 scale, std::string texturePath, bool selectable)
+MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, bool selectable)
 {
-    _Float32 vertexPosition = scale / 2; 
+    float vertexPosition = scale / 2; 
 
     this->meshOut = {};
     this->meshData = {};
@@ -563,7 +582,7 @@ void MeshManager::setInherentProperties()
    return;
 }
 
-void MeshManager::checkErrors(const char *file, int line)
+void MeshManager::checkErrors(const char *file, uint32_t line)
 {
     this->errorCode = glGetError();
     
@@ -736,6 +755,217 @@ bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &ou
 
     return true;
 };
+
+bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, const char* meshPath)
+{
+    // meshes.clear();
+    // materials.clear();
+    // jsonData.clear();
+
+    file.open(meshPath, std::ios::in | std::ios::binary);
+
+    if(file.is_open() )
+    {
+        /* ========================================================
+            Read first 20 bytes (header + first 8 bytes of chunk_0)
+            to retrieve total size of chunk_0 and to align the 
+            readers cursor to the start of the this->jsonData chunkData[].
+        =========================================================== */
+
+        char headerBuffer[20];
+        std::memset(headerBuffer, 0, sizeof(char) * 20);
+    
+        uint32_t chunkSize = 0;
+
+        file.read(headerBuffer, sizeof(char) * 20);
+        std::memcpy(&chunkSize, &headerBuffer[12], sizeof(uint32_t));
+        
+        /* =========================================================
+        Parse JSON chunkData[] up to the beginning of chunk_1
+        ============================================================ */
+        char chunkBuffer[chunkSize];
+        std::memset(chunkBuffer, 0, sizeof(char) * chunkSize);
+        
+        file.read(chunkBuffer, chunkSize);
+        this->jsonData = chunkBuffer;
+        /* ==========================================================
+            Clear json contents up to the material data and 
+            begin parsing materials from it. Cleaning as we go allows
+            std::string::find usage to identify points of interest.
+        ============================================================= */
+        std::string matIdentifier = std::string("\"materials\":[{");
+        int32_t materialsLocation = this->jsonData.find(matIdentifier);
+        this->jsonData = this->jsonData.substr(materialsLocation + matIdentifier.size());
+
+        // std::cout << "Chunk data: " << this->jsonData.data() << std::endl;
+
+        std::string meshesIdentifier = std::string("\"meshes\":[{");
+        int32_t meshesLocation = this->jsonData.find(meshesIdentifier);
+        std::string mat = this->jsonData.substr(0, meshesLocation - 3);
+
+        // std::cout << "Materials: " << mat << std::endl;
+
+        /* ==================================================
+            Check whether the mesh uses an image texture or 
+            is diffuse-colored.
+        ===================================================== */
+        int32_t diffuse = mat.find("baseColorFactor");
+        int32_t tex = mat.find("baseColorTexture");
+
+        if(diffuse > 0)
+        {
+            bool moreToUnpack = true;
+
+            /* ==============================================
+                Identify baseColorFactor arrays and split-out
+                contents.
+            ================================================= */
+            while(moreToUnpack)
+            {
+                int32_t moreColors = mat.find("baseColorFactor");
+                
+                if(moreColors < 0)
+                {
+                    moreToUnpack = false;
+                    break;
+                };
+
+                int32_t arrayStart = mat.find('[');
+                int32_t arrayEnd = mat.find(']');
+                
+                std::string arrayContents = mat.substr(arrayStart + 1, (arrayEnd - arrayStart) - 1);
+                std::vector<std::string> color = this->splitTokensFromLine(arrayContents.c_str(), ',');
+
+                glbMaterialData diffuseMaterial = {};
+                diffuseMaterial.diffuse = {std::stof(color[0]), std::stof(color[1]), std::stof(color[2])};
+                diffuseMaterial.textureIndex = -1;
+                materials.push_back(diffuseMaterial);
+
+                mat = mat.substr(arrayEnd + 1);
+            };
+            
+            for(auto m : materials)
+            {
+                std::cout << "\n" << std::endl;
+                std::cout << "R: " << m.diffuse.r << std::endl;
+                std::cout << "G: " << m.diffuse.g << std::endl;
+                std::cout << "B: " << m.diffuse.b << std::endl;
+            };
+            // std::cout << "\n" << std::endl;
+            // std::cout << "Meshes: " << this->jsonData << std::endl;
+        }
+        else if(tex > 0)
+        {
+            /* =============================================
+                Identify texture index.
+            ================================================ */
+            std::string texIdxIdentifier = std::string("\"index\":");
+            int32_t i = mat.find(texIdxIdentifier);
+            std::string tex = mat.substr(i + texIdxIdentifier.size());
+
+            int32_t objStart = tex.find("{");
+            int32_t objEnd = tex.find("}");
+
+            std::string objContents = tex.substr(objStart + 1, (objEnd - objStart) - 1);
+
+            glbMaterialData texturedMaterial = {};
+            texturedMaterial.diffuse = glm::vec3(-1.0f, -1.0f, -1.0f);
+            texturedMaterial.textureIndex = std::stoi(objContents);
+            materials.push_back(texturedMaterial);
+
+            std::cout << "\n" << std::endl;
+            std::cout << "Texture index: " << texturedMaterial.textureIndex << std::endl;
+        }
+        else
+        {
+            globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+        };
+
+        /* ========================================================
+            Materials are done.
+            Clear up to meshes identifier and repeat.
+        =========================================================== */
+        this->jsonData = this->jsonData.substr(meshesLocation + meshesIdentifier.size());
+
+        //  Note: If a mesh isn't using a texture image (i.e. is using diffuse colors)
+        //  then the "textures" and "images" identifiers won't be present in the file
+        //  so they can be skipped.
+        std::string texturesIdentifier = std::string("\"textures\":");
+        int32_t texturesLocation = this->jsonData.find(texturesIdentifier);
+
+        std::string me = "";
+        
+        if(texturesLocation > 0)
+        {
+            me = this->jsonData.substr(0, texturesLocation);
+        }
+        else
+        {
+            std::string accessorsIdentifier = std::string("\"accessors\":");
+            int32_t accessorsLocation = this->jsonData.find(accessorsIdentifier);
+            me = this->jsonData.substr(0, accessorsLocation);
+        };
+
+        std::cout << "\n" << std::endl;
+        std::cout << "Meshes: " << me << std::endl;
+
+        // int32_t attributesStart = me.find("[");
+        // int32_t attributesEnd = me.find("]");
+
+        // textures come next if the location was above 0
+        
+        // uint32_t imagesLocation = this->jsonData.find("images");
+        // uint32_t samplersLocation = this->jsonData.find("samplers");
+        // uint32_t accessorsLocation = this->jsonData.find("accessors");
+        // uint32_t buffersLocation = this->jsonData.find("buffers");
+
+        return true;
+    }
+    else
+    {
+        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+        
+        return false;
+    };
+
+};
+
+// vector<string> MeshLoader::extractParenthisisedContents(std::string bounds, std::string target, bool isArray)
+// {
+//     bool moreToUnpack = true;
+//     int32_t bracketStart = 0;
+//     int32_t bracketEnd = 0;
+//     std::vector<std::string> outContents;
+//     /* ==============================================
+//         Identify baseColorFactor arrays and split-out
+//         contents.
+//     ================================================= */
+//     while(moreToUnpack)
+//     {
+//         int32_t more = bounds.find(target);
+        
+//         if(more < 0)
+//         {
+//             moreToUnpack = false;
+//             break;
+//         };
+
+//         if(isArray)
+//         {
+//             bracketStart = bounds.find('[');
+//             bracketEnd = bounds.find(']');
+//         }
+//         else
+//         {
+//             bracketStart = bounds.find('{');
+//             bracketEnd = bounds.find('}');
+//         };
+        
+//         std::string arrayContents = bounds.substr(bracketStart + 1, (bracketEnd - bracketStart) - 1);
+//         return this->splitTokensFromLine(arrayContents.c_str(), ','));
+//     };
+//     return outContents;
+// }
 
 vector<string> MeshLoader::splitTokensFromLine(const char *wavefrontData, char delim)
 {
@@ -915,9 +1145,9 @@ bool MaterialLoader::loadMaterial(vector<vec3> &out, vector<vector<uint32_t>> da
                         tokenStore.push_back(token);
                     }
 
-                    diffuse.r = stof(tokenStore[1]);
-                    diffuse.g = stof(tokenStore[2]);
-                    diffuse.b = stof(tokenStore[3]);
+                    diffuse.r = std::stof(tokenStore[1]);
+                    diffuse.g = std::stof(tokenStore[2]);
+                    diffuse.b = std::stof(tokenStore[3]);
                     /* ====================================================
                         Push the current diffuse object into the out
                         out parameter N times.

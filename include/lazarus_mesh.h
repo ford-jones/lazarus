@@ -30,7 +30,7 @@
 #include <stdlib.h>
 #include <memory>
 #include <fstream>
-#include <sstream>
+#include <cstring>
 
 #include "lazarus_file_reader.h"
 #include "lazarus_texture_loader.h"
@@ -90,10 +90,42 @@ class MeshLoader : private MaterialLoader
             const char *meshPath,
             const char *materialPath
         );
+
+        bool parseGlBinary(
+            vector<vec3> &outAttributes,
+            vector<vec3> &outDiffuse,
+            vector<uint32_t> &outIndexes,
+            const char *meshPath
+        );
         
         virtual ~MeshLoader();
 
     private:
+        //  glb
+
+        // std::vector<std::vector<std::string>> extractParenthisisedContents(std::string bounds, std::string target, bool isArray = true);
+
+        std::string jsonData;
+
+        struct glbMeshData
+        {
+            uint32_t positionAccessor;
+            uint32_t normalsAccessor;
+            uint32_t uvAccessor;
+            uint32_t indicesAccessor;
+            uint32_t materialsAccessor;
+        };
+        vector<glbMeshData> meshes;
+        
+        struct glbMaterialData
+        {
+            glm::vec3 diffuse;
+            int32_t textureIndex;
+        };
+        std::vector<glbMaterialData> materials;
+
+        //  wavefront
+
         vector<string> splitTokensFromLine(const char *wavefrontData, char delim);
         void constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> outDiffuse, uint32_t numOfAttributes);
         void constructTriangle();
@@ -104,7 +136,7 @@ class MeshLoader : private MaterialLoader
         vector<uint32_t> materialData;
         uint32_t materialIdentifierIndex;
         uint32_t triangleCount;
-        
+
         char currentLine[256];
         vector<string> attributeIndexes;
         
@@ -134,9 +166,9 @@ class MeshManager : private MeshLoader, public TextureLoader
             string materialFilepath;
             string textureFilepath;
 
-            _Float32 locationX;
-            _Float32 locationY;
-            _Float32 locationZ;
+            float locationX;
+            float locationY;
+            float locationZ;
 
             mat4 modelMatrix;
 
@@ -148,9 +180,9 @@ class MeshManager : private MeshLoader, public TextureLoader
 		
 		MeshManager(GLuint shader);
 		
-        Mesh create3DAsset(string meshPath, string materialPath, string texturePath = LAZARUS_DIFFUSE_MESH, bool selectable = false);
-        Mesh createQuad(_Float32 width, _Float32 height, string texturePath = LAZARUS_DIFFUSE_MESH, _Float32 uvXL = 0.0, _Float32 uvXR = 0.0, _Float32 uvYU = 0.0, _Float32 uvYD = 0.0, bool selectable = false);
-        Mesh createCube(_Float32 scale, string texturePath = LAZARUS_SKYBOX_CUBE, bool selectable = false);
+        Mesh create3DAsset(string meshPath, string materialPath = LAZARUS_TEXTURED_MESH, string texturePath = LAZARUS_DIFFUSE_MESH, bool selectable = false);
+        Mesh createQuad(float width, float height, string texturePath = LAZARUS_DIFFUSE_MESH, float uvXL = 0.0, float uvXR = 0.0, float uvYU = 0.0, float uvYD = 0.0, bool selectable = false);
+        Mesh createCube(float scale, string texturePath = LAZARUS_SKYBOX_CUBE, bool selectable = false);
 
         void clearMeshStorage();
 
@@ -184,7 +216,7 @@ class MeshManager : private MeshLoader, public TextureLoader
         void makeSelectable(bool selectable);
         void prepareTextures();
         
-        void checkErrors(const char *file, int32_t line);
+        void checkErrors(const char *file, uint32_t line);
 
         int32_t errorCode;
         int32_t layerCount;
