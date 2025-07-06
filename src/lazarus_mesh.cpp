@@ -620,21 +620,7 @@ MeshLoader::MeshLoader()
 
 bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, const char* meshPath, const char* materialPath) 
 {
-    this->coordinates.clear();
-    this->vertexIndices.clear();
-    this->normalIndices.clear();
-    this->uvIndices.clear();
-    this->attributeIndexes.clear();
-    this->materialBuffer.clear();
-    this->materialData.clear();
-	//  Temps are probably no longer needed
-    this->tempVertexPositions.clear();
-    this->tempNormals.clear();
-    this->tempUvs.clear();
-    this->tempDiffuse.clear();
-	
-    this->materialIdentifierIndex = 0;
-    this->triangleCount = 0;
+    this->resetMembers();
 
     file.open(meshPath);
 
@@ -670,8 +656,18 @@ bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &ou
             {
                 coordinates = splitTokensFromLine(currentLine, ' ');
 
+                /* =========================================
+                    uv is extended from its generic xy components
+                    to include a z value here to meet the expected
+                    stride range for attributes in the vertex buffer.
+            
+                    i.e: (4 * sizeof(vec3)) = 12
+
+                    Once in the shaders it is disregarded. 
+                ============================================ */
                 this->uv.x = stof(coordinates[1]);
                 this->uv.y = stof(coordinates[2]);
+                this->uv.z = 0.0f;
 
                 this->tempUvs.push_back(this->uv);
             }
@@ -758,214 +754,543 @@ bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &ou
 
 bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, const char* meshPath)
 {
-    // meshes.clear();
-    // materials.clear();
-    // jsonData.clear();
+    this->resetMembers();
 
-    file.open(meshPath, std::ios::in | std::ios::binary);
+    std::string PRIMITIVES = "\"primitives\":[";
+    std::string MATERIALS = "\"materials\":[";
+    std::string MATERIALID = "\"material\":";
+    std::string TEXTURES = "\"textures\":[";
+    std::string TEXTUREID = "\"baseColorTexture\":";
+    std::string DIFFUSE = "\"baseColorFactor\":";
+    std::string INDEX = "\"index\":";
+    std::string ACCESSORS = "\"accessors\":[";
+    std::string ATTRIBUTES = "\"attributes\":";
+    std::string INDICES = "\"indices\":";
+    std::string SAMPLERID = "\"sampler\":";
+    std::string IMAGES = "\"images\":[";
+    std::string IMAGEID = "\"source\":";
+    std::string BUFFERVIEW = "\"bufferViews\":[";
+    std::string BUFFERVIEWID = "\"bufferView\":";
+    std::string BUFFERS = "\"buffers\":[{";
+    std::string BUFFERID = "\"buffer\":";
+    std::string COUNT = "\"count\":";
+    std::string COMPONENTTYPE = "\"componentType\":";
+    std::string BYTEOFFSET = "\"byteOffset\":";
+    std::string BYTELENGTH = "\"byteLength\":";
+    
+    this->loadGlbChunks(meshPath);
 
-    if(file.is_open() )
+    std::string propertyIdentifiers[7] = {ACCESSORS,PRIMITIVES,MATERIALS,TEXTURES,IMAGES,BUFFERVIEW,BUFFERS};
+    std::vector<std::string> propertyStrings = {};
+    std::vector<uint32_t> propertyIndexes = {};
+
+    /* ====================================================
+        Read top-level glb json properties, find their
+        locations and then remove those that aren't present.
+    ======================================================= */
+    for(size_t i = 0; i < 7; i++)
+    {
+        std::string property = propertyIdentifiers[i];   
+        int32_t propertyLocation = this->jsonData.find(property);
+
+        if(propertyLocation > 0)
+        {
+            propertyIndexes.push_back(propertyLocation);
+        };
+    };
+    /* ========================================================
+        Sort in order of appearance and split to avoid 
+        duplicate / red-herring identifiers. 
+        E.g. "buffer" vs "bufferView" vs "bufferViews"
+    =========================================================== */
+    std::sort(propertyIndexes.begin(), propertyIndexes.end());
+
+    for(size_t i = 0; i < propertyIndexes.size(); i++)
+    {
+        uint32_t start = propertyIndexes[i];
+        uint32_t end = propertyIndexes[i + 1];
+
+        std::string json = (i + 1) >= propertyIndexes.size() 
+        ? this->jsonData.substr(start) 
+        : this->jsonData.substr(start, (end - start));
+        
+        propertyStrings.push_back(json);
+    };
+
+    /* =====================================================
+        Extract variables required for reading the next 
+        chunk from the json contents between each 
+        propertyIndex.
+    ======================================================== */
+    for(size_t i = 0; i < propertyStrings.size(); i++)
+    {
+        std::string json = propertyStrings[i];
+
+        if(json.find(MATERIALS) == 0)
+        {
+            /* ==================================================
+                Check whether the mesh uses an image texture or 
+                is diffuse-colored.
+            ===================================================== */
+            int32_t diffuse = json.find(DIFFUSE);
+            int32_t textureIndex = json.find(TEXTUREID);
+            if(diffuse > 0)
+            {
+                std::vector<std::string> colors = extractContainedContents(json, DIFFUSE.append("["), "]");
+                for(size_t j = 0; j < colors.size(); j++)
+                {
+                    std::vector<std::string> color = this->splitTokensFromLine(colors[j].c_str(), ',');
+                    glbMaterialData colorMaterial = {};
+                    colorMaterial.diffuse = {std::stof(color[0]), std::stof(color[1]), std::stof(color[2])};
+                    //  TODO:
+                    //  Verify that -1 is what's used elsewhere to signify diffuse usage
+                    colorMaterial.textureIndex = -1;
+                    materials.push_back(colorMaterial);
+
+                    std::cout << "\n" << std::endl;
+                    std::cout << "R: " << colorMaterial.diffuse.r << std::endl;
+                    std::cout << "G: " << colorMaterial.diffuse.g << std::endl;
+                    std::cout << "B: " << colorMaterial.diffuse.b << std::endl;
+                };
+
+            }
+            else if(textureIndex > 0)
+            {
+                /* =============================================
+                    Identify texture index.
+                ================================================ */
+                std::string texIdxIdentifier = std::string(INDEX);
+                int32_t id = json.find(texIdxIdentifier);
+                std::string tex = json.substr(id + texIdxIdentifier.size());
+                
+                int32_t objEnd = tex.find("}");
+                std::string objContents = tex.substr(0, objEnd);
+            
+                glbMaterialData texturedMaterial = {};
+                texturedMaterial.diffuse = glm::vec3(-1.0f, -1.0f, -1.0f);
+                texturedMaterial.textureIndex = std::stoi(objContents);
+                materials.push_back(texturedMaterial);
+            
+                std::cout << "\n" << std::endl;
+                std::cout << "Texture index: " << texturedMaterial.textureIndex << std::endl;
+            }
+            else
+            {
+                globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+            };
+        }
+        else if(json.find(PRIMITIVES) == 0)
+        {
+            std::string meshData = json;
+            std::vector<std::string> attributes = extractContainedContents(meshData, ATTRIBUTES.append("{"), "}");
+            for(size_t i = 0; i < attributes.size(); i++)
+            {           
+                glbMeshData mesh = {};
+                std::vector<std::string> attributeProperties = splitTokensFromLine(attributes[i].c_str(), ',');
+                for(size_t j = 0; j < attributeProperties.size(); j++)
+                {
+                    std::string property = attributeProperties[j];
+                    int32_t index = property.find(":");
+                    if(index < 0)
+                    {
+                        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+                    };
+
+                    /* ========================================================
+                        Mark uvAccessor as not-present by default.
+                    =========================================================== */
+                    mesh.uvAccessor = -1;
+
+                    int32_t value = std::stoi(property.substr(index + 1));
+                    switch (property[1])
+                    {
+                        //  POSITION
+                        case 'P':
+                        mesh.positionAccessor = value;
+                        break;
+                        //  NORMAL
+                        case 'N':
+                        mesh.normalsAccessor = value;
+                        break;
+                        //  TEXCOORD
+                        case 'T':
+                        mesh.uvAccessor = value;
+                        break;
+
+                        default:
+                        break;
+                    };
+                };
+
+                mesh.indicesAccessor = this->extractAttributeIndex(meshData, INDICES);
+                mesh.materialIndex = this->extractAttributeIndex(meshData, MATERIALID);
+                meshes.push_back(mesh);
+
+                std::cout << "\n" << std::endl;
+                std::cout << "Indices: " << mesh.indicesAccessor << std::endl;
+                std::cout << "Materials: " << mesh.materialIndex << std::endl;
+                std::cout << "Normals: " << mesh.normalsAccessor << std::endl;
+                std::cout << "Uvs: " << mesh.uvAccessor << std::endl;
+                std::cout << "Position: " << mesh.positionAccessor << std::endl;
+
+                std::string nextObject = "},{";
+                int32_t location = meshData.find(nextObject);
+                meshData = meshData.substr(location + nextObject.size());
+            }
+        }
+        else if(json.find(TEXTURES) == 0)
+        {
+            glbTextureData texture = {};
+
+            texture.samplerIndex = this->extractAttributeIndex(json, SAMPLERID);
+            texture.imageIndex = this->extractAttributeIndex(json, IMAGEID);
+            textures.push_back(texture);
+
+            std::cout << "\n" << std::endl;
+            std::cout << "Sampler Index: " << texture.samplerIndex << std::endl;
+            std::cout << "Image Index: " << texture.imageIndex << std::endl;
+
+        }
+        else if(json.find(IMAGES) == 0)
+        {
+            glbImageData image = {}; 
+
+            image.bufferViewIndex = this->extractAttributeIndex(json, BUFFERVIEWID);
+            images.push_back(image);
+
+            std::cout << "\n" << std::endl;
+            std::cout << "Image bufferview index: " << image.bufferViewIndex << std::endl;
+        }
+        else if(json.find(ACCESSORS) == 0)
+        {
+            std::vector<std::string> data = this->extractContainedContents(json, "{", "}");
+
+            std::vector<std::string> types;
+            types = this->extractContainedContents(json, "\"type\":\"", ",");
+
+            for(size_t j = 0; j < data.size(); j++)
+            {
+                std::string type = types[j].substr(0, types[j].find("\""));
+                std::string accessorData = data[j];
+
+                glbAccessorData accessor = {};
+                accessor.bufferViewIndex = this->extractAttributeIndex(accessorData, BUFFERVIEWID);
+                accessor.componentType = this->extractAttributeIndex(accessorData, COMPONENTTYPE);
+                accessor.byteOffset = this->extractAttributeIndex(accessorData, BYTEOFFSET);
+                accessor.count = this->extractAttributeIndex(accessorData, COUNT);
+                accessor.type = type;
+
+                accessors.push_back(accessor);
+                
+                std::cout << "\n" << std::endl;
+                std::cout << "bufferViewIndex: " << accessor.bufferViewIndex << std::endl;
+                std::cout << "componentType: " << accessor.componentType << std::endl;
+                std::cout << "byteOffset: " << accessor.byteOffset << std::endl;
+                std::cout << "count: " << accessor.count << std::endl;
+                std::cout << "type: " << accessor.type << std::endl;
+            };
+
+        }
+        else if(json.find(BUFFERVIEW) == 0)
+        {
+            /* ============================================================================
+                Note that the bufferView's 'target' property (responsible for describing 
+                what kind of buffer object this data should be written to) is skipped. 
+                
+                This is because we already know that an accessor with componentType 5123
+                (GL_UNSIGNED_SHORT) or 5124 (GL_UNSIGNED_INT) will be written to a buffer of 
+                type GL_ELEMENT_ARRAY_BUFFER. Anything other than that should be of 
+                componentType 5126 (GL_FLOAT), which will be written to GL_ARRAY_BUFFER. If 
+                it isn't thenthe mesh is not supported.
+            =============================================================================== */
+            std::vector<std::string> data = this->extractContainedContents(json, "{", "}");
+            
+            for(size_t j = 0; j < data.size(); j++)
+            {
+                std::string bvData = data[j];
+
+                glbBufferViewData bufferView = {};
+                //  TODO:
+                //  Handle byteStride property, seems random... is it not partially defined
+                //  here anyway by byteOffset / byteLength ?
+                bufferView.bufferIndex = this->extractAttributeIndex(bvData, BUFFERID);
+                bufferView.byteOffset = this->extractAttributeIndex(bvData, BYTEOFFSET);
+                bufferView.byteLength = this->extractAttributeIndex(bvData, BYTELENGTH);
+
+                bufferViews.push_back(bufferView);
+
+                std::cout << "\n" << std::endl;
+                std::cout << "bufferView bufferIndex: " << bufferView.bufferIndex << std::endl;
+                std::cout << "bufferView byteOffset: " << bufferView.byteOffset << std::endl;
+                std::cout << "bufferView byteLength: " << bufferView.byteLength << std::endl;
+            };
+        }
+        else if(json.find(BUFFERS) == 0)
+        {
+            std::vector<std::string> data = this->extractContainedContents(json, "{", "}");
+            uint32_t offset = 0;
+            for(size_t j = 0; j < data.size(); j++)
+            {
+                std::string bufferData = data[j];
+
+                glbBufferData buffer = {};
+                buffer.offset = offset;
+                buffer.stride = this->extractAttributeIndex(bufferData, BYTELENGTH);
+                offset += buffer.stride;
+
+                buffers.push_back(buffer);
+
+                std::cout << "\n" << std::endl;
+                std::cout << "buffer offset: " << buffer.offset << std::endl;
+                std::cout << "buffer stride: " << buffer.stride << std::endl;
+            };
+        };
+    };
+    std::cout << "\n" << std::endl;
+    std::cout << this->jsonData << std::endl;
+
+    
+    for(size_t i = 0; i < meshes.size(); i++)
+    {
+        std::vector<glm::vec3> vertexPositions;
+        std::vector<glm::vec3> vertexNormals;
+        std::vector<glm::vec3> vertexUvs;
+        
+        glbMeshData mesh = meshes[i];
+
+        glbAccessorData posiitonAccessor = accessors[mesh.positionAccessor];
+        glbAccessorData normalAccessor = accessors[mesh.normalsAccessor];
+
+        if(mesh.uvAccessor >= 0)
+        {
+            glbAccessorData uvAccessor = accessors[mesh.uvAccessor];
+
+            this->populateBufferFromAccessor(uvAccessor, vertexUvs);
+        };
+
+        this->populateBufferFromAccessor(posiitonAccessor, vertexPositions);
+        this->populateBufferFromAccessor(normalAccessor, vertexNormals);
+        
+        //  TODO:
+        //  Some condition here
+        //  Handle images
+        glbMaterialData material = materials[mesh.materialIndex];
+        
+        glbTextureData texture;
+        glbImageData image;
+        
+        if(material.textureIndex >= 0)
+        {
+            int32_t index = material.textureIndex;
+            texture = textures[material.textureIndex];
+            image = images[texture.imageIndex];
+        };
+        
+        glbAccessorData indicesAccessor = accessors[mesh.indicesAccessor];
+        glbBufferViewData indicesBufferView = bufferViews[indicesAccessor.bufferViewIndex];
+        
+        //  TODO:
+        //  Handle 32bit ints as well as 16bit
+        std::vector<uint16_t> indices(indicesAccessor.count);
+        std::memcpy(indices.data(), &this->binaryData[indicesBufferView.byteOffset], sizeof(uint16_t) * indicesAccessor.count);
+        
+        /* ========================================================================================
+            The indices / SCALAR buffer-values contained inside  of the glb file don't actually 
+            correspond directly to the indices used to traverse the VBO. Instead; these values 
+            pertain to the indices of the attributes for how a single face / primitive is  
+            constructed. I.e. if the mesh is a cube, EVERY value will be between 0 and 3 laid out in 
+            chunks of 6 at a time (four points shared between two triangles = 1 face).
+
+            To get a picture of this; export a cube as glb from some modeling software and load it. 
+            Print the contents of indices[j] here and compare them with the hardcoded index buffer 
+            contents of the 'MeshManager::createCube' function.
+
+            To get an actual index buffer, the verts must be duplicated one face at a time using 
+            these values, once that's done 'constructIndexBuffer' can be called to deduplicate them 
+            again and do it properly... sigh.
+        ============================================================================================= */
+        for(uint16_t j = 0; j < indices.size(); j++)
+        {
+            uint16_t index = indices[j];
+            std::cout << index << std::endl;
+
+            vertexIndices.push_back(j + 1);
+            normalIndices.push_back(j + 1);
+            uvIndices.push_back(j + 1);
+            
+            tempVertexPositions.push_back(vertexPositions[index]);
+            outDiffuse.push_back(material.diffuse);
+            tempNormals.push_back(vertexNormals[index]);
+            /* =================================================================
+                mesh.uvAccessor is optional. I.e. it doesn't nessecarily exist. 
+                In the case that it's not present in the json chunk, the VBO will 
+                still need to be populated so push back zeroes.
+            ==================================================================== */
+            mesh.uvAccessor >= 0 
+            ? tempUvs.push_back(vertexUvs[index]) 
+            : tempUvs.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
+        };
+    };
+    
+    this->constructIndexBuffer(outAttributes, outIndexes, outDiffuse, tempVertexPositions.size());
+
+    return true;
+};
+
+void MeshLoader::populateBufferFromAccessor(glbAccessorData accessor, std::vector<glm::vec3> &buffer)
+{
+    /* ==================================================================
+        Accessor optionally defines an additional byteOffset. Used to
+        define stride in the case that multiple accessors use the same
+        bufferView.
+    ===================================================================== */
+    glbBufferViewData bufferView = bufferViews[accessor.bufferViewIndex];
+    uint32_t offset = accessor.byteOffset != -1 ? accessor.byteOffset + bufferView.byteOffset : bufferView.byteOffset;
+
+    if(accessor.type == "VEC3")
+    {
+        /* ================================================================
+            Note the spec enforces a 4-byte alignment. This means that 
+            usage of sizeof(type) * accessor.count is preferable to 
+            bufferView.byteLength which is merely an indication of the raw
+            size.
+        =================================================================== */
+        std::vector<glm::vec3> vertexData(accessor.count);
+        std::memcpy(vertexData.data(), &this->binaryData[offset], sizeof(glm::vec3) * accessor.count);
+    
+        for(size_t i = 0; i < vertexData.size(); i++)
+        {
+            buffer.push_back(vertexData[i]);
+        };
+    }
+    else if(accessor.type == "VEC2")
+    {
+        std::vector<glm::vec2> vertexData(accessor.count);
+        std::memcpy(vertexData.data(), &this->binaryData[offset], sizeof(glm::vec2) * accessor.count);
+    
+        for(size_t i = 0; i < vertexData.size(); i++)
+        {
+            glm::vec3 vertexAttribute = {vertexData[i].x, vertexData[i].y, 0.0f};
+            buffer.push_back(vertexAttribute);
+        };
+    };
+    
+};
+
+void MeshLoader::loadGlbChunks(const char *filepath)
+{
+    file.open(filepath, std::ios::in | std::ios::binary);
+
+    if(!file.is_open())
+    {
+        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+
+        return;
+    }
+    else
     {
         /* ========================================================
             Read first 20 bytes (header + first 8 bytes of chunk_0)
             to retrieve total size of chunk_0 and to align the 
-            readers cursor to the start of the this->jsonData chunkData[].
+            readers cursor to the start of the json chunkData[].
         =========================================================== */
-
         char headerBuffer[20];
         std::memset(headerBuffer, 0, sizeof(char) * 20);
     
         uint32_t chunkSize = 0;
-
         file.read(headerBuffer, sizeof(char) * 20);
         std::memcpy(&chunkSize, &headerBuffer[12], sizeof(uint32_t));
         
         /* =========================================================
-        Parse JSON chunkData[] up to the beginning of chunk_1
+            Read and store JSON chunkData[] up to the beginning of 
+            the next chunk. This data describes how to interpret the
+            bytes from the next chunk.
         ============================================================ */
-        char chunkBuffer[chunkSize];
-        std::memset(chunkBuffer, 0, sizeof(char) * chunkSize);
-        
-        file.read(chunkBuffer, chunkSize);
-        this->jsonData = chunkBuffer;
+        char jsonChunk[chunkSize];
+        std::memset(jsonChunk, 0, sizeof(char) * chunkSize);
+
+        file.read(jsonChunk, chunkSize);
+        this->jsonData = jsonChunk;
+
+        std::cout << "JSON chunksize: " << chunkSize << std::endl;
         /* ==========================================================
-            Clear json contents up to the material data and 
-            begin parsing materials from it. Cleaning as we go allows
-            std::string::find usage to identify points of interest.
+            Read first 8 bytes of final chunk and extract the byte
+            length of it's chunkData[]. 
         ============================================================= */
-        std::string matIdentifier = std::string("\"materials\":[{");
-        int32_t materialsLocation = this->jsonData.find(matIdentifier);
-        this->jsonData = this->jsonData.substr(materialsLocation + matIdentifier.size());
-
-        // std::cout << "Chunk data: " << this->jsonData.data() << std::endl;
-
-        std::string meshesIdentifier = std::string("\"meshes\":[{");
-        int32_t meshesLocation = this->jsonData.find(meshesIdentifier);
-        std::string mat = this->jsonData.substr(0, meshesLocation - 3);
-
-        // std::cout << "Materials: " << mat << std::endl;
-
-        /* ==================================================
-            Check whether the mesh uses an image texture or 
-            is diffuse-colored.
-        ===================================================== */
-        int32_t diffuse = mat.find("baseColorFactor");
-        int32_t tex = mat.find("baseColorTexture");
-
-        if(diffuse > 0)
-        {
-            bool moreToUnpack = true;
-
-            /* ==============================================
-                Identify baseColorFactor arrays and split-out
-                contents.
-            ================================================= */
-            while(moreToUnpack)
-            {
-                int32_t moreColors = mat.find("baseColorFactor");
-                
-                if(moreColors < 0)
-                {
-                    moreToUnpack = false;
-                    break;
-                };
-
-                int32_t arrayStart = mat.find('[');
-                int32_t arrayEnd = mat.find(']');
-                
-                std::string arrayContents = mat.substr(arrayStart + 1, (arrayEnd - arrayStart) - 1);
-                std::vector<std::string> color = this->splitTokensFromLine(arrayContents.c_str(), ',');
-
-                glbMaterialData diffuseMaterial = {};
-                diffuseMaterial.diffuse = {std::stof(color[0]), std::stof(color[1]), std::stof(color[2])};
-                diffuseMaterial.textureIndex = -1;
-                materials.push_back(diffuseMaterial);
-
-                mat = mat.substr(arrayEnd + 1);
-            };
-            
-            for(auto m : materials)
-            {
-                std::cout << "\n" << std::endl;
-                std::cout << "R: " << m.diffuse.r << std::endl;
-                std::cout << "G: " << m.diffuse.g << std::endl;
-                std::cout << "B: " << m.diffuse.b << std::endl;
-            };
-            // std::cout << "\n" << std::endl;
-            // std::cout << "Meshes: " << this->jsonData << std::endl;
-        }
-        else if(tex > 0)
-        {
-            /* =============================================
-                Identify texture index.
-            ================================================ */
-            std::string texIdxIdentifier = std::string("\"index\":");
-            int32_t i = mat.find(texIdxIdentifier);
-            std::string tex = mat.substr(i + texIdxIdentifier.size());
-
-            int32_t objStart = tex.find("{");
-            int32_t objEnd = tex.find("}");
-
-            std::string objContents = tex.substr(objStart + 1, (objEnd - objStart) - 1);
-
-            glbMaterialData texturedMaterial = {};
-            texturedMaterial.diffuse = glm::vec3(-1.0f, -1.0f, -1.0f);
-            texturedMaterial.textureIndex = std::stoi(objContents);
-            materials.push_back(texturedMaterial);
-
-            std::cout << "\n" << std::endl;
-            std::cout << "Texture index: " << texturedMaterial.textureIndex << std::endl;
-        }
-        else
-        {
-            globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
-        };
-
-        /* ========================================================
-            Materials are done.
-            Clear up to meshes identifier and repeat.
-        =========================================================== */
-        this->jsonData = this->jsonData.substr(meshesLocation + meshesIdentifier.size());
-
-        //  Note: If a mesh isn't using a texture image (i.e. is using diffuse colors)
-        //  then the "textures" and "images" identifiers won't be present in the file
-        //  so they can be skipped.
-        std::string texturesIdentifier = std::string("\"textures\":");
-        int32_t texturesLocation = this->jsonData.find(texturesIdentifier);
-
-        std::string me = "";
+        char binaryChunkDetails[8];
+        std::memset(binaryChunkDetails, 0, sizeof(char) * 8);
+        file.read(binaryChunkDetails, sizeof(char) * 8);
+        std::memcpy(&chunkSize, &binaryChunkDetails[0], sizeof(uint32_t));
         
-        if(texturesLocation > 0)
-        {
-            me = this->jsonData.substr(0, texturesLocation);
-        }
-        else
-        {
-            std::string accessorsIdentifier = std::string("\"accessors\":");
-            int32_t accessorsLocation = this->jsonData.find(accessorsIdentifier);
-            me = this->jsonData.substr(0, accessorsLocation);
-        };
-
-        std::cout << "\n" << std::endl;
-        std::cout << "Meshes: " << me << std::endl;
-
-        // int32_t attributesStart = me.find("[");
-        // int32_t attributesEnd = me.find("]");
-
-        // textures come next if the location was above 0
+        /* =============================================================
+            Read final chunkData[] from final chunk. This data may
+            contain the data of several 'buffers' identifiers, split by
+            buffers.byteLength
+        ================================================================ */
+        char *binaryChunk = new char[chunkSize];
+        binaryData = new char[chunkSize];
+        std::memset(binaryChunk, 0, sizeof(char) * chunkSize);
         
-        // uint32_t imagesLocation = this->jsonData.find("images");
-        // uint32_t samplersLocation = this->jsonData.find("samplers");
-        // uint32_t accessorsLocation = this->jsonData.find("accessors");
-        // uint32_t buffersLocation = this->jsonData.find("buffers");
+        file.read(binaryChunk, chunkSize);
+        this->binaryData = binaryChunk;
 
-        return true;
+        file.close();
+        return;
     }
-    else
+}
+
+vector<string> MeshLoader::extractContainedContents(std::string bounds, std::string containerStart, std::string containerEnd)
+{
+    std::vector<std::string> outContents = {};
+    std::string buffer = bounds;
+    bool moreToUnpack = true;
+    int32_t start = 0;
+    int32_t end = 0;
+    /* ==============================================
+        Identify target containers and split-out their
+        contents.
+    ================================================= */
+    while(moreToUnpack)
     {
-        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
-        
-        return false;
+        start = buffer.find(containerStart);
+        if(start < 0)
+        {
+            moreToUnpack = false;
+            break;
+        };
+        buffer = buffer.substr(start + 1);
+      
+        end = buffer.find(containerEnd);
+
+        std::string arrayContents = buffer.substr(containerStart.size() - 1, end - (containerStart.size() - 2));
+        outContents.push_back(arrayContents);
     };
 
+    return outContents;
+}
+
+int32_t MeshLoader::extractAttributeIndex(std::string bounds, std::string target)
+{
+    int32_t out = 0;
+    int32_t attributeNameLocation = bounds.find(target);
+    out = attributeNameLocation;
+
+    if(attributeNameLocation >= 0)
+    {
+        std::string start = bounds.substr(attributeNameLocation + target.size());
+
+        for(size_t i = 0; i < start.size(); i++)
+        {
+            if(start[i] == ',' || start[i] == '}')
+            {
+                out = std::stoi(start.substr(0, i));
+                break;
+            };
+        };
+    };
+    
+    return out;
 };
-
-// vector<string> MeshLoader::extractParenthisisedContents(std::string bounds, std::string target, bool isArray)
-// {
-//     bool moreToUnpack = true;
-//     int32_t bracketStart = 0;
-//     int32_t bracketEnd = 0;
-//     std::vector<std::string> outContents;
-//     /* ==============================================
-//         Identify baseColorFactor arrays and split-out
-//         contents.
-//     ================================================= */
-//     while(moreToUnpack)
-//     {
-//         int32_t more = bounds.find(target);
-        
-//         if(more < 0)
-//         {
-//             moreToUnpack = false;
-//             break;
-//         };
-
-//         if(isArray)
-//         {
-//             bracketStart = bounds.find('[');
-//             bracketEnd = bounds.find(']');
-//         }
-//         else
-//         {
-//             bracketStart = bounds.find('{');
-//             bracketEnd = bounds.find('}');
-//         };
-        
-//         std::string arrayContents = bounds.substr(bracketStart + 1, (bracketEnd - bracketStart) - 1);
-//         return this->splitTokensFromLine(arrayContents.c_str(), ','));
-//     };
-//     return outContents;
-// }
 
 vector<string> MeshLoader::splitTokensFromLine(const char *wavefrontData, char delim)
 {
@@ -993,19 +1318,10 @@ void MeshLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32
         uint32_t normalIndex = normalIndices[i];
         uint32_t uvIndex     = uvIndices[i];
         
-        /* =========================================
-            uv is extended from its generic xy components
-            to include a z value here to meet the expected
-            stride range for attributes in the vertex buffer.
-            
-            i.e: (4 * sizeof(vec3)) = 12
-
-            Once in the shaders it is disregarded. 
-        ============================================ */
         vec3 position          = tempVertexPositions[vertexIndex - 1];
         vec3 diffuseColor      = outDiffuse[i];
         vec3 normalCoordinates = tempNormals[normalIndex - 1];
-        vec3 uvCoordinates     = vec3(tempUvs[uvIndex - 1].x, tempUvs[uvIndex - 1].y, 0.0f);
+        vec3 uvCoordinates     = tempUvs[uvIndex - 1];
 
         if(outAttributes.size() == 0)
         {
@@ -1018,6 +1334,11 @@ void MeshLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32
         }
         else
         {
+            /* ===================================================
+                Perform deduplication of vertex attributes, 
+                insert location of duplicate upon encounter of a
+                double-up.
+            ====================================================== */
             size_t beforeSize = outIndexes.size();
 
             for(size_t j = 0; j < (outAttributes.size() / 4); j++)
@@ -1043,6 +1364,9 @@ void MeshLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32
             if(currentSize == beforeSize)
             {
                 count += 1;
+                /* =========================================
+                    Interleave bufferdata
+                ============================================ */
                 outAttributes.push_back(position);
                 outAttributes.push_back(diffuseColor);
                 outAttributes.push_back(normalCoordinates);
@@ -1090,12 +1414,52 @@ void MeshLoader::constructTriangle()
     return;
 }
 
+void MeshLoader::resetMembers()
+{
+    /* =============================
+        Glb
+    ================================ */
+    this->meshes.clear();
+    this->materials.clear();
+    this->textures.clear();
+    this->images.clear();
+    this->accessors.clear();
+    this->bufferViews.clear();
+    this->buffers.clear();
+    this->jsonData.clear();
+    // this->binaryData = NULL;
+
+
+    /* =============================
+        Obj / Mtl
+    ================================ */
+    this->coordinates.clear();
+    this->materialBuffer.clear();
+    this->materialData.clear();
+    this->materialIdentifierIndex = 0;
+    this->triangleCount = 0;
+    
+    /* =============================
+        Shared
+    ================================ */
+    this->vertexIndices.clear();
+    this->normalIndices.clear();
+    this->uvIndices.clear();
+    this->attributeIndexes.clear();
+    this->tempVertexPositions.clear();
+    this->tempNormals.clear();
+    this->tempUvs.clear();
+    this->tempDiffuse.clear();
+	
+};
+
 MeshLoader::~MeshLoader()
 {
     if( file.is_open() )
     {
         file.close();
-    }
+    };
+
 	std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 };
 

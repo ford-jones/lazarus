@@ -280,7 +280,6 @@ uint32_t TextManager::extendFontStack(std::string filepath, uint32_t ptSize)
     ================================================ */
     for(size_t n = 0; n < this->fontIndex; n++)
     {
-        std::cout << "Font Index: " << n << std::endl;
         characters.clear();
 
         yOffset = alphabetHeights[n * 2];

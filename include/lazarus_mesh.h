@@ -31,6 +31,7 @@
 #include <memory>
 #include <fstream>
 #include <cstring>
+#include <algorithm>
 
 #include "lazarus_file_reader.h"
 #include "lazarus_texture_loader.h"
@@ -72,15 +73,6 @@ class MeshLoader : private MaterialLoader
 {
     public:
         ifstream file;
-
-        vector<uint32_t> vertexIndices;
-        vector<uint32_t> uvIndices;
-        vector<uint32_t> normalIndices;
-        vector<vec3> tempVertexPositions;
-        vector<vec2> tempUvs;
-        vector<vec3> tempNormals;
-        vector<vec3> tempDiffuse;
-    	
     	MeshLoader();	
     	    
         bool parseWavefrontObj(
@@ -103,45 +95,94 @@ class MeshLoader : private MaterialLoader
     private:
         //  glb
 
-        // std::vector<std::vector<std::string>> extractParenthisisedContents(std::string bounds, std::string target, bool isArray = true);
-
+        
         std::string jsonData;
-
+        char *binaryData;
+        
         struct glbMeshData
         {
             uint32_t positionAccessor;
             uint32_t normalsAccessor;
-            uint32_t uvAccessor;
             uint32_t indicesAccessor;
-            uint32_t materialsAccessor;
+            int32_t uvAccessor;
+            uint32_t materialIndex;
         };
-        vector<glbMeshData> meshes;
-        
         struct glbMaterialData
         {
             glm::vec3 diffuse;
             int32_t textureIndex;
         };
+        struct glbTextureData
+        {
+            uint32_t samplerIndex;
+            uint32_t imageIndex;
+        };
+        struct glbImageData
+        {
+            uint32_t bufferViewIndex;
+        };
+        struct glbAccessorData
+        {
+            uint32_t count;
+            uint32_t bufferViewIndex;
+            int32_t byteOffset;
+            std::uint32_t componentType;
+            std::string type;
+        };
+        struct glbBufferViewData
+        {
+            uint32_t bufferIndex;
+            uint32_t byteLength;
+            uint32_t byteOffset;
+        };
+        struct glbBufferData
+        {
+            uint32_t offset;
+            uint32_t stride;
+        };
+        std::vector<glbMeshData> meshes;
         std::vector<glbMaterialData> materials;
+        std::vector<glbTextureData> textures;
+        std::vector<glbImageData> images;
+        std::vector<glbAccessorData> accessors;
+        std::vector<glbBufferViewData> bufferViews;
+        std::vector<glbBufferData> buffers;
+        
+        void loadGlbChunks(const char *filepath);
+        void populateBufferFromAccessor(glbAccessorData accessor, std::vector<glm::vec3> &buffer);
+        std::vector<std::string> extractContainedContents(std::string bounds, std::string containerStart, std::string containerEnd);
+        int32_t extractAttributeIndex(std::string bounds, std::string target);
 
         //  wavefront
 
-        vector<string> splitTokensFromLine(const char *wavefrontData, char delim);
-        void constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> outDiffuse, uint32_t numOfAttributes);
         void constructTriangle();
-
+        
         vector<string> coordinates;
-
+        
         vector<vector<uint32_t>> materialBuffer;
         vector<uint32_t> materialData;
         uint32_t materialIdentifierIndex;
         uint32_t triangleCount;
-
+        
         char currentLine[256];
         vector<string> attributeIndexes;
         
+        //  Shared
+
+        vector<string> splitTokensFromLine(const char *wavefrontData, char delim);
+        void constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> outDiffuse, uint32_t numOfAttributes);
+        void resetMembers();
+
+        vector<uint32_t> vertexIndices;
+        vector<uint32_t> uvIndices;
+        vector<uint32_t> normalIndices;
+        vector<vec3> tempVertexPositions;
+        vector<vec3> tempUvs;
+        vector<vec3> tempNormals;
+        vector<vec3> tempDiffuse;
+
         vec3 vertex;
-        vec2 uv;
+        vec3 uv;
         vec3 normal;
 
         GlobalsManager globals;
