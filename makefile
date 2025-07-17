@@ -11,13 +11,13 @@ BUILDSTEPS :=
 # OS-specifics
 ifeq ($(shell uname),Linux)
 	CXX += -lstdc++fs
-	CXXFLAGS += -shared
+	CXXFLAGS += -O3 -shared
 	LDFLAGS += -lGL 
 	TARGET += liblazarus.so
 
 	BUILDSTEPS += && sudo ldconfig
 else ifeq ($(shell uname),Darwin)
-	CXXFLAGS += -dynamiclib
+	CXXFLAGS += -O3 -dynamiclib
 	LDFLAGS += -framework OpenGL
 	TARGET += liblazarus.dylib
 endif
@@ -51,7 +51,7 @@ run : build
 
 build : $(OBJECTS)
 	$(shell mkdir build && mkdir lib)
-	$(CXX) $(CXXFLAGS) -o $(OUT) $(OBJECTS) $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -O3 -o $(OUT) $(OBJECTS) $(LDFLAGS)
 
 clean : 
 	@echo "Destroying latest build files." && rm -R lib/ && rm -R build/
