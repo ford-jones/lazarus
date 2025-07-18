@@ -94,10 +94,8 @@ class MeshLoader : private MaterialLoader
 
     private:
         //  glb
-
-        
         std::string jsonData;
-        char *binaryData;
+        std::string binaryData;
         
         struct glbMeshData
         {

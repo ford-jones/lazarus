@@ -846,11 +846,6 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
                     //  Verify that -1 is what's used elsewhere to signify diffuse usage
                     colorMaterial.textureIndex = -1;
                     materials.push_back(colorMaterial);
-
-                    std::cout << "\n" << std::endl;
-                    std::cout << "R: " << colorMaterial.diffuse.r << std::endl;
-                    std::cout << "G: " << colorMaterial.diffuse.g << std::endl;
-                    std::cout << "B: " << colorMaterial.diffuse.b << std::endl;
                 };
 
             }
@@ -870,9 +865,6 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
                 texturedMaterial.diffuse = glm::vec3(-1.0f, -1.0f, -1.0f);
                 texturedMaterial.textureIndex = std::stoi(objContents);
                 materials.push_back(texturedMaterial);
-            
-                std::cout << "\n" << std::endl;
-                std::cout << "Texture index: " << texturedMaterial.textureIndex << std::endl;
             }
             else
             {
@@ -926,13 +918,6 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
                 mesh.materialIndex = this->extractAttributeIndex(meshData, MATERIALID);
                 meshes.push_back(mesh);
 
-                std::cout << "\n" << std::endl;
-                std::cout << "Indices: " << mesh.indicesAccessor << std::endl;
-                std::cout << "Materials: " << mesh.materialIndex << std::endl;
-                std::cout << "Normals: " << mesh.normalsAccessor << std::endl;
-                std::cout << "Uvs: " << mesh.uvAccessor << std::endl;
-                std::cout << "Position: " << mesh.positionAccessor << std::endl;
-
                 std::string nextObject = "},{";
                 int32_t location = meshData.find(nextObject);
                 meshData = meshData.substr(location + nextObject.size());
@@ -945,11 +930,6 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
             texture.samplerIndex = this->extractAttributeIndex(json, SAMPLERID);
             texture.imageIndex = this->extractAttributeIndex(json, IMAGEID);
             textures.push_back(texture);
-
-            std::cout << "\n" << std::endl;
-            std::cout << "Sampler Index: " << texture.samplerIndex << std::endl;
-            std::cout << "Image Index: " << texture.imageIndex << std::endl;
-
         }
         else if(json.find(IMAGES) == 0)
         {
@@ -957,9 +937,6 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
 
             image.bufferViewIndex = this->extractAttributeIndex(json, BUFFERVIEWID);
             images.push_back(image);
-
-            std::cout << "\n" << std::endl;
-            std::cout << "Image bufferview index: " << image.bufferViewIndex << std::endl;
         }
         else if(json.find(ACCESSORS) == 0)
         {
@@ -981,13 +958,6 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
                 accessor.type = type;
 
                 accessors.push_back(accessor);
-                
-                std::cout << "\n" << std::endl;
-                std::cout << "bufferViewIndex: " << accessor.bufferViewIndex << std::endl;
-                std::cout << "componentType: " << accessor.componentType << std::endl;
-                std::cout << "byteOffset: " << accessor.byteOffset << std::endl;
-                std::cout << "count: " << accessor.count << std::endl;
-                std::cout << "type: " << accessor.type << std::endl;
             };
 
         }
@@ -1018,11 +988,6 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
                 bufferView.byteLength = this->extractAttributeIndex(bvData, BYTELENGTH);
 
                 bufferViews.push_back(bufferView);
-
-                std::cout << "\n" << std::endl;
-                std::cout << "bufferView bufferIndex: " << bufferView.bufferIndex << std::endl;
-                std::cout << "bufferView byteOffset: " << bufferView.byteOffset << std::endl;
-                std::cout << "bufferView byteLength: " << bufferView.byteLength << std::endl;
             };
         }
         else if(json.find(BUFFERS) == 0)
@@ -1039,17 +1004,13 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
                 offset += buffer.stride;
 
                 buffers.push_back(buffer);
-
-                std::cout << "\n" << std::endl;
-                std::cout << "buffer offset: " << buffer.offset << std::endl;
-                std::cout << "buffer stride: " << buffer.stride << std::endl;
             };
         };
     };
-    std::cout << "\n" << std::endl;
-    std::cout << this->jsonData << std::endl;
 
-    
+    /* ===========================================
+        Load values from this->binaryData
+    ============================================== */
     for(size_t i = 0; i < meshes.size(); i++)
     {
         std::vector<glm::vec3> vertexPositions;
@@ -1189,16 +1150,14 @@ void MeshLoader::loadGlbChunks(const char *filepath)
     }
     else
     {
+        uint32_t chunkSize = 0;
         /* ========================================================
             Read first 20 bytes (header + first 8 bytes of chunk_0)
             to retrieve total size of chunk_0 and to align the 
             readers cursor to the start of the json chunkData[].
         =========================================================== */
-        char headerBuffer[20];
-        std::memset(headerBuffer, 0, sizeof(char) * 20);
-    
-        uint32_t chunkSize = 0;
-        file.read(headerBuffer, sizeof(char) * 20);
+        std::string headerBuffer;
+        file.read(headerBuffer.data(), sizeof(char) * 20);
         std::memcpy(&chunkSize, &headerBuffer[12], sizeof(uint32_t));
         
         /* =========================================================
@@ -1206,20 +1165,15 @@ void MeshLoader::loadGlbChunks(const char *filepath)
             the next chunk. This data describes how to interpret the
             bytes from the next chunk.
         ============================================================ */
-        char jsonChunk[chunkSize];
-        std::memset(jsonChunk, 0, sizeof(char) * chunkSize);
+        jsonData.resize(chunkSize);
+        file.read(jsonData.data(), chunkSize);
 
-        file.read(jsonChunk, chunkSize);
-        this->jsonData = jsonChunk;
-
-        std::cout << "JSON chunksize: " << chunkSize << std::endl;
         /* ==========================================================
             Read first 8 bytes of final chunk and extract the byte
-            length of it's chunkData[]. 
-        ============================================================= */
-        char binaryChunkDetails[8];
-        std::memset(binaryChunkDetails, 0, sizeof(char) * 8);
-        file.read(binaryChunkDetails, sizeof(char) * 8);
+            length of it's chunkData[] from the first 4. 
+        ============================================================= */        
+        std::string binaryChunkDetails;
+        file.read(binaryChunkDetails.data(), sizeof(char) * 8);
         std::memcpy(&chunkSize, &binaryChunkDetails[0], sizeof(uint32_t));
         
         /* =============================================================
@@ -1227,14 +1181,11 @@ void MeshLoader::loadGlbChunks(const char *filepath)
             contain the data of several 'buffers' identifiers, split by
             buffers.byteLength
         ================================================================ */
-        char *binaryChunk = new char[chunkSize];
-        binaryData = new char[chunkSize];
-        std::memset(binaryChunk, 0, sizeof(char) * chunkSize);
+        binaryData.resize(chunkSize);
         
-        file.read(binaryChunk, chunkSize);
-        this->binaryData = binaryChunk;
-
+        file.read(binaryData.data(), chunkSize);
         file.close();
+
         return;
     }
 }
@@ -1427,7 +1378,7 @@ void MeshLoader::resetMembers()
     this->bufferViews.clear();
     this->buffers.clear();
     this->jsonData.clear();
-    // this->binaryData = NULL;
+    this->binaryData.clear();
 
 
     /* =============================
