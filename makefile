@@ -11,13 +11,13 @@ BUILDSTEPS :=
 # OS-specifics
 ifeq ($(shell uname),Linux)
 	CXX += -lstdc++fs
-	CXXFLAGS += -O3 -shared
+	CXXFLAGS += -shared
 	LDFLAGS += -lGL 
 	TARGET += liblazarus.so
 
 	BUILDSTEPS += && sudo ldconfig
 else ifeq ($(shell uname),Darwin)
-	CXXFLAGS += -O3 -dynamiclib
+	CXXFLAGS += -dynamiclib
 	LDFLAGS += -framework OpenGL
 	TARGET += liblazarus.dylib
 endif
@@ -49,9 +49,15 @@ lazarus_world_fx.o := include/lazarus_world_fx.h
 run : build
 	$(shell mv src/*.o build/)
 
+debug : CXXFLAGS += -g
+debug : run
+
+optimise : CXXFLAGS += -O3
+optimise : run
+
 build : $(OBJECTS)
 	$(shell mkdir build && mkdir lib)
-	$(CXX) $(CXXFLAGS) -O3 -o $(OUT) $(OBJECTS) $(LDFLAGS)
+	$(CXX) $(CXXFLAGS) -o $(OUT) $(OBJECTS) $(LDFLAGS)
 
 clean : 
 	@echo "Destroying latest build files." && rm -R lib/ && rm -R build/
