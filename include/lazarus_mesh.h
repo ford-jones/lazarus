@@ -57,9 +57,6 @@ class MaterialLoader
         virtual ~MaterialLoader();
 
     private:
-        unique_ptr<FileReader> fileReader;
-    	unique_ptr<TextureLoader> textureLoader;
-        
         vec3 diffuse;                                           //  Diffuse colour, the main / dominant colour of a face
         ifstream file;
         char currentLine[256];
@@ -87,6 +84,7 @@ class MeshLoader : private MaterialLoader
             vector<vec3> &outAttributes,
             vector<vec3> &outDiffuse,
             vector<uint32_t> &outIndexes,
+            FileReader::Image &outImage,
             const char *meshPath
         );
         
@@ -167,6 +165,7 @@ class MeshLoader : private MaterialLoader
         
         //  Shared
 
+        std::unique_ptr<FileReader> imageLoader;
         vector<string> splitTokensFromLine(const char *wavefrontData, char delim);
         void constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> outDiffuse, uint32_t numOfAttributes);
         void resetMembers();
@@ -259,6 +258,9 @@ class MeshManager : private MeshLoader, public TextureLoader
 
         int32_t errorCode;
         int32_t layerCount;
+        
+        uint32_t maxTexWidth;
+        uint32_t maxTexHeight;
 
 		GLuint shaderProgram;
         GLint modelMatrixUniformLocation;                                                                        //  The location / index of the modelview matrix inside the vert shader program

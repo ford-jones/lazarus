@@ -37,6 +37,9 @@ MeshManager::MeshManager(GLuint shader)
     this->isSkyBoxUniformLocation = glGetUniformLocation(this->shaderProgram, "isSkyBox");
 
     this->textureLayerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureLayer");  
+
+    this->maxTexWidth = 0;
+    this->maxTexHeight = 0;
 };
 
 MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPath, string texturePath, bool selectable)
@@ -76,8 +79,21 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
             meshData.attributes, 
             meshData.diffuse, 
             meshData.indexes, 
+            meshData.textureData,
             meshOut.meshFilepath.c_str()
         );
+
+        if(meshData.textureData.pixelData != NULL)
+        {
+            this->layerCount += 1;
+
+            meshOut.textureFilepath = LAZARUS_TEXTURED_MESH;
+
+            meshData.textureUnit = GL_TEXTURE2;
+            meshData.textureLayer = this->layerCount;
+            meshData.textureId = this->textureStack;
+
+        };
     };
     
     this->setInherentProperties();
@@ -343,7 +359,7 @@ void MeshManager::initialiseMesh()
 
         this->dataStore.push_back(meshData);
         meshOut.id = dataStore.size();
-        meshData.id = meshOut.id;
+        dataStore[dataStore.size() - 1].id = meshOut.id;
 
         /* ===============================================================
             Reload the entire texture stack / array if the mesh isn't
@@ -367,7 +383,21 @@ void MeshManager::initialiseMesh()
 
 void MeshManager::prepareTextures()
 {
-    this->extendTextureStack(globals.getMaxImageWidth(), globals.getMaxImageHeight(), this->layerCount);
+    uint32_t width = 0;
+    uint32_t height = 0;
+
+    if(globals.getEnforceImageSanity())
+    {
+        width = globals.getMaxImageWidth();
+        height = globals.getMaxImageHeight();
+    }
+    else
+    {
+        width = maxTexWidth;
+        height = maxTexHeight;
+    }
+
+    this->extendTextureStack(width, height, this->layerCount);
 
     for(auto i: dataStore)
     {
@@ -561,7 +591,7 @@ void MeshManager::resolveFilepaths(string texPath, string mtlPath, string objPat
             meshData.textureUnit = GL_TEXTURE2;
             meshData.textureId = this->textureStack;
             meshData.textureLayer = this->layerCount;
-            meshData.textureData = finder->readFromImage(meshOut.textureFilepath);
+            meshData.textureData = finder->readFromImage(meshOut.textureFilepath.c_str());
             break;
     };
 
@@ -578,6 +608,15 @@ void MeshManager::setInherentProperties()
 
     meshOut.numOfVertices = meshData.attributes.size() / 4;
     meshOut.numOfFaces = (meshOut.numOfVertices) / 3;
+
+    /* =============================================================
+        In the case that image sanitisation is not enabled, we must
+        track which image in the textureStack is the largest.
+        Would be nice if this whole business of size checking could
+        be done elsewhere.
+    ================================================================ */
+    this->maxTexWidth = std::max(maxTexWidth, meshData.textureData.width);
+    this->maxTexHeight = std::max(maxTexHeight, meshData.textureData.height);
 
    return;
 }
@@ -616,6 +655,7 @@ MeshLoader::MeshLoader()
 	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 	this->materialIdentifierIndex	=	0;
 	this->triangleCount				=	0;
+    this->imageLoader = nullptr;
 };
 
 bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, const char* meshPath, const char* materialPath) 
@@ -752,7 +792,7 @@ bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &ou
     return true;
 };
 
-bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, const char* meshPath)
+bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, FileReader::Image &outImage, const char* meshPath)
 {
     this->resetMembers();
 
@@ -780,7 +820,7 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
     
     this->loadGlbChunks(meshPath);
 
-    std::string propertyIdentifiers[7] = {ACCESSORS,PRIMITIVES,MATERIALS,TEXTURES,IMAGES,BUFFERVIEW,BUFFERS};
+    std::vector<std::string> propertyIdentifiers = {ACCESSORS,PRIMITIVES,MATERIALS,TEXTURES,IMAGES,BUFFERVIEW,BUFFERS};
     std::vector<std::string> propertyStrings = {};
     std::vector<uint32_t> propertyIndexes = {};
 
@@ -788,7 +828,7 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
         Read top-level glb json properties, find their
         locations and then remove those that aren't present.
     ======================================================= */
-    for(size_t i = 0; i < 7; i++)
+    for(size_t i = 0; i < propertyIdentifiers.size(); i++)
     {
         std::string property = propertyIdentifiers[i];   
         int32_t propertyLocation = this->jsonData.find(property);
@@ -842,8 +882,6 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
                     std::vector<std::string> color = this->splitTokensFromLine(colors[j].c_str(), ',');
                     glbMaterialData colorMaterial = {};
                     colorMaterial.diffuse = {std::stof(color[0]), std::stof(color[1]), std::stof(color[2])};
-                    //  TODO:
-                    //  Verify that -1 is what's used elsewhere to signify diffuse usage
                     colorMaterial.textureIndex = -1;
                     materials.push_back(colorMaterial);
                 };
@@ -879,6 +917,10 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
             {           
                 glbMeshData mesh = {};
                 std::vector<std::string> attributeProperties = splitTokensFromLine(attributes[i].c_str(), ',');
+                /* ========================================================
+                    Mark uvAccessor as not-present by default.
+                =========================================================== */
+                mesh.uvAccessor = -1;
                 for(size_t j = 0; j < attributeProperties.size(); j++)
                 {
                     std::string property = attributeProperties[j];
@@ -888,29 +930,25 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
                         globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
                     };
 
-                    /* ========================================================
-                        Mark uvAccessor as not-present by default.
-                    =========================================================== */
-                    mesh.uvAccessor = -1;
 
                     int32_t value = std::stoi(property.substr(index + 1));
                     switch (property[1])
                     {
                         //  POSITION
                         case 'P':
-                        mesh.positionAccessor = value;
-                        break;
+                            mesh.positionAccessor = value;
+                            break;
                         //  NORMAL
                         case 'N':
-                        mesh.normalsAccessor = value;
-                        break;
+                            mesh.normalsAccessor = value;
+                            break;
                         //  TEXCOORD
                         case 'T':
-                        mesh.uvAccessor = value;
-                        break;
+                            mesh.uvAccessor = value;
+                            break;
 
                         default:
-                        break;
+                            break;
                     };
                 };
 
@@ -971,7 +1009,7 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
                 (GL_UNSIGNED_SHORT) or 5124 (GL_UNSIGNED_INT) will be written to a buffer of 
                 type GL_ELEMENT_ARRAY_BUFFER. Anything other than that should be of 
                 componentType 5126 (GL_FLOAT), which will be written to GL_ARRAY_BUFFER. If 
-                it isn't thenthe mesh is not supported.
+                it isn't then the mesh is not supported.
             =============================================================================== */
             std::vector<std::string> data = this->extractContainedContents(json, "{", "}");
             
@@ -1032,9 +1070,6 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
         this->populateBufferFromAccessor(posiitonAccessor, vertexPositions);
         this->populateBufferFromAccessor(normalAccessor, vertexNormals);
         
-        //  TODO:
-        //  Some condition here
-        //  Handle images
         glbMaterialData material = materials[mesh.materialIndex];
         
         glbTextureData texture;
@@ -1042,19 +1077,29 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
         
         if(material.textureIndex >= 0)
         {
-            int32_t index = material.textureIndex;
+            this->imageLoader = std::make_unique<FileReader>();
+
             texture = textures[material.textureIndex];
             image = images[texture.imageIndex];
+
+            glbBufferViewData bufferView = bufferViews[image.bufferViewIndex];
+            
+            unsigned char *buffer = new unsigned char[bufferView.byteLength];
+            std::memset(buffer, 0, sizeof(unsigned char) * bufferView.byteLength);
+            std::memcpy(buffer, &this->binaryData[bufferView.byteOffset], sizeof(unsigned char) * bufferView.byteLength);
+
+            outImage = imageLoader->readFromImage(nullptr, buffer, bufferView.byteLength);
         };
         
         glbAccessorData indicesAccessor = accessors[mesh.indicesAccessor];
         glbBufferViewData indicesBufferView = bufferViews[indicesAccessor.bufferViewIndex];
         
         //  TODO:
-        //  Handle 32bit ints as well as 16bit
+        //  Handle 32bit values
         std::vector<uint16_t> indices(indicesAccessor.count);
         std::memcpy(indices.data(), &this->binaryData[indicesBufferView.byteOffset], sizeof(uint16_t) * indicesAccessor.count);
         
+
         /* ========================================================================================
             The indices / SCALAR buffer-values contained inside  of the glb file don't actually 
             correspond directly to the indices used to traverse the VBO. Instead; these values 
@@ -1070,10 +1115,10 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
             these values, once that's done 'constructIndexBuffer' can be called to deduplicate them 
             again and do it properly... sigh.
         ============================================================================================= */
+        
         for(uint16_t j = 0; j < indices.size(); j++)
         {
             uint16_t index = indices[j];
-            std::cout << index << std::endl;
 
             vertexIndices.push_back(j + 1);
             normalIndices.push_back(j + 1);
@@ -1087,6 +1132,9 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
                 In the case that it's not present in the json chunk, the VBO will 
                 still need to be populated so push back zeroes.
             ==================================================================== */
+
+            // std::cout << mesh.uvAccessor << std::endl;
+
             mesh.uvAccessor >= 0 
             ? tempUvs.push_back(vertexUvs[index]) 
             : tempUvs.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
@@ -1418,7 +1466,6 @@ MaterialLoader::MaterialLoader()
 {
 	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 	
-	textureLoader = nullptr;
 	diffuseCount = 0;
     texCount = 0;
 };
