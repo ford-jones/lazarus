@@ -1089,16 +1089,23 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
             std::memcpy(buffer, &this->binaryData[bufferView.byteOffset], sizeof(unsigned char) * bufferView.byteLength);
 
             outImage = imageLoader->readFromImage(nullptr, buffer, bufferView.byteLength);
+
+            delete buffer;
         };
         
         glbAccessorData indicesAccessor = accessors[mesh.indicesAccessor];
         glbBufferViewData indicesBufferView = bufferViews[indicesAccessor.bufferViewIndex];
         
-        //  TODO:
-        //  Handle 32bit values
-        std::vector<uint16_t> indices(indicesAccessor.count);
-        std::memcpy(indices.data(), &this->binaryData[indicesBufferView.byteOffset], sizeof(uint16_t) * indicesAccessor.count);
-        
+        /* ===============================================================
+            Ensure that the correct size is being used as indices values may 
+            be expressed as either 16 OR 32 bit. 
+        ================================================================== */
+        std::vector<uint16_t> indicesShort(indicesAccessor.count);
+        std::vector<uint32_t> indices(indicesAccessor.count);
+
+        indicesAccessor.componentType == GL_UNSIGNED_SHORT
+        ? std::memcpy(indicesShort.data(), &this->binaryData[indicesBufferView.byteOffset], sizeof(uint16_t) * indicesAccessor.count)
+        : std::memcpy(indices.data(), &this->binaryData[indicesBufferView.byteOffset], sizeof(uint32_t) * indicesAccessor.count);
 
         /* ========================================================================================
             The indices / SCALAR buffer-values contained inside  of the glb file don't actually 
@@ -1116,9 +1123,11 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
             again and do it properly... sigh.
         ============================================================================================= */
         
-        for(uint16_t j = 0; j < indices.size(); j++)
+        for(size_t j = 0; j < indicesAccessor.count; j++)
         {
-            uint16_t index = indices[j];
+            uint32_t index = indicesAccessor.componentType == GL_UNSIGNED_SHORT
+            ? indicesShort[j]
+            : indices[j];
 
             vertexIndices.push_back(j + 1);
             normalIndices.push_back(j + 1);
@@ -1132,8 +1141,6 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
                 In the case that it's not present in the json chunk, the VBO will 
                 still need to be populated so push back zeroes.
             ==================================================================== */
-
-            // std::cout << mesh.uvAccessor << std::endl;
 
             mesh.uvAccessor >= 0 
             ? tempUvs.push_back(vertexUvs[index]) 
