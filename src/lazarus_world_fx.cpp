@@ -146,7 +146,7 @@ void WorldFX::loadSkyMap()
     for(auto path: this->skyBoxOut.paths)
     {
         std::string absolute = imageLoader->relativePathToAbsolute(path);
-        FileReader::Image image = imageLoader->readFromImage(absolute);
+        FileReader::Image image = imageLoader->readFromImage(absolute.c_str());
         
         /* =======================================================
             Validate that the image inputs for the cubemap are 

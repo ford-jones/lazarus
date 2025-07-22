@@ -35,7 +35,6 @@ FileReader::FileReader()
 	this->imageHeight = 0;
 	this->channelCount = 0;	
 
-    this->filepath = NULL;
     this->textData = NULL;
 
 };
@@ -84,13 +83,10 @@ const char *FileReader::readFromText(string filepath)
     };
 };
 
-FileReader::Image FileReader::readFromImage(string filename)
+FileReader::Image FileReader::readFromImage(const char *filename, const unsigned char *raw, uint32_t size)
 {
     this->imageData = {};
     this->outResize = {};
-
-    
-	filepath = filename.c_str();
 	
     /* ====================================================
         Images should be flipped on load due to the fact that 
@@ -101,7 +97,13 @@ FileReader::Image FileReader::readFromImage(string filename)
     ======================================================= */
     stbi_set_flip_vertically_on_load(true);
 
-	this->imageData = stbi_load(filepath, &imageWidth, &imageHeight, &channelCount, 0);
+    /* =============================================================
+        In the case that the file has already been opened and read 
+        elsewhere in the program, but has not yet been decoded.
+    ================================================================ */
+    this->imageData = (raw == NULL)
+    ? stbi_load(filename, &imageWidth, &imageHeight, &channelCount, 0)
+    : stbi_load_from_memory(const_cast<stbi_uc*>(raw), size, &imageWidth, &imageHeight, &channelCount, 0);
 
     if(imageData != NULL) 
     {
@@ -138,7 +140,7 @@ FileReader::Image FileReader::readFromImage(string filename)
         ==================================================== */
             outResize = (unsigned char *) malloc(this->maxWidth * this->maxHeight * channelCount);
 
-            resizeStatus = stbir_resize_uint8(imageData, imageWidth, imageHeight, 0, outResize, this->maxWidth, this->maxHeight, 0, channelCount);
+            resizeStatus = stbir_resize_uint8(this->imageData, imageWidth, imageHeight, 0, outResize, this->maxWidth, this->maxHeight, 0, channelCount);
 
             if(resizeStatus == 1)
             {
@@ -148,7 +150,7 @@ FileReader::Image FileReader::readFromImage(string filename)
             }
             else 
             {
-                outImage.pixelData = imageData;
+                outImage.pixelData = this->imageData;
                 outImage.height = imageHeight;
                 outImage.width = imageWidth;
 
@@ -159,7 +161,7 @@ FileReader::Image FileReader::readFromImage(string filename)
         }
         else
         {
-            outImage.pixelData = imageData;
+            outImage.pixelData = this->imageData;
             outImage.height = imageHeight;
             outImage.width = imageWidth;
         }

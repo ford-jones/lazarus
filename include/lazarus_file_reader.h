@@ -52,7 +52,7 @@ class FileReader
         };
 
 		string relativePathToAbsolute(string filepath);
-        Image readFromImage(string filepath);
+        Image readFromImage(const char *filepath = NULL, const unsigned char *raw = NULL, uint32_t size = 0);
         const char *readFromText(string filepath);
         
 		int32_t imageWidth;
@@ -66,7 +66,6 @@ class FileReader
         unsigned char *outResize;
         
 		const char *textData;
-        const char *filepath;
 
         int32_t resizeStatus;
 		

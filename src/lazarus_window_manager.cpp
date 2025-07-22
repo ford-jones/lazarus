@@ -489,7 +489,7 @@ int32_t WindowManager::close()
 int32_t WindowManager::createCursor(uint32_t sizeX, uint32_t sizeY, uint32_t targetX, uint32_t targetY, std::string filepath)
 {		
     fileReader = std::make_unique<FileReader>();
-    this->image = fileReader->readFromImage(filepath);
+    this->image = fileReader->readFromImage(filepath.c_str());
 
 	this->glfwImage.width = sizeX;
 	this->glfwImage.height = sizeY;
