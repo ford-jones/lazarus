@@ -130,6 +130,7 @@ class MeshLoader : private MaterialLoader
             uint32_t bufferIndex;
             uint32_t byteLength;
             uint32_t byteOffset;
+            int32_t byteStride;
         };
         struct glbBufferData
         {
@@ -258,7 +259,7 @@ class MeshManager : private MeshLoader, public TextureLoader
 
         int32_t errorCode;
         int32_t layerCount;
-        
+
         uint32_t maxTexWidth;
         uint32_t maxTexHeight;
 

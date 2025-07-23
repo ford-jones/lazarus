@@ -817,6 +817,7 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
     std::string COMPONENTTYPE = "\"componentType\":";
     std::string BYTEOFFSET = "\"byteOffset\":";
     std::string BYTELENGTH = "\"byteLength\":";
+    std::string BYTESTRIDE = "\"byteStride\":";
     
     this->loadGlbChunks(meshPath);
 
@@ -1018,12 +1019,11 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
                 std::string bvData = data[j];
 
                 glbBufferViewData bufferView = {};
-                //  TODO:
-                //  Handle byteStride property, seems random... is it not partially defined
-                //  here anyway by byteOffset / byteLength ?
-                bufferView.bufferIndex = this->extractAttributeIndex(bvData, BUFFERID);
-                bufferView.byteOffset = this->extractAttributeIndex(bvData, BYTEOFFSET);
-                bufferView.byteLength = this->extractAttributeIndex(bvData, BYTELENGTH);
+
+                bufferView.bufferIndex  = this->extractAttributeIndex(bvData, BUFFERID);
+                bufferView.byteOffset   = this->extractAttributeIndex(bvData, BYTEOFFSET);
+                bufferView.byteLength   = this->extractAttributeIndex(bvData, BYTELENGTH);
+                bufferView.byteStride   = this->extractAttributeIndex(bvData, BYTESTRIDE);
 
                 bufferViews.push_back(bufferView);
             };
@@ -1089,7 +1089,6 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
             std::memcpy(buffer, &this->binaryData[bufferView.byteOffset], sizeof(unsigned char) * bufferView.byteLength);
 
             outImage = imageLoader->readFromImage(nullptr, buffer, bufferView.byteLength);
-
             delete buffer;
         };
         
@@ -1155,13 +1154,29 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
 
 void MeshLoader::populateBufferFromAccessor(glbAccessorData accessor, std::vector<glm::vec3> &buffer)
 {
+        //  TODO:
+        //  byteStride
+        //  The stride, in bytes, between vertex attributes. 
+        //  When this is not defined, data is tightly packed. When two or more accessors use the same buffer view, this field MUST be defined.
+
+
     /* ==================================================================
         Accessor optionally defines an additional byteOffset. Used to
         define stride in the case that multiple accessors use the same
         bufferView.
     ===================================================================== */
+
+    
     glbBufferViewData bufferView = bufferViews[accessor.bufferViewIndex];
     uint32_t offset = accessor.byteOffset != -1 ? accessor.byteOffset + bufferView.byteOffset : bufferView.byteOffset;
+    
+    //  bytestride is defined so this bufferdata is interleaved
+    if(bufferView.byteStride >= 0)
+    {
+        //  Divide by n of attributes (3: i.e. pos, norm and uv)
+        uint32_t byteLength = bufferView.byteLength / 3;
+
+    };
 
     if(accessor.type == "VEC3")
     {
