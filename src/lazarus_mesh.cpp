@@ -1046,6 +1046,7 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
         };
     };
 
+    uint32_t indicesCount = 0;
     /* ===========================================
         Load values from this->binaryData
     ============================================== */
@@ -1057,21 +1058,21 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
         
         glbMeshData mesh = meshes[i];
 
+        //  primitives / faces
         glbAccessorData posiitonAccessor = accessors[mesh.positionAccessor];
         glbAccessorData normalAccessor = accessors[mesh.normalsAccessor];
-
+        
         if(mesh.uvAccessor >= 0)
         {
             glbAccessorData uvAccessor = accessors[mesh.uvAccessor];
-
             this->populateBufferFromAccessor(uvAccessor, vertexUvs);
         };
 
         this->populateBufferFromAccessor(posiitonAccessor, vertexPositions);
         this->populateBufferFromAccessor(normalAccessor, vertexNormals);
         
+        //  Materials / textures
         glbMaterialData material = materials[mesh.materialIndex];
-        
         glbTextureData texture;
         glbImageData image;
         
@@ -1092,20 +1093,23 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
             delete buffer;
         };
         
+        //  Indices
         glbAccessorData indicesAccessor = accessors[mesh.indicesAccessor];
         glbBufferViewData indicesBufferView = bufferViews[indicesAccessor.bufferViewIndex];
         
+        indicesCount += indicesAccessor.count;
+
         /* ===============================================================
             Ensure that the correct size is being used as indices values may 
             be expressed as either 16 OR 32 bit. 
         ================================================================== */
         std::vector<uint16_t> indicesShort(indicesAccessor.count);
         std::vector<uint32_t> indices(indicesAccessor.count);
-
+        
         indicesAccessor.componentType == GL_UNSIGNED_SHORT
         ? std::memcpy(indicesShort.data(), &this->binaryData[indicesBufferView.byteOffset], sizeof(uint16_t) * indicesAccessor.count)
         : std::memcpy(indices.data(), &this->binaryData[indicesBufferView.byteOffset], sizeof(uint32_t) * indicesAccessor.count);
-
+        
         /* ========================================================================================
             The indices / SCALAR buffer-values contained inside  of the glb file don't actually 
             correspond directly to the indices used to traverse the VBO. Instead; these values 
@@ -1121,16 +1125,11 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
             these values, once that's done 'constructIndexBuffer' can be called to deduplicate them 
             again and do it properly... sigh.
         ============================================================================================= */
-        
         for(size_t j = 0; j < indicesAccessor.count; j++)
         {
             uint32_t index = indicesAccessor.componentType == GL_UNSIGNED_SHORT
             ? indicesShort[j]
             : indices[j];
-
-            vertexIndices.push_back(j + 1);
-            normalIndices.push_back(j + 1);
-            uvIndices.push_back(j + 1);
             
             tempVertexPositions.push_back(vertexPositions[index]);
             outDiffuse.push_back(material.diffuse);
@@ -1140,13 +1139,18 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
                 In the case that it's not present in the json chunk, the VBO will 
                 still need to be populated so push back zeroes.
             ==================================================================== */
-
             mesh.uvAccessor >= 0 
             ? tempUvs.push_back(vertexUvs[index]) 
             : tempUvs.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
         };
     };
-    
+
+    for(size_t i = 0; i < indicesCount; i++)
+    {
+        vertexIndices.push_back(i + 1);
+        normalIndices.push_back(i + 1);
+        uvIndices.push_back(i + 1);
+    };
     this->constructIndexBuffer(outAttributes, outIndexes, outDiffuse, tempVertexPositions.size());
 
     return true;
@@ -1154,29 +1158,14 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
 
 void MeshLoader::populateBufferFromAccessor(glbAccessorData accessor, std::vector<glm::vec3> &buffer)
 {
-        //  TODO:
-        //  byteStride
-        //  The stride, in bytes, between vertex attributes. 
-        //  When this is not defined, data is tightly packed. When two or more accessors use the same buffer view, this field MUST be defined.
-
-
     /* ==================================================================
         Accessor optionally defines an additional byteOffset. Used to
         define stride in the case that multiple accessors use the same
         bufferView.
     ===================================================================== */
-
     
     glbBufferViewData bufferView = bufferViews[accessor.bufferViewIndex];
     uint32_t offset = accessor.byteOffset != -1 ? accessor.byteOffset + bufferView.byteOffset : bufferView.byteOffset;
-    
-    //  bytestride is defined so this bufferdata is interleaved
-    if(bufferView.byteStride >= 0)
-    {
-        //  Divide by n of attributes (3: i.e. pos, norm and uv)
-        uint32_t byteLength = bufferView.byteLength / 3;
-
-    };
 
     if(accessor.type == "VEC3")
     {
@@ -1187,12 +1176,8 @@ void MeshLoader::populateBufferFromAccessor(glbAccessorData accessor, std::vecto
             size.
         =================================================================== */
         std::vector<glm::vec3> vertexData(accessor.count);
-        std::memcpy(vertexData.data(), &this->binaryData[offset], sizeof(glm::vec3) * accessor.count);
-    
-        for(size_t i = 0; i < vertexData.size(); i++)
-        {
-            buffer.push_back(vertexData[i]);
-        };
+        std::memcpy(vertexData.data(), &this->binaryData[offset], sizeof(glm::vec3) * accessor.count);    
+        std::copy(vertexData.begin(), vertexData.end(), std::back_inserter(buffer));
     }
     else if(accessor.type == "VEC2")
     {
@@ -1206,6 +1191,10 @@ void MeshLoader::populateBufferFromAccessor(glbAccessorData accessor, std::vecto
         };
     };
     
+    //  TODO:
+    //  byteStride
+    //  The stride, in bytes, between vertex attributes. 
+    //  When this is not defined, data is tightly packed. When two or more accessors use the same buffer view, this field MUST be defined.
 };
 
 void MeshLoader::loadGlbChunks(const char *filepath)
