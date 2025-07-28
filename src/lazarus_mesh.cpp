@@ -1098,6 +1098,9 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
         glbBufferViewData indicesBufferView = bufferViews[indicesAccessor.bufferViewIndex];
         
         indicesCount += indicesAccessor.count;
+        uint32_t indicesOffset = indicesAccessor.byteOffset != -1 
+        ? indicesBufferView.byteOffset + indicesAccessor.byteOffset
+        : indicesBufferView.byteOffset;
 
         /* ===============================================================
             Ensure that the correct size is being used as indices values may 
@@ -1107,8 +1110,8 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
         std::vector<uint32_t> indices(indicesAccessor.count);
         
         indicesAccessor.componentType == GL_UNSIGNED_SHORT
-        ? std::memcpy(indicesShort.data(), &this->binaryData[indicesBufferView.byteOffset], sizeof(uint16_t) * indicesAccessor.count)
-        : std::memcpy(indices.data(), &this->binaryData[indicesBufferView.byteOffset], sizeof(uint32_t) * indicesAccessor.count);
+        ? std::memcpy(indicesShort.data(), &this->binaryData[indicesOffset], sizeof(uint16_t) * indicesAccessor.count)
+        : std::memcpy(indices.data(), &this->binaryData[indicesOffset], sizeof(uint32_t) * indicesAccessor.count);
         
         /* ========================================================================================
             The indices / SCALAR buffer-values contained inside  of the glb file don't actually 
@@ -1165,24 +1168,19 @@ void MeshLoader::populateBufferFromAccessor(glbAccessorData accessor, std::vecto
     ===================================================================== */
     
     glbBufferViewData bufferView = bufferViews[accessor.bufferViewIndex];
-    uint32_t offset = accessor.byteOffset != -1 ? accessor.byteOffset + bufferView.byteOffset : bufferView.byteOffset;
 
     if(accessor.type == "VEC3")
     {
-        /* ================================================================
-            Note the spec enforces a 4-byte alignment. This means that 
-            usage of sizeof(type) * accessor.count is preferable to 
-            bufferView.byteLength which is merely an indication of the raw
-            size.
-        =================================================================== */
-        std::vector<glm::vec3> vertexData(accessor.count);
-        std::memcpy(vertexData.data(), &this->binaryData[offset], sizeof(glm::vec3) * accessor.count);    
+        std::vector<glm::vec3> vertexData;
+
+        this->populateVectorFromMemory<glm::vec3>(accessor, bufferView, vertexData);
         std::copy(vertexData.begin(), vertexData.end(), std::back_inserter(buffer));
     }
     else if(accessor.type == "VEC2")
     {
-        std::vector<glm::vec2> vertexData(accessor.count);
-        std::memcpy(vertexData.data(), &this->binaryData[offset], sizeof(glm::vec2) * accessor.count);
+        std::vector<glm::vec2> vertexData;
+
+        this->populateVectorFromMemory<glm::vec2>(accessor, bufferView, vertexData);
     
         for(size_t i = 0; i < vertexData.size(); i++)
         {
@@ -1190,12 +1188,48 @@ void MeshLoader::populateBufferFromAccessor(glbAccessorData accessor, std::vecto
             buffer.push_back(vertexAttribute);
         };
     };
-    
-    //  TODO:
-    //  byteStride
-    //  The stride, in bytes, between vertex attributes. 
-    //  When this is not defined, data is tightly packed. When two or more accessors use the same buffer view, this field MUST be defined.
 };
+
+template<typename T> void MeshLoader::populateVectorFromMemory(glbAccessorData accessor, glbBufferViewData bufferView, std::vector<T> &vertexData)
+{
+    uint32_t offset = accessor.byteOffset != -1 
+    ? accessor.byteOffset + bufferView.byteOffset 
+    : bufferView.byteOffset;
+
+    /* ================================================================
+        Note the spec enforces a 4-byte alignment. This means that 
+        usage of sizeof(type) * accessor.count is preferable to 
+        bufferView.byteLength which is merely an indication of the raw
+        size and may be inclusive of padding.
+
+        The reason it's used here is because the buffers contents may
+        be interleaved, i.e. different byte-sizes.
+
+        E.g. 
+        {Pos | Norm | Uv | Indices},{...}
+         ^     ^      ^    ^
+         12    12     8    4 or 2
+    =================================================================== */
+    uint32_t bufferPadding = bufferView.byteLength % 4;
+    uint32_t bufferSize = bufferPadding == 0
+    ? bufferView.byteLength
+    : bufferView.byteLength - bufferPadding;
+
+    if(bufferView.byteStride > 0)
+    {
+        for(size_t i = 0; i < (bufferSize / bufferView.byteStride); i++)
+        {
+            T data = {};
+            std::memcpy(&data, &this->binaryData[offset + (i * bufferView.byteStride)], sizeof(T));
+            vertexData.push_back(data);
+        };
+    }
+    else
+    {
+        vertexData.resize(accessor.count);
+        std::memcpy(vertexData.data(), &this->binaryData[offset], sizeof(T) * accessor.count);    
+    }
+}
 
 void MeshLoader::loadGlbChunks(const char *filepath)
 {
@@ -1409,15 +1443,15 @@ void MeshLoader::constructTriangle()
         return;
     }
 
-    this->vertexIndices.push_back(stoi(this->attributeIndexes[0]));
-    this->vertexIndices.push_back(stoi(this->attributeIndexes[3]));
-    this->vertexIndices.push_back(stoi(this->attributeIndexes[6]));
-    this->uvIndices    .push_back(stoi(this->attributeIndexes[1]));
-    this->uvIndices    .push_back(stoi(this->attributeIndexes[4]));
-    this->uvIndices    .push_back(stoi(this->attributeIndexes[7]));
-    this->normalIndices.push_back(stoi(this->attributeIndexes[2]));
-    this->normalIndices.push_back(stoi(this->attributeIndexes[5]));
-    this->normalIndices.push_back(stoi(this->attributeIndexes[8]));
+    this->vertexIndices.push_back(std::stoi(this->attributeIndexes[0]));
+    this->vertexIndices.push_back(std::stoi(this->attributeIndexes[3]));
+    this->vertexIndices.push_back(std::stoi(this->attributeIndexes[6]));
+    this->uvIndices    .push_back(std::stoi(this->attributeIndexes[1]));
+    this->uvIndices    .push_back(std::stoi(this->attributeIndexes[4]));
+    this->uvIndices    .push_back(std::stoi(this->attributeIndexes[7]));
+    this->normalIndices.push_back(std::stoi(this->attributeIndexes[2]));
+    this->normalIndices.push_back(std::stoi(this->attributeIndexes[5]));
+    this->normalIndices.push_back(std::stoi(this->attributeIndexes[8]));
 
     attributeIndexes.clear();
 

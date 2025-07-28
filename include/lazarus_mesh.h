@@ -46,8 +46,8 @@ using glm::vec2;
 using std::ifstream;
 using std::stringstream;
 
-#ifndef LAZARUS_MESH_H
-#define LAZARUS_MESH_H
+#ifndef LAZARUS_MATERIAL_LOADER_H
+#define LAZARUS_MATERIAL_LOADER_H
 
 class MaterialLoader
 {
@@ -65,6 +65,10 @@ class MaterialLoader
 
         GlobalsManager globals;
 };
+#endif
+
+#ifndef LAZARUS_MESH_LOADER_H
+#define LAZARUS_MESH_LOADER_H
 
 class MeshLoader : private MaterialLoader
 {
@@ -147,6 +151,7 @@ class MeshLoader : private MaterialLoader
         
         void loadGlbChunks(const char *filepath);
         void populateBufferFromAccessor(glbAccessorData accessor, std::vector<glm::vec3> &buffer);
+        template<typename T> void populateVectorFromMemory(glbAccessorData accessor, glbBufferViewData bufferView, std::vector<T> &vertexData);
         std::vector<std::string> extractContainedContents(std::string bounds, std::string containerStart, std::string containerEnd);
         int32_t extractAttributeIndex(std::string bounds, std::string target);
 
@@ -185,6 +190,11 @@ class MeshLoader : private MaterialLoader
 
         GlobalsManager globals;
 };
+
+#endif
+
+#ifndef LAZARUS_MESH_H
+#define LAZARUS_MESH_H
 
 class MeshManager : private MeshLoader, public TextureLoader
 {
