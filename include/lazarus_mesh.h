@@ -33,7 +33,7 @@
 #include <cstring>
 #include <algorithm>
 
-#include "lazarus_file_reader.h"
+#include "lazarus_file_loader.h"
 #include "lazarus_texture_loader.h"
 
 using std::unique_ptr;
@@ -88,7 +88,7 @@ class MeshLoader : private MaterialLoader
             vector<vec3> &outAttributes,
             vector<vec3> &outDiffuse,
             vector<uint32_t> &outIndexes,
-            FileReader::Image &outImage,
+            FileLoader::Image &outImage,
             const char *meshPath
         );
         
@@ -149,14 +149,25 @@ class MeshLoader : private MaterialLoader
         std::vector<glbBufferViewData> bufferViews;
         std::vector<glbBufferData> buffers;
         
+        //  Open a glb file and validate it. 
+        //  populate members with respective chunkData.
         void loadGlbChunks(const char *filepath);
+        //  Hydrate 'buffer' with values pulled from this->binaryData at the locations specified by
+        //  the 'accessor' and it's corresponding bufferView.
         void populateBufferFromAccessor(glbAccessorData accessor, std::vector<glm::vec3> &buffer);
+        //  Perform copies from memory to a glm vector type, regardless of whether the values 
+        //  are tightly packed or interleaved.
         template<typename T> void populateVectorFromMemory(glbAccessorData accessor, glbBufferViewData bufferView, std::vector<T> &vertexData);
+        //  Retrieves all information from 'bounds' that occurs between an instance of 'containerStart'
+        //  and 'containerEnd'.
         std::vector<std::string> extractContainedContents(std::string bounds, std::string containerStart, std::string containerEnd);
+        //  Retrieve all integers immediately following 'target' that occur within 'bounds'.
         int32_t extractAttributeIndex(std::string bounds, std::string target);
 
         //  wavefront
 
+        //  Read vertex attributes from temp* members and group them together 
+        //  in sets of three's if possible.
         void constructTriangle();
         
         vector<string> coordinates;
@@ -171,9 +182,15 @@ class MeshLoader : private MaterialLoader
         
         //  Shared
 
-        std::unique_ptr<FileReader> imageLoader;
+        std::unique_ptr<FileLoader> imageLoader;
+        //  Identifies and contains the contents from 'wavefrontData' that occur between instances
+        //  of 'delim'.
         vector<string> splitTokensFromLine(const char *wavefrontData, char delim);
+        //  Deduplicate vertex attributes and construct a serial for those that are unique to be 
+        //  passed to the renderers IBO. Interleaves attributes in the order that is expected by
+        //  the renderers VBO.
         void constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> outDiffuse, uint32_t numOfAttributes);
+        //  Clears containers of all their contents.
         void resetMembers();
 
         vector<uint32_t> vertexIndices;
@@ -247,7 +264,7 @@ class MeshManager : private MeshLoader, public TextureLoader
             int32_t stencilBufferId;
             int32_t textureUnit;
 
-            FileReader::Image textureData;
+            FileLoader::Image textureData;
             GLuint textureId;
             GLuint textureLayer;
             GLuint VAO;                                                                         //  The OpenGL Vertex Array Object
@@ -280,7 +297,7 @@ class MeshManager : private MeshLoader, public TextureLoader
         GLint isGlyphUniformLocation;
         GLint isSkyBoxUniformLocation;
 
-        unique_ptr<FileReader> finder;
+        unique_ptr<FileLoader> finder;
         
         Mesh meshOut;
         MeshData meshData;

@@ -17,9 +17,9 @@
 //                                                                                                      .***,.   . .,/##%###(/.  ...,,.      
 /*  LAZARUS ENGINE */
 
-#include "../include/lazarus_file_reader.h"
+#include "../include/lazarus_file_loader.h"
 
-FileReader::FileReader()
+FileLoader::FileLoader()
 {
     std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 	this->imageData = 0;
@@ -39,14 +39,14 @@ FileReader::FileReader()
 
 };
 
-string FileReader::relativePathToAbsolute(string filename) 
+string FileLoader::relativePathToAbsolute(string filename) 
 {
     this->filenameString      =   std::filesystem::absolute(filename).string();                                              //  Find the absolute path from root (/) to the mesh asset and convert to std::string
 
     return this->filenameString;                                         //  Return the absolute path to the asset, exit the thread
 };
 
-const char *FileReader::readFromText(string filepath) 
+const char *FileLoader::loadText(string filepath) 
 {
     if(std::filesystem::exists(filepath))
     {
@@ -83,7 +83,7 @@ const char *FileReader::readFromText(string filepath)
     };
 };
 
-FileReader::Image FileReader::readFromImage(const char *filename, const unsigned char *raw, uint32_t size)
+FileLoader::Image FileLoader::loadImage(const char *filename, const unsigned char *raw, uint32_t size)
 {
     this->imageData = {};
     this->outResize = {};
@@ -115,7 +115,7 @@ FileReader::Image FileReader::readFromImage(const char *filename, const unsigned
         {
             if(this->maxWidth <= 0 || this->maxHeight <= 0)
             {
-                std::cerr << RED_TEXT << "LAZARUS::ERROR::FILEREADER::IMAGE_LOADER " << "Width and height must both have values higher than zero." << RESET_TEXT << std::endl;    
+                std::cerr << RED_TEXT << "LAZARUS::ERROR::FileLoader::IMAGE_LOADER " << "Width and height must both have values higher than zero." << RESET_TEXT << std::endl;    
                 globals.setExecutionState(LAZARUS_IMAGE_RESIZE_FAILURE);
 
                 outImage.pixelData = NULL;
@@ -154,7 +154,7 @@ FileReader::Image FileReader::readFromImage(const char *filename, const unsigned
                 outImage.height = imageHeight;
                 outImage.width = imageWidth;
 
-                std::cerr << RED_TEXT << "LAZARUS::ERROR::FILEREADER::IMAGE_LOADER " << LAZARUS_IMAGE_RESIZE_FAILURE << RESET_TEXT << std::endl;    
+                std::cerr << RED_TEXT << "LAZARUS::ERROR::FileLoader::IMAGE_LOADER " << LAZARUS_IMAGE_RESIZE_FAILURE << RESET_TEXT << std::endl;    
                 globals.setExecutionState(LAZARUS_IMAGE_RESIZE_FAILURE);
             }
 
@@ -172,14 +172,14 @@ FileReader::Image FileReader::readFromImage(const char *filename, const unsigned
         outImage.height = 0;
         outImage.width = 0;
 
-		std::cerr << RED_TEXT << "LAZARUS::ERROR::FILEREADER::IMAGE_LOADER " << stbi_failure_reason() << RESET_TEXT << std::endl;
+		std::cerr << RED_TEXT << "LAZARUS::ERROR::FileLoader::IMAGE_LOADER " << stbi_failure_reason() << RESET_TEXT << std::endl;
         globals.setExecutionState(LAZARUS_IMAGE_LOAD_FAILURE);
 	};
 	
 	return outImage;
 };
 
-FileReader::~FileReader()
+FileLoader::~FileLoader()
 {
     std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 	stbi_image_free(this->imageData);

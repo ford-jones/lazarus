@@ -34,7 +34,7 @@
 #include <cmath>
 #include <glm/glm.hpp>
 
-#include "lazarus_file_reader.h"
+#include "lazarus_file_loader.h"
 
 using std::unique_ptr;
 using std::shared_ptr;
@@ -103,7 +103,7 @@ class AudioManager
 		FMOD_VECTOR listenerForward;
 		FMOD_VECTOR listenerUp;
 
-		unique_ptr<FileReader> reader;
+		unique_ptr<FileLoader> reader;
 
 		vector<AudioData> audioStore;
 		AudioData audioData;

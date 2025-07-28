@@ -235,12 +235,12 @@ Shader::Shader()
 uint32_t Shader::compileShaders(std::string fragmentShader, std::string vertexShader)
 {
     this->reset();
-    this->vertReader = std::make_unique<FileReader>();
-    this->fragReader = std::make_unique<FileReader>();
+    this->vertReader = std::make_unique<FileLoader>();
+    this->fragReader = std::make_unique<FileLoader>();
 
     if(fragmentShader != "")
     {
-        this->fragSource = fragReader->readFromText(fragmentShader.c_str());
+        this->fragSource = fragReader->loadText(fragmentShader.c_str());
     }
     else
     {
@@ -249,7 +249,7 @@ uint32_t Shader::compileShaders(std::string fragmentShader, std::string vertexSh
 
     if(vertexShader != "")
     {
-        this->vertSource = vertReader->readFromText(vertexShader.c_str());
+        this->vertSource = vertReader->loadText(vertexShader.c_str());
     }
     else
     {

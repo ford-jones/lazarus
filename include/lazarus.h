@@ -31,7 +31,7 @@
 #include "lazarus_shader.h"
 #include "lazarus_light.h"
 #include "lazarus_camera.h"
-#include "lazarus_file_reader.h"
+#include "lazarus_file_loader.h"
 #include "lazarus_audio_manager.h"
 #include "lazarus_text_manager.h"
 #include "lazarus_world_fx.h"
@@ -50,7 +50,7 @@ namespace Lazarus
     using ::Shader;
     using ::LightManager;
     using ::CameraManager;
-    using ::FileReader;
+    using ::FileLoader;
     using ::AudioManager;
 }
 

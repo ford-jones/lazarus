@@ -38,6 +38,7 @@
 #include "lazarus_texture_loader.h"
 #include "lazarus_transforms.h"
 #include "lazarus_mesh.h"
+#include "lazarus_file_loader.h"
 
 #include FT_FREETYPE_H
 
@@ -51,7 +52,7 @@ class FontLoader
 
         void loaderInit();
         int32_t loadTrueTypeFont(std::string filepath, uint32_t charHeight, uint32_t charWidth);
-        FileReader::Image loadCharacter(char character, uint32_t fontIndex);
+        FileLoader::Image loadCharacter(char character, uint32_t fontIndex);
 
         virtual ~FontLoader();
 
@@ -60,7 +61,7 @@ class FontLoader
         void flipGlyph();
         void setImageData(uint32_t width, uint32_t height, unsigned char *data);
 
-        std::unique_ptr<FileReader> fileReader;
+        std::unique_ptr<FileLoader> fileReader;
         std::string absolutePath;
         
         uint8_t keyCode;
@@ -74,7 +75,7 @@ class FontLoader
         std::vector<FT_Face> fontStack;
         
         GlobalsManager globals;
-        FileReader::Image image;
+        FileLoader::Image image;
 };
 
 class TextManager : private FontLoader, private MeshManager
@@ -129,7 +130,7 @@ class TextManager : private FontLoader, private MeshManager
         
         Transform transformer;
         GlobalsManager globals;
-        FileReader::Image glyph;
+        FileLoader::Image glyph;
         
         std::unique_ptr<CameraManager> cameraBuilder;
         
@@ -138,11 +139,11 @@ class TextManager : private FontLoader, private MeshManager
 
         std::vector<MeshManager::Mesh> word;
         std::vector<uint32_t> alphabetHeights;
-        std::vector<std::map<uint8_t, FileReader::Image>> fonts;
+        std::vector<std::map<uint8_t, FileLoader::Image>> fonts;
         
         std::pair<uint32_t, std::vector<MeshManager::Mesh>> layoutEntry;
         std::map<uint32_t, std::vector<MeshManager::Mesh>> layout;
-        std::map<uint8_t, FileReader::Image> characters;
+        std::map<uint8_t, FileLoader::Image> characters;
     
     };
     

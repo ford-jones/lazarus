@@ -23,7 +23,7 @@ MeshManager::MeshManager(GLuint shader)
 {
 	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
     this->shaderProgram = shader;
-    this->finder = std::make_unique<FileReader>();
+    this->finder = std::make_unique<FileLoader>();
 
     this->clearMeshStorage();
 
@@ -591,7 +591,7 @@ void MeshManager::resolveFilepaths(string texPath, string mtlPath, string objPat
             meshData.textureUnit = GL_TEXTURE2;
             meshData.textureId = this->textureStack;
             meshData.textureLayer = this->layerCount;
-            meshData.textureData = finder->readFromImage(meshOut.textureFilepath.c_str());
+            meshData.textureData = finder->loadImage(meshOut.textureFilepath.c_str());
             break;
     };
 
@@ -792,8 +792,15 @@ bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &ou
     return true;
 };
 
-bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, FileReader::Image &outImage, const char* meshPath)
+bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, FileLoader::Image &outImage, const char* meshPath)
 {
+    //  TODO:
+    //  Flip images, they appear to be upside down
+    //  Implement std::map / hashtables in place of temp* vectors which have excessive lookup times on bigger assets
+    //  Consider a threading implentation to speed up loads and not block the main-thread/renderer
+    //  Get the size of this function down, too many lines... (-_-*)
+    //  Extract animation data
+
     this->resetMembers();
 
     std::string PRIMITIVES = "\"primitives\":[";
@@ -1078,7 +1085,7 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
         
         if(material.textureIndex >= 0)
         {
-            this->imageLoader = std::make_unique<FileReader>();
+            this->imageLoader = std::make_unique<FileLoader>();
 
             texture = textures[material.textureIndex];
             image = images[texture.imageIndex];
@@ -1089,7 +1096,7 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
             std::memset(buffer, 0, sizeof(unsigned char) * bufferView.byteLength);
             std::memcpy(buffer, &this->binaryData[bufferView.byteOffset], sizeof(unsigned char) * bufferView.byteLength);
 
-            outImage = imageLoader->readFromImage(nullptr, buffer, bufferView.byteLength);
+            outImage = imageLoader->loadImage(nullptr, buffer, bufferView.byteLength);
             delete buffer;
         };
         

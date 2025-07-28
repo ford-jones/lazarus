@@ -51,7 +51,7 @@ void FontLoader::loaderInit()
 
 int32_t FontLoader::loadTrueTypeFont(std::string filepath, uint32_t charHeight, uint32_t charWidth)
 {
-    fileReader = std::make_unique<FileReader>();
+    fileReader = std::make_unique<FileLoader>();
     absolutePath = fileReader->relativePathToAbsolute(filepath);
 
     status = FT_New_Face(lib, absolutePath.c_str(), 0, &fontFace);
@@ -75,7 +75,7 @@ int32_t FontLoader::loadTrueTypeFont(std::string filepath, uint32_t charHeight, 
     }
 };
 
-FileReader::Image FontLoader::loadCharacter(char character, uint32_t fontIndex)
+FileLoader::Image FontLoader::loadCharacter(char character, uint32_t fontIndex)
 {
     this->fontFace = fontStack[fontIndex - 1];
     this->keyCode = static_cast<uint8_t>(character);

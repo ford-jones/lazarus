@@ -59,7 +59,7 @@ AudioManager::Audio AudioManager::createAudio(string filepath, bool is3D, int32_
 {
 	this->audioOut = {};
 
-	this->reader = std::make_unique<FileReader>();
+	this->reader = std::make_unique<FileLoader>();
 
 	srand(time((0)));
 	audioOut.id = 1 + (rand() % 2147483647);

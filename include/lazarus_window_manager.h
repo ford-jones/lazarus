@@ -28,7 +28,7 @@
 #include <string>
 #include <memory>
 
-#include "lazarus_file_reader.h"
+#include "lazarus_file_loader.h"
 
 #ifndef LAZARUS_WINDOW_MANAGER_H
 #define LAZARUS_WINDOW_MANAGER_H
@@ -122,8 +122,8 @@ class WindowManager : public Events, public Time
             glm::vec3 backgroundColor;
         };
 
-        std::unique_ptr<FileReader> fileReader;
-        FileReader::Image image;
+        std::unique_ptr<FileLoader> fileReader;
+        FileLoader::Image image;
 
         Window frame;
 

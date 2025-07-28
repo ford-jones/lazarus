@@ -30,7 +30,7 @@
 #include <string>
 #include <vector>
 
-#include "lazarus_file_reader.h"
+#include "lazarus_file_loader.h"
 
 using std::unique_ptr;
 
@@ -55,8 +55,8 @@ class Shader
         void reset();
         void verifyProgram(uint32_t program);
 
-        unique_ptr<FileReader> vertReader;
-        unique_ptr<FileReader> fragReader;
+        unique_ptr<FileLoader> vertReader;
+        unique_ptr<FileLoader> fragReader;
 
         std::string vertLayout; 
         std::string vertSource; 

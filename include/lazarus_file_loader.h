@@ -38,10 +38,10 @@ using std::vector;
 #ifndef LAZARUS_FILE_READER_H
 #define LAZARUS_FILE_READER_H
 
-class FileReader 
+class FileLoader 
 {
     public:
-		FileReader();
+		FileLoader();
         
         struct Image 
         {
@@ -52,14 +52,14 @@ class FileReader
         };
 
 		string relativePathToAbsolute(string filepath);
-        Image readFromImage(const char *filepath = NULL, const unsigned char *raw = NULL, uint32_t size = 0);
-        const char *readFromText(string filepath);
+        Image loadImage(const char *filepath = NULL, const unsigned char *raw = NULL, uint32_t size = 0);
+        const char *loadText(string filepath);
         
 		int32_t imageWidth;
         int32_t imageHeight;
         int32_t channelCount;
 
-        virtual ~FileReader();
+        virtual ~FileLoader();
         
 	private:
 		unsigned char *imageData;

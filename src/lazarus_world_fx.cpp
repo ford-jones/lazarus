@@ -141,12 +141,12 @@ void WorldFX::loadFog(WorldFX::Fog fogIn)
 
 void WorldFX::loadSkyMap()
 {
-    this->imageLoader = std::make_unique<FileReader>();
+    this->imageLoader = std::make_unique<FileLoader>();
 
     for(auto path: this->skyBoxOut.paths)
     {
         std::string absolute = imageLoader->relativePathToAbsolute(path);
-        FileReader::Image image = imageLoader->readFromImage(absolute.c_str());
+        FileLoader::Image image = imageLoader->loadImage(absolute.c_str());
         
         /* =======================================================
             Validate that the image inputs for the cubemap are 

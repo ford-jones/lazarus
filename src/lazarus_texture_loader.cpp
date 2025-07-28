@@ -80,7 +80,7 @@ void TextureLoader::extendTextureStack(uint32_t maxWidth, uint32_t maxHeight, ui
 	return;
 };
 
-void TextureLoader::loadImageToTextureStack(FileReader::Image imageData, GLuint textureLayer)
+void TextureLoader::loadImageToTextureStack(FileLoader::Image imageData, GLuint textureLayer)
 {	
 	this->image.width = imageData.width;
 	this->image.height = imageData.height;
@@ -148,7 +148,7 @@ void TextureLoader::storeCubeMap(uint32_t width, uint32_t height)
 	return;
 };
 
-void TextureLoader::loadCubeMap(std::vector<FileReader::Image> faces)
+void TextureLoader::loadCubeMap(std::vector<FileLoader::Image> faces)
 {	
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, this->cubeMapTexture);
@@ -237,7 +237,7 @@ void TextureLoader::storeBitmapTexture(uint32_t maxWidth, uint32_t maxHeight)
 	return;
 };
 
-void TextureLoader::loadBitmapToTexture(FileReader::Image imageData, uint32_t xOffset, uint32_t yOffset)
+void TextureLoader::loadBitmapToTexture(FileLoader::Image imageData, uint32_t xOffset, uint32_t yOffset)
 {
 	this->image.width = imageData.width;
 	this->image.height = imageData.height;
