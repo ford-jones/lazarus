@@ -87,23 +87,31 @@ FileLoader::Image FileLoader::loadImage(const char *filename, const unsigned cha
 {
     this->imageData = {};
     this->outResize = {};
-	
-    /* ====================================================
-        Images should be flipped on load due to the fact that 
-        most file formats store the (x: 0.0, y: 0.0) coordinate
-        at the top left (first pixel of first row), while 
-        OpenGL's texture coordinate system stores it as the
-        inverse - i.e. bottom left (first pixel, last row).
-    ======================================================= */
-    stbi_set_flip_vertically_on_load(true);
+    
+    if(raw == NULL)
+    {   
+        /* ====================================================
+            Images should be flipped on load due to the fact that 
+            most file formats store the (x: 0.0, y: 0.0) coordinate
+            at the top left (first pixel of first row), while 
+            OpenGL's texture coordinate system stores it as the
+            inverse - i.e. bottom left (first pixel, last row).
 
-    /* =============================================================
-        In the case that the file has already been opened and read 
-        elsewhere in the program, but has not yet been decoded.
-    ================================================================ */
-    this->imageData = (raw == NULL)
-    ? stbi_load(filename, &imageWidth, &imageHeight, &channelCount, 0)
-    : stbi_load_from_memory(const_cast<stbi_uc*>(raw), size, &imageWidth, &imageHeight, &channelCount, 0);
+            It seems the exception to this rule are glb files
+            (i.e. load_from_memory).
+        ======================================================= */
+        stbi_set_flip_vertically_on_load(true);
+        this->imageData = stbi_load(filename, &imageWidth, &imageHeight, &channelCount, 0);
+    }
+    else
+    {
+        stbi_set_flip_vertically_on_load(false);
+        /* =============================================================
+            If the file has already been opened and read elsewhere in 
+            the program, but has not yet been decoded.
+        ================================================================ */
+        this->imageData = stbi_load_from_memory(const_cast<stbi_uc*>(raw), size, &imageWidth, &imageHeight, &channelCount, 0);
+    }
 
     if(imageData != NULL) 
     {
@@ -111,33 +119,21 @@ FileLoader::Image FileLoader::loadImage(const char *filename, const unsigned cha
         this->maxWidth = globals.getMaxImageWidth();
         this->maxHeight = globals.getMaxImageHeight();
 
-        if(enforceResize == true)
-        {
-            if(this->maxWidth <= 0 || this->maxHeight <= 0)
-            {
-                std::cerr << RED_TEXT << "LAZARUS::ERROR::FileLoader::IMAGE_LOADER " << "Width and height must both have values higher than zero." << RESET_TEXT << std::endl;    
-                globals.setExecutionState(LAZARUS_IMAGE_RESIZE_FAILURE);
-
-                outImage.pixelData = NULL;
-                outImage.height = 0;
-                outImage.width = 0;
-
-                return outImage;
-            }
-
-        /* ================================================= 
-            Evil solution (the correct way):
-
-            The return value of stbir_resize_uint8, unlike 
-            stbi_load is reserved for error codes. This means 
-            that to pass data into lazarus' tightly-packed byte 
-            array (unsigned char *) it has to do so as a side-
-            effect. To do so the memory has to be allocated 
-            manually so that we can pass stbir a pointer to the 
-            actual byte array.
-
-            See: https://stackoverflow.com/a/65873156/23636614
-        ==================================================== */
+        if(enforceResize == true && this->maxWidth > 0 && this->maxHeight > 0)
+        {   
+            /* ================================================= 
+                Evil solution (the correct way):
+            
+                The return value of stbir_resize_uint8, unlike 
+                stbi_load is reserved for error codes. This means 
+                that to pass data into lazarus' tightly-packed byte 
+                array (unsigned char *) it has to do so as a side-
+                effect. To do so the memory has to be allocated 
+                manually so that we can pass stbir a pointer to the 
+                actual byte array.
+            
+                See: https://stackoverflow.com/a/65873156/23636614
+            ==================================================== */
             outResize = (unsigned char *) malloc(this->maxWidth * this->maxHeight * channelCount);
 
             resizeStatus = stbir_resize_uint8(this->imageData, imageWidth, imageHeight, 0, outResize, this->maxWidth, this->maxHeight, 0, channelCount);
