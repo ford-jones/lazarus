@@ -60,7 +60,7 @@ class Transform
 		float determineUpVector(float rotation);
 		float degreesToRadians(float in, bool enforceLimits = true);
 
-		_Float64 pi;
+		double pi;
 		float outRadians;
 		float up;
 		

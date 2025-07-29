@@ -1097,7 +1097,7 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
             std::memcpy(buffer, &this->binaryData[bufferView.byteOffset], sizeof(unsigned char) * bufferView.byteLength);
 
             outImage = imageLoader->loadImage(nullptr, buffer, bufferView.byteLength);
-            delete buffer;
+            delete[] buffer;
         };
         
         //  Indices
