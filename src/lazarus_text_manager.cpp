@@ -285,7 +285,7 @@ uint32_t TextManager::extendFontStack(std::string filepath, uint32_t ptSize)
         yOffset = alphabetHeights[n * 2];
         xOffset = 0;
         
-        for(size_t i = 33; i < 128; i++)
+        for(uint32_t i = 33; i < 128; i++)
         {
             this->glyph = this->loadCharacter(static_cast<char>(i), (n + 1));
 
