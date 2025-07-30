@@ -26,6 +26,7 @@
 
 #include <iostream>
 #include <vector>
+#include <map>
 #include <string>
 #include <stdlib.h>
 #include <memory>
@@ -53,11 +54,11 @@ class MaterialLoader
 {
     public:        
         MaterialLoader();
-        bool loadMaterial(vector<vec3> &out, vector<vector<uint32_t>> data, string materialPath);
+        bool loadMaterial(std::vector<glm::vec3> &out, std::vector<std::vector<uint32_t>> data, string materialPath);
         virtual ~MaterialLoader();
 
     private:
-        vec3 diffuse;                                           //  Diffuse colour, the main / dominant colour of a face
+        glm::vec3 diffuse;                                           //  Diffuse colour, the main / dominant colour of a face
         ifstream file;
         char currentLine[256];
         uint32_t diffuseCount;                                    //  The number of times an instance of `char[]="Kd"`(diffuse color) has appeared since the last invocation
@@ -96,6 +97,7 @@ class MeshLoader : private MaterialLoader
 
     private:
         //  glb
+
         std::string jsonData;
         std::string binaryData;
         
@@ -166,20 +168,20 @@ class MeshLoader : private MaterialLoader
 
         //  wavefront
 
-        //  Read vertex attributes from temp* members and group them together 
-        //  in sets of three's if possible.
-        void constructTriangle();
+        std::vector<std::string> wavefrontCoordinates;
         
-        vector<string> coordinates;
-        
-        vector<vector<uint32_t>> materialBuffer;
-        vector<uint32_t> materialData;
+        std::vector<std::vector<uint32_t>> materialBuffer;
+        std::vector<uint32_t> materialData;
         uint32_t materialIdentifierIndex;
         uint32_t triangleCount;
         
         char currentLine[256];
-        vector<string> attributeIndexes;
+        std::vector<string> attributeIndexes;
         
+        //  Read vertex attributes from temp* members and group them together 
+        //  in sets of three's if possible.
+        void constructTriangle();
+
         //  Shared
 
         std::unique_ptr<FileLoader> imageLoader;
@@ -196,14 +198,14 @@ class MeshLoader : private MaterialLoader
         vector<uint32_t> vertexIndices;
         vector<uint32_t> uvIndices;
         vector<uint32_t> normalIndices;
-        vector<vec3> tempVertexPositions;
-        vector<vec3> tempUvs;
-        vector<vec3> tempNormals;
-        vector<vec3> tempDiffuse;
 
-        vec3 vertex;
-        vec3 uv;
-        vec3 normal;
+        std::map<uint32_t, glm::vec3> tempVertexPositions;
+        std::map<uint32_t, glm::vec3> tempUvs;
+        std::map<uint32_t, glm::vec3> tempNormals;
+
+        glm::vec3 vertex;
+        glm::vec3 uv;
+        glm::vec3 normal;
 
         GlobalsManager globals;
 };
@@ -222,8 +224,10 @@ class MeshManager : private MeshLoader, public TextureLoader
 
             uint32_t numOfVertices;
             uint32_t numOfFaces;
+
             /* ===============================
             	TODO | Things to add:
+                - Direction
                 - Material count
                 - Scale
             ================================== */
@@ -267,7 +271,7 @@ class MeshManager : private MeshLoader, public TextureLoader
             FileLoader::Image textureData;
             GLuint textureId;
             GLuint textureLayer;
-            GLuint VAO;                                                                         //  The OpenGL Vertex Array Object
+            GLuint VAO;
             GLuint VBO;
             GLuint EBO;
 
@@ -291,7 +295,7 @@ class MeshManager : private MeshLoader, public TextureLoader
         uint32_t maxTexHeight;
 
 		GLuint shaderProgram;
-        GLint modelMatrixUniformLocation;                                                                        //  The location / index of the modelview matrix inside the vert shader program
+        GLint modelMatrixUniformLocation;
         GLint textureLayerUniformLocation;
         GLint is3DUniformLocation;
         GLint isGlyphUniformLocation;
