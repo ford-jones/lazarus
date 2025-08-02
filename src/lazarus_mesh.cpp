@@ -664,6 +664,9 @@ MeshLoader::MeshLoader()
 
 bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, const char* meshPath, const char* materialPath) 
 {
+    //  TODO:
+    //  Make MaterialLoader class part of this, its kind of random on it's own
+
     this->resetMembers();
 
     file.open(meshPath);
@@ -806,10 +809,6 @@ bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &ou
 bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, FileLoader::Image &outImage, const char* meshPath)
 {
     //  TODO:
-    //  Update docs
-    //  Convert indices vectors to maps. Try figure out a way of avoiding the n*n lookups in constructIndexBuffer
-    //  Make MaterialLoader class part of MeshLoader, its kind of random
-    //  Limit definitions in header files to those relevant to the class. Those that are specific to some of these helper functions can just be stack allocated.
     //  Consider a threading implentation to speed up loads and not block the main-thread/renderer
     //  Get the size of this function down, too many lines... (-_-*)
     //  Extract animation data
@@ -1415,6 +1414,10 @@ vector<string> MeshLoader::splitTokensFromLine(const char *wavefrontData, char d
 
 void MeshLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> outDiffuse, uint32_t numOfAttributes)
 {
+    //  TODO:
+    //  Don't do this n_squared lookup / check
+    //  Ensure deduplication using something like std::set
+
     uint32_t count = 0;
 
     /* ===================================================

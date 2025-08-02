@@ -370,17 +370,16 @@ Params:
 
 ### Functions:
 #### MeshManager::Mesh create3DAsset(std::string meshPath, std::string materialPath, std::string texturePath, bool selectable)
-Finds and reads a wavefront (obj) file located at `meshPath`. \
-Creates a new instance of a `Mesh`, initialises the values of its properties and returns it. \
-Invokes the `MaterialLoader::loadMaterial()` function and passes on the `materialPath`.
+Finds and reads a the `.obj` or `.glb` file located at `meshPath`. \
+Creates a new instance of a `Mesh`, initialises the values of its properties and returns it. 
 
 Returns a new mesh entity.
 
 Params:
 > **meshPath:** *The relative path to the wavefront mesh asset you wish to render.* 
-> **materialPath:** *The relative path to the wavefront material asset you wish to render.*
-> **texturePath:** *The relative path to the texture image. (optional)*
-> **selectable:** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (optional)*
+> **materialPath:** *The relative path to the wavefront material asset you wish to render. (default: `LAZARUS_TEXTURED_MESH`)*
+> **texturePath:** *The relative path to the texture image. (default: `LAZARUS_DIFFUSE_MESH`)*
+> **selectable:** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (default: `false`)*
 
 #### MeshManager::Mesh createQuad(float width, float height, std::string texturePath, float uvXL, float uvXR, float uvY, bool selectable)
 Creates a quad (2D plane) to the size of the specified height and width. \
@@ -628,7 +627,7 @@ params:
 > **filepath:** *The relative path to the TrueType `.ttf` font file.* \
 > **ptSize:** *The desired character pt size. (default: `12`)*
 
-#### TextManager::Text loadText(std::string targetText, int posX, int posY, int letterSpacing, float red, float green, float blue, TextManager::Text textIn)
+#### TextManager::Text loadText(std::string targetText, int fontId, int posX, int posY, int letterSpacing, float red, float green, float blue, TextManager::Text textIn)
 Loads the desired text using glyphs from the selected font. Sets the text's colour, position on the screen and letterspacing. It's worth noting \
 here that a space `' '` is equal to `letterSpacing * 8`.
 
@@ -638,6 +637,7 @@ Returns a new `TextManager::Text` object.
 
 Params:
 > **targetText:** *The desired string to load to memory.* \
+> **fontId:** *The index of the font the string should be rendered with.* \
 > **posY:** *The y-axis coordinate of where the upper-left-most point of the first character should be positioned in pixels. With the origin (0.0) starting in the bottom left.* \
 > **posX:** *The x-axis coordinate of where the upper-left-most point of the first character should be positioned in pixels. With the origin (0.0) starting in the bottom left.* \
 > **letterSpacing:** *How much spacing (in pixels) to put between each character. Word spacing is equal to this value * 8. (default: `1`)* \

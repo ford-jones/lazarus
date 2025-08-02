@@ -19,6 +19,23 @@
 
 #include "../include/lazarus_file_loader.h"
 
+/* =============================================
+    Note: These definitions must be compiled as
+    source / baked-in for stb libraries to work.
+    I.e. they must be in scope of 1 source file
+    and so can't be linked all over the place.
+================================================ */
+
+#ifndef STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
+	#include <stb_image.h>
+#endif
+
+#ifndef STB_IMAGE_RESIZE_IMPLEMENTATION
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+	#include <stb_image_resize.h>
+#endif
+
 FileLoader::FileLoader()
 {
     std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
@@ -41,9 +58,9 @@ FileLoader::FileLoader()
 
 string FileLoader::relativePathToAbsolute(string filename) 
 {
-    this->filenameString      =   std::filesystem::absolute(filename).string();                                              //  Find the absolute path from root (/) to the mesh asset and convert to std::string
+    this->filenameString = std::filesystem::absolute(filename).string();
 
-    return this->filenameString;                                         //  Return the absolute path to the asset, exit the thread
+    return this->filenameString;
 };
 
 const char *FileLoader::loadText(string filepath) 
