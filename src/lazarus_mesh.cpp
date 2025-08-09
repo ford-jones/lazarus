@@ -1414,9 +1414,8 @@ vector<string> MeshLoader::splitTokensFromLine(const char *wavefrontData, char d
 
 void MeshLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> outDiffuse, uint32_t numOfAttributes)
 {
-    //  TODO:
-    //  Don't do this n_squared lookup / check
-    //  Ensure deduplication using something like std::set
+    std::unordered_set<uint64_t> hashes = {};
+    std::map<uint64_t, uint32_t> entries = {};
 
     uint32_t count = 0;
 
@@ -1428,11 +1427,9 @@ void MeshLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32
     for(size_t i = 0; i < numOfAttributes; i++)
     {
         /* ===========================================================
-            These lookups are faster as vectors for some reason. 
-            Currently 18seconds over 188,000 vertices. This becomes 
-            about 30seconds when stored within a map. Unlike the 
-            attribute values themselves, which are definitely faster
-            as maps.
+            These lookups are faster as vectors for some reason unlike 
+            the attribute values themselves, which are definitely 
+            faster as maps.
         ============================================================== */
         uint32_t vertexIndex = vertexIndices[i];
         uint32_t normalIndex = normalIndices[i];
@@ -1443,6 +1440,18 @@ void MeshLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32
         glm::vec3 uvCoordinates     = this->tempUvs.at(uvIndex - 1);
         glm::vec3 diffuseColor      = outDiffuse[i];
 
+        /* =========================================================
+            https://docs.vulkan.org/tutorial/latest/08_Loading_models.html#_vertex_deduplication:~:text=cppreference.com%20recommends
+
+            Generate a hash value from the vertex attributes.
+        ============================================================ */
+
+        uint64_t positionHash = std::hash<glm::vec3>()(position);
+        uint64_t normalHash = std::hash<glm::vec3>()(normalCoordinates);
+        uint64_t uvHash = std::hash<glm::vec3>()(uvCoordinates);
+
+        uint64_t hash = positionHash ^ ((normalHash << 1) >> 1) ^ (uvHash << 1); 
+
         if(outAttributes.size() == 0)
         {
             outAttributes.push_back(position);
@@ -1451,44 +1460,30 @@ void MeshLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32
             outAttributes.push_back(uvCoordinates);
 
             outIndexes.push_back(count);
+            entries.emplace(hash, count);
         }
         else
         {
             /* ===================================================
-                Perform deduplication of vertex attributes, 
-                insert location of duplicate upon encounter of a
-                double-up.
+                Perform deduplication of vertex attributes.
+
+                Check for duplicates by attempting to store the 
+                hash in a set (unique values only). If it fails 
+                we know it's already been inserted somewhere.
             ====================================================== */
+            
+            std::pair<std::unordered_set<uint64_t>::iterator, bool> result = hashes.insert(hash);
 
-            size_t beforeSize = outIndexes.size();
-
-            for(size_t j = 0; j < (outAttributes.size() / 4); j++)
-            {
-                glm::vec3 validatedPosition = outAttributes[(j * 4)];
-                glm::vec3 validatedDiffuseColor = outAttributes[(j * 4) + 1];
-                glm::vec3 validatedNormals = outAttributes[(j * 4) + 2];
-                glm::vec3 validatedUvs = outAttributes[(j * 4) + 3];
-
-                if(
-                    (validatedPosition      == position)          &&
-                    (validatedDiffuseColor  == diffuseColor)      &&
-                    (validatedNormals       == normalCoordinates) && 
-                    (validatedUvs           == uvCoordinates)
-                )
-                {
-                    outIndexes.push_back(j);
-                }
-            };
-
-            size_t currentSize = outIndexes.size(); 
-
-            if(currentSize == beforeSize)
+            if(result.second)
             {
                 count += 1;
 
                 /* =========================================
                     Interleave bufferdata in order expected 
                     by MeshManager::initialiseMesh
+
+                    I.e.
+                    [ Pos | Norm | color | uv ]
                 ============================================ */
 
                 outAttributes.push_back(position);
@@ -1497,7 +1492,18 @@ void MeshLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32
                 outAttributes.push_back(uvCoordinates);
 
                 outIndexes.push_back(count);
-            };
+                entries.emplace(hash, count);
+            }
+            else
+            {
+                /* ===========================================
+                    Identify / retreive the location of a 
+                    duplicate hash value.
+                ============================================== */
+
+                uint32_t location = entries.at(hash);
+                outIndexes.push_back(location);
+            }
         }
     }
 

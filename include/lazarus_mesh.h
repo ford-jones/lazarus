@@ -24,6 +24,9 @@
 	#include "lazarus_common.h"
 #endif
 
+//  Required for hashing glm types
+#define GLM_ENABLE_EXPERIMENTAL
+
 #include <iostream>
 #include <vector>
 #include <map>
@@ -33,6 +36,9 @@
 #include <fstream>
 #include <cstring>
 #include <algorithm>
+#include <glm/gtx/hash.hpp>
+#include <unordered_set>
+#include <iterator>
 
 #include "lazarus_file_loader.h"
 #include "lazarus_texture_loader.h"
