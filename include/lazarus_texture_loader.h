@@ -29,7 +29,7 @@
 #include <memory>
 #include <cmath>
 
-#include "lazarus_file_reader.h"
+#include "lazarus_file_loader.h"
 
 using std::string;
 using std::shared_ptr;
@@ -41,14 +41,14 @@ class TextureLoader
 {
 	public:
 		TextureLoader();
-		void extendTextureStack(int maxWidth, int maxHeight, int textureLayers);
-		void loadImageToTextureStack(FileReader::Image imageData, GLuint textureLayer);
+		void extendTextureStack(uint32_t maxWidth, uint32_t maxHeight, uint32_t textureLayers);
+		void loadImageToTextureStack(FileLoader::Image imageData, GLuint textureLayer);
 
-		void storeCubeMap(int width, int height);
-		void loadCubeMap(std::vector<FileReader::Image> faces);
+		void storeCubeMap(uint32_t width, uint32_t height);
+		void loadCubeMap(std::vector<FileLoader::Image> faces);
 
-		void storeBitmapTexture(int maxWidth, int maxHeight);
-		void loadBitmapToTexture(FileReader::Image imageData);
+		void storeBitmapTexture(uint32_t maxWidth, uint32_t maxHeight);
+		void loadBitmapToTexture(FileLoader::Image imageData, uint32_t xOffset, uint32_t yOffset);
 
 		virtual ~TextureLoader();
 		
@@ -57,20 +57,13 @@ class TextureLoader
 		GLuint cubeMapTexture;
 
 	private:		
-		int countMipLevels(int width, int height);
-		void checkErrors(const char *file, int line);
-
-		shared_ptr<FileReader> loader;
-
-		FileReader::Image image;
+		uint32_t calculateMipLevels(uint32_t width, uint32_t height);
+		void checkErrors(const char *file, uint32_t line);
 
 		GLenum errorCode;
-		
-		int mipCount;
-		int loopCount;
-		int x, y;
 
-		int offset;
+		shared_ptr<FileLoader> loader;
+		FileLoader::Image image;
 
 		GlobalsManager globals;
 };

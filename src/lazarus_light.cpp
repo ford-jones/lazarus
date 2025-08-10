@@ -38,12 +38,9 @@ LightManager::Light LightManager::createLightSource(float x, float y, float z, f
     this->lightData = {};
     
     lightOut.id             = lightStore.size();
-    lightOut.locationX      = x;
-    lightOut.locationY      = y;
-    lightOut.locationZ      = z;
     lightOut.brightness     = brightness;
-    lightOut.lightPosition  = glm::vec3(lightOut.locationX, lightOut.locationY, lightOut.locationZ);
-    lightOut.lightColor     = glm::vec3(r, g, b);
+    lightOut.position  = glm::vec3(x, y, z);
+    lightOut.color     = glm::vec3(r, g, b);
     
     this->lightCount += 1;
     lightData.uniformIndex                   =   (this->lightCount - 1);
@@ -54,6 +51,7 @@ LightManager::Light LightManager::createLightSource(float x, float y, float z, f
     lightStore.push_back(lightData);
 
     globals.setNumberOfActiveLights(this->lightCount);
+
     return lightOut;
 };
 
@@ -61,7 +59,7 @@ void LightManager::loadLightSource(LightManager::Light &lightIn)
 {
     this->lightData = lightStore[lightIn.id];
 
-    if(lightIn.brightness < 0.0) globals.setExecutionState(LAZARUS_INVALID_INTENSITY);
+    if(lightIn.brightness < 0.0f) globals.setExecutionState(LAZARUS_INVALID_INTENSITY);
     
     if(
         lightData.brightnessUniformLocation     >= 0 &&
@@ -71,13 +69,15 @@ void LightManager::loadLightSource(LightManager::Light &lightIn)
     {
         glUniform1i         (this->lightCountLocation, this->lightCount);
         glUniform1f         (lightData.brightnessUniformLocation, lightIn.brightness);
-        glUniform3fv        (lightData.lightPositionUniformLocation, 1, &lightIn.lightPosition[0]);
-        glUniform3fv        (lightData.lightColorUniformLocation, 1, &lightIn.lightColor[0]);
+        glUniform3fv        (lightData.lightPositionUniformLocation, 1, &lightIn.position[0]);
+        glUniform3fv        (lightData.lightColorUniformLocation, 1, &lightIn.color[0]);
     }
     else
     {
         globals.setExecutionState(LAZARUS_UNIFORM_NOT_FOUND);
     };
+
+    return;
 };
 
 LightManager::~LightManager()

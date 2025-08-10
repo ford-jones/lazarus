@@ -22,7 +22,7 @@
 WorldFX::WorldFX(GLuint shaderProgram) : WorldFX::MeshManager(shaderProgram)
 {
     std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
-    this->status = 0;
+    this->status        = 0;
     this->shader        = shaderProgram;
     this->imageLoader   = nullptr;
     this->skyBoxOut     = {};
@@ -70,11 +70,17 @@ void WorldFX::drawSkyBox(WorldFX::SkyBox skyboxIn, CameraManager::Camera camera)
     glm::mat4 viewFromOrigin = glm::mat4(glm::mat3(camera.viewMatrix)); 
     GLuint uniform = glGetUniformLocation(this->shader, "viewMatrix");
     this->status = glGetError();
-    if(this->status != 0) globals.setExecutionState(LAZARUS_UNIFORM_NOT_FOUND);
+    if(this->status != 0)
+    {
+        globals.setExecutionState(LAZARUS_UNIFORM_NOT_FOUND);
+    };
 
     glUniformMatrix4fv(uniform, 1, GL_FALSE, &viewFromOrigin[0][0]);
     this->status = glGetError();
-    if(this->status != 0) globals.setExecutionState(LAZARUS_MATRIX_LOCATION_ERROR);
+    if(this->status != 0)
+    {
+        globals.setExecutionState(LAZARUS_MATRIX_LOCATION_ERROR);
+    };
 
     glDepthMask(GL_FALSE);
 
@@ -91,7 +97,12 @@ void WorldFX::drawSkyBox(WorldFX::SkyBox skyboxIn, CameraManager::Camera camera)
 
     glUniformMatrix4fv(uniform, 1, GL_FALSE, &camera.viewMatrix[0][0]);
     this->status = glGetError();
-    if(this->status != 0) globals.setExecutionState(LAZARUS_MATRIX_LOCATION_ERROR);
+    if(this->status != 0)
+    {
+        globals.setExecutionState(LAZARUS_MATRIX_LOCATION_ERROR);
+    };
+
+    return;
 };
 
 WorldFX::Fog WorldFX::createFog(float minDistance, float maxDistance, float thickness, float r, float g, float b, float x, float y, float z)
@@ -108,7 +119,10 @@ WorldFX::Fog WorldFX::createFog(float minDistance, float maxDistance, float thic
 
 void WorldFX::loadFog(WorldFX::Fog fogIn)
 {
-    if(fogIn.density < 0.0) globals.setExecutionState(LAZARUS_INVALID_INTENSITY);
+    if(fogIn.density < 0.0f)
+    {
+        globals.setExecutionState(LAZARUS_INVALID_INTENSITY);
+    };
     
     glUniform3fv(this->fogColorUniformLocation, 1, &fogIn.color[0]);
     glUniform3fv(this->fogViewpointUniformLocation, 1, &fogIn.viewpoint[0]);
@@ -117,17 +131,22 @@ void WorldFX::loadFog(WorldFX::Fog fogIn)
     glUniform1f(this->fogDensityUniformLocation, fogIn.density);
 
     this->status = glGetError();
-    if(this->status != 0) globals.setExecutionState(LAZARUS_UNIFORM_NOT_FOUND);
+    if(this->status != 0)
+    {
+        globals.setExecutionState(LAZARUS_UNIFORM_NOT_FOUND);
+    };
+
+    return;
 };
 
 void WorldFX::loadSkyMap()
 {
-    this->imageLoader = std::make_unique<FileReader>();
+    this->imageLoader = std::make_unique<FileLoader>();
 
     for(auto path: this->skyBoxOut.paths)
     {
         std::string absolute = imageLoader->relativePathToAbsolute(path);
-        FileReader::Image image = imageLoader->readFromImage(absolute);
+        FileLoader::Image image = imageLoader->loadImage(absolute.c_str());
         
         /* =======================================================
             Validate that the image inputs for the cubemap are 
@@ -140,7 +159,8 @@ void WorldFX::loadSkyMap()
             with 301 (LAZARUS_OPENGL_ERROR) by the textureLoader's 
             checkErrors subroutine.
         ========================================================== */
-        if(this->skyBoxOut.cubeMap.size() > 0 && (image.width != image.height || image.width != this->skyBoxOut.cubeMap[0].width))
+        if(
+            this->skyBoxOut.cubeMap.size() > 0 && (image.width != image.height || image.width != this->skyBoxOut.cubeMap[0].width))
         {
             globals.setExecutionState(LAZARUS_INVALID_CUBEMAP);
         };
@@ -155,6 +175,8 @@ void WorldFX::loadSkyMap()
     ================================================================ */
     this->storeCubeMap(this->skyBoxOut.cubeMap[0].width, this->skyBoxOut.cubeMap[0].height);
     this->loadCubeMap(this->skyBoxOut.cubeMap);
+
+    return;
 };
 
 WorldFX::~WorldFX()

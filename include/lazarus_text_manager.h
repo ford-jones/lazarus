@@ -26,19 +26,19 @@
 #endif
 
 #include <iostream>
-#include <string>
 #include <memory>
-#include <algorithm>
+#include <string>
 #include <vector>
 #include <map>
-#include <ft2build.h>
 #include <math.h>
+#include <ft2build.h>
 
 #include "lazarus_shader.h"
 #include "lazarus_camera.h"
 #include "lazarus_texture_loader.h"
 #include "lazarus_transforms.h"
 #include "lazarus_mesh.h"
+#include "lazarus_file_loader.h"
 
 #include FT_FREETYPE_H
 
@@ -51,32 +51,31 @@ class FontLoader
         FontLoader();
 
         void loaderInit();
-        int loadTrueTypeFont(std::string filepath, int charHeight, int charWidth);
-        FileReader::Image loadCharacter(char character, int fontIndex);
+        int32_t loadTrueTypeFont(std::string filepath, uint32_t charHeight, uint32_t charWidth);
+        FileLoader::Image loadCharacter(char character, uint32_t fontIndex);
 
         virtual ~FontLoader();
 
     private:
         void createBitmap();
         void flipGlyph();
-        void setImageData(int width, int height, unsigned char *data);
+        void setImageData(uint32_t width, uint32_t height, unsigned char *data);
 
-        GlobalsManager globals;
-        FileReader::Image image;
-        std::vector<FT_Face> fontStack;
-
-        int keyCode;
-
+        std::unique_ptr<FileLoader> fileReader;
+        std::string absolutePath;
+        
+        uint8_t keyCode;
+        
+        uint32_t glyphIndex;
+        
         FT_Matrix transformationMatrix;
         FT_Library lib;
         FT_Face fontFace;
-
-        unsigned int glyphIndex;
-
         FT_Error status;
-
-        std::unique_ptr<FileReader> fileReader;
-        std::string absolutePath;
+        std::vector<FT_Face> fontStack;
+        
+        GlobalsManager globals;
+        FileLoader::Image image;
 };
 
 class TextManager : private FontLoader, private MeshManager
@@ -86,61 +85,67 @@ class TextManager : private FontLoader, private MeshManager
 
         struct Text
         {
-            int layoutIndex;
-            int locationX;
-            int locationY;
+            uint32_t layoutIndex;
+            uint32_t locationX;
+            uint32_t locationY;
             std::string targetString;
             glm::vec3 color;
         };
-
-        int extendFontStack(std::string filepath, int ptSize = 12);
-        Text loadText(std::string targetText, int posX, int posY, int letterSpacing = 1, float red = 0.0f, float green = 0.0f, float blue = 0.0f, Text textIn = {});
+        
+        uint32_t extendFontStack(std::string filepath, uint32_t ptSize = 12);
+        Text loadText(std::string targetText, uint32_t fontId, uint32_t posX, uint32_t posY, uint32_t letterSpacing = 1, float red = 0.0f, float green = 0.0f, float blue = 0.0f, Text textIn = {});
         void drawText(Text text);
         virtual ~TextManager();
-
-    private: 
+        
+        uint32_t fontCount;
+        
+        private: 
         Text textOut;
-        void identifyAlphabetDimensions();
-        void setActiveGlyph(char target, int spacing);
+        void identifyAlphabetDimensions(uint32_t fontId);
+        void setActiveGlyph(char target, uint32_t fontId, uint32_t spacing);
         void setTextColor(float r, float g, float b);
-        void lookUpUVs(int keyCode);
-
-        int translationStride;
-        int targetKey;
-        int targetXL;
-        int targetXR;
-        int span;
-
-        int atlasX;
-        int atlasY;
-
-        float monitorWidth;
-
+        void lookUpUVs(uint8_t keyCode, uint32_t fontId);
+        
+        uint8_t targetKey;
+        
+        uint32_t rowWidth;
+        uint32_t rowHeight;
+        uint32_t atlasWidth;
+        uint32_t atlasHeight;
+        
+        uint32_t fontIndex;
+        uint32_t layoutIndex; 
+        
+        float translationStride;
+        
         float uvL;
         float uvR;
-        float uvH;
-
-        unsigned int fontIndex;
-        unsigned int layoutIndex; 
-
+        float uvU;
+        float uvD;
+        
         GLuint textureId;
         GLuint shaderProgram;
-
+        
         glm::vec3 textColor;
-
+        
         Transform transformer;
         GlobalsManager globals;
-        FileReader::Image glyph;
-
+        FileLoader::Image glyph;
+        
         std::unique_ptr<CameraManager> cameraBuilder;
-
+        
         MeshManager::Mesh quad;
         CameraManager::Camera camera;
-        std::vector<MeshManager::Mesh> word;
-        
-        std::map<int, FileReader::Image> textures;
-        std::map<int, std::vector<MeshManager::Mesh>> layout;
-        std::pair<int, std::vector<MeshManager::Mesh>> layoutEntry;
-};
 
-#endif
+        std::vector<MeshManager::Mesh> word;
+        std::vector<uint32_t> alphabetHeights;
+        std::vector<std::map<uint8_t, FileLoader::Image>> fonts;
+        
+        std::pair<uint32_t, std::vector<MeshManager::Mesh>> layoutEntry;
+        std::map<uint32_t, std::vector<MeshManager::Mesh>> layout;
+        std::map<uint8_t, FileLoader::Image> characters;
+    
+    };
+    
+    #endif
+    

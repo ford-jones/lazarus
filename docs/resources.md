@@ -22,7 +22,7 @@ Downloads: https://www.glfw.org/download.html
 Downloads / Official Documentation: https://glew.sourceforge.net/
 
 5. GLM resources: \
-Official Documentation: https://glm.g-truc.net/0.9.9/api/index.html
+Official Documentation: https://glm.g-truc.net/0.9.9/api/index.html \
 Download: https://sourceforge.net/projects/glm.mirror/
 
 6. nothings stb: \
@@ -53,7 +53,14 @@ Official Documentation: https://learn.microsoft.com/en-us/cpp/build/reference/co
 12. C++ resources: \
 Core guidelines: https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#S-functions
 
-13. Misc:
+13. Wavefront file format: \
+Appendix: https://www.loc.gov/preservation/digital/formats/fdd/fdd000507.shtml
+
+14. GLTF/glb file format: \
+Official documentation: https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html \
+Basics: https://www.khronos.org/files/gltf20-reference-guide.pdf
+
+15. Misc:
 RGB decimal colours: https://www.tug.org/pracjourn/2007-4/walden/color.pdf
 Unicode UTF-8 characters: https://www.charset.org/utf-8
 Free cubemaps: https://www.humus.name/index.php?page=Textures

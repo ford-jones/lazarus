@@ -370,17 +370,16 @@ Params:
 
 ### Functions:
 #### MeshManager::Mesh create3DAsset(std::string meshPath, std::string materialPath, std::string texturePath, bool selectable)
-Finds and reads a wavefront (obj) file located at `meshPath`. \
-Creates a new instance of a `Mesh`, initialises the values of its properties and returns it. \
-Invokes the `MaterialLoader::loadMaterial()` function and passes on the `materialPath`.
+Finds and reads a the `.obj` or `.glb` file located at `meshPath`. \
+Creates a new instance of a `Mesh`, initialises the values of its properties and returns it. 
 
 Returns a new mesh entity.
 
 Params:
 > **meshPath:** *The relative path to the wavefront mesh asset you wish to render.* 
-> **materialPath:** *The relative path to the wavefront material asset you wish to render.*
-> **texturePath:** *The relative path to the texture image. (optional)*
-> **selectable:** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (optional)*
+> **materialPath:** *The relative path to the wavefront material asset you wish to render. (default: `LAZARUS_TEXTURED_MESH`)*
+> **texturePath:** *The relative path to the texture image. (default: `LAZARUS_DIFFUSE_MESH`)*
+> **selectable:** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (default: `false`)*
 
 #### MeshManager::Mesh createQuad(float width, float height, std::string texturePath, float uvXL, float uvXR, float uvY, bool selectable)
 Creates a quad (2D plane) to the size of the specified height and width. \
@@ -628,7 +627,7 @@ params:
 > **filepath:** *The relative path to the TrueType `.ttf` font file.* \
 > **ptSize:** *The desired character pt size. (default: `12`)*
 
-#### TextManager::Text loadText(std::string targetText, int posX, int posY, int letterSpacing, float red, float green, float blue, TextManager::Text textIn)
+#### TextManager::Text loadText(std::string targetText, int fontId, int posX, int posY, int letterSpacing, float red, float green, float blue, TextManager::Text textIn)
 Loads the desired text using glyphs from the selected font. Sets the text's colour, position on the screen and letterspacing. It's worth noting \
 here that a space `' '` is equal to `letterSpacing * 8`.
 
@@ -638,6 +637,7 @@ Returns a new `TextManager::Text` object.
 
 Params:
 > **targetText:** *The desired string to load to memory.* \
+> **fontId:** *The index of the font the string should be rendered with.* \
 > **posY:** *The y-axis coordinate of where the upper-left-most point of the first character should be positioned in pixels. With the origin (0.0) starting in the bottom left.* \
 > **posX:** *The x-axis coordinate of where the upper-left-most point of the first character should be positioned in pixels. With the origin (0.0) starting in the bottom left.* \
 > **letterSpacing:** *How much spacing (in pixels) to put between each character. Word spacing is equal to this value * 8. (default: `1`)* \
@@ -733,10 +733,11 @@ Params:
 - **LAZARUS_MATRIX_LOCATION_ERROR** *Lazarus failed to perform a shader lookup on the desired modelview, projection or view-matrix required to render the target entity. (Code: 206)*
 - **LAZARUS_OPENGL_ERROR** *An error occured in the OpenGL graphics pipeline. (Code: 301)*
 - **LAZARUS_NO_CONTEXT** *Unable to find a window with an active OpenGL context. (Code: 302)*
-- **LAZARUS_WINDOW_ERROR** *An error occured in the GLFW window API. (Code: 303)*
-- **LAZARUS_GLFW_NOINIT** *GL framework wrangler failed to initialise. (Code: 304)*
-- **LAZARUS_WIN_EXCEEDS_MAX** *The requested window size is larger than the dimensions of the primary monitor. (Code: 305)*
-- **LAZARUS_TIME_ERROR** *Lazarus tried to perform a time operation but the windows running time was 0ms. (Code: 306)*
+- **LAZARUS_WINDOW_ERROR** *An error occured in the window API. (Code: 303)*
+- **LAZARUS_EVENT_ERROR** *An error occured in the events API (Code: 304)*
+- **LAZARUS_GLFW_NOINIT** *GL framework wrangler failed to initialise. (Code: 305)*
+- **LAZARUS_WIN_EXCEEDS_MAX** *The requested window size is larger than the dimensions of the primary monitor. (Code: 306)*
+- **LAZARUS_TIME_ERROR** *Lazarus tried to perform a time operation but the windows running time was 0ms. (Code: 307)*
 - **LAZARUS_AUDIO_ERROR** *An error occured in the FMOD audio backend. (Code: 401)*
 - **LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR** *Desired audio playback location was less than 0 seconds or more than AudioManager::Audio::length. (Code: 402)*
 - **LAZARUS_AUDIO_LOAD_ERROR** *Unable to load audio sample into a channel. (Code: 403)*

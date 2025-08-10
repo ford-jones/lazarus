@@ -23,7 +23,7 @@ MeshManager::MeshManager(GLuint shader)
 {
 	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
     this->shaderProgram = shader;
-    this->finder = std::make_unique<FileReader>();
+    this->finder = std::make_unique<FileLoader>();
 
     this->clearMeshStorage();
 
@@ -37,6 +37,9 @@ MeshManager::MeshManager(GLuint shader)
     this->isSkyBoxUniformLocation = glGetUniformLocation(this->shaderProgram, "isSkyBox");
 
     this->textureLayerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureLayer");  
+
+    this->maxTexWidth = 0;
+    this->maxTexHeight = 0;
 };
 
 MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPath, string texturePath, bool selectable)
@@ -51,15 +54,47 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     meshData.textureUnit = GL_TEXTURE2;
     glActiveTexture(meshData.textureUnit);
     
+    /* ==========================================
+        Determine whether the file is wavefront
+        or gltf/glb.
+    ============================================= */
+    uint32_t suffixDelimiter = meshPath.find_last_of(".");
+    std::string suffix = meshPath.substr(suffixDelimiter + 1);
+
     this->resolveFilepaths(texturePath, materialPath, meshPath);
-    
-    this->parseWavefrontObj(
-        meshData.attributes,
-        meshData.diffuse,
-        meshData.indexes,
-        meshOut.meshFilepath.c_str(),
-        meshOut.materialFilepath.c_str()
-    );
+
+    if(suffix.compare("obj") == 0)
+    {
+        this->parseWavefrontObj(
+            meshData.attributes,
+            meshData.diffuse,
+            meshData.indexes,
+            meshOut.meshFilepath.c_str(),
+            meshOut.materialFilepath.c_str()
+        );
+    }
+    else if(suffix.compare("glb") == 0)
+    {
+        this->parseGlBinary(
+            meshData.attributes, 
+            meshData.diffuse, 
+            meshData.indexes, 
+            meshData.textureData,
+            meshOut.meshFilepath.c_str()
+        );
+
+        if(meshData.textureData.pixelData != NULL)
+        {
+            this->layerCount += 1;
+
+            meshOut.textureFilepath = LAZARUS_TEXTURED_MESH;
+
+            meshData.textureUnit = GL_TEXTURE2;
+            meshData.textureLayer = this->layerCount;
+            meshData.textureId = this->textureStack;
+
+        };
+    };
     
     this->setInherentProperties();
     this->initialiseMesh();
@@ -84,9 +119,12 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     a quad under the hood.
 =========================================================================================== */
 
-MeshManager::Mesh MeshManager::createQuad(float width, float height, string texturePath, float uvXL, float uvXR, float uvY, bool selectable)
+MeshManager::Mesh MeshManager::createQuad(float width, float height, string texturePath, float uvXL, float uvXR, float uvYU, float uvYD, bool selectable)
 {
-    if(width < 0.0f || height < 0.0f) globals.setExecutionState(LAZARUS_INVALID_DIMENSIONS);
+    if(width < 0.0f || height < 0.0f)
+    {
+        globals.setExecutionState(LAZARUS_INVALID_DIMENSIONS);
+    };
     
     this->meshOut = {};
     this->meshData = {};
@@ -116,27 +154,27 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
 
         Otherwise it's a generic sprite.
     ============================================================= */
-    if(uvXL || uvXR || uvY > 0.0 )
+    if(uvXL || uvXR || uvYU > 0.0f)
     {
     /* ======================================================================================================
             Vertex positions,           Diffuse colors,             Normals,                    UVs 
     ========================================================================================================= */
         meshData.attributes = {                                                                                          
-            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, 0.0f, 0.0f),
-            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, 0.0f, 0.0f), 
-            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, uvY, 0.0f),
+            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, uvYD, 0.0f),
+            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, uvYD, 0.0f), 
+            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, uvYU, 0.0f),
 
-            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXR, uvY, 0.0f),
-            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXR, 0.0f, 0.0f),
-            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXL, uvY, 0.0f),
+            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXR, uvYU, 0.0f),
+            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXR, uvYD, 0.0f),
+            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXL, uvYU, 0.0f),
 
-            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, uvY, 0.0f),
-            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, 0.0f, 0.0f),
-            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, uvY, 0.0f),
+            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, uvYU, 0.0f),
+            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, uvYD, 0.0f),
+            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, uvYU, 0.0f),
 
-            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXL, uvY, 0.0f),
-            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXR, 0.0f, 0.0f), 
-            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXL, 0.0f, 0.0f),
+            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXL, uvYU, 0.0f),
+            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXR, uvYD, 0.0f), 
+            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXL, uvYD, 0.0f),
         };
     }
     else
@@ -285,11 +323,21 @@ void MeshManager::initialiseMesh()
     {
         glGenBuffers(1, &meshData.EBO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshData.EBO);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, meshData.indexes.size() * sizeof(unsigned int), &meshData.indexes[0], GL_STATIC_DRAW);
+        glBufferData(
+            GL_ELEMENT_ARRAY_BUFFER, 
+            meshData.indexes.size() * sizeof(uint32_t), 
+            &meshData.indexes[0], 
+            GL_STATIC_DRAW
+        );
 
         glGenBuffers(1, &meshData.VBO);
         glBindBuffer(GL_ARRAY_BUFFER, meshData.VBO);
-        glBufferData(GL_ARRAY_BUFFER, meshData.attributes.size() * sizeof(vec3), &meshData.attributes[0], GL_STATIC_DRAW);
+        glBufferData(
+            GL_ARRAY_BUFFER, 
+            meshData.attributes.size() * sizeof(vec3), 
+            &meshData.attributes[0], 
+            GL_STATIC_DRAW
+        );
 
         //  Vertex Positions
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)0);
@@ -311,7 +359,7 @@ void MeshManager::initialiseMesh()
 
         this->dataStore.push_back(meshData);
         meshOut.id = dataStore.size();
-        meshData.id = meshOut.id;
+        dataStore[dataStore.size() - 1].id = meshOut.id;
 
         /* ===============================================================
             Reload the entire texture stack / array if the mesh isn't
@@ -335,7 +383,21 @@ void MeshManager::initialiseMesh()
 
 void MeshManager::prepareTextures()
 {
-    this->extendTextureStack(globals.getMaxImageWidth(), globals.getMaxImageHeight(), this->layerCount);
+    uint32_t width = 0;
+    uint32_t height = 0;
+
+    if(globals.getEnforceImageSanity())
+    {
+        width = globals.getMaxImageWidth();
+        height = globals.getMaxImageHeight();
+    }
+    else
+    {
+        width = maxTexWidth;
+        height = maxTexHeight;
+    }
+
+    this->extendTextureStack(width, height, this->layerCount);
 
     for(auto i: dataStore)
     {
@@ -366,6 +428,8 @@ void MeshManager::clearMeshStorage()
 	this->errorCode = GL_NO_ERROR;
 
     this->layerCount = 0;
+
+    return;
 };
 
 void MeshManager::makeSelectable(bool selectable)
@@ -391,6 +455,8 @@ void MeshManager::makeSelectable(bool selectable)
         meshOut.isClickable = false;
         dataStore[meshOut.id - 1].stencilBufferId = 0;
     };
+
+    return;
 };
 
 void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
@@ -398,20 +464,27 @@ void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
     MeshManager::MeshData &data = dataStore[meshIn.id - 1];
 
     /* ===================================================
-        Fill the stencil buffer with 0's. Wherever an 
-        entity is occupying screenspace, fill the buffer
-        with mesh uuid.
+        Fill the stencil buffer with 0's. 
+        Wherever an entity is occupying screenspace, fill 
+        the buffercwith the mesh's selection.
     ====================================================== */
     if(globals.getManageStencilBuffer())
     {
         glStencilMask(0xFF);
         glClearStencil(0x00);
         glStencilFunc(GL_ALWAYS, data.stencilBufferId, 0xFF);
+
+        this->checkErrors(__FILE__, __LINE__);
     }
 
     if(this->modelMatrixUniformLocation >= 0)
     {
-        glUniformMatrix4fv(this->modelMatrixUniformLocation, 1, GL_FALSE, &meshIn.modelMatrix[0][0]);
+        glUniformMatrix4fv(
+            this->modelMatrixUniformLocation, 
+            1, 
+            GL_FALSE, 
+            &meshIn.modelMatrix[0][0]
+        );
         glUniform1i(this->is3DUniformLocation, meshIn.is3D);
         glUniform1i(this->isGlyphUniformLocation, meshIn.isGlyph);
         glUniform1i(this->isSkyBoxUniformLocation, meshIn.isSkybox);
@@ -453,7 +526,6 @@ void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
         glBindTexture(GL_TEXTURE_2D_ARRAY, data.textureId);
     };
 
-    // glDrawArrays(GL_TRIANGLES, 0, data.attributes.size());
     glDrawElements(GL_TRIANGLES, data.indexes.size(), GL_UNSIGNED_INT, nullptr);
 
     this->checkErrors(__FILE__, __LINE__);
@@ -519,7 +591,7 @@ void MeshManager::resolveFilepaths(string texPath, string mtlPath, string objPat
             meshData.textureUnit = GL_TEXTURE2;
             meshData.textureId = this->textureStack;
             meshData.textureLayer = this->layerCount;
-            meshData.textureData = finder->readFromImage(meshOut.textureFilepath);
+            meshData.textureData = finder->loadImage(meshOut.textureFilepath.c_str());
             break;
     };
 
@@ -537,10 +609,19 @@ void MeshManager::setInherentProperties()
     meshOut.numOfVertices = meshData.attributes.size() / 4;
     meshOut.numOfFaces = (meshOut.numOfVertices) / 3;
 
+    /* =============================================================
+        In the case that image sanitisation is not enabled, we must
+        track which image in the textureStack is the largest.
+        Would be nice if this whole business of size checking could
+        be done elsewhere.
+    ================================================================ */
+    this->maxTexWidth = std::max(maxTexWidth, meshData.textureData.width);
+    this->maxTexHeight = std::max(maxTexHeight, meshData.textureData.height);
+
    return;
 }
 
-void MeshManager::checkErrors(const char *file, int line)
+void MeshManager::checkErrors(const char *file, uint32_t line)
 {
     this->errorCode = glGetError();
     
@@ -574,25 +655,19 @@ MeshLoader::MeshLoader()
 	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 	this->materialIdentifierIndex	=	0;
 	this->triangleCount				=	0;
+    this->imageLoader = nullptr;
+
+    this->tempVertexPositions = {};
+    this->tempNormals = {};
+    this->tempUvs = {};
 };
 
-bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<unsigned int> &outIndexes, const char* meshPath, const char* materialPath) 
+bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, const char* meshPath, const char* materialPath) 
 {
-    this->coordinates.clear();
-    this->vertexIndices.clear();
-    this->normalIndices.clear();
-    this->uvIndices.clear();
-    this->attributeIndexes.clear();
-    this->materialBuffer.clear();
-    this->materialData.clear();
-	//  Temps are probably no longer needed
-    this->tempVertexPositions.clear();
-    this->tempNormals.clear();
-    this->tempUvs.clear();
-    this->tempDiffuse.clear();
-	
-    this->materialIdentifierIndex = 0;
-    this->triangleCount = 0;
+    //  TODO:
+    //  Make MaterialLoader class part of this, its kind of random on it's own
+
+    this->resetMembers();
 
     file.open(meshPath);
 
@@ -603,100 +678,117 @@ bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &ou
         return false;
     }
 
+    uint32_t positionCount = 0;
+    uint32_t uvCount = 0;
+    uint32_t normalCount = 0;
+    
     while( file.getline(currentLine, 256) )
     {
         switch (currentLine[0])
         {
-        case 'v':
-            /* =============================================
-                v = Vertex Position Coordinates (location)
-            ================================================ */
-            if ( currentLine[1] == ' ' )
-            {
-                coordinates = splitTokensFromLine(currentLine, ' ');
-
-                this->vertex.x = stof(coordinates[1]);
-                this->vertex.y = stof(coordinates[2]);
-                this->vertex.z = stof(coordinates[3]);
-
-                this->tempVertexPositions.push_back(this->vertex);
-            } 
-            /* =============================================
-                vt = Vertex Texture Coordinates (UV / ST)
-            ================================================ */
-            else if ( currentLine[1] == 't' )
-            {
-                coordinates = splitTokensFromLine(currentLine, ' ');
-
-                this->uv.x = stof(coordinates[1]);
-                this->uv.y = stof(coordinates[2]);
-
-                this->tempUvs.push_back(this->uv);
-            }
-            /* ==============================================
-                vn = Vertex Normal coordinates (direction)
-            ================================================= */
-            else if ( currentLine[1] == 'n' )
-            {
-                coordinates = splitTokensFromLine(currentLine, ' ');
-
-                this->normal.x = stof(coordinates[1]);
-                this->normal.y = stof(coordinates[2]);
-                this->normal.z = stof(coordinates[3]);
-
-                this->tempNormals.push_back(this->normal);
-            }
-            break;
-        /* ==============================================
-            f = Face
-        ================================================= */
-        case 'f':
-            this->triangleCount += 1;
-
-            coordinates = splitTokensFromLine(currentLine, ' ');
-
-            for(auto i: coordinates) 
-            {
-                stringstream ssJ(i);
-                string tokenJ;
-
-                /* ============================================
-                    Unlike the other identifiers on the current
-                    line which are folliowed by xyz coordinates; 
-                    values following a face identifier contain 
-                    the indexes describing which v, vt and vn
-                    lines define the properties of *this* face.
-
-                    Note / TODO:
-                    Some editors deliminate face data with a 
-                    dash character '-', others use whitespace
-                    ' '. Blender uses a forward-slash '/'.
-                =============================================== */
-                while(getline(ssJ, tokenJ, '/')) 
+            case 'v':
+                /* =============================================
+                    v = Vertex Position Coordinates (location)
+                ================================================ */
+                if ( currentLine[1] == ' ' )
                 {
-                    if (tokenJ != "f") 
-                    {
-                        attributeIndexes.push_back(tokenJ);
-                    }
+                    wavefrontCoordinates = splitTokensFromLine(currentLine, ' ');
+
+                    this->vertex.x = stof(wavefrontCoordinates[1]);
+                    this->vertex.y = stof(wavefrontCoordinates[2]);
+                    this->vertex.z = stof(wavefrontCoordinates[3]);
+
+                    this->tempVertexPositions.insert(std::pair(positionCount, this->vertex));
+                    positionCount += 1;
+                } 
+                /* =============================================
+                    vt = Vertex Texture Coordinates (UV / ST)
+                ================================================ */
+                else if ( currentLine[1] == 't' )
+                {
+                    wavefrontCoordinates = splitTokensFromLine(currentLine, ' ');
+
+                    /* =========================================
+                        uv is extended from its generic xy components
+                        to include a z value here to meet the expected
+                        stride range for attributes in the vertex buffer.
+                
+                        i.e: (4 * sizeof(vec3)) = 12
+
+                        Once in the shaders it is disregarded. 
+                    ============================================ */
+                    this->uv.x = stof(wavefrontCoordinates[1]);
+                    this->uv.y = stof(wavefrontCoordinates[2]);
+                    this->uv.z = 0.0f;
+
+                    this->tempUvs.insert(std::pair(uvCount, this->uv));
+                    uvCount += 1;
                 }
-            }            
+                /* ==============================================
+                    vn = Vertex Normal coordinates (direction)
+                ================================================= */
+                else if ( currentLine[1] == 'n' )
+                {
+                    wavefrontCoordinates = splitTokensFromLine(currentLine, ' ');
 
-            this->constructTriangle();
+                    this->normal.x = stof(wavefrontCoordinates[1]);
+                    this->normal.y = stof(wavefrontCoordinates[2]);
+                    this->normal.z = stof(wavefrontCoordinates[3]);
 
-            break;
-        /* ===============================================
-            usemtl = Use material identifier
-        ================================================== */
-        case 'u':
-            this->materialData = {materialIdentifierIndex, triangleCount};
-			this->materialBuffer.push_back(this->materialData);
-			
-            this->materialIdentifierIndex += 1;
-            this->triangleCount = 0;
-            break;
+                    this->tempNormals.insert(std::pair(normalCount, this->normal));
+                    normalCount += 1;
+                }
+                break;
+            /* ==============================================
+                f = Face
+            ================================================= */
+            case 'f':
+                this->triangleCount += 1;
 
-        default:
-            break;
+                wavefrontCoordinates = splitTokensFromLine(currentLine, ' ');
+
+                for(auto i: wavefrontCoordinates) 
+                {
+                    stringstream ssJ(i);
+                    string tokenJ;
+
+                    /* ============================================
+                        Unlike the other identifiers on the current
+                        line which are folliowed by xyz coordinates; 
+                        values following a face identifier contain 
+                        the indexes describing which v, vt and vn
+                        lines define the properties of *this* face.:
+
+                        Note / TODO:
+                        Some editors deliminate face data with a 
+                        dash character '-', others use whitespace
+                        ' '. Blender uses a forward-slash '/'.
+                    =============================================== */
+                    while(getline(ssJ, tokenJ, '/')) 
+                    {
+                        if (tokenJ != "f") 
+                        {
+                            attributeIndexes.push_back(tokenJ);
+                        }
+                    }
+                }            
+
+                this->constructTriangle();
+
+                break;
+            /* ===============================================
+                usemtl = Use material identifier
+            ================================================== */
+            case 'u':
+                this->materialData = {materialIdentifierIndex, triangleCount};
+		    	this->materialBuffer.push_back(this->materialData);
+            
+                this->materialIdentifierIndex += 1;
+                this->triangleCount = 0;
+                break;
+
+            default:
+                break;
         }
     }
 
@@ -712,6 +804,596 @@ bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &ou
     this->constructIndexBuffer(outAttributes, outIndexes, outDiffuse, this->vertexIndices.size());
 
     return true;
+};
+
+bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, FileLoader::Image &outImage, const char* meshPath)
+{
+    //  TODO:
+    //  Consider a threading implentation to speed up loads and not block the main-thread/renderer
+    //  Get the size of this function down, too many lines... (-_-*)
+    //  Extract animation data
+
+    this->resetMembers();
+
+    std::string PRIMITIVES = "\"primitives\":[";
+    std::string MATERIALS = "\"materials\":[";
+    std::string MATERIALID = "\"material\":";
+    std::string TEXTURES = "\"textures\":[";
+    std::string TEXTUREID = "\"baseColorTexture\":";
+    std::string DIFFUSE = "\"baseColorFactor\":";
+    std::string INDEX = "\"index\":";
+    std::string ACCESSORS = "\"accessors\":[";
+    std::string ATTRIBUTES = "\"attributes\":";
+    std::string INDICES = "\"indices\":";
+    std::string SAMPLERID = "\"sampler\":";
+    std::string IMAGES = "\"images\":[";
+    std::string IMAGEID = "\"source\":";
+    std::string BUFFERVIEW = "\"bufferViews\":[";
+    std::string BUFFERVIEWID = "\"bufferView\":";
+    std::string BUFFERS = "\"buffers\":[{";
+    std::string BUFFERID = "\"buffer\":";
+    std::string COUNT = "\"count\":";
+    std::string COMPONENTTYPE = "\"componentType\":";
+    std::string BYTEOFFSET = "\"byteOffset\":";
+    std::string BYTELENGTH = "\"byteLength\":";
+    std::string BYTESTRIDE = "\"byteStride\":";
+    
+    this->loadGlbChunks(meshPath);
+
+    std::vector<std::string> propertyIdentifiers = {ACCESSORS,PRIMITIVES,MATERIALS,TEXTURES,IMAGES,BUFFERVIEW,BUFFERS};
+    std::vector<std::string> propertyStrings = {};
+    std::vector<uint32_t> propertyIndexes = {};
+
+    /* ====================================================
+        Read top-level glb json properties, find their
+        locations and then remove those that aren't present.
+    ======================================================= */
+    for(size_t i = 0; i < propertyIdentifiers.size(); i++)
+    {
+        std::string property = propertyIdentifiers[i];   
+        int32_t propertyLocation = this->jsonData.find(property);
+
+        if(propertyLocation > 0)
+        {
+            propertyIndexes.push_back(propertyLocation);
+        };
+    };
+    /* ========================================================
+        Sort in order of appearance and split to avoid 
+        duplicate / red-herring identifiers. 
+        E.g. "buffer" vs "bufferView" vs "bufferViews"
+    =========================================================== */
+    std::sort(propertyIndexes.begin(), propertyIndexes.end());
+
+    for(size_t i = 0; i < propertyIndexes.size(); i++)
+    {
+        uint32_t start = propertyIndexes[i];
+        uint32_t end = propertyIndexes[i + 1];
+
+        std::string json = (i + 1) >= propertyIndexes.size() 
+        ? this->jsonData.substr(start) 
+        : this->jsonData.substr(start, (end - start));
+        
+        propertyStrings.push_back(json);
+    };
+
+    /* =====================================================
+        Extract variables required for reading the next 
+        chunk from the json contents between each 
+        propertyIndex.
+    ======================================================== */
+    for(size_t i = 0; i < propertyStrings.size(); i++)
+    {
+        std::string json = propertyStrings[i];
+
+        if(json.find(MATERIALS) == 0)
+        {
+            /* ==================================================
+                Check whether the mesh uses an image texture or 
+                is diffuse-colored.
+            ===================================================== */
+            int32_t diffuse = json.find(DIFFUSE);
+            int32_t textureIndex = json.find(TEXTUREID);
+            if(diffuse > 0)
+            {
+                std::vector<std::string> colors = extractContainedContents(json, DIFFUSE.append("["), "]");
+                for(size_t j = 0; j < colors.size(); j++)
+                {
+                    std::vector<std::string> color = this->splitTokensFromLine(colors[j].c_str(), ',');
+                    glbMaterialData colorMaterial = {};
+                    colorMaterial.diffuse = {std::stof(color[0]), std::stof(color[1]), std::stof(color[2])};
+                    colorMaterial.textureIndex = -1;
+                    materials.push_back(colorMaterial);
+                };
+
+            }
+            else if(textureIndex > 0)
+            {
+                /* =============================================
+                    Identify texture index.
+                ================================================ */
+                std::string texIdxIdentifier = std::string(INDEX);
+                int32_t id = json.find(texIdxIdentifier);
+                std::string tex = json.substr(id + texIdxIdentifier.size());
+                
+                int32_t objEnd = tex.find("}");
+                std::string objContents = tex.substr(0, objEnd);
+            
+                glbMaterialData texturedMaterial = {};
+                texturedMaterial.diffuse = glm::vec3(-1.0f, -1.0f, -1.0f);
+                texturedMaterial.textureIndex = std::stoi(objContents);
+                materials.push_back(texturedMaterial);
+            }
+            else
+            {
+                globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+            };
+        }
+        else if(json.find(PRIMITIVES) == 0)
+        {
+            std::string meshData = json;
+            std::vector<std::string> attributes = extractContainedContents(meshData, ATTRIBUTES.append("{"), "}");
+            for(size_t i = 0; i < attributes.size(); i++)
+            {           
+                glbMeshData mesh = {};
+                std::vector<std::string> attributeProperties = splitTokensFromLine(attributes[i].c_str(), ',');
+                /* ========================================================
+                    Mark uvAccessor as not-present by default.
+                =========================================================== */
+                mesh.uvAccessor = -1;
+                for(size_t j = 0; j < attributeProperties.size(); j++)
+                {
+                    std::string property = attributeProperties[j];
+                    int32_t index = property.find(":");
+                    if(index < 0)
+                    {
+                        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+                    };
+
+
+                    int32_t value = std::stoi(property.substr(index + 1));
+                    switch (property[1])
+                    {
+                        //  POSITION
+                        case 'P':
+                            mesh.positionAccessor = value;
+                            break;
+                        //  NORMAL
+                        case 'N':
+                            mesh.normalsAccessor = value;
+                            break;
+                        //  TEXCOORD
+                        case 'T':
+                            mesh.uvAccessor = value;
+                            break;
+
+                        default:
+                            break;
+                    };
+                };
+
+                mesh.indicesAccessor = this->extractAttributeIndex(meshData, INDICES);
+                mesh.materialIndex = this->extractAttributeIndex(meshData, MATERIALID);
+                meshes.push_back(mesh);
+
+                std::string nextObject = "},{";
+                int32_t location = meshData.find(nextObject);
+                meshData = meshData.substr(location + nextObject.size());
+            }
+        }
+        else if(json.find(TEXTURES) == 0)
+        {
+            glbTextureData texture = {};
+
+            texture.samplerIndex = this->extractAttributeIndex(json, SAMPLERID);
+            texture.imageIndex = this->extractAttributeIndex(json, IMAGEID);
+            textures.push_back(texture);
+        }
+        else if(json.find(IMAGES) == 0)
+        {
+            glbImageData image = {}; 
+
+            image.bufferViewIndex = this->extractAttributeIndex(json, BUFFERVIEWID);
+            images.push_back(image);
+        }
+        else if(json.find(ACCESSORS) == 0)
+        {
+            std::vector<std::string> data = this->extractContainedContents(json, "{", "}");
+
+            std::vector<std::string> types;
+            types = this->extractContainedContents(json, "\"type\":\"", ",");
+
+            for(size_t j = 0; j < data.size(); j++)
+            {
+                std::string type = types[j].substr(0, types[j].find("\""));
+                std::string accessorData = data[j];
+
+                glbAccessorData accessor = {};
+                accessor.bufferViewIndex = this->extractAttributeIndex(accessorData, BUFFERVIEWID);
+                accessor.componentType = this->extractAttributeIndex(accessorData, COMPONENTTYPE);
+                accessor.byteOffset = this->extractAttributeIndex(accessorData, BYTEOFFSET);
+                accessor.count = this->extractAttributeIndex(accessorData, COUNT);
+                accessor.type = type;
+
+                accessors.push_back(accessor);
+            };
+
+        }
+        else if(json.find(BUFFERVIEW) == 0)
+        {
+            /* ============================================================================
+                Note that the bufferView's 'target' property (responsible for describing 
+                what kind of buffer object this data should be written to) is skipped. 
+                
+                This is because we already know that an accessor with componentType 5123
+                (GL_UNSIGNED_SHORT) or 5124 (GL_UNSIGNED_INT) will be written to a buffer of 
+                type GL_ELEMENT_ARRAY_BUFFER. Anything other than that should be of 
+                componentType 5126 (GL_FLOAT), which will be written to GL_ARRAY_BUFFER. If 
+                it isn't then the mesh is not supported.
+            =============================================================================== */
+            std::vector<std::string> data = this->extractContainedContents(json, "{", "}");
+            
+            for(size_t j = 0; j < data.size(); j++)
+            {
+                std::string bvData = data[j];
+
+                glbBufferViewData bufferView = {};
+
+                bufferView.bufferIndex  = this->extractAttributeIndex(bvData, BUFFERID);
+                bufferView.byteOffset   = this->extractAttributeIndex(bvData, BYTEOFFSET);
+                bufferView.byteLength   = this->extractAttributeIndex(bvData, BYTELENGTH);
+                bufferView.byteStride   = this->extractAttributeIndex(bvData, BYTESTRIDE);
+
+                bufferViews.push_back(bufferView);
+            };
+        }
+        else if(json.find(BUFFERS) == 0)
+        {
+            std::vector<std::string> data = this->extractContainedContents(json, "{", "}");
+            uint32_t offset = 0;
+            for(size_t j = 0; j < data.size(); j++)
+            {
+                std::string bufferData = data[j];
+
+                glbBufferData buffer = {};
+                buffer.offset = offset;
+                buffer.stride = this->extractAttributeIndex(bufferData, BYTELENGTH);
+                offset += buffer.stride;
+
+                buffers.push_back(buffer);
+            };
+        };
+    };
+
+    uint32_t indicesCount = 0;
+    /* ===========================================
+        Load values from this->binaryData
+        ...
+    ============================================== */
+    for(size_t i = 0; i < meshes.size(); i++)
+    {
+        std::vector<glm::vec3> vertexPositions;
+        std::vector<glm::vec3> vertexNormals;
+        std::vector<glm::vec3> vertexUvs;
+        
+        glbMeshData mesh = meshes[i];
+
+        /* ==================================================================
+            Load face data / primitives. Unlike wavefront, this format can
+            support n'gons due to it's serialisation of indices per-face.
+            Note Uvs may not be present.
+        ===================================================================== */
+
+        glbAccessorData posiitonAccessor = accessors[mesh.positionAccessor];
+        glbAccessorData normalAccessor = accessors[mesh.normalsAccessor];
+
+        if(mesh.uvAccessor >= 0)
+        {
+            glbAccessorData uvAccessor = accessors[mesh.uvAccessor];
+            this->populateBufferFromAccessor(uvAccessor, vertexUvs);
+        };
+        this->populateBufferFromAccessor(posiitonAccessor, vertexPositions);
+        this->populateBufferFromAccessor(normalAccessor, vertexNormals);
+        
+        /* =========================================================
+            Load materials. Load the image from memory if the mesh
+            uses an image texture. If an image is loaded, the 
+            diffuse portion of the attributes vector is zero'd.
+        ============================================================ */
+
+        glbMaterialData material = materials[mesh.materialIndex];
+        
+        if(material.textureIndex >= 0)
+        {
+            this->imageLoader = std::make_unique<FileLoader>();
+
+            glbTextureData texture = textures[material.textureIndex];
+            glbImageData image = images[texture.imageIndex];
+
+            glbBufferViewData bufferView = bufferViews[image.bufferViewIndex];
+
+            /* ==============================================================
+                Allocate the image buffer on the heap. Even when the texture 
+                image is compressed, it's raw size can be in the MBs and in
+                the worst case can cause stack overflows (and has).
+            ================================================================== */
+
+            unsigned char *buffer = new unsigned char[bufferView.byteLength];
+            std::memset(buffer, 0, sizeof(unsigned char) * bufferView.byteLength);
+            std::memcpy(buffer, &this->binaryData[bufferView.byteOffset], sizeof(unsigned char) * bufferView.byteLength);
+
+            outImage = imageLoader->loadImage(nullptr, buffer, bufferView.byteLength);
+            delete[] buffer;
+        };
+        
+        /* =================================================
+            Load indices data and perform lookups.
+        ==================================================== */
+
+        glbAccessorData indicesAccessor = accessors[mesh.indicesAccessor];
+        glbBufferViewData indicesBufferView = bufferViews[indicesAccessor.bufferViewIndex];
+        
+        indicesCount += indicesAccessor.count;
+
+        uint32_t indicesOffset = indicesAccessor.byteOffset != -1 
+        ? indicesBufferView.byteOffset + indicesAccessor.byteOffset
+        : indicesBufferView.byteOffset;
+
+        /* ===============================================================
+            Ensure that the correct size is being used as indices values may 
+            be expressed as either 16 OR 32 bit. 
+        ================================================================== */
+        std::vector<uint16_t> indicesShort(indicesAccessor.count);
+        std::vector<uint32_t> indices(indicesAccessor.count);
+        
+        indicesAccessor.componentType == GL_UNSIGNED_SHORT
+        ? std::memcpy(indicesShort.data(), &this->binaryData[indicesOffset], sizeof(uint16_t) * indicesAccessor.count)
+        : std::memcpy(indices.data(), &this->binaryData[indicesOffset], sizeof(uint32_t) * indicesAccessor.count);
+        
+        /* ========================================================================================
+            The indices / SCALAR buffer-values contained inside  of the glb file don't actually 
+            correspond directly to the indices used to traverse the VBO. Instead; these values 
+            pertain to the indices of the attributes for how a single face / primitive is  
+            constructed. I.e. if the mesh is a cube, EVERY value will be between 0 and 3 laid out in 
+            chunks of 6 at a time (four points shared between two triangles = 1 face).
+
+            To get a picture of this; export a cube as glb from some modeling software and load it. 
+            Print the contents of indices[j] here and compare them with the hardcoded index buffer 
+            contents of the 'MeshManager::createCube' function.
+
+            To get an actual index buffer, the verts must be duplicated one face at a time using 
+            these values, once that's done 'constructIndexBuffer' can be called to deduplicate them 
+            again and do it properly... sigh.
+        ============================================================================================= */
+
+        for(size_t j = 0; j < indicesAccessor.count; j++)
+        {
+            uint32_t index = indicesAccessor.componentType == GL_UNSIGNED_SHORT
+            ? indicesShort[j]
+            : indices[j];
+
+            uint32_t serial = (indicesCount - indicesAccessor.count) + j;
+
+            tempVertexPositions.emplace(serial, vertexPositions[index]);
+            tempNormals.emplace(serial, vertexNormals[index]);
+
+            /* ===================================================================
+                mesh.uvAccessor is optional. I.e. it doesn't nessecarily exist. 
+                In the case that it's not present in the json chunk, the VBO will 
+                still need to be populated so push back zeroes.
+            ====================================================================== */
+
+            mesh.uvAccessor >= 0 
+            ? tempUvs.emplace(serial, vertexUvs[index]) 
+            : tempUvs.emplace(serial, glm::vec3(0.0f, 0.0f, 0.0f));
+            
+            vertexIndices.push_back(serial + 1);
+            normalIndices.push_back(serial + 1);
+            uvIndices.push_back(serial + 1);
+
+            outDiffuse.push_back(material.diffuse);
+        };
+    };
+
+    this->constructIndexBuffer(outAttributes, outIndexes, outDiffuse, tempVertexPositions.size());
+
+    return true;
+};
+
+void MeshLoader::populateBufferFromAccessor(glbAccessorData accessor, std::vector<glm::vec3> &buffer)
+{
+    /* ==================================================================
+        Accessor optionally defines an additional byteOffset. Used to
+        define stride in the case that multiple accessors use the same
+        bufferView.
+    ===================================================================== */
+    
+    glbBufferViewData bufferView = bufferViews[accessor.bufferViewIndex];
+
+    if(accessor.type == "VEC3")
+    {
+        std::vector<glm::vec3> vertexData;
+
+        this->populateVectorFromMemory<glm::vec3>(accessor, bufferView, vertexData);
+        std::copy(vertexData.begin(), vertexData.end(), std::back_inserter(buffer));
+    }
+    else if(accessor.type == "VEC2")
+    {
+        std::vector<glm::vec2> vertexData;
+
+        this->populateVectorFromMemory<glm::vec2>(accessor, bufferView, vertexData);
+    
+        for(size_t i = 0; i < vertexData.size(); i++)
+        {
+            glm::vec3 vertexAttribute = {vertexData[i].x, vertexData[i].y, 0.0f};
+            buffer.push_back(vertexAttribute);
+        };
+    };
+};
+
+template<typename T> void MeshLoader::populateVectorFromMemory(glbAccessorData accessor, glbBufferViewData bufferView, std::vector<T> &vertexData)
+{
+    /* =====================================================
+        The bufferView.byteOffset defines the stride up-to 
+        the beginning of the vertex attributes. An additional 
+        offset wil be defined in the accessor if the data is 
+        interleaved for striding to a specific attribute.
+    ======================================================== */
+
+    uint32_t offset = accessor.byteOffset != -1 
+    ? accessor.byteOffset + bufferView.byteOffset 
+    : bufferView.byteOffset;
+
+    /* ================================================================
+        Note the spec enforces a 4-byte alignment. This means that 
+        usage of sizeof(type) * accessor.count is preferable to 
+        bufferView.byteLength which is merely an indication of the raw
+        size and may be inclusive of padding.
+
+        The reason it's used here is because the buffers contents may
+        be interleaved, i.e. different byte-sizes.
+
+        E.g. 
+        {Pos | Norm | Uv | Indices},{...}
+         ^     ^      ^    ^
+         12    12     8    4 or 2
+    =================================================================== */
+
+    uint32_t bufferPadding = bufferView.byteLength % 4;
+    uint32_t bufferSize = bufferPadding == 0
+    ? bufferView.byteLength
+    : bufferView.byteLength - bufferPadding;
+
+    if(bufferView.byteStride > 0)
+    {
+        for(size_t i = 0; i < (bufferSize / bufferView.byteStride); i++)
+        {
+            T data = {};
+            std::memcpy(&data, &this->binaryData[offset + (i * bufferView.byteStride)], sizeof(T));
+            vertexData.push_back(data);
+        };
+    }
+    else
+    {
+        vertexData.resize(accessor.count);
+        std::memcpy(vertexData.data(), &this->binaryData[offset], sizeof(T) * accessor.count);    
+    }
+}
+
+void MeshLoader::loadGlbChunks(const char *filepath)
+{
+    file.open(filepath, std::ios::in | std::ios::binary);
+
+    if(!file.is_open())
+    {
+        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+
+        return;
+    }
+    else
+    {
+        uint32_t chunkSize = 0;
+
+        /* ========================================================
+            Read first 20 bytes (header + first 8 bytes of chunk_0)
+            to retrieve total size of chunk_0 and to align the 
+            readers cursor to the start of the json chunkData[].
+        =========================================================== */
+
+        std::string headerBuffer;
+        file.read(headerBuffer.data(), sizeof(char) * 20);
+        std::memcpy(&chunkSize, &headerBuffer[12], sizeof(uint32_t));
+        
+        /* =========================================================
+            Read and store JSON chunkData[] up to the beginning of 
+            the next chunk. This data describes how to interpret the
+            bytes from the next chunk.
+        ============================================================ */
+
+        jsonData.resize(chunkSize);
+        file.read(jsonData.data(), chunkSize);
+
+        /* ==========================================================
+            Read first 8 bytes of final chunk and extract the byte
+            length of it's chunkData[] from the first 4. 
+        ============================================================= */        
+
+        std::string binaryChunkDetails;
+        file.read(binaryChunkDetails.data(), sizeof(char) * 8);
+        std::memcpy(&chunkSize, &binaryChunkDetails[0], sizeof(uint32_t));
+        
+        /* =============================================================
+            Read final chunkData[] from final chunk. This data may
+            contain the data of several 'buffers' identifiers, split by
+            buffers.byteLength
+        ================================================================ */
+
+        binaryData.resize(chunkSize);
+        file.read(binaryData.data(), chunkSize);
+        file.close();
+
+        return;
+    }
+}
+
+vector<string> MeshLoader::extractContainedContents(std::string bounds, std::string containerStart, std::string containerEnd)
+{
+    std::vector<std::string> outContents = {};
+    std::string buffer = bounds;
+    bool moreToUnpack = true;
+    int32_t start = 0;
+    int32_t end = 0;
+
+    /* ==============================================
+        Identify target containers and split-out their
+        contents.
+    ================================================= */
+
+    while(moreToUnpack)
+    {
+        start = buffer.find(containerStart);
+        if(start < 0)
+        {
+            moreToUnpack = false;
+            break;
+        };
+        buffer = buffer.substr(start + 1);
+      
+        end = buffer.find(containerEnd);
+
+        std::string arrayContents = buffer.substr(containerStart.size() - 1, end - (containerStart.size() - 2));
+        outContents.push_back(arrayContents);
+    };
+
+    return outContents;
+}
+
+int32_t MeshLoader::extractAttributeIndex(std::string bounds, std::string target)
+{
+    int32_t out = 0;
+    int32_t attributeNameLocation = bounds.find(target);
+    out = attributeNameLocation;
+
+    /* ====================================================
+        Pick out all occurances of an integer value that 
+        appear following the target key / property name.
+    ======================================================= */
+
+    if(attributeNameLocation >= 0)
+    {
+        std::string start = bounds.substr(attributeNameLocation + target.size());
+
+        for(size_t i = 0; i < start.size(); i++)
+        {
+            if(start[i] == ',' || start[i] == '}')
+            {
+                out = std::stoi(start.substr(0, i));
+                break;
+            };
+        };
+    };
+    
+    return out;
 };
 
 vector<string> MeshLoader::splitTokensFromLine(const char *wavefrontData, char delim)
@@ -730,29 +1412,45 @@ vector<string> MeshLoader::splitTokensFromLine(const char *wavefrontData, char d
     return tokenStore;
 }
 
-void MeshLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<unsigned int> &outIndexes, vector<vec3> outDiffuse, int numOfAttributes)
+void MeshLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> outDiffuse, uint32_t numOfAttributes)
 {
-    int count = 0;
+    std::unordered_set<uint64_t> hashes = {};
+    std::map<uint64_t, uint32_t> entries = {};
 
-    for( int i = 0; i < numOfAttributes; i++ )
+    uint32_t count = 0;
+
+    /* ===================================================
+        Construct each of the mesh's vertexes. Lookup 
+        attribute values from temporary buffers.
+    ====================================================== */
+
+    for(size_t i = 0; i < numOfAttributes; i++)
     {
-        unsigned int vertexIndex = vertexIndices[i];
-        unsigned int normalIndex = normalIndices[i];
-        unsigned int uvIndex     = uvIndices[i];
+        /* ===========================================================
+            These lookups are faster as vectors for some reason unlike 
+            the attribute values themselves, which are definitely 
+            faster as maps.
+        ============================================================== */
+        uint32_t vertexIndex = vertexIndices[i];
+        uint32_t normalIndex = normalIndices[i];
+        uint32_t uvIndex     = uvIndices[i];
         
-        /* =========================================
-            uv is extended from its generic xy components
-            to include a z value here to meet the expected
-            stride range for attributes in the vertex buffer.
-            
-            i.e: (4 * sizeof(vec3)) = 12
+        glm::vec3 position          = this->tempVertexPositions.at(vertexIndex - 1);
+        glm::vec3 normalCoordinates = this->tempNormals.at(normalIndex - 1);
+        glm::vec3 uvCoordinates     = this->tempUvs.at(uvIndex - 1);
+        glm::vec3 diffuseColor      = outDiffuse[i];
 
-            Once in the shaders it is disregarded. 
-        ============================================ */
-        vec3 position          = tempVertexPositions[vertexIndex - 1];
-        vec3 diffuseColor      = outDiffuse[i];
-        vec3 normalCoordinates = tempNormals[normalIndex - 1];
-        vec3 uvCoordinates     = vec3(tempUvs[uvIndex - 1].x, tempUvs[uvIndex - 1].y, 0.0f);
+        /* =========================================================
+            https://docs.vulkan.org/tutorial/latest/08_Loading_models.html#_vertex_deduplication:~:text=cppreference.com%20recommends
+
+            Generate a hash value from the vertex attributes.
+        ============================================================ */
+
+        uint64_t positionHash = std::hash<glm::vec3>()(position);
+        uint64_t normalHash = std::hash<glm::vec3>()(normalCoordinates);
+        uint64_t uvHash = std::hash<glm::vec3>()(uvCoordinates);
+
+        uint64_t hash = positionHash ^ ((normalHash << 1) >> 1) ^ (uvHash << 1); 
 
         if(outAttributes.size() == 0)
         {
@@ -762,41 +1460,50 @@ void MeshLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<unsign
             outAttributes.push_back(uvCoordinates);
 
             outIndexes.push_back(count);
+            entries.emplace(hash, count);
         }
         else
         {
-            int beforeSize = outIndexes.size();
+            /* ===================================================
+                Perform deduplication of vertex attributes.
 
-            for(unsigned int j = 0; j < (outAttributes.size() / 4); j++)
-            {
-                vec3 validatedPosition = outAttributes[(j * 4)];
-                vec3 validatedDiffuseColor = outAttributes[(j * 4) + 1];
-                vec3 validatedNormals = outAttributes[(j * 4) + 2];
-                vec3 validatedUvs = outAttributes[(j * 4) + 3];
+                Check for duplicates by attempting to store the 
+                hash in a set (unique values only). If it fails 
+                we know it's already been inserted somewhere.
+            ====================================================== */
+            
+            std::pair<std::unordered_set<uint64_t>::iterator, bool> result = hashes.insert(hash);
 
-                if(
-                    (validatedPosition      == position)          &&
-                    (validatedDiffuseColor  == diffuseColor)      &&
-                    (validatedNormals       == normalCoordinates) && 
-                    (validatedUvs           == uvCoordinates)
-                )
-                {
-                    outIndexes.push_back(j);
-                }
-            };
-
-            int currentSize = outIndexes.size(); 
-
-            if(currentSize == beforeSize)
+            if(result.second)
             {
                 count += 1;
+
+                /* =========================================
+                    Interleave bufferdata in order expected 
+                    by MeshManager::initialiseMesh
+
+                    I.e.
+                    [ Pos | Norm | color | uv ]
+                ============================================ */
+
                 outAttributes.push_back(position);
                 outAttributes.push_back(diffuseColor);
                 outAttributes.push_back(normalCoordinates);
                 outAttributes.push_back(uvCoordinates);
 
                 outIndexes.push_back(count);
-            };
+                entries.emplace(hash, count);
+            }
+            else
+            {
+                /* ===========================================
+                    Identify / retreive the location of a 
+                    duplicate hash value.
+                ============================================== */
+
+                uint32_t location = entries.at(hash);
+                outIndexes.push_back(location);
+            }
         }
     }
 
@@ -806,12 +1513,14 @@ void MeshLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<unsign
 void MeshLoader::constructTriangle()
 {
     /* =======================================================
-        A face should have 3 points, each with 3 
-        different vertex attributes. If the face data contains
-        any more than 9 vertex attribute indexes we know this 
-        mesh hasn't been triangulated and can't be rendered 
-        correctly.
+        The faces of a wavefront mesh will be treated as 
+        primitives. I.e. they should have 3 points, each with 
+        3 different vertex attributes. If the face data 
+        contains any more than 9 vertex attribute indexes we 
+        know this mesh hasn't been triangulated and isn't
+        supported.
     ========================================================== */
+
     if ( this->attributeIndexes.size() !=  9)
     {
         std::cout << RED_TEXT << "ERROR::MESH::MESH_LOADER " << std::endl;
@@ -822,27 +1531,67 @@ void MeshLoader::constructTriangle()
         return;
     }
 
-    this->vertexIndices.push_back(stoi(this->attributeIndexes[0]));
-    this->vertexIndices.push_back(stoi(this->attributeIndexes[3]));
-    this->vertexIndices.push_back(stoi(this->attributeIndexes[6]));
-    this->uvIndices    .push_back(stoi(this->attributeIndexes[1]));
-    this->uvIndices    .push_back(stoi(this->attributeIndexes[4]));
-    this->uvIndices    .push_back(stoi(this->attributeIndexes[7]));
-    this->normalIndices.push_back(stoi(this->attributeIndexes[2]));
-    this->normalIndices.push_back(stoi(this->attributeIndexes[5]));
-    this->normalIndices.push_back(stoi(this->attributeIndexes[8]));
+    this->vertexIndices.push_back(std::stoi(this->attributeIndexes[0]));
+    this->vertexIndices.push_back(std::stoi(this->attributeIndexes[3]));
+    this->vertexIndices.push_back(std::stoi(this->attributeIndexes[6]));
+    this->uvIndices    .push_back(std::stoi(this->attributeIndexes[1]));
+    this->uvIndices    .push_back(std::stoi(this->attributeIndexes[4]));
+    this->uvIndices    .push_back(std::stoi(this->attributeIndexes[7]));
+    this->normalIndices.push_back(std::stoi(this->attributeIndexes[2]));
+    this->normalIndices.push_back(std::stoi(this->attributeIndexes[5]));
+    this->normalIndices.push_back(std::stoi(this->attributeIndexes[8]));
 
     attributeIndexes.clear();
 
     return;
 }
 
+void MeshLoader::resetMembers()
+{
+    /* =============================
+        Glb
+    ================================ */
+
+    this->meshes.clear();
+    this->materials.clear();
+    this->textures.clear();
+    this->images.clear();
+    this->accessors.clear();
+    this->bufferViews.clear();
+    this->buffers.clear();
+    this->jsonData.clear();
+    this->binaryData.clear();
+
+    /* =============================
+        Obj / Mtl
+    ================================ */
+
+    this->wavefrontCoordinates.clear();
+    this->materialBuffer.clear();
+    this->materialData.clear();
+    this->materialIdentifierIndex = 0;
+    this->triangleCount = 0;
+    
+    /* =============================
+        Shared
+    ================================ */
+    
+    this->vertexIndices.clear();
+    this->normalIndices.clear();
+    this->uvIndices.clear();
+    this->attributeIndexes.clear();
+    this->tempVertexPositions.clear();
+    this->tempNormals.clear();
+    this->tempUvs.clear();
+};
+
 MeshLoader::~MeshLoader()
 {
     if( file.is_open() )
     {
         file.close();
-    }
+    };
+
 	std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 };
 
@@ -850,12 +1599,11 @@ MaterialLoader::MaterialLoader()
 {
 	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 	
-	textureLoader = nullptr;
 	diffuseCount = 0;
     texCount = 0;
 };
 
-bool MaterialLoader::loadMaterial(vector<vec3> &out, vector<vector<int>> data ,string materialPath)
+bool MaterialLoader::loadMaterial(vector<vec3> &out, vector<vector<uint32_t>> data ,string materialPath)
 {
     diffuseCount = 0;
     texCount = 0;
@@ -878,8 +1626,8 @@ bool MaterialLoader::loadMaterial(vector<vec3> &out, vector<vector<int>> data ,s
             diffuseCount += 1;
             for(auto i: data)
             {
-            	int index = i[0];
-            	int faceCount = i[1];
+            	uint32_t index = i[0];
+            	uint32_t faceCount = i[1];
             	
 	            if(diffuseCount == index) {
                     string currentString = currentLine;
@@ -892,9 +1640,9 @@ bool MaterialLoader::loadMaterial(vector<vec3> &out, vector<vector<int>> data ,s
                         tokenStore.push_back(token);
                     }
 
-                    diffuse.r = stof(tokenStore[1]);
-                    diffuse.g = stof(tokenStore[2]);
-                    diffuse.b = stof(tokenStore[3]);
+                    diffuse.r = std::stof(tokenStore[1]);
+                    diffuse.g = std::stof(tokenStore[2]);
+                    diffuse.b = std::stof(tokenStore[3]);
                     /* ====================================================
                         Push the current diffuse object into the out
                         out parameter N times.
@@ -902,7 +1650,7 @@ bool MaterialLoader::loadMaterial(vector<vec3> &out, vector<vector<int>> data ,s
                         N = The number of vertices which use this color.
                         (faceCount * 3)
                     ======================================================= */
-    	            for(int j = 0; j < faceCount * 3; j++)
+    	            for(size_t j = 0; j < faceCount * 3; j++)
     	            {
     	                out.push_back(diffuse);
     	            };
@@ -912,15 +1660,18 @@ bool MaterialLoader::loadMaterial(vector<vec3> &out, vector<vector<int>> data ,s
         /* ==========================================
             map_Kd = Image texture
         ============================================= */
-        if( ((currentLine[0] == 'm') && (currentLine[1] == 'a') && (currentLine[2] == 'p')))
+        if(
+            (currentLine[0] == 'm') && 
+            (currentLine[1] == 'a') && 
+            (currentLine[2] == 'p'))
         {
             texCount += 1;
             if( diffuseCount == 0 )
             {
                 for(auto i: data)
                 {
-                    int faceCount = i[1];
-                    for(int j = 0; j < faceCount * 3; j++)
+                    uint32_t faceCount = i[1];
+                    for(size_t j = 0; j < faceCount * 3; j++)
                     {
                         /* ===========================================
                             Negative values passed here are an indicator

@@ -21,6 +21,7 @@ Compile lazarus using the makefile:
 ```
 make
 ```
+*(Note: Use `make optimise` to enable level O3 compiler optimisations. `make debug` will reveal debugging symbols required by `gdb` and `valgrind`.)*
 
 Followed by:
 ```
@@ -160,8 +161,9 @@ xattr -d com.apple.quarantine /usr/local/lib/libfmodL.dylib
 4. Upon initialising the render loop and loading of assets, there is an observable "hump" in performance for about 3-5 seconds. A full scene with lights, camera, meshes etc causes a decrease in the framerate by about 12.5% (60 frames becomes 50).
 5. When running Lazarus on OSX the program recieves an OpenGL 1280 (Invalid enum) error, thrown by `Mesh::initialiseMesh`. Apple stopped maintenance for `OpenGL` long ago in favor of their `Metal` API. \
 The repurcussions of this are that we must now use the `GLFW_OPENGL_CORE_PROFILE` to be granted access the modern OpenGL (shader driven) API. The core profile has some gripes with `GLEW`, whatever the issue between them may be - they currently seem inconsequential to this project.
-6. Texture images used in any scene must all have the same pixel width and height. If not the scene will still render but you can expect to find holes in your texture.
+6. Texture images used in any scene must all have the same pixel width and height. If not the scene *should* still render but you can expect to find holes in your textures.
 7. The xy coordinate system of the orthographic camera created by `Camera::createOrthoCam` has `0.0` mapped to the top left corner of the window, while the perspective camera `Camera::createPerspectiveCam` uses the bottom left.
 8. There is no kerning or centering of TrueType fonts loaded by the `TextManager` class. If you need to render perfectly aligned text it may be better to render it directly to a quad as a texture (See: `Mesh::createQuad`). It could then be rendered along with the rest of the text by loading in an orthographic camera (See: `Camera::createOrthoCam`).
 9. The maximum number of lights permitted in any one scene while using the `LAZARUS_DEFAULT_VERT_SHADER` and/or `LAZARUS_DEFAULT_FRAG_SHADER` is limitted to a maximum size of 150.
 10. The maximum number of entities in any one scene who can be picked or looked up using a pixel with `CameraManager::getPixelOccupant` is limmited to a maximum size of 255.
+11. The gdb loader does not yet support animation.

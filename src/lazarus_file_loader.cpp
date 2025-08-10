@@ -17,9 +17,26 @@
 //                                                                                                      .***,.   . .,/##%###(/.  ...,,.      
 /*  LAZARUS ENGINE */
 
-#include "../include/lazarus_file_reader.h"
+#include "../include/lazarus_file_loader.h"
 
-FileReader::FileReader()
+/* =============================================
+    Note: These definitions must be compiled as
+    source / baked-in for stb libraries to work.
+    I.e. they must be in scope of 1 source file
+    and so can't be linked all over the place.
+================================================ */
+
+#ifndef STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
+	#include <stb_image.h>
+#endif
+
+#ifndef STB_IMAGE_RESIZE_IMPLEMENTATION
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+	#include <stb_image_resize.h>
+#endif
+
+FileLoader::FileLoader()
 {
     std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 	this->imageData = 0;
@@ -31,21 +48,22 @@ FileReader::FileReader()
     this->maxHeight = 0;
 
     this->outImage = {};
-	this->x = 0;
-	this->y = 0;
-	this->n = 0;	
+	this->imageHeight = 0;
+	this->imageHeight = 0;
+	this->channelCount = 0;	
 
-    img = NULL;
+    this->textData = NULL;
+
 };
 
-string FileReader::relativePathToAbsolute(string filename) 
+string FileLoader::relativePathToAbsolute(string filename) 
 {
-    this->filenameString      =   std::filesystem::absolute(filename).string();                                              //  Find the absolute path from root (/) to the mesh asset and convert to std::string
+    this->filenameString = std::filesystem::absolute(filename).string();
 
-    return this->filenameString;                                         //  Return the absolute path to the asset, exit the thread
+    return this->filenameString;
 };
 
-const char *FileReader::readFromText(string filepath) 
+const char *FileLoader::loadText(string filepath) 
 {
     if(std::filesystem::exists(filepath))
     {
@@ -82,24 +100,35 @@ const char *FileReader::readFromText(string filepath)
     };
 };
 
-FileReader::Image FileReader::readFromImage(string filename)
+FileLoader::Image FileLoader::loadImage(const char *filename, const unsigned char *raw, uint32_t size)
 {
     this->imageData = {};
     this->outResize = {};
-
     
-	img = filename.c_str();
-	
-    /* ====================================================
-        Images should be flipped on load due to the fact that 
-        most file formats store the (x: 0.0, y: 0.0) coordinate
-        at the top left (first pixel of first row), while 
-        OpenGL's texture coordinate system stores it as the
-        inverse - i.e. bottom left (first pixel, last row).
-    ======================================================= */
-    stbi_set_flip_vertically_on_load(true);
+    if(raw == NULL)
+    {   
+        /* ====================================================
+            Images should be flipped on load due to the fact that 
+            most file formats store the (x: 0.0, y: 0.0) coordinate
+            at the top left (first pixel of first row), while 
+            OpenGL's texture coordinate system stores it as the
+            inverse - i.e. bottom left (first pixel, last row).
 
-	this->imageData = stbi_load(img, &x, &y, &n, 0);
+            It seems the exception to this rule are glb files
+            (i.e. load_from_memory).
+        ======================================================= */
+        stbi_set_flip_vertically_on_load(true);
+        this->imageData = stbi_load(filename, &imageWidth, &imageHeight, &channelCount, 0);
+    }
+    else
+    {
+        stbi_set_flip_vertically_on_load(false);
+        /* =============================================================
+            If the file has already been opened and read elsewhere in 
+            the program, but has not yet been decoded.
+        ================================================================ */
+        this->imageData = stbi_load_from_memory(const_cast<stbi_uc*>(raw), size, &imageWidth, &imageHeight, &channelCount, 0);
+    }
 
     if(imageData != NULL) 
     {
@@ -107,36 +136,24 @@ FileReader::Image FileReader::readFromImage(string filename)
         this->maxWidth = globals.getMaxImageWidth();
         this->maxHeight = globals.getMaxImageHeight();
 
-        if(enforceResize == true)
-        {
-            if(this->maxWidth <= 0 || this->maxHeight <= 0)
-            {
-                std::cerr << RED_TEXT << "LAZARUS::ERROR::FILEREADER::IMAGE_LOADER " << "Width and height must both have values higher than zero." << RESET_TEXT << std::endl;    
-                globals.setExecutionState(LAZARUS_IMAGE_RESIZE_FAILURE);
+        if(enforceResize == true && this->maxWidth > 0 && this->maxHeight > 0)
+        {   
+            /* ================================================= 
+                Evil solution (the correct way):
+            
+                The return value of stbir_resize_uint8, unlike 
+                stbi_load is reserved for error codes. This means 
+                that to pass data into lazarus' tightly-packed byte 
+                array (unsigned char *) it has to do so as a side-
+                effect. To do so the memory has to be allocated 
+                manually so that we can pass stbir a pointer to the 
+                actual byte array.
+            
+                See: https://stackoverflow.com/a/65873156/23636614
+            ==================================================== */
+            outResize = (unsigned char *) malloc(this->maxWidth * this->maxHeight * channelCount);
 
-                outImage.pixelData = NULL;
-                outImage.height = 0;
-                outImage.width = 0;
-
-                return outImage;
-            }
-
-        /* ================================================= 
-            Evil solution (the correct way):
-
-            The return value of stbir_resize_uint8, unlike 
-            stbi_load is reserved for error codes. This means 
-            that to pass data into lazarus' tightly-packed byte 
-            array (unsigned char *) it has to do so as a side-
-            effect. To do so the memory has to be allocated 
-            manually so that we can pass stbir a pointer to the 
-            actual byte array pointer.
-
-            See: https://stackoverflow.com/a/65873156/23636614
-        ==================================================== */
-            outResize = (unsigned char *) malloc(this->maxWidth * this->maxHeight * n);
-
-            resizeStatus = stbir_resize_uint8(imageData, x, y, 0, outResize, this->maxWidth, this->maxHeight, 0, n);
+            resizeStatus = stbir_resize_uint8(this->imageData, imageWidth, imageHeight, 0, outResize, this->maxWidth, this->maxHeight, 0, channelCount);
 
             if(resizeStatus == 1)
             {
@@ -146,20 +163,20 @@ FileReader::Image FileReader::readFromImage(string filename)
             }
             else 
             {
-                outImage.pixelData = imageData;
-                outImage.height = y;
-                outImage.width = x;
+                outImage.pixelData = this->imageData;
+                outImage.height = imageHeight;
+                outImage.width = imageWidth;
 
-                std::cerr << RED_TEXT << "LAZARUS::ERROR::FILEREADER::IMAGE_LOADER " << LAZARUS_IMAGE_RESIZE_FAILURE << RESET_TEXT << std::endl;    
+                std::cerr << RED_TEXT << "LAZARUS::ERROR::FileLoader::IMAGE_LOADER " << LAZARUS_IMAGE_RESIZE_FAILURE << RESET_TEXT << std::endl;    
                 globals.setExecutionState(LAZARUS_IMAGE_RESIZE_FAILURE);
             }
 
         }
         else
         {
-            outImage.pixelData = imageData;
-            outImage.height = y;
-            outImage.width = x;
+            outImage.pixelData = this->imageData;
+            outImage.height = imageHeight;
+            outImage.width = imageWidth;
         }
     }
 	else
@@ -168,14 +185,14 @@ FileReader::Image FileReader::readFromImage(string filename)
         outImage.height = 0;
         outImage.width = 0;
 
-		std::cerr << RED_TEXT << "LAZARUS::ERROR::FILEREADER::IMAGE_LOADER " << stbi_failure_reason() << RESET_TEXT << std::endl;
+		std::cerr << RED_TEXT << "LAZARUS::ERROR::FileLoader::IMAGE_LOADER " << stbi_failure_reason() << RESET_TEXT << std::endl;
         globals.setExecutionState(LAZARUS_IMAGE_LOAD_FAILURE);
 	};
 	
 	return outImage;
 };
 
-FileReader::~FileReader()
+FileLoader::~FileLoader()
 {
     std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 	stbi_image_free(this->imageData);

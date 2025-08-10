@@ -29,7 +29,7 @@
 #include <string>
 
 #include "lazarus_texture_loader.h"
-#include "lazarus_file_reader.h"
+#include "lazarus_file_loader.h"
 #include "lazarus_mesh.h"
 #include "lazarus_camera.h"
 
@@ -44,7 +44,7 @@ class WorldFX : private MeshManager
         struct SkyBox
         {
             std::vector<std::string> paths;
-            std::vector<FileReader::Image> cubeMap;
+            std::vector<FileLoader::Image> cubeMap;
 
             MeshManager::Mesh cube;
         };
@@ -101,9 +101,9 @@ class WorldFX : private MeshManager
         SkyBox skyBoxOut;
         Fog fogOut;
         GlobalsManager globals;
-        std::unique_ptr<FileReader> imageLoader;
+        std::unique_ptr<FileLoader> imageLoader;
 
-        int status;
+        int32_t status;
 };
 
 #endif

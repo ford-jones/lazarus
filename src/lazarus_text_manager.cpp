@@ -49,9 +49,9 @@ void FontLoader::loaderInit()
     }
 };
 
-int FontLoader::loadTrueTypeFont(std::string filepath, int charHeight, int charWidth)
+int32_t FontLoader::loadTrueTypeFont(std::string filepath, uint32_t charHeight, uint32_t charWidth)
 {
-    fileReader = std::make_unique<FileReader>();
+    fileReader = std::make_unique<FileLoader>();
     absolutePath = fileReader->relativePathToAbsolute(filepath);
 
     status = FT_New_Face(lib, absolutePath.c_str(), 0, &fontFace);
@@ -75,10 +75,10 @@ int FontLoader::loadTrueTypeFont(std::string filepath, int charHeight, int charW
     }
 };
 
-FileReader::Image FontLoader::loadCharacter(char character, int fontIndex)
+FileLoader::Image FontLoader::loadCharacter(char character, uint32_t fontIndex)
 {
     this->fontFace = fontStack[fontIndex - 1];
-    this->keyCode = int(character);
+    this->keyCode = static_cast<uint8_t>(character);
 
     /* ====================================================================
         The glyph needs to be rotated on load, prior to being rendered to a
@@ -135,7 +135,7 @@ void FontLoader::createBitmap()
     };
 };
 
-void FontLoader::setImageData(int width, int height, unsigned char *data)
+void FontLoader::setImageData(uint32_t width, uint32_t height, unsigned char *data)
 {
     this->image.width = width;
     this->image.height = height;
@@ -176,7 +176,11 @@ FontLoader::~FontLoader()
 {
     std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 
-    FT_Done_Face(this->fontFace);
+    for(size_t i = 0; i < fontStack.size(); i++)
+    {
+        this->fontFace = fontStack[i];
+        FT_Done_Face(this->fontFace);
+    };
     FT_Done_FreeType(this->lib);
 };
 
@@ -198,69 +202,105 @@ TextManager::TextManager(GLuint shader) : TextManager::MeshManager(shader)
     
     this->textOut = {};
     this->word = {};
+    this->characters = {};
+    this->fonts = {};
+    this->alphabetHeights = {};
 
     this->translationStride = 0;
-    this->span = 0;
-    this->targetKey = 0;
-    this->targetXL = 0;
-    this->targetXR = 0;
 
     this->textColor = glm::vec3(0.0f, 0.0f, 0.0f);
 
     this->fontIndex = 0;
     this->layoutIndex = 0;
 
-    this->atlasX = 0;
-    this->atlasY = 0;
+    this->rowWidth = 0;
+    this->rowHeight = 0;
 
-    this->monitorWidth = 0.0;
+    this->atlasWidth = 0;
+    this->atlasHeight = 0;
 
     this->uvL = 0.0;
     this->uvR = 0.0;
-    this->uvH = 0.0;
+    this->uvU = 0.0;
+    this->uvD = 0.0;
 };
 
-int TextManager::extendFontStack(std::string filepath, int ptSize)
+uint32_t TextManager::extendFontStack(std::string filepath, uint32_t ptSize)
 {
-    /* ====================================================
-        The name of this function is slightly deceptive.
-        This function extends new glyphs into the existing
-        alphabet texture atlas along the images' x-axis.
-        Essentially adding new columns.
+    fonts.clear();
+    alphabetHeights.clear();
 
-        In concept, it will be more like a stack when a new
-        font is added, a new row (on the y-axis) should be 
-        created. In memory they will all sit on top each-
-        other in one big texture atlas and so in that way
-        it will be like a stack - currently it's just a
-        single row.
-    ======================================================= */
     this->loaderInit();
-
     this->fontIndex = this->loadTrueTypeFont(filepath, ptSize, 0);
-
-    this->identifyAlphabetDimensions();
-
-    this->storeBitmapTexture(atlasX, atlasY);
-
+    
     /* ===========================================================================
         The expression (n - 33) AKA (i = 33 && i < 128) occurs in several places 
         and is used to skip control keys as well as calculate the span offset for 
         non-control characters (i.e. keycodes which don't have a unicode UTF-8 
         glyph associated with them. e.g. shift / ctrl).
     ============================================================================== */
-    for(int i = 33; i < 128; i++)
-    {
-        this->glyph = this->loadCharacter(static_cast<char>(i), fontIndex);
-        this->loadBitmapToTexture(this->glyph);
 
-        textures.emplace((i - 33), this->glyph);
+    rowWidth = 0;
+    rowHeight = 0;
+    atlasWidth = 0;
+    atlasHeight = 0;
+
+    uint32_t yOffset = 0;
+    uint32_t xOffset = 0;
+    
+    /* ============================================
+        Provision storage for known aphabets.
+        
+        I.e.
+        texture atlas maximum width and height 
+        equal to the width of each char in the widest
+        font and the sum of the heights of each font's
+        tallest char.
+    =============================================== */
+    for(size_t n = 0; n < this->fontIndex; n++)
+    {   
+        rowHeight = 0;
+        yOffset = this->atlasHeight;
+        alphabetHeights.push_back(yOffset);
+
+        this->identifyAlphabetDimensions(n + 1);
+        if(rowWidth > atlasWidth)
+        {
+            this->atlasWidth = rowWidth;
+        }
+        this->atlasHeight += rowHeight;
+        alphabetHeights.push_back(this->atlasHeight);
+        
+        this->storeBitmapTexture(atlasWidth, atlasHeight);
+    }
+    
+    /* =============================================
+        Load each character of each font to it's
+        respective location within the texture atlas.
+    ================================================ */
+    for(size_t n = 0; n < this->fontIndex; n++)
+    {
+        characters.clear();
+
+        yOffset = alphabetHeights[n * 2];
+        xOffset = 0;
+        
+        for(uint32_t i = 33; i < 128; i++)
+        {
+            this->glyph = this->loadCharacter(static_cast<char>(i), (n + 1));
+
+            this->loadBitmapToTexture(this->glyph, xOffset, yOffset);
+            xOffset += this->glyph.width;
+    
+            characters.emplace((i - 33), this->glyph);
+        };
+        fonts.push_back(characters);
     };
 
-    return fontIndex;
+    return fonts.size() - 1;
 };
 
-TextManager::Text TextManager::loadText(std::string targetText, int posX, int posY, int letterSpacing, float red, float green, float blue, TextManager::Text textIn)
+TextManager::Text TextManager::loadText(std::string targetText, uint32_t fontId, uint32_t posX, uint32_t posY, uint32_t letterSpacing, float red, float green, float blue, TextManager::Text textIn)
 {
     /* =================================================
         Clear internal child trackers to stop bloat.
@@ -278,18 +318,30 @@ TextManager::Text TextManager::loadText(std::string targetText, int posX, int po
     textOut.locationX = posX;
     textOut.locationY = posY;
 
-    for(unsigned int i = 0; i < targetText.size(); i++)
+    for(size_t i = 0; i < targetText.size(); i++)
     {   
-        this->setActiveGlyph(targetText[i], letterSpacing);
-        
-        quad = this->createQuad(static_cast<float>(this->glyph.width), static_cast<float>(this->atlasY), LAZARUS_GLYPH_QUAD, this->uvL, this->uvR, this->uvH);
+        this->setActiveGlyph(targetText[i], fontId, letterSpacing);
+        quad = this->createQuad(
+            static_cast<float>(this->glyph.width), 
+            static_cast<float>(this->rowHeight), 
+            LAZARUS_GLYPH_QUAD, 
+            this->uvL, 
+            this->uvR, 
+            this->uvU, 
+            this->uvD
+        );
 
         /* =============================================
             Add ((createQuad input's x & y) / 2) to the 
             translation to offset from bottom left-most
             corner instead of the origin.
-        ================================================*/
-        transformer.translateMeshAsset(quad, static_cast<float>((posX + (this->glyph.width / 2.0f)) + this->translationStride), static_cast<float>((posY + (this->atlasY / 2.0f))), 0.0f);
+        ================================================ */
+        transformer.translateMeshAsset(
+            quad, 
+            static_cast<float>((posX + (this->glyph.width / 2.0f)) + this->translationStride), 
+            static_cast<float>((posY + (this->rowHeight / 2.0f))), 
+            0.0f
+        );
         this->translationStride += (this->glyph.width + letterSpacing);
 
         this->word.push_back(quad);
@@ -302,6 +354,7 @@ TextManager::Text TextManager::loadText(std::string targetText, int posX, int po
         is useful for text which needs to be updated 
         inside the render loop - for instance FPS, 
         entity coordinates or any other string which 
+
         might update on-the-fly.
     ==================================================== */
     if(textIn.layoutIndex)
@@ -314,9 +367,9 @@ TextManager::Text TextManager::loadText(std::string targetText, int posX, int po
     else 
     {
         this->layoutIndex += 1;
-        textOut.layoutIndex = this->layoutIndex;
+        this->textOut.layoutIndex = this->layoutIndex;
         this->layoutEntry = std::pair<int, std::vector<MeshManager::Mesh>>(this->layoutIndex, this->word);
-        layout.insert(this->layoutEntry);
+        this->layout.insert(this->layoutEntry);
 
         this->translationStride = 0;
     };
@@ -352,7 +405,7 @@ void TextManager::drawText(TextManager::Text text)
     return;
 };
 
-void TextManager::identifyAlphabetDimensions()
+void TextManager::identifyAlphabetDimensions(uint32_t fontId)
 {
     /* =====================================================
         Glyphs will be loaded into the texture atlas in a 
@@ -360,29 +413,38 @@ void TextManager::identifyAlphabetDimensions()
         the tallest glyph bitmap and the width is equal to 
         the culmilative width of each glyph's bitmap.
     ======================================================== */
-    for(int i = 33; i < 128; i++)
+    this->rowWidth = 0;
+    this->rowHeight = 0;
+
+    for(uint8_t i = 33; i < 128; i++)
     {
-        glyph = this->loadCharacter(static_cast<char>(i), fontIndex);
+        glyph = this->loadCharacter(static_cast<char>(i), fontId);
         
-        atlasX += glyph.width;
-        atlasY = std::max(atlasY, glyph.height);
+        rowWidth += glyph.width;
+        if(glyph.height > rowHeight)
+        {
+            rowHeight = glyph.height;
+        };
+
     };
 
     return;
 };
 
-void TextManager::setActiveGlyph(char target, int spacing)
+void TextManager::setActiveGlyph(char target, uint32_t fontId, uint32_t spacing)
 {
     /* =====================================================
         If the active glyph is a space; set the UV coordinates
         to be outside of the texture atlas. That way the 
         sampled area of the atlas will contain nothing.
     ======================================================== */
+
     if(target == ' ')
     {
         this->uvL = -1.0f;
         this->uvR = -1.0f;
-        this->uvH = -1.0f;
+        this->uvU = -1.0f;
+        this->uvD = -1.0f;
 
         this->glyph.pixelData = NULL;
         this->glyph.height = 0;
@@ -392,8 +454,9 @@ void TextManager::setActiveGlyph(char target, int spacing)
     {
         this->targetKey = static_cast<int>(target);
 
-        this->lookUpUVs(this->targetKey);
-        this->glyph = textures.at((this->targetKey - 33));
+        this->lookUpUVs(this->targetKey, fontId);
+        this->characters = this->fonts.at(fontId);
+        this->glyph = this->characters.at((this->targetKey - 33));
     };
 };
 
@@ -403,36 +466,41 @@ void TextManager::setTextColor(float r, float g, float b)
     glUniform3fv(glGetUniformLocation(this->shaderProgram, "textColor"), 1, &this->textColor[0]);
 };
 
-void TextManager::lookUpUVs(int keyCode)
+void TextManager::lookUpUVs(uint8_t keyCode, uint32_t fontId)
 {
-    this->span = keyCode - 33;
-    this->targetXL = 0;
+    this->characters = this->fonts.at(fontId);
+    uint8_t range = keyCode - 33;
+    uint32_t targetXL = 0;
+    uint32_t targetXR = 0;
 
     /* ===========================================================================
         Calculate L / R / T / B UV coordinates / where the glyph is located in
         the alphabet texture atlas. Divide by primary monitor dimensions to get 
         normalised value.
     ============================================================================== */
-    for (int i = 0; i < span; ++i)
+    for(uint8_t i = 0; i < range; ++i)
     {
-        this->glyph = textures.at(i);
-        this->targetXL += this->glyph.width;
+        this->glyph = characters.at(i);
+        targetXL += this->glyph.width;
     };
 
-    this->glyph = textures.at(span);
-    this->targetXR = targetXL + this->glyph.width;
+    this->glyph = characters.at(range);
+    targetXR = targetXL + this->glyph.width;
 
-    this->monitorWidth = static_cast<float>(atlasX);
+    float uvRangeX = static_cast<float>(this->atlasWidth);
+    float uvRangeY = static_cast<float>(this->atlasHeight);
     
-    this->uvL = static_cast<float>(this->targetXL) / monitorWidth;
-    this->uvR = static_cast<float>(this->targetXR) / monitorWidth;
-    this->uvH = static_cast<float>(this->fontIndex);
-
-    this->targetXL = 0;
-    this->targetXR = 0;
+    /* ===================================================
+        Normalise the values of the pixel locations within
+        the dimensions of the texture atlas.
+    ====================================================== */
+    this->uvL = static_cast<float>(targetXL) / uvRangeX;
+    this->uvR = static_cast<float>(targetXR) / uvRangeX;
+    this->uvU = static_cast<float>(this->alphabetHeights[(fontId * 2) + 1]) / uvRangeY;
+    this->uvD = static_cast<float>(this->alphabetHeights[(fontId * 2)]) / uvRangeY;
 };
 
 TextManager::~TextManager()
 {
-        std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 };

@@ -51,20 +51,20 @@ void AudioManager::initialise()
 	this->result = system->createChannelGroup("lazarusGroup", &this->mixer);
 
 	this->checkErrors(this->result, __FILE__, __LINE__);
+
+	return;
 };
 
-AudioManager::Audio AudioManager::createAudio(string filepath, bool is3D, int loopCount)
+AudioManager::Audio AudioManager::createAudio(string filepath, bool is3D, int32_t loopCount)
 {
 	this->audioOut = {};
 
-	this->reader = std::make_unique<FileReader>();
+	this->reader = std::make_unique<FileLoader>();
 
 	srand(time((0)));
 	audioOut.id = 1 + (rand() % 2147483647);
 
-	audioOut.sourceLocationX = 0.0f;
-	audioOut.sourceLocationY = 0.0f;
-	audioOut.sourceLocationZ = 0.0f;
+	audioOut.sourceLocation = {0.0f, 0.0f, 0.0f};
 
 	audioOut.path = reader->relativePathToAbsolute(filepath);
 	audioOut.is3D = is3D;
@@ -75,7 +75,7 @@ AudioManager::Audio AudioManager::createAudio(string filepath, bool is3D, int lo
 	return audioOut;
 };
 
-void AudioManager::setPlaybackCursor(AudioManager::Audio &audioIn, int seconds)
+void AudioManager::setPlaybackCursor(AudioManager::Audio &audioIn, uint32_t seconds)
 {
 	AudioData &audioData = this->audioStore[audioIn.audioIndex - 1];
 
@@ -87,6 +87,8 @@ void AudioManager::setPlaybackCursor(AudioManager::Audio &audioIn, int seconds)
 	{
 		globals.setExecutionState(LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR);
 	};
+
+	return;
 };
 
 void AudioManager::loadAudio(AudioManager::Audio &audioIn)
@@ -103,7 +105,12 @@ void AudioManager::loadAudio(AudioManager::Audio &audioIn)
 	
 	if(data.sound != NULL)
 	{
-		this->result = system->playSound(data.sound, data.group, false, &data.channel);
+		this->result = system->playSound(
+			data.sound, 
+			data.group, 
+			false, 
+			&data.channel
+		);
 		this->checkErrors(this->result, __FILE__, __LINE__);
 
 		this->result = data.sound->getLength(&audioDuration, FMOD_TIMEUNIT_MS);
@@ -189,9 +196,11 @@ void AudioManager::updateSourceLocation(AudioManager::Audio &audioIn, float x, f
 
 	audioData.prevSourcePosition = audioData.currentSourcePosition;
 
-	audioIn.sourceLocationX = audioData.prevSourcePosition.x;
-	audioIn.sourceLocationY = audioData.prevSourcePosition.y;
-	audioIn.sourceLocationZ = audioData.prevSourcePosition.z;
+	audioIn.sourceLocation = {
+		audioData.prevSourcePosition.x,
+		audioData.prevSourcePosition.y,
+		audioData.prevSourcePosition.z
+	};
 
 	return;
 };
@@ -226,9 +235,7 @@ void AudioManager::updateListenerLocation(float x, float y, float z)
 
 	this->checkErrors(this->result, __FILE__, __LINE__);
 
-	this->listenerLocationX = this->prevListenerPosition.x;
-	this->listenerLocationY = this->prevListenerPosition.y;
-	this->listenerLocationZ = this->prevListenerPosition.z;
+	return;
 };
 
 void AudioManager::validateAudioHandle(AudioData &audioData)
@@ -253,7 +260,12 @@ void AudioManager::validateAudioHandle(AudioData &audioData)
 			by having FMOD reload the sample into one of
 			it's free channels (512 max).
 		================================================== */
-		this->result = system->playSound(audioData.sound, audioData.group, false, &audioData.channel);
+		this->result = system->playSound(
+			audioData.sound, 
+			audioData.group, 
+			false, 
+			&audioData.channel
+		);
 		
 		if(result != FMOD_OK)
 		{
@@ -264,7 +276,7 @@ void AudioManager::validateAudioHandle(AudioData &audioData)
 	return;
 };
 
-void AudioManager::checkErrors(FMOD_RESULT res, const char *file, int line) 
+void AudioManager::checkErrors(FMOD_RESULT res, const char *file, uint32_t line) 
 {
 	if(res != FMOD_OK)
 	{
@@ -281,7 +293,7 @@ AudioManager::~AudioManager()
 {
     std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 	
-	for(unsigned int i = 0; i < this->audioStore.size(); i++)
+	for(size_t i = 0; i < this->audioStore.size(); i++)
 	{
 		AudioManager::AudioData data = this->audioStore[i];
 

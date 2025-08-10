@@ -28,7 +28,7 @@
 #include <string>
 #include <memory>
 
-#include "lazarus_file_reader.h"
+#include "lazarus_file_loader.h"
 
 #ifndef LAZARUS_WINDOW_MANAGER_H
 #define LAZARUS_WINDOW_MANAGER_H
@@ -50,7 +50,7 @@ class Time
 
 		float msSinceLastRender;
 		float internalSeconds;
-		int frameCount;		
+		float frameCount;		
 };
 
 class Events
@@ -64,19 +64,23 @@ class Events
     	void eventsInit();
         void monitorEvents();
 
-        string keyEventString;
-        int keyEventCode;
-		int keyEventOsCode;
+        std::string keyEventString;
+        uint32_t keyEventCode;
+		uint32_t keyEventOsCode;
 
-		int mouseEventCode;
-		int mousePositionX;
-		int mousePositionY;
+		uint32_t mouseEventCode;
+		uint32_t mousePositionX;
+		uint32_t mousePositionY;
 		
-		int scrollEventCode;
+		int8_t scrollEventCode;
 		
     private:
+        int32_t checkErrors(const char *file, int line);
         void updateKeyboardState();
         void updateMouseState();
+
+        int32_t errorCode;
+        const char** errorMessage;
 
         GLFWwindow *win;
 
@@ -86,39 +90,40 @@ class Events
 class WindowManager : public Events, public Time
 {
     public:
-        WindowManager(const char *title, int width = 800, int height = 600);
+        WindowManager(const char *title, uint32_t width = 800, uint32_t height = 600);
 
-        int createWindow();
-        int setBackgroundColor(float r, float g, float b);
-		int loadConfig();
+        int32_t createWindow();
+        int32_t setBackgroundColor(float r, float g, float b);
+		int32_t loadConfig();
 
-        int open();
-        int close();
+        int32_t open();
+        int32_t close();
 
-		int createCursor(int sizeX, int sizeY, int hotX, int hotY, std::string filepath);
-        int snapCursor(float moveX, float moveY);
+		int32_t createCursor(uint32_t sizeX, uint32_t sizeY, uint32_t targetX, uint32_t targetY, std::string filepath);
+        int32_t snapCursor(float moveX, float moveY);
 
-        int presentNextFrame();
-        int monitorPixelOccupants();
+        int32_t presentNextFrame();
+        int32_t monitorPixelOccupants();
 
         bool isOpen;
 
         virtual ~WindowManager();
         
 	private:
-		int initialiseGLEW();
-        int checkErrors(const char *file, int line);
+		int32_t initialiseGLEW();
+        int32_t checkErrors(const char *file, int line);
 
         //  Dont know why I made this private
         struct Window
         {
-            int height, width;
+            uint32_t height;
+            uint32_t width;
             const char *title;
             glm::vec3 backgroundColor;
         };
 
-        std::unique_ptr<FileReader> fileReader;
-        FileReader::Image image;
+        std::unique_ptr<FileLoader> fileReader;
+        FileLoader::Image image;
 
         Window frame;
 
@@ -128,7 +133,7 @@ class WindowManager : public Events, public Time
         bool testDepth;
         bool disableVsync;
 
-        int errorCode;
+        int32_t errorCode;
         const char** errorMessage;
         
         const GLFWvidmode *videoMode;

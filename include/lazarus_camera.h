@@ -40,9 +40,9 @@ class CameraManager
 {
     public:
         CameraManager(GLuint shader);
-        struct Camera
+         struct Camera
         {
-            int id;
+            uint32_t id;
 			
             vec3 position;
             vec3 direction;
@@ -53,24 +53,24 @@ class CameraManager
             mat4 viewMatrix;
             mat4 projectionMatrix;
 
-            int usesPerspective;
+            uint8_t usesPerspective;
         };
 		
-        Camera createPerspectiveCam(int aspectRatioX = 0, int aspectRatioY = 0);
-        Camera createOrthoCam(int aspectRatioX  = 0, int aspectRatioY = 0);
+        Camera createPerspectiveCam(uint32_t aspectRatioX = 0, uint32_t aspectRatioY = 0);
+        Camera createOrthoCam(uint32_t aspectRatioX  = 0, uint32_t aspectRatioY = 0);
         void loadCamera(Camera &cameraIn);
         
-        int getPixelOccupant(int windowX, int windowY);
+        int8_t getPixelOccupant(uint32_t windowX, uint32_t windowY);
 
         virtual ~CameraManager();
 
     private:
-        void setAspectRatio(int x, int y);
-        void checkErrors(const char *file, int line);
+        void setAspectRatio(uint32_t x, uint32_t y);
+        void checkErrors(const char *file, uint32_t line);
 
-        int errorCode;
-        int pixelWidth;
-        int pixelHeight;
+        int32_t errorCode;
+        uint32_t pixelWidth;
+        uint32_t pixelHeight;
         
         GLint pixel;
         

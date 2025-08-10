@@ -32,8 +32,9 @@
 #include <time.h>
 #include <vector>
 #include <cmath>
+#include <glm/glm.hpp>
 
-#include "lazarus_file_reader.h"
+#include "lazarus_file_loader.h"
 
 using std::unique_ptr;
 using std::shared_ptr;
@@ -48,30 +49,27 @@ class AudioManager
 	public:
 		struct Audio 
 		{
-			int id;
+			uint32_t id;
 			string path;
 
-			float sourceLocationX;
-			float sourceLocationY;
-			float sourceLocationZ;
-
-			int duration;
-
+			glm::vec3 sourceLocation;
+			
 			bool is3D;
 			bool isPaused;
-
-			int loopCount;
-
-			unsigned int audioIndex;
+			
+			int32_t loopCount;
+			
+			uint32_t duration;
+			uint32_t audioIndex;
 		};
 
 		AudioManager();
 
 		void initialise();
-		Audio createAudio(string filepath, bool is3D = false, int loopCount = 0);
+		Audio createAudio(string filepath, bool is3D = false, int32_t loopCount = 0);
 		void loadAudio(Audio &audioIn);
 
-		void setPlaybackCursor(Audio &audioIn, int seconds);
+		void setPlaybackCursor(Audio &audioIn, uint32_t seconds);
 		void playAudio(Audio &audioIn);
 		void pauseAudio(Audio &audioIn);
 
@@ -79,10 +77,6 @@ class AudioManager
 		void updateListenerLocation(float x, float y, float z);
 
 		virtual ~AudioManager();
-
-		float listenerLocationX;
-		float listenerLocationY;
-		float listenerLocationZ;
 
 	private:
 		struct AudioData 
@@ -96,9 +90,9 @@ class AudioManager
 			FMOD_VECTOR sourceVelocity;
 		};
 		void validateAudioHandle(AudioData &audioData);
-		void checkErrors(FMOD_RESULT res, const char *file, int line);
+		void checkErrors(FMOD_RESULT res, const char *file, uint32_t line);
 
-		unsigned int audioDuration;
+		uint32_t audioDuration;
 
 		FMOD_RESULT result;
 		FMOD::System *system;
@@ -109,7 +103,7 @@ class AudioManager
 		FMOD_VECTOR listenerForward;
 		FMOD_VECTOR listenerUp;
 
-		unique_ptr<FileReader> reader;
+		unique_ptr<FileLoader> reader;
 
 		vector<AudioData> audioStore;
 		AudioData audioData;

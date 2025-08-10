@@ -26,6 +26,7 @@
 
 #include <iostream>
 #include <vector>
+#include <string>
 
 #ifndef LAZARUS_LIGHT_H
 #define LAZARUS_LIGHT_H
@@ -41,16 +42,12 @@ class LightManager
     public:
         struct Light
         {
-            int id;
-            
-            float locationX;
-            float locationY;
-            float locationZ;
+            uint32_t id;
             
             float brightness;
 
-            glm::vec3 lightPosition;                     //  The (x,y,z) location of the light source
-            glm::vec3 lightColor;                        //  The (r,g,b) color of the light
+            glm::vec3 position;                     //  The (x,y,z) location of the light source
+            glm::vec3 color;                        //  The (r,g,b) color of the light
         };
         
         LightManager(GLuint shader);
@@ -66,14 +63,14 @@ class LightManager
                 Used to traverse the point light uniform
                 array.
             ============================================= */
-            int uniformIndex;
+            uint32_t uniformIndex;
 
             GLint lightPositionUniformLocation;
             GLint lightColorUniformLocation;
             GLint brightnessUniformLocation;
         };
 
-        int lightCount;
+        uint32_t lightCount;
         GLint lightCountLocation;
     	GLint shaderProgram;
 
