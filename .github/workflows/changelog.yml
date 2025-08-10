@@ -29,7 +29,7 @@ jobs:
         run: |
           echo "::set-output name=date::$(date +'%Y.%m.%d%H%M%S')"
       - name: Run Changelog CI
-        uses: saadmk11/changelog-ci@v1.1.2
+        uses: saadmk11/changelog-ci@v1.2.0
         with:
           release_version: ${{ steps.date.outputs.date }}
           committer_username: ${{ github.actor }}
