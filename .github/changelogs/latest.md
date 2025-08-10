@@ -1,5 +1,6 @@
-# Version: 2025.08.10042615
+# Version: 2025.08.10042747
 
+* [cae8d1f](https://github.com/ford-jones/lazarus/commit/cae8d1ff28ce91b3564a7b51fe05ddbe87a9ecf4): [Changelog CI] Add Changelog for Version 2025.08.10042615
 * [d53f08f](https://github.com/ford-jones/lazarus/commit/d53f08f80566696148ee78d4189ff8f7abcbbb84): Update changelog.yml
 * [c7c988a](https://github.com/ford-jones/lazarus/commit/c7c988a675f0efd378da68a2a5186a54858d7842): Update: Optimise index-buffer creation. Ensure O(log(n)) lookup time over O(n^2)
 * [3d1f867](https://github.com/ford-jones/lazarus/commit/3d1f86708081c7147266ccb9b9b31e6e0052691c): Docs: Update API-reference and comments
