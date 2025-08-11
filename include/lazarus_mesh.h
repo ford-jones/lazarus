@@ -66,7 +66,7 @@ class MaterialLoader
     private:
         glm::vec3 diffuse;                                           //  Diffuse colour, the main / dominant colour of a face
         ifstream file;
-        char currentLine[256];
+        char currentLine[UINT8_MAX];
         uint32_t diffuseCount;                                    //  The number of times an instance of `char[]="Kd"`(diffuse color) has appeared since the last invocation
         uint32_t texCount;
 
@@ -181,7 +181,7 @@ class MeshLoader : private MaterialLoader
         uint32_t materialIdentifierIndex;
         uint32_t triangleCount;
         
-        char currentLine[256];
+        char currentLine[UINT8_MAX];
         std::vector<string> attributeIndexes;
         
         //  Read vertex attributes from temp* members and group them together 
