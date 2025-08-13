@@ -30,6 +30,8 @@ LightManager::LightManager(GLuint shader)
 
     this->lightCountLocation = glGetUniformLocation(this->shaderProgram, "lightCount");
     this->lightCount = globals.getNumberOfActiveLights();
+
+    this->errorCode = 0;
 }
 
 LightManager::Light LightManager::createLightSource(float x, float y, float z, float r, float g, float b, float brightness)
@@ -67,10 +69,14 @@ void LightManager::loadLightSource(LightManager::Light &lightIn)
         lightData.lightPositionUniformLocation  >= 0 
     )
     {
+        this->clearErrors();
+
         glUniform1i         (this->lightCountLocation, this->lightCount);
         glUniform1f         (lightData.brightnessUniformLocation, lightIn.brightness);
         glUniform3fv        (lightData.lightPositionUniformLocation, 1, &lightIn.position[0]);
         glUniform3fv        (lightData.lightColorUniformLocation, 1, &lightIn.color[0]);
+
+        this->checkErrors(__FILE__, __LINE__);
     }
     else
     {
@@ -78,6 +84,31 @@ void LightManager::loadLightSource(LightManager::Light &lightIn)
     };
 
     return;
+};
+
+void LightManager::checkErrors(const char *file, uint32_t line)
+{
+    this->errorCode = glGetError();
+    
+    if(this->errorCode != GL_NO_ERROR)
+    {
+        std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
+        std::cerr << RED_TEXT << "ERROR::GL_ERROR::CODE " << RESET_TEXT << this->errorCode << std::endl;
+
+        globals.setExecutionState(LAZARUS_OPENGL_ERROR);
+    }
+
+    return;
+};
+
+void LightManager::clearErrors()
+{
+    this->errorCode = glGetError();
+    while(this->errorCode != GL_NO_ERROR)
+    {
+        std::cout << this->errorCode << std::endl;
+        this->errorCode = glGetError();
+    };
 };
 
 LightManager::~LightManager()
