@@ -245,7 +245,7 @@ void GlobalsManager::setPickableEntity(uint32_t entityId)
     return;
 };
 
-uint32_t GlobalsManager::getPickableEntity(uint32_t index)
+uint8_t GlobalsManager::getPickableEntity(uint8_t index)
 {
     return LAZARUS_SELECTABLE_ENTITIES[index - 1];
 };
