@@ -104,9 +104,9 @@ void LightManager::checkErrors(const char *file, uint32_t line)
 void LightManager::clearErrors()
 {
     this->errorCode = glGetError();
+    
     while(this->errorCode != GL_NO_ERROR)
     {
-        std::cout << this->errorCode << std::endl;
         this->errorCode = glGetError();
     };
 };

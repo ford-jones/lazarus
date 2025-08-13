@@ -25,6 +25,7 @@
 #endif
 
 #include <memory>
+#include <algorithm>
 
 #include "lazarus_mesh.h"
 #include "lazarus_camera.h"
@@ -56,7 +57,6 @@ class Transform
 		void translateLightAsset(LightManager::Light &light, float x, float y, float z);
 
 	private:
-		bool determineIsSigned(float x, float y, float z);
 		float determineUpVector(float rotation);
 		float degreesToRadians(float in, bool enforceLimits = true);
 

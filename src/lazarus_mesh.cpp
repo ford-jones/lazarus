@@ -312,6 +312,8 @@ void MeshManager::initialiseMesh()
 
     if(this->modelMatrixUniformLocation >= 0)
     {
+        this->clearErrors();
+
         glGenBuffers(1, &meshData.EBO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshData.EBO);
         glBufferData(
@@ -461,15 +463,19 @@ void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
     ====================================================== */
     if(globals.getManageStencilBuffer())
     {
+        this->clearErrors();
+
         glStencilMask(0xFF);
         glClearStencil(0x00);
         glStencilFunc(GL_ALWAYS, data.stencilBufferId, 0xFF);
-
+        
         this->checkErrors(__FILE__, __LINE__);
     }
 
     if(this->modelMatrixUniformLocation >= 0)
     {
+        this->clearErrors();
+
         glUniformMatrix4fv(
             this->modelMatrixUniformLocation, 
             1, 
@@ -498,6 +504,8 @@ void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
 void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
 {
     MeshManager::MeshData &data = dataStore[meshIn.id - 1];
+
+    this->clearErrors();
 
     glBindVertexArray(data.VAO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.EBO);
@@ -616,7 +624,7 @@ void MeshManager::checkErrors(const char *file, uint32_t line)
 {
     this->errorCode = glGetError();
     
-    if(this->errorCode != 0)
+    if(this->errorCode != GL_NO_ERROR)
     {
         std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
         std::cerr << RED_TEXT << "ERROR::GL_ERROR::CODE " << RESET_TEXT << this->errorCode << std::endl;
@@ -627,8 +635,33 @@ void MeshManager::checkErrors(const char *file, uint32_t line)
     return;
 };
 
+void MeshManager::clearErrors()
+{
+    /* ============================================================
+        Reset OpenGL's error state by flushing out all of the 
+        internal state flags containing the error value (which may 
+        be several). This is so that persistence of an errors 
+        life span is limitted to that function which caused it. 
+        By doing so, subsequent glGetError calls made from a function
+        other than that which actually caused the error will NOT 
+        throw. 
+        
+        Absolutely painful, see:
+        https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetError.xhtml#:~:text=glGetError%20should%20always%20be%20called%20in%20a%20loop
+    ================================================================ */
+
+    this->errorCode = glGetError();
+
+    while(this->errorCode != GL_NO_ERROR)
+    {
+        this->errorCode = glGetError();
+    };
+};
+
 MeshManager::~MeshManager()
 {
+    this->clearErrors();
+
     for(auto i: dataStore)
     {
         glDeleteBuffers         (1, &i.VBO);

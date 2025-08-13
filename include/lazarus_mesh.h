@@ -24,7 +24,10 @@
 	#include "lazarus_common.h"
 #endif
 
-//  Required for hashing glm types
+/* =========================================
+    Required for generating hashes for glm
+    types.
+============================================ */
 #define GLM_ENABLE_EXPERIMENTAL
 
 #include <iostream>
@@ -64,10 +67,10 @@ class MaterialLoader
         virtual ~MaterialLoader();
 
     private:
-        glm::vec3 diffuse;                                           //  Diffuse colour, the main / dominant colour of a face
+        glm::vec3 diffuse;
         ifstream file;
         char currentLine[UINT8_MAX];
-        uint32_t diffuseCount;                                    //  The number of times an instance of `char[]="Kd"`(diffuse color) has appeared since the last invocation
+        uint32_t diffuseCount;
         uint32_t texCount;
 
         GlobalsManager globals;
@@ -293,6 +296,7 @@ class MeshManager : private MeshLoader, public TextureLoader
         void prepareTextures();
         
         void checkErrors(const char *file, uint32_t line);
+        void clearErrors();
 
         int32_t errorCode;
         int32_t layerCount;

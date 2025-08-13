@@ -21,6 +21,12 @@
 
 Transform::Transform()
 {
+	/* ===========================================
+		Use low precision (and incorrect) pi value
+		so that things like camera rotation dont 
+		break at the extremities.
+	============================================== */
+
 	this->pi = 3.1419;
 	this->outRadians = 0.0;
 	this->up = 0.0f;
@@ -62,8 +68,10 @@ void Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, float yaw,
 
 void Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
 {
-	bool negativeSign = this->determineIsSigned(x, y, z);
-	if(negativeSign)
+	float sum = (x + y + z);
+	float max = std::max(0.0f, sum);
+
+	if(max <= 0.0f)
 	{
 		globals.setExecutionState(LAZARUS_INVALID_DIMENSIONS);	
 	}
@@ -112,14 +120,15 @@ void Transform::translateCameraAsset(CameraManager::Camera &camera, float x, flo
 
 void Transform::rotateCameraAsset(CameraManager::Camera &camera, float pitch, float yaw, float roll)
 {	
-	this->rotation = vec3(0.0, 0.0, 0.0);
-
+	
 	if((pitch > 360.0f) || (pitch < -360.0f))
 	{
 		globals.setExecutionState(LAZARUS_INVALID_RADIANS);
 	}
 	else
 	{
+		this->rotation = vec3(0.0, 0.0, 0.0);
+		
 		this->up = this->determineUpVector(pitch);
 		camera.upVector = glm::vec3(0.0f, this->up, 0.0f);
 
@@ -176,6 +185,13 @@ void Transform::translateLightAsset(LightManager::Light &light, float x, float y
 
 float Transform::determineUpVector(float rotation)
 {
+	/* =========================================================
+		When in the range of 90 - 270 degrees the orientation of
+		"up" should be +y. (i.e. effectively the same way we see 
+		the world. Consider LOS from looking at your feet, up to 
+		the sky).  
+	============================================================ */
+
 	if(
 		(rotation >= 90.0f && rotation <= 270.0f) || 
 		(rotation <= -90.0f && rotation >= -270.0f))
@@ -185,20 +201,6 @@ float Transform::determineUpVector(float rotation)
 	else
 	{
 		return 1.0f;
-	};
-};
-
-bool Transform::determineIsSigned(float x, float y, float z)
-{
-	float subject = (x + y + z);
-
-	if(subject < 0.0f)
-	{
-		return true;
-	}
-	else
-	{
-		return false;
 	};
 };
 

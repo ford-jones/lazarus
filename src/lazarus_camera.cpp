@@ -95,7 +95,7 @@ CameraManager::Camera CameraManager::createOrthoCam(uint32_t aspectRatioX, uint3
 
 void CameraManager::loadCamera(CameraManager::Camera &cameraIn)
 {
-    // this->clearErrors();
+    this->clearErrors();
     
     if(
         this->perspectiveProjectionLocation >= 0 && 
@@ -223,6 +223,7 @@ void CameraManager::checkErrors(const char *file, uint32_t line)
 void CameraManager::clearErrors()
 {
     this->errorCode = glGetError();
+    
     while(this->errorCode != GL_NO_ERROR)
     {
         this->errorCode = glGetError();
