@@ -43,3 +43,4 @@ jobs:
         shell: bash
         run: |
           curl --request POST --url "https://lazarus-server.onrender.com/addChangeLog" --header "Content-Type: application/json" --data "{\"date\": \"$(date +'%Y.%m.%d%H%M%S')\", \"title\": \"${{ env.tag }}\", \"description\": \"CI release notes\", \"changeLog\":\"${{ steps.readLog.outputs.data }}\"}" --include
+
