@@ -19,7 +19,8 @@
 
 #include "../include/lazarus_mesh.h"
 
-MeshManager::MeshManager(GLuint shader)
+MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
+    : MeshManager::TextureLoader(textureType)
 {
 	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
     this->shaderProgram = shader;

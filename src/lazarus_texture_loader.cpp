@@ -22,13 +22,11 @@
 		- Support for texture-per-face loading
 		- Support for multiple textured meshes (layering)
 		- Ideally have each of these functions use immutable storage
-		- Create and bind textures where needed. This gets ugly fast 
-		  as a scene starts to grow.
 =================================================================== */
 
 #include "../include/lazarus_texture_loader.h"
 
-TextureLoader::TextureLoader()
+TextureLoader::TextureLoader(TextureLoader::StorageType storageVariant)
 {
 	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 
@@ -43,14 +41,27 @@ TextureLoader::TextureLoader()
 
 	this->errorCode = 0;
 
-	glGenTextures(1, &this->textureStack);
-	glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureStack);
+	
+	switch (storageVariant)
+	{
+		case TextureLoader::StorageType::ARRAY:
+			glGenTextures(1, &this->textureStack);
+			glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureStack);
+			break;
+		
+		case TextureLoader::StorageType::ATLAS:
+			glGenTextures(1, &this->bitmapTexture);
+			glBindTexture(GL_TEXTURE_2D, this->bitmapTexture);			
+			break;
 
-	glGenTextures(1, &this->bitmapTexture);
-	glBindTexture(GL_TEXTURE_2D, this->bitmapTexture);
-
-	glGenTextures(1, &this->cubeMapTexture);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, this->cubeMapTexture);
+		case TextureLoader::StorageType::CUBEMAP:
+			glGenTextures(1, &this->cubeMapTexture);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, this->cubeMapTexture);
+			break;
+	
+	default:
+		break;
+	}
 };
 
 void TextureLoader::extendTextureStack(uint32_t maxWidth, uint32_t maxHeight, uint32_t textureLayers)

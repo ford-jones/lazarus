@@ -257,7 +257,7 @@ class MeshManager : private MeshLoader, public TextureLoader
             bool isClickable;
         };
 		
-		MeshManager(GLuint shader);
+		MeshManager(GLuint shader, TextureLoader::StorageType textureType = TextureLoader::StorageType::ARRAY);
 		
         Mesh create3DAsset(string meshPath, string materialPath = LAZARUS_TEXTURED_MESH, string texturePath = LAZARUS_DIFFUSE_MESH, bool selectable = false);
         Mesh createQuad(float width, float height, string texturePath = LAZARUS_DIFFUSE_MESH, float uvXL = 0.0, float uvXR = 0.0, float uvYU = 0.0, float uvYD = 0.0, bool selectable = false);

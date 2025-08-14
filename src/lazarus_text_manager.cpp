@@ -194,7 +194,8 @@ FontLoader::~FontLoader()
         the entire layout should be drawn.
     ========================================================== */
 
-TextManager::TextManager(GLuint shader) : TextManager::MeshManager(shader)
+TextManager::TextManager(GLuint shader) 
+    : TextManager::MeshManager(shader, TextureLoader::StorageType::ATLAS)
 {
     std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
     this->shaderProgram = shader;

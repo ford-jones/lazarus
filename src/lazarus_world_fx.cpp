@@ -19,7 +19,8 @@
 
 #include "../include/lazarus_world_fx.h"
 
-WorldFX::WorldFX(GLuint shaderProgram) : WorldFX::MeshManager(shaderProgram)
+WorldFX::WorldFX(GLuint shaderProgram) 
+    : WorldFX::MeshManager(shaderProgram, TextureLoader::StorageType::CUBEMAP)
 {
     std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
     this->status        = 0;
