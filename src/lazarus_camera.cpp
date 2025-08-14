@@ -95,6 +95,8 @@ CameraManager::Camera CameraManager::createOrthoCam(uint32_t aspectRatioX, uint3
 
 void CameraManager::loadCamera(CameraManager::Camera &cameraIn)
 {
+    this->clearErrors();
+    
     if(
         this->perspectiveProjectionLocation >= 0 && 
         this->orthographicProjectionLocation >= 0
@@ -106,7 +108,8 @@ void CameraManager::loadCamera(CameraManager::Camera &cameraIn)
         ? glUniformMatrix4fv     (this->perspectiveProjectionLocation, 1, GL_FALSE, &cameraIn.projectionMatrix[0][0])
         : glUniformMatrix4fv     (this->orthographicProjectionLocation, 1, GL_FALSE, &cameraIn.projectionMatrix[0][0]);
 
-        glUniform1i(glGetUniformLocation(this->shader, "usesPerspective"), cameraIn.usesPerspective);
+        GLuint location = glGetUniformLocation(this->shader, "usesPerspective");
+        glUniform1i(location, cameraIn.usesPerspective);
 
         this->checkErrors(__FILE__, __LINE__);
     }
@@ -124,12 +127,13 @@ void CameraManager::loadCamera(CameraManager::Camera &cameraIn)
     in worldspace out from the camera.
 ================================================= */
 
-int8_t CameraManager::getPixelOccupant(uint32_t positionX, uint32_t positionY)
+uint8_t CameraManager::getPixelOccupant(uint32_t positionX, uint32_t positionY)
 {
     this->pixel = 0;
     if(globals.getManageStencilBuffer())
     {
         if(positionX < pixelWidth && positionY < pixelHeight) {
+            this->clearErrors();
             /* ============================================
                 Perform an inversion of the window's y-axis
                 to accomidate for FBO's measure of 
@@ -158,7 +162,7 @@ int8_t CameraManager::getPixelOccupant(uint32_t positionX, uint32_t positionY)
 
             if(pixel)
             {
-                int8_t stencilId = globals.getPickableEntity(pixel);
+                uint8_t stencilId = globals.getPickableEntity(pixel);
                 pixel = stencilId;
             };
             
@@ -205,7 +209,7 @@ void CameraManager::checkErrors(const char *file, uint32_t line)
 {
     this->errorCode = glGetError();
     
-    if(this->errorCode != 0)
+    if(this->errorCode != GL_NO_ERROR)
     {
         std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
         std::cerr << RED_TEXT << "ERROR::GL_ERROR::CODE " << RESET_TEXT << this->errorCode << std::endl;
@@ -214,6 +218,16 @@ void CameraManager::checkErrors(const char *file, uint32_t line)
     }
 
     return;
+};
+
+void CameraManager::clearErrors()
+{
+    this->errorCode = glGetError();
+    
+    while(this->errorCode != GL_NO_ERROR)
+    {
+        this->errorCode = glGetError();
+    };
 };
 
 CameraManager::~CameraManager()

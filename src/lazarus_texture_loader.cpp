@@ -55,6 +55,8 @@ TextureLoader::TextureLoader()
 
 void TextureLoader::extendTextureStack(uint32_t maxWidth, uint32_t maxHeight, uint32_t textureLayers)
 {
+	this->clearErrors();
+
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureStack);
 
@@ -82,6 +84,8 @@ void TextureLoader::extendTextureStack(uint32_t maxWidth, uint32_t maxHeight, ui
 
 void TextureLoader::loadImageToTextureStack(FileLoader::Image imageData, GLuint textureLayer)
 {	
+	this->clearErrors();
+
 	this->image.width = imageData.width;
 	this->image.height = imageData.height;
 	this->image.pixelData = imageData.pixelData;
@@ -122,6 +126,8 @@ void TextureLoader::loadImageToTextureStack(FileLoader::Image imageData, GLuint 
 
 void TextureLoader::storeCubeMap(uint32_t width, uint32_t height)
 {
+	this->clearErrors();
+
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, this->cubeMapTexture);
 	
@@ -150,6 +156,8 @@ void TextureLoader::storeCubeMap(uint32_t width, uint32_t height)
 
 void TextureLoader::loadCubeMap(std::vector<FileLoader::Image> faces)
 {	
+	this->clearErrors();
+
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, this->cubeMapTexture);
 	
@@ -163,6 +171,8 @@ void TextureLoader::loadCubeMap(std::vector<FileLoader::Image> faces)
 	{
 		for(uint8_t i = 0; i < 6; i++)
 		{
+			this->clearErrors();
+
 			/* ===================================================
 				For each face; buffer the images pixel data to 
 				the respective faces target binding. These targets 
@@ -201,6 +211,7 @@ void TextureLoader::loadCubeMap(std::vector<FileLoader::Image> faces)
 
 void TextureLoader::storeBitmapTexture(uint32_t maxWidth, uint32_t maxHeight)
 {
+	this->clearErrors();
 	/* ===========================================
 		Hardcoded because this function is used 
 		specifically for glyph loading only. If 
@@ -243,10 +254,12 @@ void TextureLoader::loadBitmapToTexture(FileLoader::Image imageData, uint32_t xO
 	this->image.height = imageData.height;
 	this->image.pixelData = imageData.pixelData;
 
+	this->clearErrors();
+	
 	/* ================================================================
-	Load the glyph's rendered bitmap into the previously allocated
-	texture at an offset equal to the current width of the texture
-	atlas and the culmilative height of previous alphabet sets.
+		Load the glyph's rendered bitmap into the previously allocated
+		texture at an offset equal to the current width of the texture
+		atlas and the culmilative height of previous alphabet sets.
 	=================================================================== */
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, this->bitmapTexture);
@@ -265,6 +278,8 @@ void TextureLoader::loadBitmapToTexture(FileLoader::Image imageData, uint32_t xO
 		(void *)this->image.pixelData
 	);
 	this->checkErrors(__FILE__, __LINE__);
+
+	this->clearErrors();
 
 	glGenerateMipmap(GL_TEXTURE_2D);
 
@@ -322,7 +337,7 @@ void TextureLoader::checkErrors(const char *file, uint32_t line)
 {
     this->errorCode = glGetError();
     
-    if(this->errorCode != 0)
+    if(this->errorCode != GL_NO_ERROR)
     {
         std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
         std::cerr << RED_TEXT << "ERROR::GL_ERROR::CODE " << RESET_TEXT << this->errorCode << std::endl;
@@ -331,6 +346,16 @@ void TextureLoader::checkErrors(const char *file, uint32_t line)
     } 
 
 	return;
+};
+
+void TextureLoader::clearErrors()
+{
+	this->errorCode = glGetError();
+	
+	while(this->errorCode != GL_NO_ERROR)
+	{
+		this->errorCode = glGetError();
+	};
 };
 
 TextureLoader::~TextureLoader()

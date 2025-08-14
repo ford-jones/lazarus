@@ -57,6 +57,8 @@ class LightManager
         void loadLightSource(Light &lightIn);
 
     private:
+        void checkErrors(const char *file, uint32_t line);
+        void clearErrors();
         struct LightData
         {
             /* ==========================================
@@ -73,6 +75,8 @@ class LightManager
         uint32_t lightCount;
         GLint lightCountLocation;
     	GLint shaderProgram;
+
+        int32_t errorCode;
 
         Light lightOut;
         LightData lightData;

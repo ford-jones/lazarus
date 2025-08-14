@@ -163,17 +163,11 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
             vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, uvYD, 0.0f),
             vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, uvYD, 0.0f), 
             vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, uvYU, 0.0f),
+            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, uvYU, 0.0f),
 
             vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXR, uvYU, 0.0f),
             vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXR, uvYD, 0.0f),
             vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXL, uvYU, 0.0f),
-
-            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, uvYU, 0.0f),
-            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, uvYD, 0.0f),
-            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, uvYU, 0.0f),
-
-            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXL, uvYU, 0.0f),
-            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXR, uvYD, 0.0f), 
             vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXL, uvYD, 0.0f),
         };
     }
@@ -189,23 +183,20 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
             vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 0.0f, 0.0f),
             vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 0.0f, 0.0f),
             vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 1.0f, 0.0f),
+            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 1.0f, 0.0f),
 
             vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(1.0f, 1.0f, 0.0f),
             vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(1.0f, 0.0f, 0.0f),
             vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(0.0f, 1.0f, 0.0f),
-
-            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 1.0f, 0.0f),
-            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 0.0f, 0.0f),
-            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 1.0f, 0.0f),
-
-            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(0.0f, 1.0f, 0.0f),
-            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(1.0f, 0.0f, 0.0f),
             vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(0.0f, 0.0f, 0.0f),
         };
     };
 
     meshData.indexes = {
-        0, 1, 2, 6, 7, 8, 5, 4, 3, 11, 10, 9
+        0, 1, 2, 
+        2, 1, 3, 
+        4, 5, 6, 
+        6, 5, 7
     };
 
     this->setInherentProperties();
@@ -217,7 +208,7 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
 
 MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, bool selectable)
 {
-    float vertexPosition = scale / 2; 
+    float vertexPosition = scale / 2.0f; 
 
     this->meshOut = {};
     this->meshData = {};
@@ -321,6 +312,8 @@ void MeshManager::initialiseMesh()
 
     if(this->modelMatrixUniformLocation >= 0)
     {
+        this->clearErrors();
+
         glGenBuffers(1, &meshData.EBO);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshData.EBO);
         glBufferData(
@@ -470,15 +463,19 @@ void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
     ====================================================== */
     if(globals.getManageStencilBuffer())
     {
+        this->clearErrors();
+
         glStencilMask(0xFF);
         glClearStencil(0x00);
         glStencilFunc(GL_ALWAYS, data.stencilBufferId, 0xFF);
-
+        
         this->checkErrors(__FILE__, __LINE__);
     }
 
     if(this->modelMatrixUniformLocation >= 0)
     {
+        this->clearErrors();
+
         glUniformMatrix4fv(
             this->modelMatrixUniformLocation, 
             1, 
@@ -507,6 +504,8 @@ void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
 void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
 {
     MeshManager::MeshData &data = dataStore[meshIn.id - 1];
+
+    this->clearErrors();
 
     glBindVertexArray(data.VAO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.EBO);
@@ -625,7 +624,7 @@ void MeshManager::checkErrors(const char *file, uint32_t line)
 {
     this->errorCode = glGetError();
     
-    if(this->errorCode != 0)
+    if(this->errorCode != GL_NO_ERROR)
     {
         std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
         std::cerr << RED_TEXT << "ERROR::GL_ERROR::CODE " << RESET_TEXT << this->errorCode << std::endl;
@@ -636,8 +635,33 @@ void MeshManager::checkErrors(const char *file, uint32_t line)
     return;
 };
 
+void MeshManager::clearErrors()
+{
+    /* ============================================================
+        Reset OpenGL's error state by flushing out all of the 
+        internal state flags containing the error value (which may 
+        be several). This is so that persistence of an errors 
+        life span is limitted to that function which caused it. 
+        By doing so, subsequent glGetError calls made from a function
+        other than that which actually caused the error will NOT 
+        throw. 
+        
+        Absolutely painful, see:
+        https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetError.xhtml#:~:text=glGetError%20should%20always%20be%20called%20in%20a%20loop
+    ================================================================ */
+
+    this->errorCode = glGetError();
+
+    while(this->errorCode != GL_NO_ERROR)
+    {
+        this->errorCode = glGetError();
+    };
+};
+
 MeshManager::~MeshManager()
 {
+    this->clearErrors();
+
     for(auto i: dataStore)
     {
         glDeleteBuffers         (1, &i.VBO);
@@ -682,7 +706,7 @@ bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &ou
     uint32_t uvCount = 0;
     uint32_t normalCount = 0;
     
-    while( file.getline(currentLine, 256) )
+    while(file.getline(currentLine, UINT8_MAX))
     {
         switch (currentLine[0])
         {
@@ -1616,7 +1640,7 @@ bool MaterialLoader::loadMaterial(vector<vec3> &out, vector<vector<uint32_t>> da
         return false;
     }   
 
-    while( file.getline(currentLine, 256) ) 
+    while(file.getline(currentLine, UINT8_MAX)) 
     {        
         /* =============================================
             Kd = diffuse colors

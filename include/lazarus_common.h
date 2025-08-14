@@ -144,7 +144,7 @@ class GlobalsManager
         uint32_t getNumberOfPickableEntities();
 
         void setPickableEntity(uint32_t entityId);
-        uint32_t getPickableEntity(uint32_t index);
+        uint8_t getPickableEntity(uint8_t index);
 };
 
 #endif

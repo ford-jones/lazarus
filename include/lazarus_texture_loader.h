@@ -59,7 +59,8 @@ class TextureLoader
 	private:		
 		uint32_t calculateMipLevels(uint32_t width, uint32_t height);
 		void checkErrors(const char *file, uint32_t line);
-
+		void clearErrors();
+		
 		GLenum errorCode;
 
 		shared_ptr<FileLoader> loader;
