@@ -176,7 +176,7 @@ void TextureLoader::loadCubeMap(std::vector<FileLoader::Image> faces)
 
 	if(faces.size() > 6)
 	{
-		globals.setExecutionState(LAZARUS_INVALID_CUBEMAP);
+		globals.setExecutionState(StatusCode::LAZARUS_INVALID_CUBEMAP);
 	}
 	else
 	{
@@ -353,7 +353,7 @@ void TextureLoader::checkErrors(const char *file, uint32_t line)
         std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
         std::cerr << RED_TEXT << "ERROR::GL_ERROR::CODE " << RESET_TEXT << this->errorCode << std::endl;
 
-		globals.setExecutionState(LAZARUS_OPENGL_ERROR);
+		globals.setExecutionState(StatusCode::LAZARUS_OPENGL_ERROR);
     } 
 
 	return;

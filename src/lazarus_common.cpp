@@ -51,38 +51,6 @@ const char*              LAZARUS_PRIMITIVE_MESH                 = "Primitive mes
 const char*              LAZARUS_TEXTURED_MESH                  = "Textured mesh.";
 const char*              LAZARUS_DIFFUSE_MESH                   = "Diffuse colored mesh.";
 
-const uint32_t           LAZARUS_OK                             = 0;
-const uint32_t           LAZARUS_FILE_NOT_FOUND                 = 101;
-const uint32_t           LAZARUS_FILE_UNREADABLE                = 102;
-const uint32_t           LAZARUS_FILESTREAM_CLOSED              = 103;
-const uint32_t           LAZARUS_IMAGE_LOAD_FAILURE             = 104;
-const uint32_t           LAZARUS_IMAGE_RESIZE_FAILURE           = 105;
-const uint32_t           LAZARUS_FT_INIT_FAILURE                = 106;
-const uint32_t           LAZARUS_FT_LOAD_FAILURE                = 107;
-const uint32_t           LAZARUS_FT_RENDER_FAILURE              = 108;
-const uint32_t           LAZARUS_SHADER_ERROR                   = 201;
-const uint32_t           LAZARUS_VSHADER_COMPILE_FAILURE        = 202;
-const uint32_t           LAZARUS_FSHADER_COMPILE_FAILURE        = 203;
-const uint32_t           LAZARUS_SHADER_LINKING_FAILURE         = 204;
-const uint32_t           LAZARUS_UNIFORM_NOT_FOUND              = 205;
-const uint32_t           LAZARUS_MATRIX_LOCATION_ERROR          = 206;
-const uint32_t           LAZARUS_OPENGL_ERROR                   = 301;
-const uint32_t           LAZARUS_NO_CONTEXT                     = 302;
-const uint32_t           LAZARUS_WINDOW_ERROR                   = 303;
-const uint32_t           LAZARUS_EVENT_ERROR                    = 304;
-const uint32_t           LAZARUS_GLFW_NOINIT                    = 305;
-const uint32_t           LAZARUS_WIN_EXCEEDS_MAX                = 306;
-const uint32_t           LAZARUS_TIME_ERROR                     = 307;
-const uint32_t           LAZARUS_AUDIO_ERROR                    = 401;
-const uint32_t           LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR  = 402;
-const uint32_t           LAZARUS_AUDIO_LOAD_ERROR               = 403;
-const uint32_t           LAZARUS_INVALID_RADIANS                = 501;
-const uint32_t           LAZARUS_INVALID_CUBEMAP                = 502;
-const uint32_t           LAZARUS_INVALID_COORDINATE             = 503;
-const uint32_t           LAZARUS_INVALID_DIMENSIONS             = 504;
-const uint32_t           LAZARUS_INVALID_INTENSITY              = 505;
-const uint32_t           LAZARUS_FEATURE_DISABLED               = 506;
-
 void GlobalsManager::setEnforceImageSanity(bool shouldEnforce)
 {
     LAZARUS_ENFORCE_IMAGE_SANITY = shouldEnforce;

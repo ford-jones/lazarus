@@ -55,53 +55,55 @@ extern uint32_t                  LAZARUS_MAX_IMAGE_HEIGHT;
 extern uint32_t                  LAZARUS_LISTENER_KEYCODE;
 extern uint32_t                  LAZARUS_LISTENER_SCANCODE;
 extern uint32_t                  LAZARUS_LISTENER_MOUSECODE;
-extern float                  LAZARUS_LISTENER_MOUSEX;
-extern float                  LAZARUS_LISTENER_MOUSEY;
-extern float                  LAZARUS_LISTENER_SCROLLCODE;
+extern float                     LAZARUS_LISTENER_MOUSEX;
+extern float                     LAZARUS_LISTENER_MOUSEY;
+extern float                     LAZARUS_LISTENER_SCROLLCODE;
+
 
 /* Placeholders */
 
 extern const uint32_t            LAZARUS_MOUSE_NOCLICK;
 
-extern const char*          LAZARUS_SKYBOX_CUBE;
-extern const char*          LAZARUS_GLYPH_QUAD;
-extern const char*          LAZARUS_PRIMITIVE_MESH;
-extern const char*          LAZARUS_TEXTURED_MESH;
-extern const char*          LAZARUS_DIFFUSE_MESH;
+extern const char*               LAZARUS_SKYBOX_CUBE;
+extern const char*               LAZARUS_GLYPH_QUAD;
+extern const char*               LAZARUS_PRIMITIVE_MESH;
+extern const char*               LAZARUS_TEXTURED_MESH;
+extern const char*               LAZARUS_DIFFUSE_MESH;
 
-/* Status Codes */
-
-extern const uint32_t            LAZARUS_OK;
-extern const uint32_t            LAZARUS_FILE_NOT_FOUND;
-extern const uint32_t            LAZARUS_FILE_UNREADABLE;
-extern const uint32_t            LAZARUS_FILESTREAM_CLOSED;
-extern const uint32_t            LAZARUS_IMAGE_LOAD_FAILURE;
-extern const uint32_t            LAZARUS_IMAGE_RESIZE_FAILURE;
-extern const uint32_t            LAZARUS_FT_INIT_FAILURE;
-extern const uint32_t            LAZARUS_FT_LOAD_FAILURE;
-extern const uint32_t            LAZARUS_FT_RENDER_FAILURE;
-extern const uint32_t            LAZARUS_SHADER_ERROR;
-extern const uint32_t            LAZARUS_VSHADER_COMPILE_FAILURE;
-extern const uint32_t            LAZARUS_FSHADER_COMPILE_FAILURE;
-extern const uint32_t            LAZARUS_SHADER_LINKING_FAILURE;
-extern const uint32_t            LAZARUS_UNIFORM_NOT_FOUND;
-extern const uint32_t            LAZARUS_MATRIX_LOCATION_ERROR;
-extern const uint32_t            LAZARUS_OPENGL_ERROR;
-extern const uint32_t            LAZARUS_NO_CONTEXT;
-extern const uint32_t            LAZARUS_WINDOW_ERROR;
-extern const uint32_t            LAZARUS_EVENT_ERROR;
-extern const uint32_t            LAZARUS_GLFW_NOINIT;
-extern const uint32_t            LAZARUS_WIN_EXCEEDS_MAX;
-extern const uint32_t            LAZARUS_TIME_ERROR;
-extern const uint32_t            LAZARUS_AUDIO_ERROR;
-extern const uint32_t            LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR;
-extern const uint32_t            LAZARUS_AUDIO_LOAD_ERROR;
-extern const uint32_t            LAZARUS_INVALID_RADIANS;
-extern const uint32_t            LAZARUS_INVALID_CUBEMAP;
-extern const uint32_t            LAZARUS_INVALID_COORDINATE;
-extern const uint32_t            LAZARUS_INVALID_DIMENSIONS;
-extern const uint32_t            LAZARUS_INVALID_INTENSITY;
-extern const uint32_t            LAZARUS_FEATURE_DISABLED;
+enum StatusCode
+{
+    LAZARUS_OK                             = 0,
+    LAZARUS_FILE_NOT_FOUND                 = 101,
+    LAZARUS_FILE_UNREADABLE                = 102,
+    LAZARUS_FILESTREAM_CLOSED              = 103,
+    LAZARUS_IMAGE_LOAD_FAILURE             = 104,
+    LAZARUS_IMAGE_RESIZE_FAILURE           = 105,
+    LAZARUS_FT_INIT_FAILURE                = 106,
+    LAZARUS_FT_LOAD_FAILURE                = 107,
+    LAZARUS_FT_RENDER_FAILURE              = 108,
+    LAZARUS_SHADER_ERROR                   = 201,
+    LAZARUS_VSHADER_COMPILE_FAILURE        = 202,
+    LAZARUS_FSHADER_COMPILE_FAILURE        = 203,
+    LAZARUS_SHADER_LINKING_FAILURE         = 204,
+    LAZARUS_UNIFORM_NOT_FOUND              = 205,
+    LAZARUS_MATRIX_LOCATION_ERROR          = 206,
+    LAZARUS_OPENGL_ERROR                   = 301,
+    LAZARUS_NO_CONTEXT                     = 302,
+    LAZARUS_WINDOW_ERROR                   = 303,
+    LAZARUS_EVENT_ERROR                    = 304,
+    LAZARUS_GLFW_NOINIT                    = 305,
+    LAZARUS_WIN_EXCEEDS_MAX                = 306,
+    LAZARUS_TIME_ERROR                     = 307,
+    LAZARUS_AUDIO_ERROR                    = 401,
+    LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR  = 402,
+    LAZARUS_AUDIO_LOAD_ERROR               = 403,
+    LAZARUS_INVALID_RADIANS                = 501,
+    LAZARUS_INVALID_CUBEMAP                = 502,
+    LAZARUS_INVALID_COORDINATE             = 503,
+    LAZARUS_INVALID_DIMENSIONS             = 504,
+    LAZARUS_INVALID_INTENSITY              = 505,
+    LAZARUS_FEATURE_DISABLED               = 506
+};
 
 class GlobalsManager
 {

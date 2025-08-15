@@ -35,7 +35,7 @@ void Time::monitorElapsedUptime()
 	this->elapsedTime = glfwGetTime();
 	if(elapsedTime <= 0.0f)
 	{
- 		globals.setExecutionState(LAZARUS_TIME_ERROR);
+ 		globals.setExecutionState(StatusCode::LAZARUS_TIME_ERROR);
 	};
 
 	this->msSinceLastRender = (this->elapsedTime - this->internalSeconds);
@@ -50,7 +50,7 @@ void Time::monitorTimeDelta()
 	this->timeDelta = (1000 / this->framesPerSecond);
 	if(timeDelta <= 0.0f)
 	{
-		globals.setExecutionState(LAZARUS_TIME_ERROR);
+		globals.setExecutionState(StatusCode::LAZARUS_TIME_ERROR);
 	};
 
 	return;
@@ -66,7 +66,7 @@ void Time::monitorFPS()
 		this->framesPerSecond = this->frameCount;
 		if(this->framesPerSecond <= 0) 
 		{
-			globals.setExecutionState(LAZARUS_TIME_ERROR);
+			globals.setExecutionState(StatusCode::LAZARUS_TIME_ERROR);
 		};
 
 		this->frameCount = 0;
@@ -96,7 +96,6 @@ Events::Events()
 
 	errorCode 			= 0;
 	errorMessage 		= NULL;
-
 	win 		        = NULL;
 };
 
@@ -155,7 +154,7 @@ void Events::eventsInit()
 	}
 	else 
 	{
-		globals.setExecutionState(LAZARUS_NO_CONTEXT);
+		globals.setExecutionState(StatusCode::LAZARUS_NO_CONTEXT);
 
 		return;
 	};
@@ -283,7 +282,7 @@ int32_t Events::checkErrors(const char *file, int line)
         std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
         std::cerr << RED_TEXT << "ERROR::GLFW::WINDOW " << RESET_TEXT << errorMessage << std::endl;
 
-        globals.setExecutionState(LAZARUS_EVENT_ERROR);
+        globals.setExecutionState(StatusCode::LAZARUS_EVENT_ERROR);
         
         return errorCode;
     }
@@ -325,7 +324,7 @@ int32_t WindowManager::createWindow()
     {
         std::cout << "ERROR::WINDOW_MANAGER::GLFW_MISSING" << std::endl;
 
-        globals.setExecutionState(LAZARUS_GLFW_NOINIT);
+        globals.setExecutionState(StatusCode::LAZARUS_GLFW_NOINIT);
         
         glfwTerminate();
         return -1;
@@ -357,7 +356,7 @@ int32_t WindowManager::createWindow()
 		(static_cast<int32_t>(this->frame.height) > videoMode->height)
 	)
     {
-        globals.setExecutionState(LAZARUS_WIN_EXCEEDS_MAX);
+        globals.setExecutionState(StatusCode::LAZARUS_WIN_EXCEEDS_MAX);
         return -1;
     };
 
@@ -505,7 +504,7 @@ int32_t WindowManager::snapCursor(float moveX, float moveY)
 {
     if(moveX > globals.getDisplayWidth() || moveY > globals.getDisplayHeight())
     {
-        globals.setExecutionState(LAZARUS_INVALID_COORDINATE);
+        globals.setExecutionState(StatusCode::LAZARUS_INVALID_COORDINATE);
 		return -1;
     }
     else
@@ -574,7 +573,7 @@ int32_t WindowManager::checkErrors(const char *file, int line)
         std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
         std::cerr << RED_TEXT << "ERROR::GLFW::WINDOW " << RESET_TEXT << errorMessage << std::endl;
 
-        globals.setExecutionState(LAZARUS_WINDOW_ERROR);
+        globals.setExecutionState(StatusCode::LAZARUS_WINDOW_ERROR);
         
         return errorCode;
     }

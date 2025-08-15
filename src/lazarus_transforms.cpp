@@ -73,7 +73,7 @@ void Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float 
 
 	if(max <= 0.0f)
 	{
-		globals.setExecutionState(LAZARUS_INVALID_DIMENSIONS);	
+		globals.setExecutionState(StatusCode::LAZARUS_INVALID_DIMENSIONS);	
 	}
 	else
 	{
@@ -123,7 +123,7 @@ void Transform::rotateCameraAsset(CameraManager::Camera &camera, float pitch, fl
 	
 	if((pitch > 360.0f) || (pitch < -360.0f))
 	{
-		globals.setExecutionState(LAZARUS_INVALID_RADIANS);
+		globals.setExecutionState(StatusCode::LAZARUS_INVALID_RADIANS);
 	}
 	else
 	{
@@ -153,7 +153,7 @@ void Transform::orbitCameraAsset(CameraManager::Camera &camera, float azimuth, f
 
 	if((azimuth > 360.0f) || (azimuth < -360.0f))
 	{
-		globals.setExecutionState(LAZARUS_INVALID_RADIANS);
+		globals.setExecutionState(StatusCode::LAZARUS_INVALID_RADIANS);
 	}
 	else
 	{
@@ -214,7 +214,7 @@ float Transform::degreesToRadians(float in, bool enforceLimits)
 		enforceLimits && 
 		((in > 360.0f) || (in < -360.0f)))	
 	{
-		globals.setExecutionState(LAZARUS_INVALID_RADIANS);
+		globals.setExecutionState(StatusCode::LAZARUS_INVALID_RADIANS);
 	};
 
 	this->outRadians = in * this->pi / 180.0f;

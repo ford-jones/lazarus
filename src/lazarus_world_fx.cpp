@@ -73,14 +73,14 @@ void WorldFX::drawSkyBox(WorldFX::SkyBox skyboxIn, CameraManager::Camera camera)
     this->status = glGetError();
     if(this->status != 0)
     {
-        globals.setExecutionState(LAZARUS_UNIFORM_NOT_FOUND);
+        globals.setExecutionState(StatusCode::LAZARUS_UNIFORM_NOT_FOUND);
     };
 
     glUniformMatrix4fv(uniform, 1, GL_FALSE, &viewFromOrigin[0][0]);
     this->status = glGetError();
     if(this->status != 0)
     {
-        globals.setExecutionState(LAZARUS_MATRIX_LOCATION_ERROR);
+        globals.setExecutionState(StatusCode::LAZARUS_MATRIX_LOCATION_ERROR);
     };
 
     glDepthMask(GL_FALSE);
@@ -100,7 +100,7 @@ void WorldFX::drawSkyBox(WorldFX::SkyBox skyboxIn, CameraManager::Camera camera)
     this->status = glGetError();
     if(this->status != 0)
     {
-        globals.setExecutionState(LAZARUS_MATRIX_LOCATION_ERROR);
+        globals.setExecutionState(StatusCode::LAZARUS_MATRIX_LOCATION_ERROR);
     };
 
     return;
@@ -122,7 +122,7 @@ void WorldFX::loadFog(WorldFX::Fog fogIn)
 {
     if(fogIn.density < 0.0f)
     {
-        globals.setExecutionState(LAZARUS_INVALID_INTENSITY);
+        globals.setExecutionState(StatusCode::LAZARUS_INVALID_INTENSITY);
     };
     
     glUniform3fv(this->fogColorUniformLocation, 1, &fogIn.color[0]);
@@ -134,7 +134,7 @@ void WorldFX::loadFog(WorldFX::Fog fogIn)
     this->status = glGetError();
     if(this->status != 0)
     {
-        globals.setExecutionState(LAZARUS_UNIFORM_NOT_FOUND);
+        globals.setExecutionState(StatusCode::LAZARUS_UNIFORM_NOT_FOUND);
     };
 
     return;
@@ -163,7 +163,7 @@ void WorldFX::loadSkyMap()
         if(
             this->skyBoxOut.cubeMap.size() > 0 && (image.width != image.height || image.width != this->skyBoxOut.cubeMap[0].width))
         {
-            globals.setExecutionState(LAZARUS_INVALID_CUBEMAP);
+            globals.setExecutionState(StatusCode::LAZARUS_INVALID_CUBEMAP);
         };
         
         this->skyBoxOut.cubeMap.push_back(image);

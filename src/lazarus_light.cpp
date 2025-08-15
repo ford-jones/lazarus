@@ -61,7 +61,7 @@ void LightManager::loadLightSource(LightManager::Light &lightIn)
 {
     this->lightData = lightStore[lightIn.id];
 
-    if(lightIn.brightness < 0.0f) globals.setExecutionState(LAZARUS_INVALID_INTENSITY);
+    if(lightIn.brightness < 0.0f) globals.setExecutionState(StatusCode::LAZARUS_INVALID_INTENSITY);
     
     if(
         lightData.brightnessUniformLocation     >= 0 &&
@@ -80,7 +80,7 @@ void LightManager::loadLightSource(LightManager::Light &lightIn)
     }
     else
     {
-        globals.setExecutionState(LAZARUS_UNIFORM_NOT_FOUND);
+        globals.setExecutionState(StatusCode::LAZARUS_UNIFORM_NOT_FOUND);
     };
 
     return;
@@ -95,7 +95,7 @@ void LightManager::checkErrors(const char *file, uint32_t line)
         std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
         std::cerr << RED_TEXT << "ERROR::GL_ERROR::CODE " << RESET_TEXT << this->errorCode << std::endl;
 
-        globals.setExecutionState(LAZARUS_OPENGL_ERROR);
+        globals.setExecutionState(StatusCode::LAZARUS_OPENGL_ERROR);
     }
 
     return;

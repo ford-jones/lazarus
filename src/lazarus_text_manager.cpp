@@ -45,7 +45,7 @@ void FontLoader::loaderInit()
         std::cerr << RED_TEXT << "Status: " << status << RESET_TEXT << std::endl;
 
         std::cerr << status << std::endl;
-        globals.setExecutionState(LAZARUS_FT_INIT_FAILURE);
+        globals.setExecutionState(StatusCode::LAZARUS_FT_INIT_FAILURE);
     }
 };
 
@@ -61,7 +61,7 @@ int32_t FontLoader::loadTrueTypeFont(std::string filepath, uint32_t charHeight, 
         std::cerr << RED_TEXT << "ERROR::FONTLOADER::LOADFONT" << RESET_TEXT << std::endl;
         std::cerr << RED_TEXT << "Status: " << status << RESET_TEXT << std::endl;
 
-        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
 
         return -1;
     } 
@@ -103,7 +103,7 @@ FileLoader::Image FontLoader::loadCharacter(char character, uint32_t fontIndex)
         std::cerr << RED_TEXT << "ERROR::FONTLOADER::LOADCHAR" << RESET_TEXT << std::endl;
         std::cerr << RED_TEXT << "Status: " << status << RESET_TEXT << std::endl;
 
-        globals.setExecutionState(LAZARUS_FT_LOAD_FAILURE);
+        globals.setExecutionState(StatusCode::LAZARUS_FT_LOAD_FAILURE);
 
         this->setImageData(0, 0, NULL);
     }
@@ -121,7 +121,7 @@ void FontLoader::createBitmap()
 
     if(status != FT_Err_Ok)
     {
-        globals.setExecutionState(LAZARUS_FT_RENDER_FAILURE);
+        globals.setExecutionState(StatusCode::LAZARUS_FT_RENDER_FAILURE);
 
         this->setImageData(0, 0, NULL);
     }

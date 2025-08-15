@@ -85,7 +85,7 @@ void AudioManager::setPlaybackCursor(AudioManager::Audio &audioIn, uint32_t seco
 
 	if(result != FMOD_OK)
 	{
-		globals.setExecutionState(LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR);
+		globals.setExecutionState(StatusCode::LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR);
 	};
 
 	return;
@@ -130,7 +130,7 @@ void AudioManager::loadAudio(AudioManager::Audio &audioIn)
 	}
 	else
 	{
-		globals.setExecutionState(LAZARUS_FILE_NOT_FOUND);
+		globals.setExecutionState(StatusCode::LAZARUS_FILE_NOT_FOUND);
 		std::cout << RED_TEXT << "LAZARUS::ERROR::SOUND_MANAGER" << std::endl;	
 		std::cout << "Status: " << LAZARUS_FILE_NOT_FOUND << RESET_TEXT << std::endl;	
 	}
@@ -269,7 +269,7 @@ void AudioManager::validateAudioHandle(AudioData &audioData)
 		
 		if(result != FMOD_OK)
 		{
-			globals.setExecutionState(LAZARUS_AUDIO_LOAD_ERROR);
+			globals.setExecutionState(StatusCode::LAZARUS_AUDIO_LOAD_ERROR);
 		};
 	};
 
@@ -283,7 +283,7 @@ void AudioManager::checkErrors(FMOD_RESULT res, const char *file, uint32_t line)
 		std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
 		std::cout << RED_TEXT << "LAZARUS::ERROR::SOUND_MANAGER " << res << RESET_TEXT << std::endl;
 
-		globals.setExecutionState(LAZARUS_AUDIO_ERROR);
+		globals.setExecutionState(StatusCode::LAZARUS_AUDIO_ERROR);
 	};
 
 	return;

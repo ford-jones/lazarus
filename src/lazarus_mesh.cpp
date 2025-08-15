@@ -124,7 +124,7 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
 {
     if(width < 0.0f || height < 0.0f)
     {
-        globals.setExecutionState(LAZARUS_INVALID_DIMENSIONS);
+        globals.setExecutionState(StatusCode::LAZARUS_INVALID_DIMENSIONS);
     };
     
     this->meshOut = {};
@@ -369,7 +369,7 @@ void MeshManager::initialiseMesh()
     }
     else
     {
-        globals.setExecutionState(LAZARUS_MATRIX_LOCATION_ERROR);
+        globals.setExecutionState(StatusCode::LAZARUS_MATRIX_LOCATION_ERROR);
     };
 	
     return;
@@ -496,7 +496,7 @@ void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
     }
     else
     {
-        globals.setExecutionState(LAZARUS_MATRIX_LOCATION_ERROR);
+        globals.setExecutionState(StatusCode::LAZARUS_MATRIX_LOCATION_ERROR);
     };
 
     return;
@@ -630,7 +630,7 @@ void MeshManager::checkErrors(const char *file, uint32_t line)
         std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
         std::cerr << RED_TEXT << "ERROR::GL_ERROR::CODE " << RESET_TEXT << this->errorCode << std::endl;
 
-        globals.setExecutionState(LAZARUS_OPENGL_ERROR);
+        globals.setExecutionState(StatusCode::LAZARUS_OPENGL_ERROR);
     }
 
     return;
@@ -698,7 +698,7 @@ bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &ou
 
     if( !file.is_open() )
     {
-        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
         
         return false;
     }
@@ -951,7 +951,7 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
             }
             else
             {
-                globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+                globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
             };
         }
         else if(json.find(PRIMITIVES) == 0)
@@ -972,7 +972,7 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
                     int32_t index = property.find(":");
                     if(index < 0)
                     {
-                        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+                        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
                     };
 
 
@@ -1311,7 +1311,7 @@ void MeshLoader::loadGlbChunks(const char *filepath)
 
     if(!file.is_open())
     {
-        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
 
         return;
     }
@@ -1551,7 +1551,7 @@ void MeshLoader::constructTriangle()
         std::cout << RED_TEXT << "ERROR::MESH::MESH_LOADER " << std::endl;
         std::cout << "Status: " << LAZARUS_FILE_UNREADABLE << RESET_TEXT << std::endl;
 
-        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
 
         return;
     }
@@ -1637,7 +1637,7 @@ bool MaterialLoader::loadMaterial(vector<vec3> &out, vector<vector<uint32_t>> da
     
     if( !file.is_open() )
     {
-        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
         return false;
     }   
 

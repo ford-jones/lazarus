@@ -82,9 +82,9 @@ const char *FileLoader::loadText(string filepath)
         else 
         {
             std::cout << RED_TEXT << "fileStream is not open" << RESET_TEXT << std::endl;
-            globals.setExecutionState(LAZARUS_FILESTREAM_CLOSED);
+            globals.setExecutionState(StatusCode::LAZARUS_FILESTREAM_CLOSED);
 
-            this->textData = std::to_string(LAZARUS_FILESTREAM_CLOSED).c_str();
+            this->textData = std::to_string(StatusCode::LAZARUS_FILESTREAM_CLOSED).c_str();
 
             return this->textData;
         };
@@ -92,9 +92,9 @@ const char *FileLoader::loadText(string filepath)
     else 
     {
         std::cout << RED_TEXT << "File doesn't exist" << RESET_TEXT << std::endl;
-        globals.setExecutionState(LAZARUS_FILE_NOT_FOUND);
+        globals.setExecutionState(StatusCode::LAZARUS_FILE_NOT_FOUND);
 
-        this->textData = std::to_string(LAZARUS_FILE_NOT_FOUND).c_str();
+        this->textData = std::to_string(StatusCode::LAZARUS_FILE_NOT_FOUND).c_str();
 
         return this->textData;
     };
@@ -168,7 +168,7 @@ FileLoader::Image FileLoader::loadImage(const char *filename, const unsigned cha
                 outImage.width = imageWidth;
 
                 std::cerr << RED_TEXT << "LAZARUS::ERROR::FileLoader::IMAGE_LOADER " << LAZARUS_IMAGE_RESIZE_FAILURE << RESET_TEXT << std::endl;    
-                globals.setExecutionState(LAZARUS_IMAGE_RESIZE_FAILURE);
+                globals.setExecutionState(StatusCode::LAZARUS_IMAGE_RESIZE_FAILURE);
             }
 
         }
@@ -186,7 +186,7 @@ FileLoader::Image FileLoader::loadImage(const char *filename, const unsigned cha
         outImage.width = 0;
 
 		std::cerr << RED_TEXT << "LAZARUS::ERROR::FileLoader::IMAGE_LOADER " << stbi_failure_reason() << RESET_TEXT << std::endl;
-        globals.setExecutionState(LAZARUS_IMAGE_LOAD_FAILURE);
+        globals.setExecutionState(StatusCode::LAZARUS_IMAGE_LOAD_FAILURE);
 	};
 	
 	return outImage;

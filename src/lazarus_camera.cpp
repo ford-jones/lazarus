@@ -115,7 +115,7 @@ void CameraManager::loadCamera(CameraManager::Camera &cameraIn)
     }
     else
     {
-        globals.setExecutionState(LAZARUS_MATRIX_LOCATION_ERROR);
+        globals.setExecutionState(StatusCode::LAZARUS_MATRIX_LOCATION_ERROR);
     };
 
     return;
@@ -171,7 +171,7 @@ uint8_t CameraManager::getPixelOccupant(uint32_t positionX, uint32_t positionY)
         /* =================================================
             else
             {
-                globals.setExecutionState(LAZARUS_INVALID_COORDINATE);
+                globals.setExecutionState(StatusCode::LAZARUS_INVALID_COORDINATE);
             };
 
             Would be good to have this here but out of frame
@@ -180,7 +180,7 @@ uint8_t CameraManager::getPixelOccupant(uint32_t positionX, uint32_t positionY)
     }
     else
     {
-        globals.setExecutionState(LAZARUS_FEATURE_DISABLED);
+        globals.setExecutionState(StatusCode::LAZARUS_FEATURE_DISABLED);
     }
     
     return pixel;
@@ -214,7 +214,7 @@ void CameraManager::checkErrors(const char *file, uint32_t line)
         std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
         std::cerr << RED_TEXT << "ERROR::GL_ERROR::CODE " << RESET_TEXT << this->errorCode << std::endl;
 
-        globals.setExecutionState(LAZARUS_OPENGL_ERROR);
+        globals.setExecutionState(StatusCode::LAZARUS_OPENGL_ERROR);
     }
 
     return;

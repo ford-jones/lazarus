@@ -271,7 +271,7 @@ uint32_t Shader::compileShaders(std::string fragmentShader, std::string vertexSh
         glGetShaderInfoLog(this->vertShader, 512, NULL, this->message);                                                             //   Retrieve the OpenGL shader logs if there are any and print them to the console
         std::cout << RED_TEXT << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n" << RESET_TEXT << this->message << std::endl;
 
-        globals.setExecutionState(LAZARUS_VSHADER_COMPILE_FAILURE);
+        globals.setExecutionState(StatusCode::LAZARUS_VSHADER_COMPILE_FAILURE);
         return globals.getExecutionState();
     };
 
@@ -283,7 +283,7 @@ uint32_t Shader::compileShaders(std::string fragmentShader, std::string vertexSh
         glGetShaderInfoLog(this->fragShader, 512, NULL, this->message);                                                             //   Retrieve the OpenGL shader logs if there are any and print them to the console
         std::cout << RED_TEXT << "ERROR::SHADER::FRAG::COMPILATION_FAILED\n" << RESET_TEXT << this->message << std::endl;
 
-        globals.setExecutionState(LAZARUS_FSHADER_COMPILE_FAILURE);
+        globals.setExecutionState(StatusCode::LAZARUS_FSHADER_COMPILE_FAILURE);
         return globals.getExecutionState();
     };
 
@@ -296,7 +296,7 @@ uint32_t Shader::compileShaders(std::string fragmentShader, std::string vertexSh
         glGetProgramInfoLog(this->shaderProgram, 512, NULL, this->message);                                                         //   Retrieve the OpenGL shader logs if there are any and print them to the console
         std::cout << RED_TEXT << "ERROR::SHADER::PROGRAM::LINKING_FAILED\n" << RESET_TEXT << message << std::endl;
 
-        globals.setExecutionState(LAZARUS_SHADER_LINKING_FAILURE);
+        globals.setExecutionState(StatusCode::LAZARUS_SHADER_LINKING_FAILURE);
         return globals.getExecutionState();
     }
 
@@ -317,7 +317,7 @@ void Shader::setActiveShader(uint32_t program)
     this->errorCode = glGetError(); 
     if(this->errorCode != GL_NO_ERROR)
     {
-        globals.setExecutionState(LAZARUS_SHADER_ERROR);
+        globals.setExecutionState(StatusCode::LAZARUS_SHADER_ERROR);
     };
 
     return;
@@ -412,7 +412,7 @@ void Shader::uploadUniform(std::string identifier, void *data)
         };
 
         default:
-            globals.setExecutionState(LAZARUS_SHADER_ERROR);
+            globals.setExecutionState(StatusCode::LAZARUS_SHADER_ERROR);
             break;
     }
 
@@ -426,7 +426,7 @@ void Shader::verifyProgram(uint32_t program)
     {
         std::cout << RED_TEXT << "ERROR::SHADER::PROGRAM::NOT_FOUND" << RESET_TEXT << std::endl;
 
-        globals.setExecutionState(LAZARUS_SHADER_ERROR);
+        globals.setExecutionState(StatusCode::LAZARUS_SHADER_ERROR);
     }
     else
     {
