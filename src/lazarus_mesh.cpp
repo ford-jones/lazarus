@@ -600,9 +600,10 @@ void MeshManager::resolveFilepaths(string texPath, string mtlPath, string objPat
 
 void MeshManager::setInherentProperties()
 {
-    meshOut.locationX = 0;
-    meshOut.locationY = 0;
-    meshOut.locationZ = 0;
+    // meshOut.locationX = 0;
+    // meshOut.locationY = 0;
+    // meshOut.locationZ = 0;
+    meshOut.position = glm::vec3(0.0f, 0.0f, 0.0f);
 
     meshOut.modelMatrix = mat4(1.0f);
 

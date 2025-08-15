@@ -34,15 +34,15 @@ LightManager::LightManager(GLuint shader)
     this->errorCode = 0;
 }
 
-LightManager::Light LightManager::createLightSource(float x, float y, float z, float r, float g, float b, float brightness)
+LightManager::Light LightManager::createLightSource(glm::vec3 location, glm::vec3 color, float brightness)
 {	
     this->lightOut = {};
     this->lightData = {};
     
     lightOut.id             = lightStore.size();
     lightOut.brightness     = brightness;
-    lightOut.position  = glm::vec3(x, y, z);
-    lightOut.color     = glm::vec3(r, g, b);
+    lightOut.position       = location;
+    lightOut.color          = color;
     
     this->lightCount += 1;
     lightData.uniformIndex                   =   (this->lightCount - 1);

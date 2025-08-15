@@ -301,7 +301,7 @@ uint32_t TextManager::extendFontStack(std::string filepath, uint32_t ptSize)
     return fonts.size() - 1;
 };
 
-TextManager::Text TextManager::loadText(std::string targetText, uint32_t fontId, uint32_t posX, uint32_t posY, uint32_t letterSpacing, float red, float green, float blue, TextManager::Text textIn)
+TextManager::Text TextManager::loadText(std::string targetText, uint32_t fontId, glm::vec2 location, glm::vec3 color, uint32_t letterSpacing, TextManager::Text textIn)
 {
     /* =================================================
         Clear internal child trackers to stop bloat.
@@ -313,11 +313,10 @@ TextManager::Text TextManager::loadText(std::string targetText, uint32_t fontId,
         this->word.clear();
     };
     
-    this->setTextColor(red, green, blue);
-    textOut.color = glm::vec3(red, green, blue);
+    this->setTextColor(color);
+    textOut.color = color;
     textOut.targetString = targetText;
-    textOut.locationX = posX;
-    textOut.locationY = posY;
+    textOut.location = location;
 
     for(size_t i = 0; i < targetText.size(); i++)
     {   
@@ -339,8 +338,8 @@ TextManager::Text TextManager::loadText(std::string targetText, uint32_t fontId,
         ================================================ */
         transformer.translateMeshAsset(
             quad, 
-            static_cast<float>((posX + (this->glyph.width / 2.0f)) + this->translationStride), 
-            static_cast<float>((posY + (this->rowHeight / 2.0f))), 
+            static_cast<float>((location.x + (this->glyph.width / 2.0f)) + this->translationStride), 
+            static_cast<float>((location.y + (this->rowHeight / 2.0f))), 
             0.0f
         );
         this->translationStride += (this->glyph.width + letterSpacing);
@@ -461,10 +460,14 @@ void TextManager::setActiveGlyph(char target, uint32_t fontId, uint32_t spacing)
     };
 };
 
-void TextManager::setTextColor(float r, float g, float b)
+void TextManager::setTextColor(glm::vec3 color)
 {
-    this->textColor = glm::vec3(r, g, b);
-    glUniform3fv(glGetUniformLocation(this->shaderProgram, "textColor"), 1, &this->textColor[0]);
+    //  TODO:
+    //  Check opengl errors 
+    
+    this->textColor = color;
+    GLuint textColorUniformLocation = glGetUniformLocation(this->shaderProgram, "textColor");
+    glUniform3fv(textColorUniformLocation, 1, &this->textColor[0]);
 };
 
 void TextManager::lookUpUVs(uint8_t keyCode, uint32_t fontId)

@@ -106,11 +106,11 @@ void WorldFX::drawSkyBox(WorldFX::SkyBox skyboxIn, CameraManager::Camera camera)
     return;
 };
 
-WorldFX::Fog WorldFX::createFog(float minDistance, float maxDistance, float thickness, float r, float g, float b, float x, float y, float z)
+WorldFX::Fog WorldFX::createFog(float minDistance, float maxDistance, float thickness, glm::vec3 color, glm::vec3 position)
 {
     this->fogOut = {};
-    this->fogOut.color = glm::vec3(r, g, b);
-    this->fogOut.viewpoint = glm::vec3(x, y, z);
+    this->fogOut.color = color;
+    this->fogOut.viewpoint = position;
     this->fogOut.density = thickness;
     this->fogOut.maxDistance = maxDistance;
     this->fogOut.minDistance = minDistance;

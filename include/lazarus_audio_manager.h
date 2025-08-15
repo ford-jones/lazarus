@@ -73,8 +73,8 @@ class AudioManager
 		void playAudio(Audio &audioIn);
 		void pauseAudio(Audio &audioIn);
 
-		void updateSourceLocation(Audio &audioIn, float x, float y, float z);
-		void updateListenerLocation(float x, float y, float z);
+		void updateSourceLocation(Audio &audioIn, glm::vec3 location);
+		void updateListenerLocation(glm::vec3 location);
 
 		virtual ~AudioManager();
 

@@ -175,13 +175,13 @@ void AudioManager::pauseAudio(AudioManager::Audio &audioIn)
 	return;
 };
 
-void AudioManager::updateSourceLocation(AudioManager::Audio &audioIn, float x, float y, float z)
+void AudioManager::updateSourceLocation(AudioManager::Audio &audioIn, glm::vec3 location)
 {
 	AudioData &audioData = this->audioStore[audioIn.audioIndex - 1];
 
 	this->validateAudioHandle(audioData);
 
-	audioData.currentSourcePosition = {x, y, z};
+	audioData.currentSourcePosition = {location.x, location.y, location.z};
 
 	audioData.sourceVelocity = {
 		((audioData.currentSourcePosition.x - audioData.prevSourcePosition.x) / (1000 / 60)),
@@ -205,9 +205,9 @@ void AudioManager::updateSourceLocation(AudioManager::Audio &audioIn, float x, f
 	return;
 };
 
-void AudioManager::updateListenerLocation(float x, float y, float z)
+void AudioManager::updateListenerLocation(glm::vec3 location)
 {
-	this->currentListenerPosition = {x, y, z};
+	this->currentListenerPosition = {location.x, location.y, location.z};
 
 	/* =====================================
 		TODO:

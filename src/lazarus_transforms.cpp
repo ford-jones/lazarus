@@ -50,9 +50,9 @@ void Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, fl
 	
 	this->worldCoordinates = mesh.modelMatrix * glm::vec4(this->localCoordinates, 1.0);
 
-    mesh.locationX = this->worldCoordinates.x;
-    mesh.locationY = this->worldCoordinates.y;
-    mesh.locationZ = this->worldCoordinates.z;
+    mesh.position.x = this->worldCoordinates.x;
+    mesh.position.y = this->worldCoordinates.y;
+    mesh.position.z = this->worldCoordinates.z;
 
 	return;
 };

@@ -224,7 +224,8 @@ class MeshLoader : private MaterialLoader
 #ifndef LAZARUS_MESH_H
 #define LAZARUS_MESH_H
 
-class MeshManager : private MeshLoader, public TextureLoader
+class MeshManager 
+    : private MeshLoader, public TextureLoader
 {
     public:
         struct Mesh
@@ -245,9 +246,7 @@ class MeshManager : private MeshLoader, public TextureLoader
             string materialFilepath;
             string textureFilepath;
 
-            float locationX;
-            float locationY;
-            float locationZ;
+            glm::vec3 position;
 
             mat4 modelMatrix;
 
