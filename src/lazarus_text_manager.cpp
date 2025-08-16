@@ -21,7 +21,8 @@
 
 FontLoader::FontLoader()
 {
-    std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Constructing Lazarus::FontLoader");
+
     this->fileReader = nullptr;
 
     this->lib = NULL;
@@ -41,10 +42,9 @@ void FontLoader::loaderInit()
 
     if(status != FT_Err_Ok)
     {
-        std::cerr << RED_TEXT << "ERROR::FONTLOADER::INIT" << RESET_TEXT << std::endl;
-        std::cerr << RED_TEXT << "Status: " << status << RESET_TEXT << std::endl;
+        std::string message = std::string("FontLoader Error: ").append(std::to_string(this->status));
+        LOG_ERROR(message.c_str(), __FILE__, __LINE__);
 
-        std::cerr << status << std::endl;
         globals.setExecutionState(StatusCode::LAZARUS_FT_INIT_FAILURE);
     }
 };
@@ -58,8 +58,8 @@ int32_t FontLoader::loadTrueTypeFont(std::string filepath, uint32_t charHeight, 
 
     if(status != FT_Err_Ok)
     {
-        std::cerr << RED_TEXT << "ERROR::FONTLOADER::LOADFONT" << RESET_TEXT << std::endl;
-        std::cerr << RED_TEXT << "Status: " << status << RESET_TEXT << std::endl;
+        std::string message = std::string("FontLoader Error: ").append(std::to_string(this->status));
+        LOG_ERROR(message.c_str(), __FILE__, __LINE__);
 
         globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
 
@@ -100,8 +100,8 @@ FileLoader::Image FontLoader::loadCharacter(char character, uint32_t fontIndex)
 
     if(status != FT_Err_Ok)
     {
-        std::cerr << RED_TEXT << "ERROR::FONTLOADER::LOADCHAR" << RESET_TEXT << std::endl;
-        std::cerr << RED_TEXT << "Status: " << status << RESET_TEXT << std::endl;
+        std::string message = std::string("FontLoader Error: ").append(std::to_string(this->status));
+        LOG_ERROR(message.c_str(), __FILE__, __LINE__);
 
         globals.setExecutionState(StatusCode::LAZARUS_FT_LOAD_FAILURE);
 
@@ -121,6 +121,9 @@ void FontLoader::createBitmap()
 
     if(status != FT_Err_Ok)
     {
+        std::string message = std::string("FontLoader Error: ").append(std::to_string(this->status));
+        LOG_ERROR(message.c_str(), __FILE__, __LINE__);
+
         globals.setExecutionState(StatusCode::LAZARUS_FT_RENDER_FAILURE);
 
         this->setImageData(0, 0, NULL);
@@ -174,7 +177,7 @@ void FontLoader::flipGlyph()
 
 FontLoader::~FontLoader()
 {
-    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Destroying Lazarus::FontLoader");
 
     for(size_t i = 0; i < fontStack.size(); i++)
     {
@@ -197,7 +200,8 @@ FontLoader::~FontLoader()
 TextManager::TextManager(GLuint shader) 
     : TextManager::MeshManager(shader, TextureLoader::StorageType::ATLAS)
 {
-    std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Constructing Lazarus::TextManager");
+
     this->shaderProgram = shader;
     this->cameraBuilder = std::make_unique<CameraManager>(this->shaderProgram);
     
@@ -506,5 +510,5 @@ void TextManager::lookUpUVs(uint8_t keyCode, uint32_t fontId)
 
 TextManager::~TextManager()
 {
-    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Destroying Lazarus::TextManager");
 };

@@ -18,6 +18,7 @@
 /*  LAZARUS ENGINE */
 #include <iostream>
 #include <vector>
+#include <chrono>
 
 #ifndef LAZARUS_COMMON_H
 #define LAZARUS_COMMON_H
@@ -27,6 +28,8 @@
 #define RESET_TEXT "\x1b[37m"
 #define RED_TEXT  "\x1b[31m"
 
+extern void LOG_DEBUG(const char *DEBUG_MESSAGE);
+extern void LOG_ERROR(const char *ERR_MESSAGE, const char *ERR_FILENAME, uint32_t ERR_LINE);
 
 /* Engine Codes */
 

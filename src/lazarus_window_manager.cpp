@@ -21,6 +21,8 @@
 
 Time::Time()
 {
+	LOG_DEBUG("Constructing Lazarus::WindowManager::Time");
+
 	this->frameCount 			= 0;
 	this->framesPerSecond 		= 0;
 
@@ -35,6 +37,7 @@ void Time::monitorElapsedUptime()
 	this->elapsedTime = glfwGetTime();
 	if(elapsedTime <= 0.0f)
 	{
+		LOG_ERROR("Time Error: ", __FILE__, __LINE__);
  		globals.setExecutionState(StatusCode::LAZARUS_TIME_ERROR);
 	};
 
@@ -50,6 +53,7 @@ void Time::monitorTimeDelta()
 	this->timeDelta = (1000 / this->framesPerSecond);
 	if(timeDelta <= 0.0f)
 	{
+		LOG_ERROR("Time Error: ", __FILE__, __LINE__);
 		globals.setExecutionState(StatusCode::LAZARUS_TIME_ERROR);
 	};
 
@@ -66,6 +70,7 @@ void Time::monitorFPS()
 		this->framesPerSecond = this->frameCount;
 		if(this->framesPerSecond <= 0) 
 		{
+			LOG_ERROR("Time Error: ", __FILE__, __LINE__);
 			globals.setExecutionState(StatusCode::LAZARUS_TIME_ERROR);
 		};
 
@@ -74,6 +79,11 @@ void Time::monitorFPS()
 	};
 
 	return;
+};
+
+Time::~Time()
+{
+	LOG_DEBUG("Destroying Lazarus::WindowManager::Time");
 };
 
 /* =======================================
@@ -85,6 +95,8 @@ void Time::monitorFPS()
 ========================================== */
 Events::Events()
 {
+	LOG_DEBUG("Constructing Lazarus::WindowManager::Events");
+
 	keyEventString	    = "";
 
 	keyEventCode 	    = 0;
@@ -154,6 +166,8 @@ void Events::eventsInit()
 	}
 	else 
 	{
+        LOG_ERROR("GLFW Error: No OpenGL context.", __FILE__, __LINE__);
+
 		globals.setExecutionState(StatusCode::LAZARUS_NO_CONTEXT);
 
 		return;
@@ -276,11 +290,11 @@ void Events::updateMouseState()
 
 int32_t Events::checkErrors(const char *file, int line)
 {
-    errorCode = glfwGetError(errorMessage); 
+    errorCode = glfwGetError(&errorMessage); 
     if(errorCode != GLFW_NO_ERROR)
     {
-        std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
-        std::cerr << RED_TEXT << "ERROR::GLFW::WINDOW " << RESET_TEXT << errorMessage << std::endl;
+		std::string message = std::string("Event Error: ").append(errorMessage);
+        LOG_ERROR(message.c_str(), file, line);
 
         globals.setExecutionState(StatusCode::LAZARUS_EVENT_ERROR);
         
@@ -292,9 +306,15 @@ int32_t Events::checkErrors(const char *file, int line)
     }
 };
 
+Events::~Events()
+{
+	LOG_DEBUG("Destroyinh Lazarus::WindowManager::Events");
+};
+
 WindowManager::WindowManager(const char *title, uint32_t width, uint32_t height)
 {
-	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+	LOG_DEBUG("Constructing Lazarus::WindowManager");
+
 	this->errorCode = GLFW_NO_ERROR;
 	this->errorMessage = NULL;
 	
@@ -322,7 +342,7 @@ int32_t WindowManager::createWindow()
 {
     if(!glfwInit())
     {
-        std::cout << "ERROR::WINDOW_MANAGER::GLFW_MISSING" << std::endl;
+        LOG_ERROR("GLFW Error: GLFW missing.", __FILE__, __LINE__);
 
         globals.setExecutionState(StatusCode::LAZARUS_GLFW_NOINIT);
         
@@ -356,6 +376,8 @@ int32_t WindowManager::createWindow()
 		(static_cast<int32_t>(this->frame.height) > videoMode->height)
 	)
     {
+		LOG_ERROR("GLFW Error: ", __FILE__, __LINE__);
+
         globals.setExecutionState(StatusCode::LAZARUS_WIN_EXCEEDS_MAX);
         return -1;
     };
@@ -504,6 +526,8 @@ int32_t WindowManager::snapCursor(float moveX, float moveY)
 {
     if(moveX > globals.getDisplayWidth() || moveY > globals.getDisplayHeight())
     {
+		LOG_ERROR("GLFW Error:", __FILE__, __LINE__);
+		
         globals.setExecutionState(StatusCode::LAZARUS_INVALID_COORDINATE);
 		return -1;
     }
@@ -567,11 +591,11 @@ int32_t WindowManager::monitorPixelOccupants()
 
 int32_t WindowManager::checkErrors(const char *file, int line)
 {
-    errorCode = glfwGetError(errorMessage); 
+    errorCode = glfwGetError(&errorMessage); 
     if(errorCode != GLFW_NO_ERROR)
     {
-        std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
-        std::cerr << RED_TEXT << "ERROR::GLFW::WINDOW " << RESET_TEXT << errorMessage << std::endl;
+        std::string message = std::string("Window Error: ").append(errorMessage);
+        LOG_ERROR(message.c_str(), file, line);
 
         globals.setExecutionState(StatusCode::LAZARUS_WINDOW_ERROR);
         
@@ -593,6 +617,8 @@ int WindowManager::initialiseGLEW()
 
 WindowManager::~WindowManager() 
 {
+	LOG_DEBUG("Destroying Lazarus::WindowManager");
+
     glfwDestroyWindow(this->window);
 
     if(this->cursor != NULL) 
@@ -601,6 +627,4 @@ WindowManager::~WindowManager()
     }
 
     glfwTerminate();
-
-    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 };

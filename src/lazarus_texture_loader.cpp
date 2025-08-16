@@ -28,7 +28,7 @@
 
 TextureLoader::TextureLoader(TextureLoader::StorageType storageVariant)
 {
-	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+	LOG_DEBUG("Constructing Lazarus::TextureLoader");
 
 	this->loader = nullptr;	
 
@@ -176,6 +176,7 @@ void TextureLoader::loadCubeMap(std::vector<FileLoader::Image> faces)
 
 	if(faces.size() > 6)
 	{
+		LOG_ERROR("Texture Error:", __FILE__, __LINE__);
 		globals.setExecutionState(StatusCode::LAZARUS_INVALID_CUBEMAP);
 	}
 	else
@@ -350,8 +351,8 @@ void TextureLoader::checkErrors(const char *file, uint32_t line)
     
     if(this->errorCode != GL_NO_ERROR)
     {
-        std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
-        std::cerr << RED_TEXT << "ERROR::GL_ERROR::CODE " << RESET_TEXT << this->errorCode << std::endl;
+        std::string message = std::string("OpenGL Error: ").append(std::to_string(this->errorCode));
+        LOG_ERROR(message.c_str(), file, line);
 
 		globals.setExecutionState(StatusCode::LAZARUS_OPENGL_ERROR);
     } 
@@ -371,7 +372,7 @@ void TextureLoader::clearErrors()
 
 TextureLoader::~TextureLoader()
 {
-	std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+	LOG_DEBUG("Destroying Lazarus::TextureLoader");
 
 	glDeleteTextures(1, &textureStack);
 	glDeleteTextures(1, &bitmapTexture);

@@ -47,7 +47,7 @@ lazarus_world_fx.o := include/lazarus_world_fx.h
 run : build
 	$(shell mv src/*.o build/)
 
-debug : CXXFLAGS += -g
+debug : CXXFLAGS += -g -D_LAZARUS_DEBUG_BUILD
 debug : run
 
 optimise : CXXFLAGS += -O3
