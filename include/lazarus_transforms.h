@@ -56,6 +56,8 @@ class Transform
 
 		void translateLightAsset(LightManager::Light &light, float x, float y, float z);
 
+		virtual ~Transform();
+		
 	private:
 		float determineUpVector(float rotation);
 		float degreesToRadians(float in, bool enforceLimits = true);

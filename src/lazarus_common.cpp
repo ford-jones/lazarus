@@ -19,6 +19,26 @@
 
 #include "../include/lazarus_common.h"
 
+void LOG_DEBUG(const char *DEBUG_MESSAGE)
+{
+    #ifdef _LAZARUS_DEBUG_BUILD
+    
+        std::chrono::time_point getTime = std::chrono::system_clock::now();
+        const std::time_t time = std::chrono::system_clock::to_time_t(getTime);
+        
+        std::cout << DEBUG_MESSAGE << std::endl;
+        std::cout << BLUE_TEXT << "At: "<< std::ctime(&time) << RESET_TEXT << std::endl;
+    #endif
+
+    return;
+};
+
+void LOG_ERROR(const char *ERR_MESSAGE, const char *ERR_FILENAME, uint32_t ERR_LINE)
+{
+    std::cerr << RED_TEXT << "LAZARUS::ERROR \n" << ERR_FILENAME << ":" << ERR_LINE << "\n" << ERR_MESSAGE << RESET_TEXT << std::endl;
+    return;
+};
+
 uint32_t                 LAZARUS_EXECUTION_STATUS               = 0;
 uint32_t                 LAZARUS_PRIMARY_DISPLAY_WIDTH          = 0;
 uint32_t                 LAZARUS_PRIMARY_DISPLAY_HEIGHT         = 0;
@@ -41,9 +61,9 @@ bool                     LAZARUS_DEPTH_TEST_FRAGS               = true;
 uint32_t                 LAZARUS_LISTENER_KEYCODE               = 0;
 uint32_t                 LAZARUS_LISTENER_SCANCODE              = 0;
 uint32_t                 LAZARUS_LISTENER_MOUSECODE             = LAZARUS_MOUSE_NOCLICK;
-float                 LAZARUS_LISTENER_MOUSEX                = 0;
-float                 LAZARUS_LISTENER_MOUSEY                = 0;
-float                 LAZARUS_LISTENER_SCROLLCODE            = 0;
+float                    LAZARUS_LISTENER_MOUSEX                = 0;
+float                    LAZARUS_LISTENER_MOUSEY                = 0;
+float                    LAZARUS_LISTENER_SCROLLCODE            = 0;
 
 const char*              LAZARUS_SKYBOX_CUBE                    = "Skybox target.";
 const char*              LAZARUS_GLYPH_QUAD                     = "Glyph target.";

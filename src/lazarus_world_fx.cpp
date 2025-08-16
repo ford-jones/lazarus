@@ -22,7 +22,8 @@
 WorldFX::WorldFX(GLuint shaderProgram) 
     : WorldFX::MeshManager(shaderProgram, TextureLoader::StorageType::CUBEMAP)
 {
-    std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Constructing Lazarus::WorldFX");
+
     this->status        = 0;
     this->shader        = shaderProgram;
     this->imageLoader   = nullptr;
@@ -73,6 +74,7 @@ void WorldFX::drawSkyBox(WorldFX::SkyBox skyboxIn, CameraManager::Camera camera)
     this->status = glGetError();
     if(this->status != 0)
     {
+        LOG_ERROR("OpenGL Error:", __FILE__, __LINE__);
         globals.setExecutionState(StatusCode::LAZARUS_UNIFORM_NOT_FOUND);
     };
 
@@ -80,6 +82,7 @@ void WorldFX::drawSkyBox(WorldFX::SkyBox skyboxIn, CameraManager::Camera camera)
     this->status = glGetError();
     if(this->status != 0)
     {
+        LOG_ERROR("OpenGL Error:", __FILE__, __LINE__);
         globals.setExecutionState(StatusCode::LAZARUS_MATRIX_LOCATION_ERROR);
     };
 
@@ -100,6 +103,7 @@ void WorldFX::drawSkyBox(WorldFX::SkyBox skyboxIn, CameraManager::Camera camera)
     this->status = glGetError();
     if(this->status != 0)
     {
+        LOG_ERROR("OpenGL Error:", __FILE__, __LINE__);
         globals.setExecutionState(StatusCode::LAZARUS_MATRIX_LOCATION_ERROR);
     };
 
@@ -122,6 +126,7 @@ void WorldFX::loadFog(WorldFX::Fog fogIn)
 {
     if(fogIn.density < 0.0f)
     {
+        LOG_ERROR("OpenGL Error:", __FILE__, __LINE__);
         globals.setExecutionState(StatusCode::LAZARUS_INVALID_INTENSITY);
     };
     
@@ -134,6 +139,7 @@ void WorldFX::loadFog(WorldFX::Fog fogIn)
     this->status = glGetError();
     if(this->status != 0)
     {
+        LOG_ERROR("OpenGL Error:", __FILE__, __LINE__);
         globals.setExecutionState(StatusCode::LAZARUS_UNIFORM_NOT_FOUND);
     };
 
@@ -163,6 +169,7 @@ void WorldFX::loadSkyMap()
         if(
             this->skyBoxOut.cubeMap.size() > 0 && (image.width != image.height || image.width != this->skyBoxOut.cubeMap[0].width))
         {
+            LOG_ERROR("OpenGL Error:", __FILE__, __LINE__);
             globals.setExecutionState(StatusCode::LAZARUS_INVALID_CUBEMAP);
         };
         
@@ -182,5 +189,5 @@ void WorldFX::loadSkyMap()
 
 WorldFX::~WorldFX()
 {
-    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Destroying Lazarus::WorldFX");
 };

@@ -38,7 +38,8 @@
 
 FileLoader::FileLoader()
 {
-    std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Constructing Lazarus::FileLoader");
+
 	this->imageData = 0;
     this->outResize = 0;
     this->resizeStatus = 0;
@@ -81,7 +82,7 @@ const char *FileLoader::loadText(string filepath)
         } 
         else 
         {
-            std::cout << RED_TEXT << "fileStream is not open" << RESET_TEXT << std::endl;
+            LOG_ERROR("Filesystem Error:", __FILE__, __LINE__);
             globals.setExecutionState(StatusCode::LAZARUS_FILESTREAM_CLOSED);
 
             this->textData = std::to_string(StatusCode::LAZARUS_FILESTREAM_CLOSED).c_str();
@@ -91,7 +92,7 @@ const char *FileLoader::loadText(string filepath)
     }
     else 
     {
-        std::cout << RED_TEXT << "File doesn't exist" << RESET_TEXT << std::endl;
+        LOG_ERROR("Filesystem Error:", __FILE__, __LINE__);
         globals.setExecutionState(StatusCode::LAZARUS_FILE_NOT_FOUND);
 
         this->textData = std::to_string(StatusCode::LAZARUS_FILE_NOT_FOUND).c_str();
@@ -167,7 +168,7 @@ FileLoader::Image FileLoader::loadImage(const char *filename, const unsigned cha
                 outImage.height = imageHeight;
                 outImage.width = imageWidth;
 
-                std::cerr << RED_TEXT << "LAZARUS::ERROR::FileLoader::IMAGE_LOADER " << LAZARUS_IMAGE_RESIZE_FAILURE << RESET_TEXT << std::endl;    
+                LOG_ERROR("Filesystem Error:", __FILE__, __LINE__);
                 globals.setExecutionState(StatusCode::LAZARUS_IMAGE_RESIZE_FAILURE);
             }
 
@@ -185,7 +186,9 @@ FileLoader::Image FileLoader::loadImage(const char *filename, const unsigned cha
         outImage.height = 0;
         outImage.width = 0;
 
-		std::cerr << RED_TEXT << "LAZARUS::ERROR::FileLoader::IMAGE_LOADER " << stbi_failure_reason() << RESET_TEXT << std::endl;
+        std::string message = std::string("Filesystem Error: ").append(stbi_failure_reason());
+		LOG_ERROR(message.c_str(), __FILE__, __LINE__);
+
         globals.setExecutionState(StatusCode::LAZARUS_IMAGE_LOAD_FAILURE);
 	};
 	
@@ -194,7 +197,8 @@ FileLoader::Image FileLoader::loadImage(const char *filename, const unsigned cha
 
 FileLoader::~FileLoader()
 {
-    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Destroying Lazarus::FileLoader");
+
 	stbi_image_free(this->imageData);
     free(outResize);
 };

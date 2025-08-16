@@ -21,7 +21,7 @@
 
 LightManager::LightManager(GLuint shader)
 {
-    std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Constructing Lazarus::LightManager");
 	this->shaderProgram = shader;
 
     this->lightOut = {};
@@ -92,8 +92,8 @@ void LightManager::checkErrors(const char *file, uint32_t line)
     
     if(this->errorCode != GL_NO_ERROR)
     {
-        std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
-        std::cerr << RED_TEXT << "ERROR::GL_ERROR::CODE " << RESET_TEXT << this->errorCode << std::endl;
+        std::string message = std::string("OpenGL Error: ").append(std::to_string(this->errorCode));
+        LOG_ERROR(message.c_str(), file, line);
 
         globals.setExecutionState(StatusCode::LAZARUS_OPENGL_ERROR);
     }
@@ -113,5 +113,5 @@ void LightManager::clearErrors()
 
 LightManager::~LightManager()
 {
-    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Destroying Lazarus::LightManager");
 }

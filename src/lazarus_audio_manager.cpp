@@ -20,7 +20,7 @@
 
 AudioManager::AudioManager() 
 {
-    std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__  << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+	LOG_DEBUG("Constructing Lazarus::AudioManager");
 
 	this->audioOut = {};
 	this->reader = nullptr;
@@ -85,6 +85,7 @@ void AudioManager::setPlaybackCursor(AudioManager::Audio &audioIn, uint32_t seco
 
 	if(result != FMOD_OK)
 	{
+		LOG_ERROR("Sound Error:", __FILE__, __LINE__);
 		globals.setExecutionState(StatusCode::LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR);
 	};
 
@@ -130,9 +131,9 @@ void AudioManager::loadAudio(AudioManager::Audio &audioIn)
 	}
 	else
 	{
+		LOG_ERROR("Sound Error:", __FILE__, __LINE__);
+
 		globals.setExecutionState(StatusCode::LAZARUS_FILE_NOT_FOUND);
-		std::cout << RED_TEXT << "LAZARUS::ERROR::SOUND_MANAGER" << std::endl;	
-		std::cout << "Status: " << LAZARUS_FILE_NOT_FOUND << RESET_TEXT << std::endl;	
 	}
 
 	this->checkErrors(this->result, __FILE__, __LINE__);
@@ -269,6 +270,8 @@ void AudioManager::validateAudioHandle(AudioData &audioData)
 		
 		if(result != FMOD_OK)
 		{
+			LOG_ERROR("Sound Error:", __FILE__, __LINE__);
+
 			globals.setExecutionState(StatusCode::LAZARUS_AUDIO_LOAD_ERROR);
 		};
 	};
@@ -280,8 +283,8 @@ void AudioManager::checkErrors(FMOD_RESULT res, const char *file, uint32_t line)
 {
 	if(res != FMOD_OK)
 	{
-		std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
-		std::cout << RED_TEXT << "LAZARUS::ERROR::SOUND_MANAGER " << res << RESET_TEXT << std::endl;
+		std::string message = std::string("Sound Error: ").append(std::to_string(res));
+		LOG_ERROR(message.c_str(), file, line);
 
 		globals.setExecutionState(StatusCode::LAZARUS_AUDIO_ERROR);
 	};
@@ -291,7 +294,7 @@ void AudioManager::checkErrors(FMOD_RESULT res, const char *file, uint32_t line)
 
 AudioManager::~AudioManager()
 {
-    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Destroying Lazarus::AudioManager");
 	
 	for(size_t i = 0; i < this->audioStore.size(); i++)
 	{

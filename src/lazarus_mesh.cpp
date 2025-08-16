@@ -22,7 +22,8 @@
 MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
     : MeshManager::TextureLoader(textureType)
 {
-	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+	LOG_DEBUG("Constructing Lazarus::MeshManager");
+
     this->shaderProgram = shader;
     this->finder = std::make_unique<FileLoader>();
 
@@ -124,6 +125,7 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
 {
     if(width < 0.0f || height < 0.0f)
     {
+        LOG_ERROR("Asset Error:", __FILE__, __LINE__);
         globals.setExecutionState(StatusCode::LAZARUS_INVALID_DIMENSIONS);
     };
     
@@ -369,6 +371,7 @@ void MeshManager::initialiseMesh()
     }
     else
     {
+        LOG_ERROR("Asset Error:", __FILE__, __LINE__);
         globals.setExecutionState(StatusCode::LAZARUS_MATRIX_LOCATION_ERROR);
     };
 	
@@ -496,6 +499,7 @@ void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
     }
     else
     {
+        LOG_ERROR("Asset Error:", __FILE__, __LINE__);
         globals.setExecutionState(StatusCode::LAZARUS_MATRIX_LOCATION_ERROR);
     };
 
@@ -625,8 +629,8 @@ void MeshManager::checkErrors(const char *file, uint32_t line)
     
     if(this->errorCode != GL_NO_ERROR)
     {
-        std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
-        std::cerr << RED_TEXT << "ERROR::GL_ERROR::CODE " << RESET_TEXT << this->errorCode << std::endl;
+        std::string message = std::string("OpenGL Error: ").append(std::to_string(this->errorCode));
+        LOG_ERROR(message.c_str(), file, line);
 
         globals.setExecutionState(StatusCode::LAZARUS_OPENGL_ERROR);
     }
@@ -659,6 +663,8 @@ void MeshManager::clearErrors()
 
 MeshManager::~MeshManager()
 {
+    LOG_DEBUG("Destroying Lazarus::MeshManager");
+
     this->clearErrors();
 
     for(auto i: dataStore)
@@ -669,13 +675,12 @@ MeshManager::~MeshManager()
     };
 
     this->checkErrors(__FILE__, __LINE__);
-
-    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 };
 
 MeshLoader::MeshLoader()
 {
-	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+	LOG_DEBUG("Constructing Lazarus::MeshLoader");
+
 	this->materialIdentifierIndex	=	0;
 	this->triangleCount				=	0;
     this->imageLoader = nullptr;
@@ -696,6 +701,7 @@ bool MeshLoader::parseWavefrontObj(std::vector<glm::vec3> &outAttributes, std::v
 
     if( !file.is_open() )
     {
+        LOG_ERROR("Filesystem Error:", __FILE__, __LINE__);
         globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
         
         return false;
@@ -843,6 +849,7 @@ bool MeshLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint3
     
     if( !file.is_open() )
     {
+        LOG_ERROR("Filesystem Error:", __FILE__, __LINE__);
         globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
         return false;
     }   
@@ -1052,6 +1059,7 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
             }
             else
             {
+                LOG_ERROR("Asset Error:", __FILE__, __LINE__);
                 globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
             };
         }
@@ -1073,6 +1081,7 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
                     int32_t index = property.find(":");
                     if(index < 0)
                     {
+                        LOG_ERROR("Asset Error:", __FILE__, __LINE__);
                         globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
                     };
 
@@ -1412,6 +1421,7 @@ void MeshLoader::loadGlbChunks(const char *filepath)
 
     if(!file.is_open())
     {
+        LOG_ERROR("Filesystem Error:", __FILE__, __LINE__);
         globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
 
         return;
@@ -1649,8 +1659,7 @@ void MeshLoader::constructTriangle()
 
     if ( this->attributeIndexes.size() !=  9)
     {
-        std::cout << RED_TEXT << "ERROR::MESH::MESH_LOADER " << std::endl;
-        std::cout << "Status: " << LAZARUS_FILE_UNREADABLE << RESET_TEXT << std::endl;
+        LOG_ERROR("Asset Error:", __FILE__, __LINE__);
 
         globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
 
@@ -1713,10 +1722,10 @@ void MeshLoader::resetMembers()
 
 MeshLoader::~MeshLoader()
 {
+    LOG_DEBUG("Destroying Lazarus::CameraManager");
+
     if( file.is_open() )
     {
         file.close();
     };
-
-    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 };
