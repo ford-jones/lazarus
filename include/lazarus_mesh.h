@@ -56,48 +56,33 @@ using glm::vec2;
 using std::ifstream;
 using std::stringstream;
 
-#ifndef LAZARUS_MATERIAL_LOADER_H
-#define LAZARUS_MATERIAL_LOADER_H
-
-class MaterialLoader
-{
-    public:        
-        MaterialLoader();
-        bool loadMaterial(std::vector<glm::vec3> &out, std::vector<std::vector<uint32_t>> data, string materialPath);
-        virtual ~MaterialLoader();
-
-    private:
-        glm::vec3 diffuse;
-        ifstream file;
-        char currentLine[UINT8_MAX];
-        uint32_t diffuseCount;
-        uint32_t texCount;
-
-        GlobalsManager globals;
-};
-#endif
-
 #ifndef LAZARUS_MESH_LOADER_H
 #define LAZARUS_MESH_LOADER_H
 
-class MeshLoader : private MaterialLoader
+class MeshLoader 
 {
     public:
         ifstream file;
     	MeshLoader();	
     	    
         bool parseWavefrontObj(
-            vector<vec3> &outAttributes,
-            vector<vec3> &outDiffuse,
-            vector<uint32_t> &outIndexes,
+            std::vector<glm::vec3> &outAttributes,
+            std::vector<glm::vec3> &outDiffuse,
+            std::vector<uint32_t> &outIndexes,
             const char *meshPath,
             const char *materialPath
         );
 
+        bool parseWavefrontMtl(
+            const char *materialPath,
+            std::vector<std::vector<uint32_t>> data,
+            std::vector<glm::vec3> &outDiffuse
+        );
+
         bool parseGlBinary(
-            vector<vec3> &outAttributes,
-            vector<vec3> &outDiffuse,
-            vector<uint32_t> &outIndexes,
+            std::vector<glm::vec3> &outAttributes,
+            std::vector<glm::vec3> &outDiffuse,
+            std::vector<uint32_t> &outIndexes,
             FileLoader::Image &outImage,
             const char *meshPath
         );
@@ -175,7 +160,7 @@ class MeshLoader : private MaterialLoader
         //  Retrieve all integers immediately following 'target' that occur within 'bounds'.
         int32_t extractAttributeIndex(std::string bounds, std::string target);
 
-        //  wavefront
+        //  wavefront obj
 
         std::vector<std::string> wavefrontCoordinates;
         
@@ -186,6 +171,11 @@ class MeshLoader : private MaterialLoader
         
         char currentLine[UINT8_MAX];
         std::vector<string> attributeIndexes;
+
+        //  wavefront mtl
+        uint32_t diffuseCount;
+        uint32_t texCount;
+        glm::vec3 diffuse;
         
         //  Read vertex attributes from temp* members and group them together 
         //  in sets of three's if possible.

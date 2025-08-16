@@ -600,9 +600,6 @@ void MeshManager::resolveFilepaths(string texPath, string mtlPath, string objPat
 
 void MeshManager::setInherentProperties()
 {
-    // meshOut.locationX = 0;
-    // meshOut.locationY = 0;
-    // meshOut.locationZ = 0;
     meshOut.position = glm::vec3(0.0f, 0.0f, 0.0f);
 
     meshOut.modelMatrix = mat4(1.0f);
@@ -683,16 +680,16 @@ MeshLoader::MeshLoader()
 	this->triangleCount				=	0;
     this->imageLoader = nullptr;
 
+    this->diffuseCount              = 0;
+    this->texCount                  = 0;
+
     this->tempVertexPositions = {};
     this->tempNormals = {};
     this->tempUvs = {};
 };
 
-bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, const char* meshPath, const char* materialPath) 
+bool MeshLoader::parseWavefrontObj(std::vector<glm::vec3> &outAttributes, std::vector<glm::vec3> &outDiffuse, std::vector<uint32_t> &outIndexes, const char *meshPath, const char *materialPath) 
 {
-    //  TODO:
-    //  Make MaterialLoader class part of this, its kind of random on it's own
-
     this->resetMembers();
 
     file.open(meshPath);
@@ -824,13 +821,116 @@ bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &ou
         this->materialData = {materialIdentifierIndex, triangleCount};
 		this->materialBuffer.push_back(this->materialData);
         
-        this->loadMaterial(outDiffuse, materialBuffer, materialPath);
+        this->parseWavefrontMtl(materialPath, materialBuffer, outDiffuse);
     }
 
     this->constructIndexBuffer(outAttributes, outIndexes, outDiffuse, this->vertexIndices.size());
 
     return true;
 };
+
+bool MeshLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint32_t>> data, vector<vec3> &out)
+{
+    diffuseCount = 0;
+    texCount = 0;
+    
+    if(file.is_open())
+    {
+        file.close();
+    };
+    
+    file.open(materialPath);
+    
+    if( !file.is_open() )
+    {
+        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
+        return false;
+    }   
+    
+    while(file.getline(currentLine, UINT8_MAX)) 
+    {        
+        /* =============================================
+            Kd = diffuse colors
+        ================================================ */
+        if( (currentLine[0] == 'K') && (currentLine[1] == 'd') )
+        {
+            diffuseCount += 1;
+            for(auto i: data)
+            {
+                uint32_t index = i[0];
+            	uint32_t faceCount = i[1];
+            	
+	            if(diffuseCount == index) {
+                    string currentString = currentLine;
+                    stringstream ss(currentString);
+                    string token;
+                    
+                    vector<string> tokenStore;
+                    while(getline(ss, token, ' ')) 
+                    {
+                        tokenStore.push_back(token);
+                    }
+                    
+                    diffuse.r = std::stof(tokenStore[1]);
+                    diffuse.g = std::stof(tokenStore[2]);
+                    diffuse.b = std::stof(tokenStore[3]);
+                    /* ====================================================
+                        Push the current diffuse object into the out
+                        out parameter N times.
+
+                        N = The number of vertices which use this color.
+                        (faceCount * 3)
+                    ======================================================= */
+    	            for(size_t j = 0; j < faceCount * 3; j++)
+    	            {
+                        out.push_back(diffuse);
+    	            };
+    	        };        
+            };
+        }
+        /* ==========================================
+            map_Kd = Image texture
+        ============================================= */
+        if( (currentLine[0] == 'm') && 
+            (currentLine[1] == 'a') && 
+            (currentLine[2] == 'p')
+        )
+        {
+            texCount += 1;
+            if( diffuseCount == 0 )
+            {
+                for(auto i: data)
+                {
+                    uint32_t faceCount = i[1];
+                    for(size_t j = 0; j < faceCount * 3; j++)
+                    {
+                        /* ===========================================
+                            Negative values passed here are an indicator
+                            to the fragment shader that it should instead 
+                            interpret the desired frag color of this face
+                            from the current layer of the sampler array 
+                            (an image) instead of a diffuse texture.
+
+                            i.e: 
+                            positiveDiffuseValues
+                            ? fragColor(positiveDiffuseValues.xyz) 
+                            : fragColor(images[layer].xyz)
+                        ============================================== */
+                        out.push_back(vec3(-0.1f, -0.1f, -0.1f));
+                    }
+                }
+            }
+        }
+    };
+        
+    if (file.eof())
+    {
+        file.close();
+    }
+        
+    return true;
+};
+    
 
 bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, FileLoader::Image &outImage, const char* meshPath)
 {
@@ -1618,119 +1718,5 @@ MeshLoader::~MeshLoader()
         file.close();
     };
 
-	std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
-};
-
-MaterialLoader::MaterialLoader()
-{
-	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
-	
-	diffuseCount = 0;
-    texCount = 0;
-};
-
-bool MaterialLoader::loadMaterial(vector<vec3> &out, vector<vector<uint32_t>> data ,string materialPath)
-{
-    diffuseCount = 0;
-    texCount = 0;
-
-    file.open(materialPath.c_str());
-    
-    if( !file.is_open() )
-    {
-        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
-        return false;
-    }   
-
-    while(file.getline(currentLine, UINT8_MAX)) 
-    {        
-        /* =============================================
-            Kd = diffuse colors
-        ================================================ */
-        if( (currentLine[0] == 'K') && (currentLine[1] == 'd') )
-        {
-            diffuseCount += 1;
-            for(auto i: data)
-            {
-            	uint32_t index = i[0];
-            	uint32_t faceCount = i[1];
-            	
-	            if(diffuseCount == index) {
-                    string currentString = currentLine;
-                    stringstream ss(currentString);
-                    string token;
-
-                    vector<string> tokenStore;
-                    while(getline(ss, token, ' ')) 
-                    {
-                        tokenStore.push_back(token);
-                    }
-
-                    diffuse.r = std::stof(tokenStore[1]);
-                    diffuse.g = std::stof(tokenStore[2]);
-                    diffuse.b = std::stof(tokenStore[3]);
-                    /* ====================================================
-                        Push the current diffuse object into the out
-                        out parameter N times.
-
-                        N = The number of vertices which use this color.
-                        (faceCount * 3)
-                    ======================================================= */
-    	            for(size_t j = 0; j < faceCount * 3; j++)
-    	            {
-    	                out.push_back(diffuse);
-    	            };
-    	        };        
-            };
-        }
-        /* ==========================================
-            map_Kd = Image texture
-        ============================================= */
-        if(
-            (currentLine[0] == 'm') && 
-            (currentLine[1] == 'a') && 
-            (currentLine[2] == 'p'))
-        {
-            texCount += 1;
-            if( diffuseCount == 0 )
-            {
-                for(auto i: data)
-                {
-                    uint32_t faceCount = i[1];
-                    for(size_t j = 0; j < faceCount * 3; j++)
-                    {
-                        /* ===========================================
-                            Negative values passed here are an indicator
-                            to the fragment shader that it should instead 
-                            interpret the desired frag color of this face
-                            from the current layer of the sampler array 
-                            (an image) instead of a diffuse texture.
-
-                            i.e: 
-                                positiveDiffuseValues
-                                ? fragColor(positiveDiffuseValues.xyz) 
-                                : fragColor(images[layer].xyz)
-                        ============================================== */
-                        out.push_back(vec3(-0.1f, -0.1f, -0.1f));
-                    }
-                }
-            }
-        }
-    };
-
-    if (file.eof())
-    {
-        file.close();
-    }
-
-    return true;
-};
-
-MaterialLoader::~MaterialLoader()
-{
-    if( file.is_open() )
-    {
-        file.close();
-    }
     std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 };
