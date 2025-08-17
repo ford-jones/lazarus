@@ -28,6 +28,7 @@
 #include <iostream>
 #include <stdlib.h>
 #include <memory>
+#include <string>
 
 using std::shared_ptr;
 using glm::vec3;
