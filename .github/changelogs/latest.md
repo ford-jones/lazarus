@@ -1,5 +1,6 @@
-# Version: 2025.08.18074259
+# Version: 2025.08.18074431
 
+* [5ce432a](https://github.com/ford-jones/lazarus/commit/5ce432a8cecb8390ddd6eacf4eda4bc19ccbb9a5): [Changelog CI] Add Changelog for Version 2025.08.18074259
 * [4183f1b](https://github.com/ford-jones/lazarus/commit/4183f1bc6b58f3dff2e6ce6b69c59bff2c8ec420): Fix: Convert CI inputs to JSON
 * [3e37f57](https://github.com/ford-jones/lazarus/commit/3e37f579ac6301f2b34d8b8df8d0ab5c749c8edb): Docs: Updated api reference
 * [19483a3](https://github.com/ford-jones/lazarus/commit/19483a39153404079b355f7c8c8a037f6eb624e3): Update: Supports debug builds for windows x64
