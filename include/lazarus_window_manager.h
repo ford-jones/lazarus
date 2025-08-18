@@ -100,6 +100,7 @@ class WindowManager : public Events, public Time
         int32_t setBackgroundColor(float r, float g, float b);
 		int32_t loadConfig();
 
+        int32_t resize(uint32_t width, uint32_t height);
         int32_t open();
         int32_t close();
 

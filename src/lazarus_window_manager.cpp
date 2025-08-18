@@ -435,6 +435,15 @@ int32_t WindowManager::createWindow()
         return;
     });
 
+	glfwSetFramebufferSizeCallback(this->window, [](GLFWwindow *win, int width, int height){
+		WindowManager *window = (WindowManager *) glfwGetWindowUserPointer(win);
+		window->resize(width, height);
+		//	TODO:
+		//	Redraw on resize
+		//	Create new member function which can be retrieved from user pointer
+		return;	 
+	});
+
 	this->initialiseGLEW();
     
     return this->checkErrors(__FILE__, __LINE__);;
@@ -489,6 +498,25 @@ int32_t WindowManager::loadConfig()
 	this->setBackgroundColor(0.0, 0.0, 0.0);
 	
 	return this->checkErrors(__FILE__, __LINE__);;
+};
+
+int32_t WindowManager::resize(uint32_t width, uint32_t height)
+{
+	if((width < this->videoMode->width) && (height < this->videoMode->height))
+	{
+		this->frame.height = height;
+		this->frame.width = width;
+		globals.setDisplaySize(width, height);
+		
+		glViewport(0, 0, this->frame.width, this->frame.height);
+	}
+	else
+	{
+		LOG_ERROR("Window Error: ", __FILE__, __LINE__);
+		globals.setExecutionState(LAZARUS_WIN_EXCEEDS_MAX);
+	}
+
+	return this->checkErrors(__FILE__, __LINE__);
 };
 
 int32_t WindowManager::open()
