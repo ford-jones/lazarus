@@ -19,9 +19,11 @@
 
 #include "../include/lazarus_mesh.h"
 
-MeshManager::MeshManager(GLuint shader)
+MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
+    : MeshManager::TextureLoader(textureType)
 {
-	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+	LOG_DEBUG("Constructing Lazarus::MeshManager");
+
     this->shaderProgram = shader;
     this->finder = std::make_unique<FileLoader>();
 
@@ -123,7 +125,8 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
 {
     if(width < 0.0f || height < 0.0f)
     {
-        globals.setExecutionState(LAZARUS_INVALID_DIMENSIONS);
+        LOG_ERROR("Asset Error:", __FILE__, __LINE__);
+        globals.setExecutionState(StatusCode::LAZARUS_INVALID_DIMENSIONS);
     };
     
     this->meshOut = {};
@@ -368,7 +371,8 @@ void MeshManager::initialiseMesh()
     }
     else
     {
-        globals.setExecutionState(LAZARUS_MATRIX_LOCATION_ERROR);
+        LOG_ERROR("Asset Error:", __FILE__, __LINE__);
+        globals.setExecutionState(StatusCode::LAZARUS_MATRIX_LOCATION_ERROR);
     };
 	
     return;
@@ -495,7 +499,8 @@ void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
     }
     else
     {
-        globals.setExecutionState(LAZARUS_MATRIX_LOCATION_ERROR);
+        LOG_ERROR("Asset Error:", __FILE__, __LINE__);
+        globals.setExecutionState(StatusCode::LAZARUS_MATRIX_LOCATION_ERROR);
     };
 
     return;
@@ -599,9 +604,7 @@ void MeshManager::resolveFilepaths(string texPath, string mtlPath, string objPat
 
 void MeshManager::setInherentProperties()
 {
-    meshOut.locationX = 0;
-    meshOut.locationY = 0;
-    meshOut.locationZ = 0;
+    meshOut.position = glm::vec3(0.0f, 0.0f, 0.0f);
 
     meshOut.modelMatrix = mat4(1.0f);
 
@@ -626,10 +629,10 @@ void MeshManager::checkErrors(const char *file, uint32_t line)
     
     if(this->errorCode != GL_NO_ERROR)
     {
-        std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
-        std::cerr << RED_TEXT << "ERROR::GL_ERROR::CODE " << RESET_TEXT << this->errorCode << std::endl;
+        std::string message = std::string("OpenGL Error: ").append(std::to_string(this->errorCode));
+        LOG_ERROR(message.c_str(), file, line);
 
-        globals.setExecutionState(LAZARUS_OPENGL_ERROR);
+        globals.setExecutionState(StatusCode::LAZARUS_OPENGL_ERROR);
     }
 
     return;
@@ -660,6 +663,8 @@ void MeshManager::clearErrors()
 
 MeshManager::~MeshManager()
 {
+    LOG_DEBUG("Destroying Lazarus::MeshManager");
+
     this->clearErrors();
 
     for(auto i: dataStore)
@@ -670,34 +675,34 @@ MeshManager::~MeshManager()
     };
 
     this->checkErrors(__FILE__, __LINE__);
-
-    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 };
 
 MeshLoader::MeshLoader()
 {
-	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+	LOG_DEBUG("Constructing Lazarus::MeshLoader");
+
 	this->materialIdentifierIndex	=	0;
 	this->triangleCount				=	0;
     this->imageLoader = nullptr;
+
+    this->diffuseCount              = 0;
+    this->texCount                  = 0;
 
     this->tempVertexPositions = {};
     this->tempNormals = {};
     this->tempUvs = {};
 };
 
-bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, const char* meshPath, const char* materialPath) 
+bool MeshLoader::parseWavefrontObj(std::vector<glm::vec3> &outAttributes, std::vector<glm::vec3> &outDiffuse, std::vector<uint32_t> &outIndexes, const char *meshPath, const char *materialPath) 
 {
-    //  TODO:
-    //  Make MaterialLoader class part of this, its kind of random on it's own
-
     this->resetMembers();
 
     file.open(meshPath);
 
     if( !file.is_open() )
     {
-        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+        LOG_ERROR("Filesystem Error:", __FILE__, __LINE__);
+        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
         
         return false;
     }
@@ -822,13 +827,117 @@ bool MeshLoader::parseWavefrontObj(vector<vec3> &outAttributes, vector<vec3> &ou
         this->materialData = {materialIdentifierIndex, triangleCount};
 		this->materialBuffer.push_back(this->materialData);
         
-        this->loadMaterial(outDiffuse, materialBuffer, materialPath);
+        this->parseWavefrontMtl(materialPath, materialBuffer, outDiffuse);
     }
 
     this->constructIndexBuffer(outAttributes, outIndexes, outDiffuse, this->vertexIndices.size());
 
     return true;
 };
+
+bool MeshLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint32_t>> data, vector<vec3> &out)
+{
+    diffuseCount = 0;
+    texCount = 0;
+    
+    if(file.is_open())
+    {
+        file.close();
+    };
+    
+    file.open(materialPath);
+    
+    if( !file.is_open() )
+    {
+        LOG_ERROR("Filesystem Error:", __FILE__, __LINE__);
+        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
+        return false;
+    }   
+    
+    while(file.getline(currentLine, UINT8_MAX)) 
+    {        
+        /* =============================================
+            Kd = diffuse colors
+        ================================================ */
+        if( (currentLine[0] == 'K') && (currentLine[1] == 'd') )
+        {
+            diffuseCount += 1;
+            for(auto i: data)
+            {
+                uint32_t index = i[0];
+            	uint32_t faceCount = i[1];
+            	
+	            if(diffuseCount == index) {
+                    string currentString = currentLine;
+                    stringstream ss(currentString);
+                    string token;
+                    
+                    vector<string> tokenStore;
+                    while(getline(ss, token, ' ')) 
+                    {
+                        tokenStore.push_back(token);
+                    }
+                    
+                    diffuse.r = std::stof(tokenStore[1]);
+                    diffuse.g = std::stof(tokenStore[2]);
+                    diffuse.b = std::stof(tokenStore[3]);
+                    /* ====================================================
+                        Push the current diffuse object into the out
+                        out parameter N times.
+
+                        N = The number of vertices which use this color.
+                        (faceCount * 3)
+                    ======================================================= */
+    	            for(size_t j = 0; j < faceCount * 3; j++)
+    	            {
+                        out.push_back(diffuse);
+    	            };
+    	        };        
+            };
+        }
+        /* ==========================================
+            map_Kd = Image texture
+        ============================================= */
+        if( (currentLine[0] == 'm') && 
+            (currentLine[1] == 'a') && 
+            (currentLine[2] == 'p')
+        )
+        {
+            texCount += 1;
+            if( diffuseCount == 0 )
+            {
+                for(auto i: data)
+                {
+                    uint32_t faceCount = i[1];
+                    for(size_t j = 0; j < faceCount * 3; j++)
+                    {
+                        /* ===========================================
+                            Negative values passed here are an indicator
+                            to the fragment shader that it should instead 
+                            interpret the desired frag color of this face
+                            from the current layer of the sampler array 
+                            (an image) instead of a diffuse texture.
+
+                            i.e: 
+                            positiveDiffuseValues
+                            ? fragColor(positiveDiffuseValues.xyz) 
+                            : fragColor(images[layer].xyz)
+                        ============================================== */
+                        out.push_back(vec3(-0.1f, -0.1f, -0.1f));
+                    }
+                }
+            }
+        }
+    };
+        
+    if (file.eof())
+    {
+        file.close();
+    }
+        
+    return true;
+};
+    
 
 bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, FileLoader::Image &outImage, const char* meshPath)
 {
@@ -950,7 +1059,8 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
             }
             else
             {
-                globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+                LOG_ERROR("Asset Error:", __FILE__, __LINE__);
+                globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
             };
         }
         else if(json.find(PRIMITIVES) == 0)
@@ -971,7 +1081,8 @@ bool MeshLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDif
                     int32_t index = property.find(":");
                     if(index < 0)
                     {
-                        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+                        LOG_ERROR("Asset Error:", __FILE__, __LINE__);
+                        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
                     };
 
 
@@ -1310,7 +1421,8 @@ void MeshLoader::loadGlbChunks(const char *filepath)
 
     if(!file.is_open())
     {
-        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+        LOG_ERROR("Filesystem Error:", __FILE__, __LINE__);
+        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
 
         return;
     }
@@ -1547,10 +1659,9 @@ void MeshLoader::constructTriangle()
 
     if ( this->attributeIndexes.size() !=  9)
     {
-        std::cout << RED_TEXT << "ERROR::MESH::MESH_LOADER " << std::endl;
-        std::cout << "Status: " << LAZARUS_FILE_UNREADABLE << RESET_TEXT << std::endl;
+        LOG_ERROR("Asset Error:", __FILE__, __LINE__);
 
-        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
 
         return;
     }
@@ -1611,124 +1722,10 @@ void MeshLoader::resetMembers()
 
 MeshLoader::~MeshLoader()
 {
+    LOG_DEBUG("Destroying Lazarus::CameraManager");
+
     if( file.is_open() )
     {
         file.close();
     };
-
-	std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
-};
-
-MaterialLoader::MaterialLoader()
-{
-	std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
-	
-	diffuseCount = 0;
-    texCount = 0;
-};
-
-bool MaterialLoader::loadMaterial(vector<vec3> &out, vector<vector<uint32_t>> data ,string materialPath)
-{
-    diffuseCount = 0;
-    texCount = 0;
-
-    file.open(materialPath.c_str());
-    
-    if( !file.is_open() )
-    {
-        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
-        return false;
-    }   
-
-    while(file.getline(currentLine, UINT8_MAX)) 
-    {        
-        /* =============================================
-            Kd = diffuse colors
-        ================================================ */
-        if( (currentLine[0] == 'K') && (currentLine[1] == 'd') )
-        {
-            diffuseCount += 1;
-            for(auto i: data)
-            {
-            	uint32_t index = i[0];
-            	uint32_t faceCount = i[1];
-            	
-	            if(diffuseCount == index) {
-                    string currentString = currentLine;
-                    stringstream ss(currentString);
-                    string token;
-
-                    vector<string> tokenStore;
-                    while(getline(ss, token, ' ')) 
-                    {
-                        tokenStore.push_back(token);
-                    }
-
-                    diffuse.r = std::stof(tokenStore[1]);
-                    diffuse.g = std::stof(tokenStore[2]);
-                    diffuse.b = std::stof(tokenStore[3]);
-                    /* ====================================================
-                        Push the current diffuse object into the out
-                        out parameter N times.
-
-                        N = The number of vertices which use this color.
-                        (faceCount * 3)
-                    ======================================================= */
-    	            for(size_t j = 0; j < faceCount * 3; j++)
-    	            {
-    	                out.push_back(diffuse);
-    	            };
-    	        };        
-            };
-        }
-        /* ==========================================
-            map_Kd = Image texture
-        ============================================= */
-        if(
-            (currentLine[0] == 'm') && 
-            (currentLine[1] == 'a') && 
-            (currentLine[2] == 'p'))
-        {
-            texCount += 1;
-            if( diffuseCount == 0 )
-            {
-                for(auto i: data)
-                {
-                    uint32_t faceCount = i[1];
-                    for(size_t j = 0; j < faceCount * 3; j++)
-                    {
-                        /* ===========================================
-                            Negative values passed here are an indicator
-                            to the fragment shader that it should instead 
-                            interpret the desired frag color of this face
-                            from the current layer of the sampler array 
-                            (an image) instead of a diffuse texture.
-
-                            i.e: 
-                                positiveDiffuseValues
-                                ? fragColor(positiveDiffuseValues.xyz) 
-                                : fragColor(images[layer].xyz)
-                        ============================================== */
-                        out.push_back(vec3(-0.1f, -0.1f, -0.1f));
-                    }
-                }
-            }
-        }
-    };
-
-    if (file.eof())
-    {
-        file.close();
-    }
-
-    return true;
-};
-
-MaterialLoader::~MaterialLoader()
-{
-    if( file.is_open() )
-    {
-        file.close();
-    }
-    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
 };

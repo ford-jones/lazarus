@@ -21,7 +21,7 @@
 
 LightManager::LightManager(GLuint shader)
 {
-    std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Constructing Lazarus::LightManager");
 	this->shaderProgram = shader;
 
     this->lightOut = {};
@@ -34,15 +34,15 @@ LightManager::LightManager(GLuint shader)
     this->errorCode = 0;
 }
 
-LightManager::Light LightManager::createLightSource(float x, float y, float z, float r, float g, float b, float brightness)
+LightManager::Light LightManager::createLightSource(glm::vec3 location, glm::vec3 color, float brightness)
 {	
     this->lightOut = {};
     this->lightData = {};
     
     lightOut.id             = lightStore.size();
     lightOut.brightness     = brightness;
-    lightOut.position  = glm::vec3(x, y, z);
-    lightOut.color     = glm::vec3(r, g, b);
+    lightOut.position       = location;
+    lightOut.color          = color;
     
     this->lightCount += 1;
     lightData.uniformIndex                   =   (this->lightCount - 1);
@@ -61,7 +61,7 @@ void LightManager::loadLightSource(LightManager::Light &lightIn)
 {
     this->lightData = lightStore[lightIn.id];
 
-    if(lightIn.brightness < 0.0f) globals.setExecutionState(LAZARUS_INVALID_INTENSITY);
+    if(lightIn.brightness < 0.0f) globals.setExecutionState(StatusCode::LAZARUS_INVALID_INTENSITY);
     
     if(
         lightData.brightnessUniformLocation     >= 0 &&
@@ -80,7 +80,7 @@ void LightManager::loadLightSource(LightManager::Light &lightIn)
     }
     else
     {
-        globals.setExecutionState(LAZARUS_UNIFORM_NOT_FOUND);
+        globals.setExecutionState(StatusCode::LAZARUS_UNIFORM_NOT_FOUND);
     };
 
     return;
@@ -92,10 +92,10 @@ void LightManager::checkErrors(const char *file, uint32_t line)
     
     if(this->errorCode != GL_NO_ERROR)
     {
-        std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
-        std::cerr << RED_TEXT << "ERROR::GL_ERROR::CODE " << RESET_TEXT << this->errorCode << std::endl;
+        std::string message = std::string("OpenGL Error: ").append(std::to_string(this->errorCode));
+        LOG_ERROR(message.c_str(), file, line);
 
-        globals.setExecutionState(LAZARUS_OPENGL_ERROR);
+        globals.setExecutionState(StatusCode::LAZARUS_OPENGL_ERROR);
     }
 
     return;
@@ -113,5 +113,5 @@ void LightManager::clearErrors()
 
 LightManager::~LightManager()
 {
-    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Destroying Lazarus::LightManager");
 }

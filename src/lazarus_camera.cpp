@@ -21,7 +21,7 @@
 
 CameraManager::CameraManager(GLuint shader)
 {
-    std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Constructing Lazarus::CameraManager");
     this->camera = {};
     this->shader                            = shader;
 
@@ -115,7 +115,8 @@ void CameraManager::loadCamera(CameraManager::Camera &cameraIn)
     }
     else
     {
-        globals.setExecutionState(LAZARUS_MATRIX_LOCATION_ERROR);
+        LOG_ERROR("Camera Error:", __FILE__, __LINE__);
+        globals.setExecutionState(StatusCode::LAZARUS_MATRIX_LOCATION_ERROR);
     };
 
     return;
@@ -171,7 +172,7 @@ uint8_t CameraManager::getPixelOccupant(uint32_t positionX, uint32_t positionY)
         /* =================================================
             else
             {
-                globals.setExecutionState(LAZARUS_INVALID_COORDINATE);
+                globals.setExecutionState(StatusCode::LAZARUS_INVALID_COORDINATE);
             };
 
             Would be good to have this here but out of frame
@@ -180,7 +181,8 @@ uint8_t CameraManager::getPixelOccupant(uint32_t positionX, uint32_t positionY)
     }
     else
     {
-        globals.setExecutionState(LAZARUS_FEATURE_DISABLED);
+        LOG_ERROR("Camera Error:", __FILE__, __LINE__);
+        globals.setExecutionState(StatusCode::LAZARUS_FEATURE_DISABLED);
     }
     
     return pixel;
@@ -211,10 +213,10 @@ void CameraManager::checkErrors(const char *file, uint32_t line)
     
     if(this->errorCode != GL_NO_ERROR)
     {
-        std::cerr << RED_TEXT << file << " (" << line << ")" << RESET_TEXT << std::endl;
-        std::cerr << RED_TEXT << "ERROR::GL_ERROR::CODE " << RESET_TEXT << this->errorCode << std::endl;
+        std::string message = std::string("OpenGL Error: ").append(std::to_string(this->errorCode));
+        LOG_ERROR(message.c_str(), file, line);
 
-        globals.setExecutionState(LAZARUS_OPENGL_ERROR);
+        globals.setExecutionState(StatusCode::LAZARUS_OPENGL_ERROR);
     }
 
     return;
@@ -232,5 +234,5 @@ void CameraManager::clearErrors()
 
 CameraManager::~CameraManager()
 {
-    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Destroying Lazarus::CameraManager");
 }

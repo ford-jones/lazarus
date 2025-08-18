@@ -53,7 +53,7 @@ class LightManager
         LightManager(GLuint shader);
         virtual ~LightManager();
 
-        Light createLightSource(float x, float y, float z, float r, float g, float b, float brightness = 1.0f);
+        Light createLightSource(glm::vec3 location, glm::vec3 color, float brightness = 1.0f);
         void loadLightSource(Light &lightIn);
 
     private:

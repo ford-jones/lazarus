@@ -76,12 +76,8 @@ class WorldFX : private MeshManager
             float minDistance, 
             float maxDistance, 
             float thickness, 
-            float r, 
-            float g, 
-            float b, 
-            float x = 0.0f, 
-            float y = 0.0f, 
-            float z = 0.0f
+            glm::vec3 color,
+            glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f)
         );
         void loadFog(Fog fogIn);
 

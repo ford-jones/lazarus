@@ -148,13 +148,11 @@ Params:
 > **moveX:** *The x-axis pixel coordinate from the bottom left corner of the display (Not the window).*
 > **moveY:** *The y-axis pixel coordinate from the bottom left corner of the display (Not the window).*
 
-#### int setBackgroundColor(float r, float g, float b)
+#### int setBackgroundColor(glm::vec3 color)
 Sets the window's background color which is black by default. Can be called without reloading the window.
 
 Params:
-> **r:** *The background colors red value.*
-> **g:** *The background colors red value.*
-> **b:** *The background colors red value.*
+> **color:** *The desired background color in RGB.*
 
 #### int presentNextFrame()
 Bring the back buffer to the front (into user view) and moves the front buffer to the back. \
@@ -448,24 +446,24 @@ Params:
 > **shader:** *The id of the shader program used to render this camera. Acquired from the return value of `Shader::initialiseShader()`*
 
 ### Functions: 
-#### CameraManager::Camera createPerspectiveCam(int arX, int arY)
+#### CameraManager::Camera createPerspectiveCam(int aspectRatioX, int aspectRatioY)
 Creates a new `Camera` object located at the scenes origin (x: 0.0, y: 0.0, z: 0.0) which looks directly down the +X axis. 
 
 Returns a `Camera` object.
 
 Params:
-> **arX:** *The x-axis aspect ratio / width of the viewport. (Default: `LAZARUS_PRIMARY_DISPLAY_WIDTH`)* \
-> **arY:** *The y-axis aspect ratio / height of the viewport. (Default: `LAZARUS_PRIMARY_DISPLAY_HEIGHT`)* 
+> **aspectRatioX:** *The x-axis aspect ratio / width of the viewport. (Default: `LAZARUS_PRIMARY_DISPLAY_WIDTH`)* \
+> **aspectRatioY:** *The y-axis aspect ratio / height of the viewport. (Default: `LAZARUS_PRIMARY_DISPLAY_HEIGHT`)* 
 
 ### Functions: 
-#### CameraManager::Camera createOrthoCam(double pX, double pY, double pZ, double tX, double tY, double tZ, int arX, int arY)
+#### CameraManager::Camera createOrthoCam(int arX, int arY)
 Creates a new instance of a `Camera`, with an orthographic projection matrix. 
 
 Returns a new camera entity.
 
 Params:
-> **arX:** *The x-axis aspect ratio / width of the viewport.*  \
-> **arY:** *The y-axis aspect ratio / height of the viewport.* 
+> **aspectRatioX:** *The x-axis aspect ratio / width of the viewport. (Default: `LAZARUS_PRIMARY_DISPLAY_WIDTH`)* \
+> **aspectRatioY:** *The y-axis aspect ratio / height of the viewport. (Default: `LAZARUS_PRIMARY_DISPLAY_HEIGHT`)* 
 
 #### CameraManager::Camera loadCamera(CameraManager::Camera cameraData)
 Passes the camera's projection matrix and view matrix into the shader program's corresponding uniform locations.
@@ -501,19 +499,15 @@ Params:
 > **shader:** *The id of the shader program used to render this light. Acquired from the return value of `Shader::initialiseShader()`*
 
 ### Functions: 
-#### LightManager::Light createLightSource(float x, float y, float z, float r, float g, float b, float brightness)
+#### LightManager::Light createLightSource(glm::vec3 position, glm::vec3 color, float brightness)
 Creates a new instance of an `Light`, initialises the values of its properties and returns it.
 
 Returns a new light entity.
 
 Params:
-> **x:** *The x-axis starting coordinate of the light in world-space.* \
-> **y:** *The y-axis starting coordinate of the light in world-space.* \
-> **z:** *The z-axis starting coordinate of the light in world-space.* \
-> **r:** *This light's red colour value.* \
-> **g:** *This light's green colour value.* \
-> **b:** *This light's blue colour value.* \
-> **brightness:** *The intensity of the light.*
+> **position:** *The desired world-space position of the light.* \
+> **color:** *The desired RGB color of the light.*
+> **brightness:** *The light's intensity / luminesence.*
 
 #### void loadLightSource(LightManager::Light &lightData)
 Passes the light object's locative (x,y,z) values into the vertex shader and its' colour (r,g,b) values into the fragment shader.
@@ -524,9 +518,6 @@ Params:
 ### Members:
 > **Light:** *A collection of properties which make up a light entity. (type: `struct`)*
 >	- **id:** *This light's unique id. (type: `int`)*
->	- **locationX:** *The x-axis coordinate of the light's position in world space. (type: `float`)*
->	- **locationY:** *The y-axis coordinate of the light's position in world space. (type: `float`)*
->	- **locationZ:** *The z-axis coordinate of the light's position in world space. (type: `float`)*
 >   - **brightness**: *The intensity of the light.*
 >	- **lightPosition:** *The x, y, z location of the light. (type: glm::vec3)*
 >	- **lightColor:** *The r, g, b color values of the light. (type: glm::vec3)*
@@ -576,37 +567,28 @@ Params:
 > **audioIn** *A reference to the target audio sample* \
 > **milliseconds** *Target number of elapsed milliseconds since the audios beginning (0) to playback from.*
 
-#### AudioManager::Audio updateSourceLocation(AudioManager::Audio audioIn, float x, float y, float z)
+#### AudioManager::Audio updateSourceLocation(AudioManager::Audio audioIn, glm::vec3 location)
 Updates the location in 3D of a `AudioManager::Audio` source; using `FMOD` to calculate the sound's doppler, relative to the listener's current positioning (*see*: `AudioManager::listenerLocationX`, `AudioManager::listenerLocationY` and `AudioManager::listenerLocationZ`).
 
 Params:
 > **audioIn**: *The audio sample to be updated.* \
-> **x**: *The desired audio source location on the x-axis.* \
-> **y**: *The desired audio source location on the y-axis.* \
-> **z**: *The desired audio source location on the z-axis.* 
+> **location**: *The desired audio source location in worldspace.* \
 
-#### void updateListenerLocation(float x, float y, float z)
+#### void updateListenerLocation(glm::vec3 location)
 Updates the location in 3D space of the audio's listener; using `FMOD` to calculate the doppler level, relative to the `AudioManager::Audio` current positioning. 
 
 Params:
-> **x**: *The desired audio listener location on the x-axis.* \
-> **y**: *The desired audio listener location on the y-axis.* \
-> **z**: *The desired audio listener location on the z-axis.* 
+> **location**: *The desired audio listener location on in worldspace.* 
 
 ### Members:
 > **Audio:** *A collection of properties which make up a sound asset. (type: `struct`)*
 >	- **id:** *This audio's unique id. (type: `int`)*
->	- **sourceLocationX:** *The x-axis coordinate of the audio's position in world space. (type: `float`)*
->	- **sourceLocationY:** *The y-axis coordinate of the audio's position in world space. (type: `float`)*
->	- **sourceLocationZ:** *The z-axis coordinate of the audio's position in world space. (type: `float`)*
+>	- **sourceLocation:** *The audio's position in world space. (type: `glm::vec3`)*
 >   - **is3D:** *Signifies whether the sound should be played in relation to the space or ambiently. (type: `bool`)*
 >   - **isPaused:** *Signifies whether the sound is currently playing or not (type: `bool`)*
 >   - **loopCount:** *The number of times that this audio sample should loop. Use -1 to loop indefinitely. (type: `int`), (default: `0`)*
 >   - **audioIndex:** *Used internally to identify the audio object's location in the audio vector. (type: `int`)* 
 > 
-> **listenerLocationX:** *The audio listener's location on the x-axis.* \
-> **listenerLocationY:** *The audio listener's location on the y-axis.* \
-> **listenerLocationZ:** *The audio listener's location on the z-axis.*
 
 ## TextManager:
 A management class for rendering and laying out text on the screen.
@@ -627,7 +609,7 @@ params:
 > **filepath:** *The relative path to the TrueType `.ttf` font file.* \
 > **ptSize:** *The desired character pt size. (default: `12`)*
 
-#### TextManager::Text loadText(std::string targetText, int fontId, int posX, int posY, int letterSpacing, float red, float green, float blue, TextManager::Text textIn)
+#### TextManager::Text loadText(std::string targetText, int fontId, glm::vec2 location, glm::vec3 color, int letterSpacing, TextManager::Text textIn)
 Loads the desired text using glyphs from the selected font. Sets the text's colour, position on the screen and letterspacing. It's worth noting \
 here that a space `' '` is equal to `letterSpacing * 8`.
 
@@ -638,12 +620,9 @@ Returns a new `TextManager::Text` object.
 Params:
 > **targetText:** *The desired string to load to memory.* \
 > **fontId:** *The index of the font the string should be rendered with.* \
-> **posY:** *The y-axis coordinate of where the upper-left-most point of the first character should be positioned in pixels. With the origin (0.0) starting in the bottom left.* \
-> **posX:** *The x-axis coordinate of where the upper-left-most point of the first character should be positioned in pixels. With the origin (0.0) starting in the bottom left.* \
+> **location:** *The x and y-axis screen space coordinates of where the upper-left-most point of the first character is positioned.*
+> **color:** *The desired RGB text color. (default: `{0.0, 0.0, 0.0} (black)`)* \
 > **letterSpacing:** *How much spacing (in pixels) to put between each character. Word spacing is equal to this value * 8. (default: `1`)* \
-> **red:** *Set the decimal value of the text's red colour channel. (default: `0.0`)* \
-> **green:** *Set the decimal value of the text's green colour channel. (default: `0.0`)* \
-> **blue:** *Set the decimal value of the text's blue colour channel. (default: `0.0`)* \
 > **textIn** *An existing text string in the layout container to update/replace upon successful load. (optional)*
 
 #### void drawText(TextManager::Text text)
@@ -689,19 +668,15 @@ Params:
 > **sky** The target skybox object to be drawn. \
 > **camera** The camera object used to determine the target uvw coordinate of the texel to the sampled from the bound cubemap image texture.
 
-#### WorldFX::Fog createFog()
+#### WorldFX::Fog createFog(float minDistance, float maxDistance, float thickness, glm::vec3 color, glm::vec3 position)
 Creates and a initialises a cloud of fog into the scene with radial visibility bounds. I.e. spherical area of non-fog.
 
 Params: 
 > **minDistance:** *The radius from xyz wherein fog's attenuation / opacity begins taking effect.*
 > **maxDistance:** *The radius from xyz wherein fog reaches full opacity.*
 > **thickness:** *The fog's density.*
-> **r:** *The fog-color's red value.*
-> **g:** *The fog-color's green value.*
-> **b:** *The fog-color's blue value.*
-> **x:** *The viewpoint's x-axis position. (default: `0.0`).*
-> **y:** *The viewpoint's y-axis position. (default: `0.0`).*
-> **z:** *The viewpoint's z-axis position. (default: `0.0`).*
+> **color:** *The fog's RGB color values.*
+> **position:** *The worldspace coordinates of the viewpoint. (default: `{0.0, 0.0, 0.0} (origin)`).*
 
 ### Members:
 > **SkyBox**: *A collection of properties which make up a skybox object. (type: `struct`.)*

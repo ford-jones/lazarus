@@ -21,7 +21,8 @@
 
 FontLoader::FontLoader()
 {
-    std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Constructing Lazarus::FontLoader");
+
     this->fileReader = nullptr;
 
     this->lib = NULL;
@@ -41,11 +42,10 @@ void FontLoader::loaderInit()
 
     if(status != FT_Err_Ok)
     {
-        std::cerr << RED_TEXT << "ERROR::FONTLOADER::INIT" << RESET_TEXT << std::endl;
-        std::cerr << RED_TEXT << "Status: " << status << RESET_TEXT << std::endl;
+        std::string message = std::string("FontLoader Error: ").append(std::to_string(this->status));
+        LOG_ERROR(message.c_str(), __FILE__, __LINE__);
 
-        std::cerr << status << std::endl;
-        globals.setExecutionState(LAZARUS_FT_INIT_FAILURE);
+        globals.setExecutionState(StatusCode::LAZARUS_FT_INIT_FAILURE);
     }
 };
 
@@ -58,10 +58,10 @@ int32_t FontLoader::loadTrueTypeFont(std::string filepath, uint32_t charHeight, 
 
     if(status != FT_Err_Ok)
     {
-        std::cerr << RED_TEXT << "ERROR::FONTLOADER::LOADFONT" << RESET_TEXT << std::endl;
-        std::cerr << RED_TEXT << "Status: " << status << RESET_TEXT << std::endl;
+        std::string message = std::string("FontLoader Error: ").append(std::to_string(this->status));
+        LOG_ERROR(message.c_str(), __FILE__, __LINE__);
 
-        globals.setExecutionState(LAZARUS_FILE_UNREADABLE);
+        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
 
         return -1;
     } 
@@ -100,10 +100,10 @@ FileLoader::Image FontLoader::loadCharacter(char character, uint32_t fontIndex)
 
     if(status != FT_Err_Ok)
     {
-        std::cerr << RED_TEXT << "ERROR::FONTLOADER::LOADCHAR" << RESET_TEXT << std::endl;
-        std::cerr << RED_TEXT << "Status: " << status << RESET_TEXT << std::endl;
+        std::string message = std::string("FontLoader Error: ").append(std::to_string(this->status));
+        LOG_ERROR(message.c_str(), __FILE__, __LINE__);
 
-        globals.setExecutionState(LAZARUS_FT_LOAD_FAILURE);
+        globals.setExecutionState(StatusCode::LAZARUS_FT_LOAD_FAILURE);
 
         this->setImageData(0, 0, NULL);
     }
@@ -121,7 +121,10 @@ void FontLoader::createBitmap()
 
     if(status != FT_Err_Ok)
     {
-        globals.setExecutionState(LAZARUS_FT_RENDER_FAILURE);
+        std::string message = std::string("FontLoader Error: ").append(std::to_string(this->status));
+        LOG_ERROR(message.c_str(), __FILE__, __LINE__);
+
+        globals.setExecutionState(StatusCode::LAZARUS_FT_RENDER_FAILURE);
 
         this->setImageData(0, 0, NULL);
     }
@@ -174,7 +177,7 @@ void FontLoader::flipGlyph()
 
 FontLoader::~FontLoader()
 {
-    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Destroying Lazarus::FontLoader");
 
     for(size_t i = 0; i < fontStack.size(); i++)
     {
@@ -194,9 +197,11 @@ FontLoader::~FontLoader()
         the entire layout should be drawn.
     ========================================================== */
 
-TextManager::TextManager(GLuint shader) : TextManager::MeshManager(shader)
+TextManager::TextManager(GLuint shader) 
+    : TextManager::MeshManager(shader, TextureLoader::StorageType::ATLAS)
 {
-    std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Constructing Lazarus::TextManager");
+
     this->shaderProgram = shader;
     this->cameraBuilder = std::make_unique<CameraManager>(this->shaderProgram);
     
@@ -300,7 +305,7 @@ uint32_t TextManager::extendFontStack(std::string filepath, uint32_t ptSize)
     return fonts.size() - 1;
 };
 
-TextManager::Text TextManager::loadText(std::string targetText, uint32_t fontId, uint32_t posX, uint32_t posY, uint32_t letterSpacing, float red, float green, float blue, TextManager::Text textIn)
+TextManager::Text TextManager::loadText(std::string targetText, uint32_t fontId, glm::vec2 location, glm::vec3 color, uint32_t letterSpacing, TextManager::Text textIn)
 {
     /* =================================================
         Clear internal child trackers to stop bloat.
@@ -312,11 +317,10 @@ TextManager::Text TextManager::loadText(std::string targetText, uint32_t fontId,
         this->word.clear();
     };
     
-    this->setTextColor(red, green, blue);
-    textOut.color = glm::vec3(red, green, blue);
+    this->setTextColor(color);
+    textOut.color = color;
     textOut.targetString = targetText;
-    textOut.locationX = posX;
-    textOut.locationY = posY;
+    textOut.location = location;
 
     for(size_t i = 0; i < targetText.size(); i++)
     {   
@@ -338,8 +342,8 @@ TextManager::Text TextManager::loadText(std::string targetText, uint32_t fontId,
         ================================================ */
         transformer.translateMeshAsset(
             quad, 
-            static_cast<float>((posX + (this->glyph.width / 2.0f)) + this->translationStride), 
-            static_cast<float>((posY + (this->rowHeight / 2.0f))), 
+            static_cast<float>((location.x + (this->glyph.width / 2.0f)) + this->translationStride), 
+            static_cast<float>((location.y + (this->rowHeight / 2.0f))), 
             0.0f
         );
         this->translationStride += (this->glyph.width + letterSpacing);
@@ -460,10 +464,14 @@ void TextManager::setActiveGlyph(char target, uint32_t fontId, uint32_t spacing)
     };
 };
 
-void TextManager::setTextColor(float r, float g, float b)
+void TextManager::setTextColor(glm::vec3 color)
 {
-    this->textColor = glm::vec3(r, g, b);
-    glUniform3fv(glGetUniformLocation(this->shaderProgram, "textColor"), 1, &this->textColor[0]);
+    //  TODO:
+    //  Check opengl errors 
+    
+    this->textColor = color;
+    GLuint textColorUniformLocation = glGetUniformLocation(this->shaderProgram, "textColor");
+    glUniform3fv(textColorUniformLocation, 1, &this->textColor[0]);
 };
 
 void TextManager::lookUpUVs(uint8_t keyCode, uint32_t fontId)
@@ -502,5 +510,5 @@ void TextManager::lookUpUVs(uint8_t keyCode, uint32_t fontId)
 
 TextManager::~TextManager()
 {
-    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Destroying Lazarus::TextManager");
 };

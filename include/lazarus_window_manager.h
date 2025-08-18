@@ -44,6 +44,8 @@ class Time
 		float framesPerSecond;
 		float timeDelta;
 		float elapsedTime;
+
+        virtual ~Time();
 		
 	private:
         GlobalsManager globals;
@@ -73,6 +75,8 @@ class Events
 		uint32_t mousePositionY;
 		
 		int8_t scrollEventCode;
+
+        virtual ~Events();
 		
     private:
         int32_t checkErrors(const char *file, int line);
@@ -80,7 +84,7 @@ class Events
         void updateMouseState();
 
         int32_t errorCode;
-        const char** errorMessage;
+        const char* errorMessage;
 
         GLFWwindow *win;
 
@@ -134,7 +138,7 @@ class WindowManager : public Events, public Time
         bool disableVsync;
 
         int32_t errorCode;
-        const char** errorMessage;
+        const char* errorMessage;
         
         const GLFWvidmode *videoMode;
         GLFWmonitor *monitor;

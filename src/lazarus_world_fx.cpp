@@ -19,9 +19,11 @@
 
 #include "../include/lazarus_world_fx.h"
 
-WorldFX::WorldFX(GLuint shaderProgram) : WorldFX::MeshManager(shaderProgram)
+WorldFX::WorldFX(GLuint shaderProgram) 
+    : WorldFX::MeshManager(shaderProgram, TextureLoader::StorageType::CUBEMAP)
 {
-    std::cout << GREEN_TEXT << "Calling constructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Constructing Lazarus::WorldFX");
+
     this->status        = 0;
     this->shader        = shaderProgram;
     this->imageLoader   = nullptr;
@@ -72,14 +74,16 @@ void WorldFX::drawSkyBox(WorldFX::SkyBox skyboxIn, CameraManager::Camera camera)
     this->status = glGetError();
     if(this->status != 0)
     {
-        globals.setExecutionState(LAZARUS_UNIFORM_NOT_FOUND);
+        LOG_ERROR("OpenGL Error:", __FILE__, __LINE__);
+        globals.setExecutionState(StatusCode::LAZARUS_UNIFORM_NOT_FOUND);
     };
 
     glUniformMatrix4fv(uniform, 1, GL_FALSE, &viewFromOrigin[0][0]);
     this->status = glGetError();
     if(this->status != 0)
     {
-        globals.setExecutionState(LAZARUS_MATRIX_LOCATION_ERROR);
+        LOG_ERROR("OpenGL Error:", __FILE__, __LINE__);
+        globals.setExecutionState(StatusCode::LAZARUS_MATRIX_LOCATION_ERROR);
     };
 
     glDepthMask(GL_FALSE);
@@ -99,17 +103,18 @@ void WorldFX::drawSkyBox(WorldFX::SkyBox skyboxIn, CameraManager::Camera camera)
     this->status = glGetError();
     if(this->status != 0)
     {
-        globals.setExecutionState(LAZARUS_MATRIX_LOCATION_ERROR);
+        LOG_ERROR("OpenGL Error:", __FILE__, __LINE__);
+        globals.setExecutionState(StatusCode::LAZARUS_MATRIX_LOCATION_ERROR);
     };
 
     return;
 };
 
-WorldFX::Fog WorldFX::createFog(float minDistance, float maxDistance, float thickness, float r, float g, float b, float x, float y, float z)
+WorldFX::Fog WorldFX::createFog(float minDistance, float maxDistance, float thickness, glm::vec3 color, glm::vec3 position)
 {
     this->fogOut = {};
-    this->fogOut.color = glm::vec3(r, g, b);
-    this->fogOut.viewpoint = glm::vec3(x, y, z);
+    this->fogOut.color = color;
+    this->fogOut.viewpoint = position;
     this->fogOut.density = thickness;
     this->fogOut.maxDistance = maxDistance;
     this->fogOut.minDistance = minDistance;
@@ -121,7 +126,8 @@ void WorldFX::loadFog(WorldFX::Fog fogIn)
 {
     if(fogIn.density < 0.0f)
     {
-        globals.setExecutionState(LAZARUS_INVALID_INTENSITY);
+        LOG_ERROR("OpenGL Error:", __FILE__, __LINE__);
+        globals.setExecutionState(StatusCode::LAZARUS_INVALID_INTENSITY);
     };
     
     glUniform3fv(this->fogColorUniformLocation, 1, &fogIn.color[0]);
@@ -133,7 +139,8 @@ void WorldFX::loadFog(WorldFX::Fog fogIn)
     this->status = glGetError();
     if(this->status != 0)
     {
-        globals.setExecutionState(LAZARUS_UNIFORM_NOT_FOUND);
+        LOG_ERROR("OpenGL Error:", __FILE__, __LINE__);
+        globals.setExecutionState(StatusCode::LAZARUS_UNIFORM_NOT_FOUND);
     };
 
     return;
@@ -162,7 +169,8 @@ void WorldFX::loadSkyMap()
         if(
             this->skyBoxOut.cubeMap.size() > 0 && (image.width != image.height || image.width != this->skyBoxOut.cubeMap[0].width))
         {
-            globals.setExecutionState(LAZARUS_INVALID_CUBEMAP);
+            LOG_ERROR("OpenGL Error:", __FILE__, __LINE__);
+            globals.setExecutionState(StatusCode::LAZARUS_INVALID_CUBEMAP);
         };
         
         this->skyBoxOut.cubeMap.push_back(image);
@@ -181,5 +189,5 @@ void WorldFX::loadSkyMap()
 
 WorldFX::~WorldFX()
 {
-    std::cout << GREEN_TEXT << "Calling destructor @ file: " << __FILE__ << " line: (" << __LINE__ << ")" << RESET_TEXT << std::endl;
+    LOG_DEBUG("Destroying Lazarus::WorldFX");
 };

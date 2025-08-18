@@ -21,6 +21,8 @@
 
 Transform::Transform()
 {
+	LOG_DEBUG("Constructing Lazarus::Transform");
+
 	/* ===========================================
 		Use low precision (and incorrect) pi value
 		so that things like camera rotation dont 
@@ -28,6 +30,7 @@ Transform::Transform()
 	============================================== */
 
 	this->pi = 3.1419;
+
 	this->outRadians = 0.0;
 	this->up = 0.0f;
 	this->localCoordinates = glm::vec3(0.0, 0.0, 0.0);
@@ -50,9 +53,9 @@ void Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, fl
 	
 	this->worldCoordinates = mesh.modelMatrix * glm::vec4(this->localCoordinates, 1.0);
 
-    mesh.locationX = this->worldCoordinates.x;
-    mesh.locationY = this->worldCoordinates.y;
-    mesh.locationZ = this->worldCoordinates.z;
+    mesh.position.x = this->worldCoordinates.x;
+    mesh.position.y = this->worldCoordinates.y;
+    mesh.position.z = this->worldCoordinates.z;
 
 	return;
 };
@@ -73,7 +76,9 @@ void Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float 
 
 	if(max <= 0.0f)
 	{
-		globals.setExecutionState(LAZARUS_INVALID_DIMENSIONS);	
+        LOG_ERROR("Transform Error", __FILE__, __LINE__);
+
+		globals.setExecutionState(StatusCode::LAZARUS_INVALID_DIMENSIONS);	
 	}
 	else
 	{
@@ -123,7 +128,9 @@ void Transform::rotateCameraAsset(CameraManager::Camera &camera, float pitch, fl
 	
 	if((pitch > 360.0f) || (pitch < -360.0f))
 	{
-		globals.setExecutionState(LAZARUS_INVALID_RADIANS);
+        LOG_ERROR("Transform Error", __FILE__, __LINE__);
+		
+		globals.setExecutionState(StatusCode::LAZARUS_INVALID_RADIANS);
 	}
 	else
 	{
@@ -153,7 +160,9 @@ void Transform::orbitCameraAsset(CameraManager::Camera &camera, float azimuth, f
 
 	if((azimuth > 360.0f) || (azimuth < -360.0f))
 	{
-		globals.setExecutionState(LAZARUS_INVALID_RADIANS);
+        LOG_ERROR("Transform Error", __FILE__, __LINE__);
+
+		globals.setExecutionState(StatusCode::LAZARUS_INVALID_RADIANS);
 	}
 	else
 	{
@@ -214,10 +223,17 @@ float Transform::degreesToRadians(float in, bool enforceLimits)
 		enforceLimits && 
 		((in > 360.0f) || (in < -360.0f)))	
 	{
-		globals.setExecutionState(LAZARUS_INVALID_RADIANS);
+        LOG_ERROR("Transform Error", __FILE__, __LINE__);
+
+		globals.setExecutionState(StatusCode::LAZARUS_INVALID_RADIANS);
 	};
 
 	this->outRadians = in * this->pi / 180.0f;
 
 	return this->outRadians;
+};
+
+Transform::~Transform()
+{
+	LOG_DEBUG("Destroying Lazarus::Transform");
 };

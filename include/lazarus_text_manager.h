@@ -86,14 +86,13 @@ class TextManager : private FontLoader, private MeshManager
         struct Text
         {
             uint32_t layoutIndex;
-            uint32_t locationX;
-            uint32_t locationY;
+            glm::vec2 location;
             std::string targetString;
             glm::vec3 color;
         };
         
         uint32_t extendFontStack(std::string filepath, uint32_t ptSize = 12);
-        Text loadText(std::string targetText, uint32_t fontId, uint32_t posX, uint32_t posY, uint32_t letterSpacing = 1, float red = 0.0f, float green = 0.0f, float blue = 0.0f, Text textIn = {});
+        Text loadText(std::string targetText, uint32_t fontId, glm::vec2 location, glm::vec3 color = glm::vec3(0.0f, 0.0f, 0.0f), uint32_t letterSpacing = 1, Text textIn = {});
         void drawText(Text text);
         virtual ~TextManager();
         
@@ -103,7 +102,7 @@ class TextManager : private FontLoader, private MeshManager
         Text textOut;
         void identifyAlphabetDimensions(uint32_t fontId);
         void setActiveGlyph(char target, uint32_t fontId, uint32_t spacing);
-        void setTextColor(float r, float g, float b);
+        void setTextColor(glm::vec3 color);
         void lookUpUVs(uint8_t keyCode, uint32_t fontId);
         
         uint8_t targetKey;
