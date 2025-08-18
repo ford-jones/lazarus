@@ -12,3 +12,4 @@ build
 
 # Debugging symbols
 run.dSYM
+*.pdb

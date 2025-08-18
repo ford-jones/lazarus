@@ -44,6 +44,7 @@ In the project root use Powershell or the Developer Command Prompt for VS 2022 t
 ```
 build.bat
 ```
+*(Note: Use `build.bat --debug` to enable debugging symbols in the build output and create a `.pdb` file in the current working directory.)*
 
 Now copy the header files located in include to msvc's include folder. Mine's located at:
 ```
@@ -76,7 +77,7 @@ g++ main.cpp -o run -lGL -lGLEW -lglfw -lfmod -freetype -llazarus
 
 #### Windows:
 ```
-cl /EHsc /std:c++17 main.cpp /link fmod_vc.lib freetype.lib glfw3.lib glew32.lib opengl32.lib liblazarus.lib msvcrt.lib user32.lib gdi32.lib shell32.lib /out:run.exe /NODEFAULTLIB:libcmt
+cl /EHsc /std:c++17 /Zc:__cplusplus main.cpp /link fmod_vc.lib freetype.lib glfw3.lib glew32.lib opengl32.lib liblazarus.lib msvcrt.lib user32.lib gdi32.lib shell32.lib /out:run.exe /NODEFAULTLIB:libcmt
 ```
 
 ## Installation Notes:
