@@ -413,7 +413,6 @@ int32_t WindowManager::createWindow()
     globals.setDisplaySize(targetWidth, targetHeight);
 
 	this->centerWindow();
-
     glfwMakeContextCurrent(this->window);
 
 	this->checkErrors(__FILE__, __LINE__);
@@ -532,6 +531,7 @@ int32_t WindowManager::toggleFullscreen()
 			preserved from last time the screen
 			was fullscreen. If it was never
 			fullscreen before now, it will use
+
 			the default or the last size 
 			specified by the user.
 		======================================= */
