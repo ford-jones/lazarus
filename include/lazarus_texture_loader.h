@@ -73,6 +73,7 @@ class TextureLoader
 
 		shared_ptr<FileLoader> loader;
 		FileLoader::Image image;
+		StorageType storageType;
 
 		GlobalsManager globals;
 };

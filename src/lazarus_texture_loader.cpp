@@ -40,9 +40,9 @@ TextureLoader::TextureLoader(TextureLoader::StorageType storageVariant)
 	this->textureStack = 0;
 
 	this->errorCode = 0;
-
+	this->storageType = storageVariant;
 	
-	switch (storageVariant)
+	switch (this->storageType)
 	{
 		case TextureLoader::StorageType::ARRAY:
 			glGenTextures(1, &this->textureStack);
@@ -374,7 +374,21 @@ TextureLoader::~TextureLoader()
 {
 	LOG_DEBUG("Destroying Lazarus::TextureLoader");
 
-	glDeleteTextures(1, &textureStack);
-	glDeleteTextures(1, &bitmapTexture);
-	glDeleteTextures(1, &cubeMapTexture);
+	switch (this->storageType)
+	{
+		case TextureLoader::StorageType::ARRAY:
+			glDeleteTextures(1, &textureStack);
+			break;
+		
+		case TextureLoader::StorageType::ATLAS:
+			glDeleteTextures(1, &bitmapTexture);
+			break;
+
+		case TextureLoader::StorageType::CUBEMAP:
+			glDeleteTextures(1, &cubeMapTexture);
+			break;
+	
+	default:
+		break;
+	}
 };
