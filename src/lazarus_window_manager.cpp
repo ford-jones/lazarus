@@ -322,7 +322,7 @@ WindowManager::WindowManager(const char *title, uint32_t width, uint32_t height)
     this->frame.height = height;
     this->frame.title = title;
 
-    this->launchFullscreen = globals.getLaunchInFullscreen();
+    this->isFullscreen = globals.getLaunchInFullscreen();
     this->enableCursor = globals.getCursorHidden();
     this->cullFaces = globals.getBackFaceCulling();
     this->testDepth = globals.getDepthTest();
@@ -385,7 +385,7 @@ int32_t WindowManager::createWindow()
     int32_t targetWidth = 0;
     int32_t targetHeight = 0;
 
-    launchFullscreen
+    isFullscreen
     ? (((targetWidth = videoMode->width) && (targetHeight = videoMode->height)) 
         &&  (
             this->window = glfwCreateWindow(
@@ -410,9 +410,7 @@ int32_t WindowManager::createWindow()
 
     globals.setDisplaySize(targetWidth, targetHeight);
 
-	int32_t windowLocationX = floor((videoMode->width - this->frame.width) / 2);
-	int32_t windowLocationY = floor((videoMode->height - this->frame.height) / 2);
-    glfwSetWindowPos(this->window, windowLocationX, windowLocationY);
+	this->recenterWindow();
 
     glfwMakeContextCurrent(this->window);
 
@@ -498,6 +496,46 @@ int32_t WindowManager::loadConfig()
 	this->setBackgroundColor(0.0, 0.0, 0.0);
 	
 	return this->checkErrors(__FILE__, __LINE__);;
+};
+
+int32_t WindowManager::toggleFullscreen()
+{
+	if(!this->isFullscreen)
+	{
+		glfwSetWindowMonitor(
+			this->window, 
+			this->monitor, 
+			0, 0, 
+			this->videoMode->width, 
+			this->videoMode->height,
+			this->videoMode->refreshRate
+		);
+		this->isFullscreen = true;
+	}
+	else
+	{
+		/* ====================================
+			Frame width and height should be
+			preserved from last time the screen
+			was fullscreen. If it was never
+			fullscreen before now, it will use
+			the default.
+		======================================= */
+
+		glfwSetWindowMonitor(
+			this->window, 
+			NULL, 
+			0, 0, 
+			this->frame.width,
+			this->frame.height, 
+			0
+		);
+
+		this->recenterWindow();
+		this->isFullscreen = false;
+	};
+
+	return this->checkErrors(__FILE__, __LINE__);
 };
 
 int32_t WindowManager::resize(uint32_t width, uint32_t height)
@@ -627,7 +665,16 @@ int32_t WindowManager::checkErrors(const char *file, int line)
     }
 };
 
-int WindowManager::initialiseGLEW()
+int32_t WindowManager::recenterWindow()
+{
+	int32_t windowLocationX = floor((videoMode->width - this->frame.width) / 2);
+	int32_t windowLocationY = floor((videoMode->height - this->frame.height) / 2);
+    glfwSetWindowPos(this->window, windowLocationX, windowLocationY);
+
+	return this->checkErrors(__FILE__, __LINE__);
+};
+
+int32_t WindowManager::initialiseGLEW()
 {
     glewExperimental = GL_TRUE;
     glewInit();
