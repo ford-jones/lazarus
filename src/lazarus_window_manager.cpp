@@ -502,19 +502,11 @@ int32_t WindowManager::loadConfig()
 
 int32_t WindowManager::resize(uint32_t width, uint32_t height)
 {
-	if((width < this->videoMode->width) && (height < this->videoMode->height))
-	{
-		this->frame.height = height;
-		this->frame.width = width;
-		globals.setDisplaySize(width, height);
-		
-		glViewport(0, 0, this->frame.width, this->frame.height);
-	}
-	else
-	{
-		LOG_ERROR("Window Error: ", __FILE__, __LINE__);
-		globals.setExecutionState(LAZARUS_WIN_EXCEEDS_MAX);
-	}
+	this->frame.height = height;
+	this->frame.width = width;
+	globals.setDisplaySize(width, height);
+
+	glViewport(0, 0, this->frame.width, this->frame.height);
 
 	return this->checkErrors(__FILE__, __LINE__);
 };
