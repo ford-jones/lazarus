@@ -322,7 +322,7 @@ WindowManager::WindowManager(const char *title, uint32_t width, uint32_t height)
     this->frame.height = height;
     this->frame.title = title;
 
-    this->launchFullscreen = globals.getLaunchInFullscreen();
+    this->isFullscreen = globals.getLaunchInFullscreen();
     this->enableCursor = globals.getCursorHidden();
     this->cullFaces = globals.getBackFaceCulling();
     this->testDepth = globals.getDepthTest();
@@ -336,6 +336,8 @@ WindowManager::WindowManager(const char *title, uint32_t width, uint32_t height)
     this->cursor = NULL;
 
     this->isOpen = false;
+	originalWidth = 0;
+    originalHeight = 0;
 };
 
 int32_t WindowManager::createWindow()
@@ -385,7 +387,7 @@ int32_t WindowManager::createWindow()
     int32_t targetWidth = 0;
     int32_t targetHeight = 0;
 
-    launchFullscreen
+    isFullscreen
     ? (((targetWidth = videoMode->width) && (targetHeight = videoMode->height)) 
         &&  (
             this->window = glfwCreateWindow(
@@ -410,9 +412,7 @@ int32_t WindowManager::createWindow()
 
     globals.setDisplaySize(targetWidth, targetHeight);
 
-	int32_t windowLocationX = floor((videoMode->width - this->frame.width) / 2);
-	int32_t windowLocationY = floor((videoMode->height - this->frame.height) / 2);
-    glfwSetWindowPos(this->window, windowLocationX, windowLocationY);
+	this->centerWindow();
 
     glfwMakeContextCurrent(this->window);
 
@@ -438,9 +438,7 @@ int32_t WindowManager::createWindow()
 	glfwSetFramebufferSizeCallback(this->window, [](GLFWwindow *win, int width, int height){
 		WindowManager *window = (WindowManager *) glfwGetWindowUserPointer(win);
 		window->resize(width, height);
-		//	TODO:
-		//	Redraw on resize
-		//	Create new member function which can be retrieved from user pointer
+
 		return;	 
 	});
 
@@ -498,6 +496,63 @@ int32_t WindowManager::loadConfig()
 	this->setBackgroundColor(0.0, 0.0, 0.0);
 	
 	return this->checkErrors(__FILE__, __LINE__);;
+};
+
+int32_t WindowManager::toggleFullscreen()
+{
+	if(!this->isFullscreen)
+	{
+		/* =============================================
+			Track original size so as to restore to
+			previous state on next toggle. Note that
+			usage of this->frame directly causes a
+			bug as the values of this->frame are
+			overwritten by WindowManager::resize(...) 
+			when the callback is fired after this
+			function is called.
+		================================================ */
+
+		this->originalWidth = this->frame.width;
+		this->originalHeight = this->frame.height;
+
+		glfwSetWindowMonitor(
+			this->window, 
+			this->monitor, 
+			0, 0, 
+			this->videoMode->width, 
+			this->videoMode->height,
+			this->videoMode->refreshRate
+		);
+		this->isFullscreen = true;
+	}
+	else
+	{
+		/* ====================================
+			Frame width and height should be
+			preserved from last time the screen
+			was fullscreen. If it was never
+			fullscreen before now, it will use
+			the default or the last size 
+			specified by the user.
+		======================================= */
+
+		this->frame.width = this->originalWidth;
+		this->frame.height = this->originalHeight;
+
+		glfwSetWindowMonitor(
+			this->window, 
+			NULL, 
+			0, 0, 
+			this->frame.width,
+			this->frame.height, 
+			0
+		);
+
+		this->centerWindow();
+		this->isFullscreen = false;
+	};
+
+	return this->checkErrors(__FILE__, __LINE__);
 };
 
 int32_t WindowManager::resize(uint32_t width, uint32_t height)
@@ -627,7 +682,16 @@ int32_t WindowManager::checkErrors(const char *file, int line)
     }
 };
 
-int WindowManager::initialiseGLEW()
+int32_t WindowManager::centerWindow()
+{
+	int32_t windowLocationX = floor((videoMode->width - this->frame.width) / 2);
+	int32_t windowLocationY = floor((videoMode->height - this->frame.height) / 2);
+    glfwSetWindowPos(this->window, windowLocationX, windowLocationY);
+
+	return this->checkErrors(__FILE__, __LINE__);
+};
+
+int32_t WindowManager::initialiseGLEW()
 {
     glewExperimental = GL_TRUE;
     glewInit();
