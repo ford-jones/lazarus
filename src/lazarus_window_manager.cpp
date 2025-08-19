@@ -327,6 +327,12 @@ WindowManager::WindowManager(const char *title, uint32_t width, uint32_t height)
     this->cullFaces = globals.getBackFaceCulling();
     this->testDepth = globals.getDepthTest();
     this->disableVsync = globals.getVsyncDisabled();
+
+	this->isOpen = false;
+
+	originalWidth = this->frame.width;
+	originalHeight = this->frame.height;
+
     /* ==================
         Optional
     ===================== */
@@ -334,10 +340,6 @@ WindowManager::WindowManager(const char *title, uint32_t width, uint32_t height)
 
     this->videoMode = NULL;
     this->cursor = NULL;
-
-    this->isOpen = false;
-	originalWidth = 0;
-    originalHeight = 0;
 };
 
 int32_t WindowManager::createWindow()
@@ -557,6 +559,15 @@ int32_t WindowManager::toggleFullscreen()
 
 int32_t WindowManager::resize(uint32_t width, uint32_t height)
 {
+	/* ===========================================
+		Due to this being set as the glfw 
+		framebuffer resize callback, this is in
+		turn also fired following a call to 
+		WindowManager::toggleFullscreen(), hence
+		why setDisplaySize doesn't need to be 
+		called there.
+	============================================== */
+
 	this->frame.height = height;
 	this->frame.width = width;
 	globals.setDisplaySize(width, height);
