@@ -50,7 +50,7 @@ LightManager::Light LightManager::createLightSource(glm::vec3 location, glm::vec
     lightData.lightColorUniformLocation      =   glGetUniformLocation(shaderProgram, (std::string("lightColors[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
     lightData.brightnessUniformLocation      =   glGetUniformLocation(shaderProgram, (std::string("lightBrightness[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
 
-    lightStore.push_back(lightData);
+    lightStore.insert(std::pair<uint32_t, LightManager::LightData>(lightOut.id, lightData));
 
     globals.setNumberOfActiveLights(this->lightCount);
 
@@ -59,7 +59,7 @@ LightManager::Light LightManager::createLightSource(glm::vec3 location, glm::vec
 
 void LightManager::loadLightSource(LightManager::Light &lightIn)
 {
-    this->lightData = lightStore[lightIn.id];
+    this->lightData = lightStore.at(lightIn.id);
 
     if(lightIn.brightness < 0.0f) globals.setExecutionState(StatusCode::LAZARUS_INVALID_INTENSITY);
     

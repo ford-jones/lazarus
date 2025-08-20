@@ -302,9 +302,14 @@ class MeshManager
 
         unique_ptr<FileLoader> finder;
         
+        /* ====================================
+            Convert std::map to std::set once
+            instanced rendering is available.
+        ======================================= */
+
         Mesh meshOut;
         MeshData meshData;
-        vector<MeshData> dataStore;
+        std::map<uint32_t, MeshData> dataStore;
 
         GlobalsManager globals;
 

@@ -353,9 +353,9 @@ void MeshManager::initialiseMesh()
 
         this->checkErrors(__FILE__, __LINE__);
 
-        this->dataStore.push_back(meshData);
-        meshOut.id = dataStore.size();
-        dataStore[dataStore.size() - 1].id = meshOut.id;
+        meshOut.id = dataStore.size() + 1;
+        meshData.id = meshOut.id;
+        this->dataStore.insert(std::pair<uint32_t, MeshManager::MeshData>(meshOut.id, meshData));
 
         /* ===============================================================
             Reload the entire texture stack / array if the mesh isn't
@@ -398,11 +398,11 @@ void MeshManager::prepareTextures()
 
     for(auto i: dataStore)
     {
-        glActiveTexture(i.textureUnit);
+        glActiveTexture(i.second.textureUnit);
     
         if((meshOut.textureFilepath != LAZARUS_DIFFUSE_MESH))
         {
-            this->loadImageToTextureStack(i.textureData, i.textureLayer);
+            this->loadImageToTextureStack(i.second.textureData, i.second.textureLayer);
         };
     };
 
@@ -413,9 +413,9 @@ void MeshManager::clearMeshStorage()
 {	
     for(auto i: dataStore)
     {
-        glDeleteBuffers         (1, &i.VBO);
-        glDeleteBuffers         (1, &i.EBO);
-        glDeleteVertexArrays    (1, &i.VAO);
+        glDeleteBuffers         (1, &i.second.VBO);
+        glDeleteBuffers         (1, &i.second.EBO);
+        glDeleteVertexArrays    (1, &i.second.VAO);
     };
     
     this->meshOut = {};
@@ -445,12 +445,12 @@ void MeshManager::makeSelectable(bool selectable)
         ================================================ */
         meshOut.isClickable = true;
         globals.setPickableEntity(meshOut.id);
-        dataStore[meshOut.id - 1].stencilBufferId = globals.getNumberOfPickableEntities();
+        dataStore.at(meshOut.id).stencilBufferId = globals.getNumberOfPickableEntities();
     }
     else
     {
         meshOut.isClickable = false;
-        dataStore[meshOut.id - 1].stencilBufferId = 0;
+        dataStore.at(meshOut.id).stencilBufferId = 0;
     };
 
     return;
@@ -458,7 +458,7 @@ void MeshManager::makeSelectable(bool selectable)
 
 void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
 {
-    MeshManager::MeshData &data = dataStore[meshIn.id - 1];
+    MeshManager::MeshData &data = dataStore.at(meshIn.id);
 
     /* ===================================================
         Fill the stencil buffer with 0's. 
@@ -508,7 +508,7 @@ void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
 
 void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
 {
-    MeshManager::MeshData &data = dataStore[meshIn.id - 1];
+    MeshManager::MeshData &data = dataStore.at(meshIn.id);
 
     this->clearErrors();
 
@@ -669,9 +669,9 @@ MeshManager::~MeshManager()
 
     for(auto i: dataStore)
     {
-        glDeleteBuffers         (1, &i.VBO);
-        glDeleteBuffers         (1, &i.EBO);
-        glDeleteVertexArrays    (1, &i.VAO);
+        glDeleteBuffers         (1, &i.second.VBO);
+        glDeleteBuffers         (1, &i.second.EBO);
+        glDeleteVertexArrays    (1, &i.second.VAO);
     };
 
     this->checkErrors(__FILE__, __LINE__);
