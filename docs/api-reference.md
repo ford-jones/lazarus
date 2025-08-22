@@ -125,6 +125,16 @@ Initialises OpenGL and supplementary libraries. Creates a window and rendering c
 #### int loadConfig()
 Binds a shader program to the current active window's OpenGL Context and loads a render configuration based on values set in the global scope (see: `GlobalsManager`).
 
+#### int resize(int width, int height)
+Sets the window to the specified `width` and `height`.
+
+Params:
+> **width:** *The desired window width.* \
+> **height:** *The desired window height.*
+
+#### int toggleFullscreen()
+Sets the viewport to the size of the monitor / display if it's currently in windowed-mode. If fullscreen is already active, converts the viewport to windowed-mode. When switching out of fullscreen the new frame will be what it was prior to resize. If the size was never specified (*e.g. because the application was launched with `GlobalsManager::setLaunchInFullscreen(true)`*) then the window will take up the full size of the monitor / display.
+
 #### int open()
 Opens the active window.
 
@@ -431,9 +441,9 @@ Clears the manager's internal child tracker which includes: Associated texture h
 >	- **meshFilepath:** *The absolute path (from system root) to the wavefront file containing this mesh's vertex data. (type: `std::string`)*
 >	- **materialFilepath:** *The absolute path (from system root) to the wavefront file containing this mesh's material data. (type: `std::string*`)*
 >	- **textureFilepath:** *The absolute path (from system root) to the wavefront file containing this mesh's texture image. (type: `std::string`)*
->	- **locationX:** *The x-axis coordinate of the mesh's position in world space. (type: float)*
->	- **locationY:** *The y-axis coordinate of the mesh's position in world space. (type: float)*
->	- **locationZ:** *The z-axis coordinate of the mesh's position in world space. (type: float)*
+>	- **position:** *Where the mesh is position in world space. (type: `glm::vec3`)*
+>	- **direction:** *The mesh's forward-vector. Where the mesh's local coordinate system's z+ is in relation to world space. (type: `glm::vec3`)*
+>	- **scale:** *The size of the mesh. (type: `glm::vec3`)*
 >   - **isClickable** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (type: `bool`)*
 
 ## CameraManager:
