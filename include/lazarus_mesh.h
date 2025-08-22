@@ -226,10 +226,8 @@ class MeshManager
             uint32_t numOfFaces;
 
             /* ===============================
-            	TODO | Things to add:
-                - Direction
-                - Material count
-                - Scale
+            	TODO:
+                - Material struct
             ================================== */
             
             std::string meshFilepath;
@@ -237,10 +235,10 @@ class MeshManager
             std::string textureFilepath;
 
             glm::vec3 position;
-            glm::vec3 rotation;
+            glm::vec3 direction;
             glm::vec3 scale;
 
-            mat4 modelMatrix;
+            glm::mat4 modelMatrix;
 
             uint8_t is3D;
             uint8_t isGlyph;

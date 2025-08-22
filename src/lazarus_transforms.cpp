@@ -62,6 +62,15 @@ void Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, fl
 
 void Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, float yaw, float roll)
 {
+	/* ===================================================
+		Extract the current z axis rotation values from
+		row 3 of the matrice and then truncate the last 
+		element. This can be treated as the mesh asset's 
+		forward / direction vector.
+	====================================================== */
+
+	mesh.direction = mesh.modelMatrix * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f); 
+
     mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
     mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
 	mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(roll), glm::vec3(0.0f, 0.0f, 1.0f));
