@@ -170,7 +170,7 @@ class MeshLoader
         uint32_t triangleCount;
         
         char currentLine[UINT8_MAX];
-        std::vector<string> attributeIndexes;
+        std::vector<std::string> attributeIndexes;
 
         //  wavefront mtl
         uint32_t diffuseCount;
@@ -186,17 +186,17 @@ class MeshLoader
         std::unique_ptr<FileLoader> imageLoader;
         //  Identifies and contains the contents from 'wavefrontData' that occur between instances
         //  of 'delim'.
-        vector<string> splitTokensFromLine(const char *wavefrontData, char delim);
+        std::vector<std::string> splitTokensFromLine(const char *wavefrontData, char delim);
         //  Deduplicate vertex attributes and construct a serial for those that are unique to be 
         //  passed to the renderers IBO. Interleaves attributes in the order that is expected by
         //  the renderers VBO.
-        void constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> outDiffuse, uint32_t numOfAttributes);
+        void constructIndexBuffer(std::vector<glm::vec3> &outAttributes, std::vector<uint32_t> &outIndexes, std::vector<glm::vec3> outDiffuse, uint32_t numOfAttributes);
         //  Clears containers of all their contents.
         void resetMembers();
 
-        vector<uint32_t> vertexIndices;
-        vector<uint32_t> uvIndices;
-        vector<uint32_t> normalIndices;
+        std::vector<uint32_t> vertexIndices;
+        std::vector<uint32_t> uvIndices;
+        std::vector<uint32_t> normalIndices;
 
         std::map<uint32_t, glm::vec3> tempVertexPositions;
         std::map<uint32_t, glm::vec3> tempUvs;
@@ -232,11 +232,13 @@ class MeshManager
                 - Scale
             ================================== */
             
-            string meshFilepath;
-            string materialFilepath;
-            string textureFilepath;
+            std::string meshFilepath;
+            std::string materialFilepath;
+            std::string textureFilepath;
 
             glm::vec3 position;
+            glm::vec3 rotation;
+            glm::vec3 scale;
 
             mat4 modelMatrix;
 
@@ -248,9 +250,9 @@ class MeshManager
 		
 		MeshManager(GLuint shader, TextureLoader::StorageType textureType = TextureLoader::StorageType::ARRAY);
 		
-        Mesh create3DAsset(string meshPath, string materialPath = LAZARUS_TEXTURED_MESH, string texturePath = LAZARUS_DIFFUSE_MESH, bool selectable = false);
-        Mesh createQuad(float width, float height, string texturePath = LAZARUS_DIFFUSE_MESH, float uvXL = 0.0, float uvXR = 0.0, float uvYU = 0.0, float uvYD = 0.0, bool selectable = false);
-        Mesh createCube(float scale, string texturePath = LAZARUS_SKYBOX_CUBE, bool selectable = false);
+        Mesh create3DAsset(std::string meshPath, std::string materialPath = LAZARUS_TEXTURED_MESH, std::string texturePath = LAZARUS_DIFFUSE_MESH, bool selectable = false);
+        Mesh createQuad(float width, float height, std::string texturePath = LAZARUS_DIFFUSE_MESH, float uvXL = 0.0, float uvXR = 0.0, float uvYU = 0.0, float uvYD = 0.0, bool selectable = false);
+        Mesh createCube(float scale, std::string texturePath = LAZARUS_SKYBOX_CUBE, bool selectable = false);
 
         void clearMeshStorage();
 
@@ -273,12 +275,12 @@ class MeshManager
             GLuint VBO;
             GLuint EBO;
 
-            vector<uint32_t> indexes;
-            vector<vec3> attributes;
-            vector<vec3> diffuse;
+            std::vector<uint32_t> indexes;
+            std::vector<glm::vec3> attributes;
+            std::vector<glm::vec3> diffuse;
         };
 
-        void resolveFilepaths(string texPath = LAZARUS_DIFFUSE_MESH, string mtlPath = LAZARUS_TEXTURED_MESH, string objPath = LAZARUS_PRIMITIVE_MESH);
+        void resolveFilepaths(std::string texPath = LAZARUS_DIFFUSE_MESH, std::string mtlPath = LAZARUS_TEXTURED_MESH, std::string objPath = LAZARUS_PRIMITIVE_MESH);
         void setInherentProperties();
         void initialiseMesh();
         void makeSelectable(bool selectable);
@@ -300,7 +302,7 @@ class MeshManager
         GLint isGlyphUniformLocation;
         GLint isSkyBoxUniformLocation;
 
-        unique_ptr<FileLoader> finder;
+        std::unique_ptr<FileLoader> finder;
         
         /* ====================================
             Convert std::map to std::set once

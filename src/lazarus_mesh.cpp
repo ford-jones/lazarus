@@ -605,6 +605,8 @@ void MeshManager::resolveFilepaths(string texPath, string mtlPath, string objPat
 void MeshManager::setInherentProperties()
 {
     meshOut.position = glm::vec3(0.0f, 0.0f, 0.0f);
+    meshOut.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
+    meshOut.scale = glm::vec3(1.0f, 1.0f, 1.0f);
 
     meshOut.modelMatrix = mat4(1.0f);
 
