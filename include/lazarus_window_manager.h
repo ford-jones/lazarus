@@ -60,6 +60,8 @@ class Events
     public:
     	//	TODO:
     	//	Create a constructor / destructor
+        //  Create a public getter for retreiving the members
+        //  Make members private
 
         Events();
 

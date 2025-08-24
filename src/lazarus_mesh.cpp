@@ -539,6 +539,12 @@ void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
 
 void MeshManager::resolveFilepaths(string texPath, string mtlPath, string objPath)
 {
+    //  TODO:
+    //  Refactor out this entire function
+    //  1). Path absolution can take place in the asset loader
+    //  2). Check TextureLoader::StorageType && MeshManager::MaterialType instead of textureFilepath
+    //  3). These structs should be per-material and in vectors
+
     objPath != LAZARUS_PRIMITIVE_MESH
     ? meshOut.meshFilepath =  finder->relativePathToAbsolute(objPath)
     : meshOut.meshFilepath = LAZARUS_PRIMITIVE_MESH;

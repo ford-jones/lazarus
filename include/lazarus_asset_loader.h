@@ -58,7 +58,7 @@ using std::stringstream;
 
 class AssetLoader 
 {
-    public:
+    protected:
     	AssetLoader();	
     	    
         bool parseWavefrontObj(
