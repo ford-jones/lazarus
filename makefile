@@ -28,7 +28,7 @@ OUT := $(addprefix lib/,$(TARGET))
 OBJECTS = src/lazarus_common.o src/lazarus_shader.o src/lazarus_light.o src/lazarus_camera.o \
 					src/lazarus_mesh.o src/lazarus_transforms.o src/lazarus_texture_loader.o \
 					src/lazarus_window_manager.o src/lazarus_file_loader.o \
-					src/lazarus_audio_manager.o \
+					src/lazarus_audio_manager.o src/lazarus_asset_loader.o \
 					src/lazarus_text_manager.o src/lazarus_world_fx.o
 
 lazarus_common.o := include/lazarus_common.h
@@ -40,6 +40,7 @@ lazarus_transforms.o := include/lazarus_transforms.h
 lazarus_file_loader.o := include/lazarus_file_loader.h
 lazarus_window_manager.o := include/lazarus_window_manager.h
 lazarus_audio_manager.o := include/lazarus_audio_manager.h
+lazarus_asset_loader.o := include/lazarus_asset_loader.h
 lazarus_texture_loader.o := include/lazarus_texture.h
 lazarus_text_manager.o := include/lazarus_text_manager.h
 lazarus_world_fx.o := include/lazarus_world_fx.h

@@ -59,8 +59,8 @@ TextureLoader::TextureLoader(TextureLoader::StorageType storageVariant)
 			glBindTexture(GL_TEXTURE_CUBE_MAP, this->cubeMapTexture);
 			break;
 	
-	default:
-		break;
+		default:
+			break;
 	}
 };
 
