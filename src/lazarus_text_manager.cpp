@@ -328,7 +328,7 @@ TextManager::Text TextManager::loadText(std::string targetText, uint32_t fontId,
         quad = this->createQuad(
             static_cast<float>(this->glyph.width), 
             static_cast<float>(this->rowHeight), 
-            LAZARUS_GLYPH_QUAD, 
+            "", 
             this->uvL, 
             this->uvR, 
             this->uvU, 

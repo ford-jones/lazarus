@@ -67,12 +67,6 @@ extern float                     LAZARUS_LISTENER_SCROLLCODE;
 
 extern const uint32_t            LAZARUS_MOUSE_NOCLICK;
 
-extern const char*               LAZARUS_SKYBOX_CUBE;
-extern const char*               LAZARUS_GLYPH_QUAD;
-extern const char*               LAZARUS_PRIMITIVE_MESH;
-extern const char*               LAZARUS_TEXTURED_MESH;
-extern const char*               LAZARUS_DIFFUSE_MESH;
-
 enum StatusCode
 {
     LAZARUS_OK                             = 0,
