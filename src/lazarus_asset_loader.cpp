@@ -23,12 +23,12 @@ AssetLoader::AssetLoader()
 {
 	LOG_DEBUG("Constructing Lazarus::AssetLoader");
 
-	this->materialIdentifierIndex	=	0;
-	this->triangleCount				=	0;
-    this->imageLoader = nullptr;
-
+	this->materialIdentifierIndex	= 0;
+	this->triangleCount				= 0;
     this->diffuseCount              = 0;
     this->texCount                  = 0;
+
+    this->fileLoader                = std::make_unique<FileLoader>();
 
     this->tempVertexPositions = {};
     this->tempNormals = {};
@@ -39,7 +39,8 @@ bool AssetLoader::parseWavefrontObj(std::vector<glm::vec3> &outAttributes, std::
 {
     this->resetMembers();
 
-    file.open(meshPath);
+    std::string path = fileLoader->relativePathToAbsolute(meshPath);
+    file.open(path);
 
     if( !file.is_open() )
     {
@@ -181,13 +182,15 @@ bool AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint
 {
     diffuseCount = 0;
     texCount = 0;
+
     
     if(file.is_open())
     {
         file.close();
     };
     
-    file.open(materialPath);
+    std::string path = fileLoader->relativePathToAbsolute(materialPath);
+    file.open(path);
     
     if( !file.is_open() )
     {
@@ -312,7 +315,8 @@ bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDi
     std::string BYTELENGTH = "\"byteLength\":";
     std::string BYTESTRIDE = "\"byteStride\":";
     
-    this->loadGlbChunks(meshPath);
+    std::string path = fileLoader->relativePathToAbsolute(meshPath);
+    this->loadGlbChunks(path.c_str());
 
     std::vector<std::string> propertyIdentifiers = {ACCESSORS,PRIMITIVES,MATERIALS,TEXTURES,IMAGES,BUFFERVIEW,BUFFERS};
     std::vector<std::string> propertyStrings = {};
@@ -581,8 +585,6 @@ bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDi
         
         if(material.textureIndex >= 0)
         {
-            this->imageLoader = std::make_unique<FileLoader>();
-
             glbTextureData texture = textures[material.textureIndex];
             glbImageData image = images[texture.imageIndex];
 
@@ -598,7 +600,7 @@ bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDi
             std::memset(buffer, 0, sizeof(unsigned char) * bufferView.byteLength);
             std::memcpy(buffer, &this->binaryData[bufferView.byteOffset], sizeof(unsigned char) * bufferView.byteLength);
 
-            outImage = imageLoader->loadImage(nullptr, buffer, bufferView.byteLength);
+            outImage = fileLoader->loadImage(nullptr, buffer, bufferView.byteLength);
             delete[] buffer;
         };
         

@@ -180,7 +180,7 @@ class AssetLoader
         //  Shared
         
         ifstream file;
-        std::unique_ptr<FileLoader> imageLoader;
+        std::unique_ptr<FileLoader> fileLoader;
         //  Identifies and contains the contents from 'wavefrontData' that occur between instances
         //  of 'delim'.
         std::vector<std::string> splitTokensFromLine(const char *wavefrontData, char delim);
