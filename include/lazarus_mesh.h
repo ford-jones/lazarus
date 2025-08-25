@@ -48,9 +48,28 @@ using glm::vec2;
 #define LAZARUS_MESH_H
 
 class MeshManager 
-    : private AssetLoader, public TextureLoader
+    : private AssetLoader, protected TextureLoader
 {
     public:
+        enum MaterialType
+        {
+            IMAGE_TEXTURE = 1,
+            BASE_COLOR = 2
+        };
+        struct Material
+        {
+            uint32_t id;
+            
+            MaterialType type;
+            TextureLoader::StorageType textureStoreVariant;
+        };
+        enum MeshType 
+        {
+            LOADED_GLB = 1,
+            LOADED_WAVEFRONT = 2,
+            PLANE = 3,
+            CUBE = 4
+        };
         struct Mesh
         {
             uint32_t id;
@@ -73,17 +92,17 @@ class MeshManager
 
             glm::mat4 modelMatrix;
 
-            uint8_t is3D;
-            uint8_t isGlyph;
-            uint8_t isSkybox;
+            Material material;
+            MeshType type;
+
             bool isClickable;
         };
 		
 		MeshManager(GLuint shader, TextureLoader::StorageType textureType = TextureLoader::StorageType::ARRAY);
 		
-        Mesh create3DAsset(std::string meshPath, std::string materialPath = LAZARUS_TEXTURED_MESH, std::string texturePath = LAZARUS_DIFFUSE_MESH, bool selectable = false);
-        Mesh createQuad(float width, float height, std::string texturePath = LAZARUS_DIFFUSE_MESH, float uvXL = 0.0, float uvXR = 0.0, float uvYU = 0.0, float uvYD = 0.0, bool selectable = false);
-        Mesh createCube(float scale, std::string texturePath = LAZARUS_SKYBOX_CUBE, bool selectable = false);
+        Mesh create3DAsset(std::string meshPath, std::string materialPath = "", std::string texturePath = "", bool selectable = false);
+        Mesh createQuad(float width, float height, std::string texturePath = "", float uvXL = 0.0, float uvXR = 0.0, float uvYU = 0.0, float uvYD = 0.0, bool selectable = false);
+        Mesh createCube(float scale, std::string texturePath = "", bool selectable = false);
 
         void clearMeshStorage();
 
@@ -111,8 +130,8 @@ class MeshManager
             std::vector<glm::vec3> diffuse;
         };
 
-        void resolveFilepaths(std::string texPath = LAZARUS_DIFFUSE_MESH, std::string mtlPath = LAZARUS_TEXTURED_MESH, std::string objPath = LAZARUS_PRIMITIVE_MESH);
-        void setInherentProperties();
+        void setMaterialProperties();
+        void setSharedProperties();
         void initialiseMesh();
         void makeSelectable(bool selectable);
         void prepareTextures();
@@ -134,7 +153,7 @@ class MeshManager
         GLint isSkyBoxUniformLocation;
 
         std::unique_ptr<FileLoader> finder;
-        
+        TextureLoader::StorageType textureStorage;
         /* ====================================
             Convert std::map to std::set once
             instanced rendering is available.
@@ -145,7 +164,7 @@ class MeshManager
         std::map<uint32_t, MeshData> dataStore;
 
         GlobalsManager globals;
-
+        
 };
 
 #endif

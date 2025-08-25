@@ -42,6 +42,8 @@ MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
 
     this->maxTexWidth = 0;
     this->maxTexHeight = 0;
+
+    this->textureStorage = textureType;
 };
 
 MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPath, string texturePath, bool selectable)
@@ -49,12 +51,16 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     this->meshOut = {};
     this->meshData = {};
 
-    meshOut.is3D = 1;
-    meshOut.isGlyph = 0;
-    meshOut.isSkybox = 0;
+    // meshOut.is3D = 1;
+    // meshOut.isGlyph = 0;
+    // meshOut.isSkybox = 0;
     
     meshData.textureUnit = GL_TEXTURE2;
     glActiveTexture(meshData.textureUnit);
+
+    meshOut.meshFilepath = meshPath;
+    meshOut.materialFilepath = materialPath;
+    meshOut.textureFilepath = texturePath;
     
     /* ==========================================
         Determine whether the file is wavefront
@@ -63,8 +69,8 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     uint32_t suffixDelimiter = meshPath.find_last_of(".");
     std::string suffix = meshPath.substr(suffixDelimiter + 1);
 
-    this->resolveFilepaths(texturePath, materialPath, meshPath);
-
+    meshOut.material.type = MaterialType::BASE_COLOR;
+    
     if(suffix.compare("obj") == 0)
     {
         this->parseWavefrontObj(
@@ -74,6 +80,12 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
             meshOut.meshFilepath.c_str(),
             meshOut.materialFilepath.c_str()
         );
+        meshOut.type = MeshManager::MeshType::LOADED_WAVEFRONT;
+
+        if(texturePath != "")
+        {
+            meshOut.material.type = MaterialType::IMAGE_TEXTURE;
+        }
     }
     else if(suffix.compare("glb") == 0)
     {
@@ -85,20 +97,24 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
             meshOut.meshFilepath.c_str()
         );
 
+        meshOut.type = MeshManager::MeshType::LOADED_GLB;
+        //  If this is indeed null, do these values still get set?
+
         if(meshData.textureData.pixelData != NULL)
         {
             this->layerCount += 1;
 
-            meshOut.textureFilepath = LAZARUS_TEXTURED_MESH;
+            meshOut.material.type = MaterialType::IMAGE_TEXTURE;
+            meshOut.textureFilepath = "";
 
             meshData.textureUnit = GL_TEXTURE2;
             meshData.textureLayer = this->layerCount;
             meshData.textureId = this->textureStack;
-
         };
     };
     
-    this->setInherentProperties();
+    this->setMaterialProperties();
+    this->setSharedProperties();
     this->initialiseMesh();
     this->makeSelectable(selectable);
 
@@ -132,14 +148,16 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
     this->meshOut = {};
     this->meshData = {};
 
-    meshOut.is3D = 0;
-    meshOut.isGlyph = 0;
-    meshOut.isSkybox = 0;
+    meshOut.type = MeshManager::MeshType::PLANE;
+
+    meshOut.meshFilepath = "";
+    meshOut.materialFilepath = "";
+    meshOut.textureFilepath = texturePath;
     
     meshData.textureUnit = GL_TEXTURE2;
     glActiveTexture(meshData.textureUnit);
 
-    this->resolveFilepaths(texturePath);
+    meshOut.material.type = MaterialType::IMAGE_TEXTURE;
 
     /* ======================================================
         Ensure that the origin is centered.
@@ -202,7 +220,8 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
         6, 5, 7
     };
 
-    this->setInherentProperties();
+    this->setMaterialProperties();
+    this->setSharedProperties();
     this->initialiseMesh();
     this->makeSelectable(selectable);
 
@@ -216,25 +235,29 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, 
     this->meshOut = {};
     this->meshData = {};
 
-    meshOut.isGlyph = 0;
+    meshOut.type = MeshManager::MeshType::CUBE;
 
-    this->resolveFilepaths(texturePath);
+    meshOut.meshFilepath = "";
+    meshOut.materialFilepath = "";
+    meshOut.textureFilepath = texturePath;
 
-        /* ==================================================
-            Default texture unit is GL_TEXTURE1, which is the
-            samplerArray. Reset it appropriately here.
-        ===================================================== */
-    if(meshOut.textureFilepath == LAZARUS_SKYBOX_CUBE)
+    // meshOut.isGlyph = 0;
+    meshOut.material.type = MaterialType::IMAGE_TEXTURE;
+    /* ==================================================
+        Default texture unit is GL_TEXTURE1, which is the
+        samplerArray. Reset it appropriately here.
+    ===================================================== */
+    if(this->textureStorage == TextureLoader::StorageType::CUBEMAP)
     {
-        meshOut.is3D = 0;
-        meshOut.isSkybox = 1;
+        // meshOut.is3D = 0;
+        // meshOut.isSkybox = 1;
 
         meshData.textureUnit = GL_TEXTURE3;
     }
     else
     {
-        meshOut.is3D = 1;
-        meshOut.isSkybox = 0;
+        // meshOut.is3D = 1;
+        // meshOut.isSkybox = 0;
 
         meshData.textureUnit = GL_TEXTURE2;
     };
@@ -300,8 +323,9 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, 
         16, 17, 18, 16, 19, 17,
         20, 21, 22, 20, 23, 21
     };
-
-    this->setInherentProperties();
+    
+    this->setMaterialProperties();
+    this->setSharedProperties();
     this->initialiseMesh();
     this->makeSelectable(selectable);
 
@@ -364,7 +388,9 @@ void MeshManager::initialiseMesh()
             used for some special purpose different texture loaders are 
             used. 
         ================================================================== */
-        if(!meshOut.isSkybox && !meshOut.isGlyph)
+
+        if(meshOut.material.type == MaterialType::IMAGE_TEXTURE && 
+            meshOut.material.textureStoreVariant == TextureLoader::StorageType::ARRAY)
         {
             this->prepareTextures();
         };
@@ -400,7 +426,8 @@ void MeshManager::prepareTextures()
     {
         glActiveTexture(i.second.textureUnit);
     
-        if((meshOut.textureFilepath != LAZARUS_DIFFUSE_MESH))
+        if(meshOut.material.type == MaterialType::IMAGE_TEXTURE && 
+           meshOut.material.textureStoreVariant == TextureLoader::StorageType::ARRAY)
         {
             this->loadImageToTextureStack(i.second.textureData, i.second.textureLayer);
         };
@@ -486,9 +513,16 @@ void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
             GL_FALSE, 
             &meshIn.modelMatrix[0][0]
         );
-        glUniform1i(this->is3DUniformLocation, meshIn.is3D);
-        glUniform1i(this->isGlyphUniformLocation, meshIn.isGlyph);
-        glUniform1i(this->isSkyBoxUniformLocation, meshIn.isSkybox);
+
+        //  TODO:
+        //  This could be 1 upload which is check against the StorageType on the other side
+        
+        //  is3d
+        glUniform1i(this->is3DUniformLocation, (meshIn.material.textureStoreVariant != TextureLoader::StorageType::ATLAS && meshIn.material.textureStoreVariant != TextureLoader::StorageType::CUBEMAP) ? 1 : 0);
+        //  isglyph
+        glUniform1i(this->isGlyphUniformLocation, meshIn.material.textureStoreVariant == TextureLoader::StorageType::ATLAS ? 1 : 0);
+        //  isskybox
+        glUniform1i(this->isSkyBoxUniformLocation, meshIn.material.textureStoreVariant == TextureLoader::StorageType::CUBEMAP ? 1 : 0);
         
         if(data.textureId != 0)
         {
@@ -517,18 +551,26 @@ void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
 
     glActiveTexture(data.textureUnit);
 
-    if((meshIn.textureFilepath == LAZARUS_GLYPH_QUAD))
+    if(meshIn.material.type == MaterialType::IMAGE_TEXTURE)
     {
-        glBindTexture(GL_TEXTURE_2D, data.textureId);
+        switch (meshIn.material.textureStoreVariant)
+        {
+        case TextureLoader::StorageType::ATLAS:
+            glBindTexture(GL_TEXTURE_2D, data.textureId);
+            break;
+        
+        case TextureLoader::StorageType::CUBEMAP:
+            glBindTexture(GL_TEXTURE_CUBE_MAP, data.textureId);
+            break;
+        
+        case TextureLoader::StorageType::ARRAY:
+            glBindTexture(GL_TEXTURE_2D_ARRAY, data.textureId);
+            break;
+        
+        default:
+            break;
+        };
     }
-    else if((meshIn.textureFilepath == LAZARUS_SKYBOX_CUBE))
-    {
-        glBindTexture(GL_TEXTURE_CUBE_MAP, data.textureId);
-    }
-    else if((meshIn.textureFilepath != LAZARUS_DIFFUSE_MESH))
-    {
-        glBindTexture(GL_TEXTURE_2D_ARRAY, data.textureId);
-    };
 
     glDrawElements(GL_TRIANGLES, data.indexes.size(), GL_UNSIGNED_INT, nullptr);
 
@@ -537,81 +579,90 @@ void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
     return;
 };
 
-void MeshManager::resolveFilepaths(string texPath, string mtlPath, string objPath)
+void MeshManager::setMaterialProperties()
 {
     //  TODO:
     //  Refactor out this entire function
-    //  1). Path absolution can take place in the asset loader
-    //  2). Check TextureLoader::StorageType && MeshManager::MaterialType instead of textureFilepath
-    //  3). These structs should be per-material and in vectors
+    //  1). MeshData material stuff should be cleaned up
+    //  2). These structs should be per-material and in vectors
 
-    objPath != LAZARUS_PRIMITIVE_MESH
-    ? meshOut.meshFilepath =  finder->relativePathToAbsolute(objPath)
-    : meshOut.meshFilepath = LAZARUS_PRIMITIVE_MESH;
-
-    mtlPath != LAZARUS_TEXTURED_MESH
-    ? meshOut.materialFilepath =  finder->relativePathToAbsolute(mtlPath)
-    : meshOut.materialFilepath = LAZARUS_TEXTURED_MESH;
-
-    switch (texPath[0])
+    if(meshOut.material.type == MaterialType::IMAGE_TEXTURE)
     {
-        //  Glyph atlas
-        case 'G':
-            meshOut.textureFilepath = LAZARUS_GLYPH_QUAD;
-            meshOut.isGlyph = 1;
+        switch(this->textureStorage)
+        {
+            case TextureLoader::StorageType::ATLAS:
+                meshOut.textureFilepath = "";
+                // meshOut.isGlyph = 1;
 
-            meshData.textureUnit = GL_TEXTURE1;
-            meshData.textureId = this->bitmapTexture;;
-            meshData.textureLayer = 0;
-            meshData.textureData.pixelData = NULL;
-            meshData.textureData.height = 0;
-            meshData.textureData.width = 0;
-            break;
-        
-        //  Skybox cubemap
-        case 'S':
-            meshOut.textureFilepath = LAZARUS_SKYBOX_CUBE;
-            meshOut.isSkybox = 1;
+                meshData.textureUnit = GL_TEXTURE1;
+                meshData.textureId = this->bitmapTexture;
+                meshData.textureLayer = 0;
+                meshData.textureData.pixelData = NULL;
+                meshData.textureData.height = 0;
+                meshData.textureData.width = 0;
+                break;
+            
+            case TextureLoader::StorageType::CUBEMAP:
+                meshOut.textureFilepath = "";
+                // meshOut.isSkybox = 1;
 
-            meshData.textureUnit = GL_TEXTURE3;
-            meshData.textureId = this->cubeMapTexture;
-            meshData.textureLayer = 1;
-            meshData.textureData.pixelData = NULL;
-            meshData.textureData.height = 0;
-            meshData.textureData.width = 0;
-            break;
+                meshData.textureUnit = GL_TEXTURE3;
+                meshData.textureId = this->cubeMapTexture;
+                meshData.textureLayer = 1;
+                meshData.textureData.pixelData = NULL;
+                meshData.textureData.height = 0;
+                meshData.textureData.width = 0;
+                break;
+            
+            case TextureLoader::StorageType::ARRAY:
+                /* =======================================
+                    In the case of glb files, this info 
+                    has already been ascertained during 
+                    parsing.
+                ========================================== */
 
-        //  Diffuse color
-        case 'D':
-    	    meshOut.textureFilepath = LAZARUS_DIFFUSE_MESH;
+                if(meshOut.type != MeshManager::MeshType::LOADED_GLB && meshOut.textureFilepath.size() > 0)
+                {
+                    this->layerCount += 1;
 
-            meshData.textureLayer = 0; 
-            meshData.textureId = 0;
-            meshData.textureData.pixelData = NULL;
-            meshData.textureData.height = 0;
-            meshData.textureData.width = 0;
-            break;
-        
-        //  Image array
-        default:
-            this->layerCount += 1;
+                    meshData.textureUnit = GL_TEXTURE2;
+                    meshData.textureId = this->textureStack;
+                    meshData.textureLayer = this->layerCount;
+                    meshData.textureData = finder->loadImage(meshOut.textureFilepath.c_str());
+                }
+                break;
+        }
+    }
+    else
+    {
+        meshOut.textureFilepath = "";
 
-	        meshOut.textureFilepath = finder->relativePathToAbsolute(texPath);
-
-            meshData.textureUnit = GL_TEXTURE2;
-            meshData.textureId = this->textureStack;
-            meshData.textureLayer = this->layerCount;
-            meshData.textureData = finder->loadImage(meshOut.textureFilepath.c_str());
-            break;
+        meshData.textureLayer = 0; 
+        meshData.textureId = 0;
+        meshData.textureData.pixelData = NULL;
+        meshData.textureData.height = 0;
+        meshData.textureData.width = 0;
     };
+
+    meshOut.material.textureStoreVariant = this->textureStorage;
 
     return;
 };
 
-void MeshManager::setInherentProperties()
+void MeshManager::setSharedProperties()
 {
+    //  Placeholder
+    meshOut.material.id = meshOut.id;
+
+    /* =========================================
+        Meshes are created at the origin looking
+        down the z-axis at 1:1 scale to that 
+        which was specified during VBO
+        construction.
+    ============================================ */
+
     meshOut.position = glm::vec3(0.0f, 0.0f, 0.0f);
-    meshOut.direction = glm::vec3(0.0f, 0.0f, 0.0f);
+    meshOut.direction = glm::vec3(0.0f, 0.0f, 1.0f);
     meshOut.scale = glm::vec3(1.0f, 1.0f, 1.0f);
 
     meshOut.modelMatrix = mat4(1.0f);
