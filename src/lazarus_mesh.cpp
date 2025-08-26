@@ -29,16 +29,19 @@ MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
 
     this->clearMeshStorage();
 
+    /* ===================================================
+        Bind samplers to texture units and load locations.
+        https://www.khronos.org/opengl/wiki/Sampler_(GLSL)#:~:text=The%20value%20you%20provide%20to%20a%20sampler%20uniform%20is%20the%20texture%20image%20unit%20to%20which%20you%20will%20bind%20the%20texture%20that%20the%20sampler%20will%20access
+    ====================================================== */
+
     glUniform1i(glGetUniformLocation(this->shaderProgram, "textureAtlas"), 1);
     glUniform1i(glGetUniformLocation(this->shaderProgram, "textureArray"), 2);
     glUniform1i(glGetUniformLocation(this->shaderProgram, "textureCube"), 3);
 
-    this->modelMatrixUniformLocation = glGetUniformLocation(this->shaderProgram, "modelMatrix");
-    this->is3DUniformLocation = glGetUniformLocation(this->shaderProgram, "spriteAsset");
-    this->isGlyphUniformLocation = glGetUniformLocation(this->shaderProgram, "glyphAsset");
-    this->isSkyBoxUniformLocation = glGetUniformLocation(this->shaderProgram, "isSkyBox");
-
-    this->textureLayerUniformLocation = glGetUniformLocation(this->shaderProgram, "textureLayer");  
+    this->modelMatrixUniformLocation    = glGetUniformLocation(this->shaderProgram, "modelMatrix");
+    this->meshVariantLocation           = glGetUniformLocation(this->shaderProgram, "samplerType");
+    this->discardFragsLocation          = glGetUniformLocation(this->shaderProgram, "discardFrags");
+    this->textureLayerUniformLocation   = glGetUniformLocation(this->shaderProgram, "textureLayer");  
 
     this->maxTexWidth = 0;
     this->maxTexHeight = 0;
@@ -50,10 +53,6 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
 {
     this->meshOut = {};
     this->meshData = {};
-
-    // meshOut.is3D = 1;
-    // meshOut.isGlyph = 0;
-    // meshOut.isSkybox = 0;
     
     meshData.textureUnit = GL_TEXTURE2;
     glActiveTexture(meshData.textureUnit);
@@ -98,7 +97,6 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
         );
 
         meshOut.type = MeshManager::MeshType::LOADED_GLB;
-        //  If this is indeed null, do these values still get set?
 
         if(meshData.textureData.pixelData != NULL)
         {
@@ -241,7 +239,6 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, 
     meshOut.materialFilepath = "";
     meshOut.textureFilepath = texturePath;
 
-    // meshOut.isGlyph = 0;
     meshOut.material.type = MaterialType::IMAGE_TEXTURE;
     /* ==================================================
         Default texture unit is GL_TEXTURE1, which is the
@@ -249,16 +246,10 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, 
     ===================================================== */
     if(this->textureStorage == TextureLoader::StorageType::CUBEMAP)
     {
-        // meshOut.is3D = 0;
-        // meshOut.isSkybox = 1;
-
         meshData.textureUnit = GL_TEXTURE3;
     }
     else
     {
-        // meshOut.is3D = 1;
-        // meshOut.isSkybox = 0;
-
         meshData.textureUnit = GL_TEXTURE2;
     };
 
@@ -513,16 +504,9 @@ void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
             GL_FALSE, 
             &meshIn.modelMatrix[0][0]
         );
-
-        //  TODO:
-        //  This could be 1 upload which is check against the StorageType on the other side
         
-        //  is3d
-        glUniform1i(this->is3DUniformLocation, (meshIn.material.textureStoreVariant != TextureLoader::StorageType::ATLAS && meshIn.material.textureStoreVariant != TextureLoader::StorageType::CUBEMAP) ? 1 : 0);
-        //  isglyph
-        glUniform1i(this->isGlyphUniformLocation, meshIn.material.textureStoreVariant == TextureLoader::StorageType::ATLAS ? 1 : 0);
-        //  isskybox
-        glUniform1i(this->isSkyBoxUniformLocation, meshIn.material.textureStoreVariant == TextureLoader::StorageType::CUBEMAP ? 1 : 0);
+        glUniform1i(this->meshVariantLocation, meshIn.material.textureStoreVariant);
+        glUniform1i(this->discardFragsLocation, meshIn.material.discardsAlphaZero);
         
         if(data.textureId != 0)
         {
@@ -592,7 +576,6 @@ void MeshManager::setMaterialProperties()
         {
             case TextureLoader::StorageType::ATLAS:
                 meshOut.textureFilepath = "";
-                // meshOut.isGlyph = 1;
 
                 meshData.textureUnit = GL_TEXTURE1;
                 meshData.textureId = this->bitmapTexture;
@@ -604,7 +587,6 @@ void MeshManager::setMaterialProperties()
             
             case TextureLoader::StorageType::CUBEMAP:
                 meshOut.textureFilepath = "";
-                // meshOut.isSkybox = 1;
 
                 meshData.textureUnit = GL_TEXTURE3;
                 meshData.textureId = this->cubeMapTexture;
@@ -615,13 +597,14 @@ void MeshManager::setMaterialProperties()
                 break;
             
             case TextureLoader::StorageType::ARRAY:
-                /* =======================================
-                    In the case of glb files, this info 
-                    has already been ascertained during 
+                /* =========================================
+                    In the case of glb files, this info has 
+                    already been ascertained during file
                     parsing.
-                ========================================== */
+                ============================================ */
 
-                if(meshOut.type != MeshManager::MeshType::LOADED_GLB && meshOut.textureFilepath.size() > 0)
+                if(meshOut.type != MeshManager::MeshType::LOADED_GLB && 
+                    meshOut.textureFilepath.size() > 0)
                 {
                     this->layerCount += 1;
 
@@ -653,6 +636,7 @@ void MeshManager::setSharedProperties()
 {
     //  Placeholder
     meshOut.material.id = meshOut.id;
+    meshOut.material.discardsAlphaZero = false;
 
     /* =========================================
         Meshes are created at the origin looking

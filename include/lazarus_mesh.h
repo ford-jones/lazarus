@@ -62,6 +62,7 @@ class MeshManager
             
             MaterialType type;
             TextureLoader::StorageType textureStoreVariant;
+            bool discardsAlphaZero;
         };
         enum MeshType 
         {
@@ -76,11 +77,6 @@ class MeshManager
 
             uint32_t numOfVertices;
             uint32_t numOfFaces;
-
-            /* ===============================
-            	TODO:
-                - Material struct
-            ================================== */
             
             std::string meshFilepath;
             std::string materialFilepath;
@@ -104,12 +100,14 @@ class MeshManager
         Mesh createQuad(float width, float height, std::string texturePath = "", float uvXL = 0.0, float uvXR = 0.0, float uvYU = 0.0, float uvYD = 0.0, bool selectable = false);
         Mesh createCube(float scale, std::string texturePath = "", bool selectable = false);
 
-        void clearMeshStorage();
-
         void loadMesh(Mesh &meshIn);
         void drawMesh(Mesh &meshIn);
 
         virtual ~MeshManager();
+    
+    protected:
+        void clearMeshStorage();
+        
     private:
         struct MeshData
         {
@@ -148,9 +146,8 @@ class MeshManager
 		GLuint shaderProgram;
         GLint modelMatrixUniformLocation;
         GLint textureLayerUniformLocation;
-        GLint is3DUniformLocation;
-        GLint isGlyphUniformLocation;
-        GLint isSkyBoxUniformLocation;
+        GLint meshVariantLocation;
+        GLint discardFragsLocation;
 
         std::unique_ptr<FileLoader> finder;
         TextureLoader::StorageType textureStorage;
