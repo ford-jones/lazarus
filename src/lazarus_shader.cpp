@@ -75,7 +75,7 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     uniform int samplerType;
     uniform int discardFrags;
 
-    uniform float textureLayer;
+    //  uniform float textureLayer;
 
     uniform sampler2D textureAtlas;
     uniform sampler2DArray textureArray;
@@ -160,7 +160,9 @@ vec4 interpretColorData ()
         switch(samplerType)
         {
             case ARRAY:
-                tex = texture(textureArray, vec3(textureCoordinate.xy, textureLayer));
+                //  the array-layer number is stored in the z value of the uv
+
+                tex = texture(textureArray, vec3(textureCoordinate.xy, textureCoordinate.z));
 
                 //  I.e. MeshManager::Mesh::Material::discardAlphaZero
 
