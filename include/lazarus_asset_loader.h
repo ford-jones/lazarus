@@ -59,6 +59,7 @@ using std::stringstream;
 class AssetLoader 
 {
     protected:
+        uint32_t texCount;
     	AssetLoader();	
     	    
         bool parseWavefrontObj(
@@ -72,6 +73,7 @@ class AssetLoader
         bool parseWavefrontMtl(
             const char *materialPath,
             std::vector<std::vector<uint32_t>> data,
+            std::vector<glm::vec3> &temp,
             std::vector<glm::vec3> &outDiffuse
         );
 
@@ -79,7 +81,7 @@ class AssetLoader
             std::vector<glm::vec3> &outAttributes,
             std::vector<glm::vec3> &outDiffuse,
             std::vector<uint32_t> &outIndexes,
-            FileLoader::Image &outImage,
+            std::vector<FileLoader::Image> &outImages,
             const char *meshPath
         );
         
@@ -170,7 +172,6 @@ class AssetLoader
 
         //  wavefront mtl
         uint32_t diffuseCount;
-        uint32_t texCount;
         glm::vec3 diffuse;
         
         //  Read vertex attributes from temp* members and group them together 
@@ -191,6 +192,8 @@ class AssetLoader
         //  Clears containers of all their contents.
         void resetMembers();
 
+        std::vector<uint32_t> countsAsTheyWere;
+
         std::vector<uint32_t> vertexIndices;
         std::vector<uint32_t> uvIndices;
         std::vector<uint32_t> normalIndices;
@@ -198,6 +201,7 @@ class AssetLoader
         std::map<uint32_t, glm::vec3> tempVertexPositions;
         std::map<uint32_t, glm::vec3> tempUvs;
         std::map<uint32_t, glm::vec3> tempNormals;
+        std::vector<glm::vec3> tempDiffuse;
 
         glm::vec3 vertex;
         glm::vec3 uv;

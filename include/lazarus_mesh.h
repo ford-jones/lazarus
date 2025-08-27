@@ -59,9 +59,11 @@ class MeshManager
         struct Material
         {
             uint32_t id;
-            
             MaterialType type;
-            TextureLoader::StorageType textureStoreVariant;
+            
+            FileLoader::Image texture;
+            glm::vec3 diffuse;
+            
             bool discardsAlphaZero;
         };
         enum MeshType 
@@ -75,6 +77,9 @@ class MeshManager
         {
             uint32_t id;
 
+            MeshType type;
+            std::vector<Material> materials;
+
             uint32_t numOfVertices;
             uint32_t numOfFaces;
             
@@ -87,9 +92,6 @@ class MeshManager
             glm::vec3 scale;
 
             glm::mat4 modelMatrix;
-
-            Material material;
-            MeshType type;
 
             bool isClickable;
         };
@@ -107,28 +109,26 @@ class MeshManager
     
     protected:
         void clearMeshStorage();
-        
+
     private:
         struct MeshData
         {
             uint32_t id;
-
             int32_t stencilBufferId;
-            int32_t textureUnit;
 
-            FileLoader::Image textureData;
-            GLuint textureId;
-            GLuint textureLayer;
             GLuint VAO;
             GLuint VBO;
             GLuint EBO;
-
+            
+            MeshType type;
+            TextureLoader::TextureData texture;
+            
+            std::vector<FileLoader::Image> images;
             std::vector<uint32_t> indexes;
             std::vector<glm::vec3> attributes;
-            std::vector<glm::vec3> diffuse;
         };
 
-        void setMaterialProperties();
+        void setMaterialProperties(std::vector<glm::vec3> diffuse, std::vector<FileLoader::Image> images);
         void setSharedProperties();
         void initialiseMesh();
         void makeSelectable(bool selectable);
@@ -145,7 +145,7 @@ class MeshManager
 
 		GLuint shaderProgram;
         GLint modelMatrixUniformLocation;
-        GLint textureLayerUniformLocation;
+        // GLint textureLayerUniformLocation;
         GLint meshVariantLocation;
         GLint discardFragsLocation;
 

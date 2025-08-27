@@ -41,7 +41,7 @@ MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
     this->modelMatrixUniformLocation    = glGetUniformLocation(this->shaderProgram, "modelMatrix");
     this->meshVariantLocation           = glGetUniformLocation(this->shaderProgram, "samplerType");
     this->discardFragsLocation          = glGetUniformLocation(this->shaderProgram, "discardFrags");
-    this->textureLayerUniformLocation   = glGetUniformLocation(this->shaderProgram, "textureLayer");  
+    // this->textureLayerUniformLocation   = glGetUniformLocation(this->shaderProgram, "textureLayer");  
 
     this->maxTexWidth = 0;
     this->maxTexHeight = 0;
@@ -53,9 +53,18 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
 {
     this->meshOut = {};
     this->meshData = {};
+    std::vector<glm::vec3> diffuseColors;
+    //  ?
+    std::vector<FileLoader::Image> images;
     
-    meshData.textureUnit = GL_TEXTURE2;
-    glActiveTexture(meshData.textureUnit);
+    /* ======================================================
+        Default to unit 2 (TextureLoader::StorageType::ARRAY)
+        as this will be set appropriately when material 
+        properties are assigned.
+    ========================================================= */
+
+    meshData.texture.unitId = GL_TEXTURE2;
+    glActiveTexture(meshData.texture.unitId);
 
     meshOut.meshFilepath = meshPath;
     meshOut.materialFilepath = materialPath;
@@ -68,50 +77,77 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     uint32_t suffixDelimiter = meshPath.find_last_of(".");
     std::string suffix = meshPath.substr(suffixDelimiter + 1);
 
-    meshOut.material.type = MaterialType::BASE_COLOR;
-    
+    // meshOut.material.type = MaterialType::BASE_COLOR;
+
     if(suffix.compare("obj") == 0)
     {
         this->parseWavefrontObj(
             meshData.attributes,
-            meshData.diffuse,
+            diffuseColors,
             meshData.indexes,
             meshOut.meshFilepath.c_str(),
-            meshOut.materialFilepath.c_str()
+            materialPath.c_str()
         );
         meshOut.type = MeshManager::MeshType::LOADED_WAVEFRONT;
 
-        if(texturePath != "")
+        // if(texturePath != "")
+        // {
+        //     meshOut.material.type = MaterialType::IMAGE_TEXTURE;
+        // }
+        std::cout <<"Wavefront: " << diffuseColors.size() << std::endl;
+        for(size_t i = 0; i < diffuseColors.size(); i++)
         {
-            meshOut.material.type = MaterialType::IMAGE_TEXTURE;
-        }
+            glm::vec3 color = diffuseColors[i];
+            FileLoader::Image image = {};
+            if((color.r + color.g + color.b) < -0.1f)
+            {
+                // this->layerCount += 1;
+                // meshData.texture.unitId = GL_TEXTURE2;
+                // meshData.texture.samplerId = this->textureStack;
+                // data.layerId = this->layerCount;
+                image = finder->loadImage(meshOut.textureFilepath.c_str());
+                images.push_back(image);
+                // material.texture = data.image;
+            }
+            else
+            {
+                image.width = 0;
+                image.height = 0;
+                image.pixelData = NULL;
+
+                images.push_back(image);
+            };
+        };
     }
     else if(suffix.compare("glb") == 0)
     {
         this->parseGlBinary(
             meshData.attributes, 
-            meshData.diffuse, 
+            diffuseColors, 
             meshData.indexes, 
-            meshData.textureData,
+            // meshOut.material.texture,
+            images,
             meshOut.meshFilepath.c_str()
         );
 
+        std::cout <<"Glb: " << diffuseColors.size() << std::endl;
         meshOut.type = MeshManager::MeshType::LOADED_GLB;
 
-        if(meshData.textureData.pixelData != NULL)
-        {
-            this->layerCount += 1;
+        //  Do this where everything else is done
+        // if(meshOut.material.texture.pixelData != NULL)
+        // {
+        //     this->layerCount += 1;
 
-            meshOut.material.type = MaterialType::IMAGE_TEXTURE;
-            meshOut.textureFilepath = "";
+        //     meshOut.material.type = MaterialType::IMAGE_TEXTURE;
+        //     meshOut.textureFilepath = "";
 
-            meshData.textureUnit = GL_TEXTURE2;
-            meshData.textureLayer = this->layerCount;
-            meshData.textureId = this->textureStack;
-        };
+        //     meshData.texture.unitId = GL_TEXTURE2;
+        //     // meshData.textureLayer = this->layerCount;
+        //     meshData.texture.samplerId = this->textureStack;
+        // };
     };
     
-    this->setMaterialProperties();
+    this->setMaterialProperties(diffuseColors, images);
     this->setSharedProperties();
     this->initialiseMesh();
     this->makeSelectable(selectable);
@@ -142,6 +178,9 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
         LOG_ERROR("Asset Error:", __FILE__, __LINE__);
         globals.setExecutionState(StatusCode::LAZARUS_INVALID_DIMENSIONS);
     };
+
+    std::vector<glm::vec3> diffuseColors = {};
+    std::vector<FileLoader::Image> images = {};
     
     this->meshOut = {};
     this->meshData = {};
@@ -152,10 +191,20 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
     meshOut.materialFilepath = "";
     meshOut.textureFilepath = texturePath;
     
-    meshData.textureUnit = GL_TEXTURE2;
-    glActiveTexture(meshData.textureUnit);
+    meshData.texture.unitId = GL_TEXTURE2;
+    glActiveTexture(meshData.texture.unitId);
 
-    meshOut.material.type = MaterialType::IMAGE_TEXTURE;
+    // meshOut.material.type = MaterialType::IMAGE_TEXTURE;
+    if(texturePath.size() > 0)
+    {
+        FileLoader::Image image = finder->loadImage(meshOut.textureFilepath.c_str());
+        images.push_back(image);   
+        diffuseColors.push_back(vec3(-0.1f, -0.1f, -0.1f));
+
+        texCount += 1;
+    };
+
+    float layer = static_cast<float>(texCount);
 
     /* ======================================================
         Ensure that the origin is centered.
@@ -199,15 +248,15 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
             of the normals.
         ===================================================== */
         meshData.attributes = {
-            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 0.0f, 0.0f),
-            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 0.0f, 0.0f),
-            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 1.0f, 0.0f),
-            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 1.0f, 0.0f),
+            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 0.0f, layer),
+            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 0.0f, layer),
+            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 1.0f, layer),
+            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 1.0f, layer),
 
-            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(1.0f, 1.0f, 0.0f),
-            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(1.0f, 0.0f, 0.0f),
-            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(0.0f, 1.0f, 0.0f),
-            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(0.0f, 0.0f, 0.0f),
+            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(1.0f, 1.0f, layer),
+            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(1.0f, 0.0f, layer),
+            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(0.0f, 1.0f, layer),
+            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(0.0f, 0.0f, layer),
         };
     };
 
@@ -218,7 +267,7 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
         6, 5, 7
     };
 
-    this->setMaterialProperties();
+    this->setMaterialProperties(diffuseColors, images);
     this->setSharedProperties();
     this->initialiseMesh();
     this->makeSelectable(selectable);
@@ -228,6 +277,9 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
 
 MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, bool selectable)
 {
+    std::vector<glm::vec3> diffuseColors = {};
+    std::vector<FileLoader::Image> images = {};
+
     float vertexPosition = scale / 2.0f; 
 
     this->meshOut = {};
@@ -239,21 +291,38 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, 
     meshOut.materialFilepath = "";
     meshOut.textureFilepath = texturePath;
 
-    meshOut.material.type = MaterialType::IMAGE_TEXTURE;
+    // meshOut.material.type = MaterialType::IMAGE_TEXTURE;
+    float layer = 0.0;
     /* ==================================================
-        Default texture unit is GL_TEXTURE1, which is the
+        Default texture unit is GL_TEXTURE2, which is the
         samplerArray. Reset it appropriately here.
     ===================================================== */
     if(this->textureStorage == TextureLoader::StorageType::CUBEMAP)
     {
-        meshData.textureUnit = GL_TEXTURE3;
+        // meshData.texture.unitId = GL_TEXTURE3;
+
+        FileLoader::Image image = {};
+        image.height = 0;
+        image.width = 0;
+        image.pixelData = NULL;
+
+        images.push_back(image);   
     }
     else
     {
-        meshData.textureUnit = GL_TEXTURE2;
+        // meshData.texture.unitId = GL_TEXTURE2;
+        if(texturePath.size() > 0)
+        {
+            FileLoader::Image image = finder->loadImage(meshOut.textureFilepath.c_str());
+            images.push_back(image);   
+            
+            texCount += 1;
+        };
+        layer = static_cast<float>(texCount);
     };
-
-    glActiveTexture(meshData.textureUnit);
+    
+    // glActiveTexture(meshData.texture.unitId);
+    diffuseColors.push_back(vec3(-0.1f, -0.1f, -0.1f));
 
     meshData.attributes = {                                                                                          
         /* ===========================================
@@ -270,40 +339,40 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, 
         ============================================== */
         
         // Top face
-        vec3(-vertexPosition, vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(0.0f, 0.0f, 0.0f),
-        vec3(vertexPosition, vertexPosition,  vertexPosition),      vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(1.0f, 1.0f, 0.0f),
-        vec3(vertexPosition,  vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(1.0f, 0.0f, 0.0f),
-        vec3(-vertexPosition,  vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(0.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition, vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(0.0f, 0.0f, layer),
+        vec3(vertexPosition, vertexPosition,  vertexPosition),      vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(1.0f, 1.0f, layer),
+        vec3(vertexPosition,  vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(1.0f, 0.0f, layer),
+        vec3(-vertexPosition,  vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(0.0f, 1.0f, layer),
 
         // Back face
-        vec3(-vertexPosition, vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 0.0f, 0.0f),
-        vec3(vertexPosition, -vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 1.0f, 0.0f),
-        vec3(-vertexPosition,  -vertexPosition, -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 0.0f, 0.0f),
-        vec3(vertexPosition,  vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition, vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 0.0f, layer),
+        vec3(vertexPosition, -vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 1.0f, layer),
+        vec3(-vertexPosition,  -vertexPosition, -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 0.0f, layer),
+        vec3(vertexPosition,  vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 1.0f, layer),
 
         // Right face
-        vec3(vertexPosition, vertexPosition, -vertexPosition),      vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(0.0f, 0.0f, 0.0f),
-        vec3(vertexPosition, -vertexPosition,  vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(1.0f, 1.0f, 0.0f),
-        vec3(vertexPosition,  -vertexPosition,  -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(1.0f, 0.0f, 0.0f),
-        vec3(vertexPosition,  vertexPosition,  vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(0.0f, 1.0f, 0.0f),
+        vec3(vertexPosition, vertexPosition, -vertexPosition),      vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(0.0f, 0.0f, layer),
+        vec3(vertexPosition, -vertexPosition,  vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(1.0f, 1.0f, layer),
+        vec3(vertexPosition,  -vertexPosition,  -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(1.0f, 0.0f, layer),
+        vec3(vertexPosition,  vertexPosition,  vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(0.0f, 1.0f, layer),
 
         // Front face
-        vec3(vertexPosition, vertexPosition, vertexPosition),       vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(0.0f, 0.0f, 0.0f),
-        vec3(-vertexPosition, -vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(1.0f, 1.0f, 0.0f),
-        vec3(vertexPosition,  -vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(1.0f, 0.0f, 0.0f),
-        vec3(-vertexPosition,  vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(0.0f, 1.0f, 0.0f),
+        vec3(vertexPosition, vertexPosition, vertexPosition),       vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(0.0f, 0.0f, layer),
+        vec3(-vertexPosition, -vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(1.0f, 1.0f, layer),
+        vec3(vertexPosition,  -vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(1.0f, 0.0f, layer),
+        vec3(-vertexPosition,  vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(0.0f, 1.0f, layer),
 
         // Left face
-        vec3(-vertexPosition,  vertexPosition, vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
-        vec3(-vertexPosition,  -vertexPosition, -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
-        vec3(-vertexPosition,  -vertexPosition,  vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 0.0f, 0.0f),
-        vec3(-vertexPosition,  vertexPosition,  -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f),
+        vec3(-vertexPosition,  vertexPosition, vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, layer),
+        vec3(-vertexPosition,  -vertexPosition, -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, layer),
+        vec3(-vertexPosition,  -vertexPosition,  vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 0.0f, layer),
+        vec3(-vertexPosition,  vertexPosition,  -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, layer),
 
         // Bottom face
-        vec3(vertexPosition, -vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 0.0f, 0.0f),
-        vec3(-vertexPosition, -vertexPosition, vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 1.0f, 0.0f),
-        vec3(-vertexPosition, -vertexPosition,  -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 0.0f, 0.0f),
-        vec3(vertexPosition, -vertexPosition,  vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f),
+        vec3(vertexPosition, -vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 0.0f, layer),
+        vec3(-vertexPosition, -vertexPosition, vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 1.0f, layer),
+        vec3(-vertexPosition, -vertexPosition,  -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 0.0f, layer),
+        vec3(vertexPosition, -vertexPosition,  vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 1.0f, layer),
     };
 
     meshData.indexes = {
@@ -314,8 +383,8 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, 
         16, 17, 18, 16, 19, 17,
         20, 21, 22, 20, 23, 21
     };
-    
-    this->setMaterialProperties();
+
+    this->setMaterialProperties(diffuseColors, images);
     this->setSharedProperties();
     this->initialiseMesh();
     this->makeSelectable(selectable);
@@ -380,10 +449,15 @@ void MeshManager::initialiseMesh()
             used. 
         ================================================================== */
 
-        if(meshOut.material.type == MaterialType::IMAGE_TEXTURE && 
-            meshOut.material.textureStoreVariant == TextureLoader::StorageType::ARRAY)
+        if(this->textureStorage == TextureLoader::StorageType::ARRAY)
         {
-            this->prepareTextures();
+            for(size_t i = 0; i < meshOut.materials.size(); i++)
+            {
+                if(meshOut.materials[i].type == MaterialType::IMAGE_TEXTURE)
+                {
+                    this->prepareTextures();
+                };
+            };
         };
     }
     else
@@ -413,14 +487,28 @@ void MeshManager::prepareTextures()
 
     this->extendTextureStack(width, height, this->layerCount);
 
+    uint32_t textureCount = 0;
     for(auto i: dataStore)
     {
-        glActiveTexture(i.second.textureUnit);
-    
-        if(meshOut.material.type == MaterialType::IMAGE_TEXTURE && 
-           meshOut.material.textureStoreVariant == TextureLoader::StorageType::ARRAY)
+        glActiveTexture(i.second.texture.unitId);
+
+        // std::cout << i.second.images.size() << std::endl;
+        if(this->textureStorage == TextureLoader::StorageType::ARRAY)
         {
-            this->loadImageToTextureStack(i.second.textureData, i.second.textureLayer);
+            //  Use N of IMAGE_TEXTURE in materials + i for layer
+            //  I.e. keep a texture count
+            std::cout << "n_images: " << i.second.images.size() << std::endl;
+            for(size_t j = 0; j < i.second.images.size(); j++)
+            {
+                //  this j + 1 could be a killer but i think zero should be skipped
+                if(i.second.images[j].pixelData != NULL)
+                {
+                    std::cout << "textureCount + j: " << textureCount + j << std::endl;
+                    std::cout << "Width: " << i.second.images[j].width << "\t Height: " << i.second.images[j].height << std::endl;
+                    this->loadImageToTextureStack(i.second.images[j], textureCount + j + 1);
+                };
+            };
+            textureCount += i.second.images.size();
         };
     };
 
@@ -505,13 +593,15 @@ void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
             &meshIn.modelMatrix[0][0]
         );
         
-        glUniform1i(this->meshVariantLocation, meshIn.material.textureStoreVariant);
-        glUniform1i(this->discardFragsLocation, meshIn.material.discardsAlphaZero);
+        glUniform1i(this->meshVariantLocation, this->textureStorage);
+        // glUniform1i(this->discardFragsLocation, meshIn.material.discardsAlphaZero);
+        glUniform1i(this->discardFragsLocation, data.texture.discardAlphaZero);
         
-        if(data.textureId != 0)
-        {
-            glUniform1f(this->textureLayerUniformLocation, (data.textureLayer - 1));
-        };
+        // //  Will cease to exist when a part of vbo
+        // if(data.textureId != 0)
+        // {
+        //     glUniform1f(this->textureLayerUniformLocation, (data.textureLayer - 1));
+        // };
 
         this->checkErrors(__FILE__, __LINE__);
     }
@@ -533,28 +623,39 @@ void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
     glBindVertexArray(data.VAO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.EBO);
 
-    glActiveTexture(data.textureUnit);
+    glActiveTexture(data.texture.unitId);
 
-    if(meshIn.material.type == MaterialType::IMAGE_TEXTURE)
-    {
-        switch (meshIn.material.textureStoreVariant)
+    // if(meshIn.material.type == MaterialType::IMAGE_TEXTURE)
+    // {
+        /* =========================================
+            When a texture is present bind the id 
+            of it's sampler to the texture target, 
+            overwriting what was previously bound.
+
+            Note the textureStoreVariant will be the 
+            same for all materials.
+        ============================================ */
+
+        switch (this->textureStorage)
         {
         case TextureLoader::StorageType::ATLAS:
-            glBindTexture(GL_TEXTURE_2D, data.textureId);
+            glBindTexture(GL_TEXTURE_2D, data.texture.samplerId);
             break;
         
         case TextureLoader::StorageType::CUBEMAP:
-            glBindTexture(GL_TEXTURE_CUBE_MAP, data.textureId);
+            //  working
+            // glBindTexture(GL_TEXTURE_CUBE_MAP, this->textureStorage);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, data.texture.samplerId);
             break;
         
         case TextureLoader::StorageType::ARRAY:
-            glBindTexture(GL_TEXTURE_2D_ARRAY, data.textureId);
+            glBindTexture(GL_TEXTURE_2D_ARRAY, data.texture.samplerId);
             break;
         
         default:
             break;
         };
-    }
+    // }
 
     glDrawElements(GL_TRIANGLES, data.indexes.size(), GL_UNSIGNED_INT, nullptr);
 
@@ -563,71 +664,120 @@ void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
     return;
 };
 
-void MeshManager::setMaterialProperties()
+void MeshManager::setMaterialProperties(std::vector<glm::vec3> diffuse, std::vector<FileLoader::Image> images)
 {
     //  TODO:
     //  Refactor out this entire function
     //  1). MeshData material stuff should be cleaned up
     //  2). These structs should be per-material and in vectors
 
-    if(meshOut.material.type == MaterialType::IMAGE_TEXTURE)
+    if(diffuse.size() != images.size())
     {
-        switch(this->textureStorage)
-        {
-            case TextureLoader::StorageType::ATLAS:
-                meshOut.textureFilepath = "";
-
-                meshData.textureUnit = GL_TEXTURE1;
-                meshData.textureId = this->bitmapTexture;
-                meshData.textureLayer = 0;
-                meshData.textureData.pixelData = NULL;
-                meshData.textureData.height = 0;
-                meshData.textureData.width = 0;
-                break;
-            
-            case TextureLoader::StorageType::CUBEMAP:
-                meshOut.textureFilepath = "";
-
-                meshData.textureUnit = GL_TEXTURE3;
-                meshData.textureId = this->cubeMapTexture;
-                meshData.textureLayer = 1;
-                meshData.textureData.pixelData = NULL;
-                meshData.textureData.height = 0;
-                meshData.textureData.width = 0;
-                break;
-            
-            case TextureLoader::StorageType::ARRAY:
-                /* =========================================
-                    In the case of glb files, this info has 
-                    already been ascertained during file
-                    parsing.
-                ============================================ */
-
-                if(meshOut.type != MeshManager::MeshType::LOADED_GLB && 
-                    meshOut.textureFilepath.size() > 0)
-                {
-                    this->layerCount += 1;
-
-                    meshData.textureUnit = GL_TEXTURE2;
-                    meshData.textureId = this->textureStack;
-                    meshData.textureLayer = this->layerCount;
-                    meshData.textureData = finder->loadImage(meshOut.textureFilepath.c_str());
-                }
-                break;
-        }
-    }
-    else
-    {
-        meshOut.textureFilepath = "";
-
-        meshData.textureLayer = 0; 
-        meshData.textureId = 0;
-        meshData.textureData.pixelData = NULL;
-        meshData.textureData.height = 0;
-        meshData.textureData.width = 0;
+        std::cout << "Diffuse: " << diffuse.size() << " Images: " << images.size() << std::endl;
+        LOG_ERROR("Load Error: Invalid materials", __FILE__, __LINE__);
+        globals.setExecutionState(StatusCode::LAZARUS_ASSET_LOAD_ERROR);
     };
 
-    meshOut.material.textureStoreVariant = this->textureStorage;
+    for(size_t i = 0; i < diffuse.size(); i++)
+    {
+        Material material = {};
+        material.diffuse = diffuse[i];
+        material.texture = images[i];
+        // data.image = material.texture;
+
+        material.id = i;
+
+        if((material.diffuse.r + material.diffuse.b + material.diffuse.g) < -0.1f)
+        {
+            material.type = MaterialType::IMAGE_TEXTURE;
+            this->layerCount += 1;          //  unique to manager
+
+            /* ===============================================
+                The data struct must keep it's own copy of the
+                non-null images, used when time to upload / 
+                re-upload.
+            ================================================== */
+
+            meshData.images.push_back(material.texture);
+
+            switch(this->textureStorage)
+            {
+                case TextureLoader::StorageType::ATLAS:
+                    meshOut.textureFilepath = "";
+    
+                    meshData.texture.unitId = GL_TEXTURE1;
+                    meshData.texture.samplerId = this->bitmapTexture;
+                    // data.layerId = 0;
+                    // material.texture.pixelData = NULL;
+                    // material.texture.height = 0;
+                    // material.texture.width = 0;
+                    break;
+                
+                case TextureLoader::StorageType::CUBEMAP:
+                    meshOut.textureFilepath = "";
+    
+                    meshData.texture.unitId = GL_TEXTURE3;
+                    meshData.texture.samplerId = this->cubeMapTexture;
+                    // data.layerId = 1;
+                    // material.texture.pixelData = NULL;
+                    // material.texture.height = 0;
+                    // material.texture.width = 0;
+                    break;
+                
+                case TextureLoader::StorageType::ARRAY:
+                    meshData.texture.unitId = GL_TEXTURE2;
+                    meshData.texture.samplerId = this->textureStack;
+                    /* =========================================
+                        In the case of glb files, this info has 
+                        already been ascertained during file
+                        parsing.
+                    ============================================ */
+                    // if(meshOut.type != MeshManager::MeshType::LOADED_GLB && 
+                    //     meshOut.textureFilepath.size() > 0)
+                    // {
+                    //     // this->layerCount += 1;
+    
+                    //     // meshData.texture.unitId = GL_TEXTURE2;
+                    //     // meshData.texture.samplerId = this->textureStack;
+                    //     // data.layerId = this->layerCount;
+                    //     data.image = finder->loadImage(meshOut.textureFilepath.c_str());
+                    //     material.texture = data.image;
+                    // }
+                    // else
+                    // {
+                    //     //  If it didnt have a valid uint8 color it should
+                    //     //  have an image texture delivered via an external
+                    //     //  file. If no path is supplied and this isnt a glb
+                    //     //  file (which should have already loaded it's image
+                    //     //  data), we need to error
+                    // }
+                    break;
+            }
+        }
+        else
+        {
+            material.type = MaterialType::BASE_COLOR;
+            meshOut.textureFilepath = "";
+    
+            // data.layerId = 0; 
+            meshData.texture.samplerId = 0;
+            meshData.texture.unitId = GL_TEXTURE2;
+            // material.texture.pixelData = NULL;
+            // material.texture.height = 0;
+            // material.texture.width = 0;
+        };
+        // material.textureStoreVariant = this->textureStorage;
+
+        meshOut.materials.push_back(material);
+
+        /* =============================================================
+            In the case that image sanitisation is not enabled, we must
+            track which image in the textureStack is the largest.
+        ================================================================ */
+
+        this->maxTexWidth = std::max(maxTexWidth, material.texture.width);
+        this->maxTexHeight = std::max(maxTexHeight, material.texture.height);
+    };
 
     return;
 };
@@ -635,8 +785,9 @@ void MeshManager::setMaterialProperties()
 void MeshManager::setSharedProperties()
 {
     //  Placeholder
-    meshOut.material.id = meshOut.id;
-    meshOut.material.discardsAlphaZero = false;
+    // meshOut.material.id = meshOut.id;
+    meshData.texture.discardAlphaZero = false;
+    // meshData.textureData = meshOut.material.texture;
 
     /* =========================================
         Meshes are created at the origin looking
@@ -653,15 +804,6 @@ void MeshManager::setSharedProperties()
 
     meshOut.numOfVertices = meshData.attributes.size() / 4;
     meshOut.numOfFaces = (meshOut.numOfVertices) / 3;
-
-    /* =============================================================
-        In the case that image sanitisation is not enabled, we must
-        track which image in the textureStack is the largest.
-        Would be nice if this whole business of size checking could
-        be done elsewhere.
-    ================================================================ */
-    this->maxTexWidth = std::max(maxTexWidth, meshData.textureData.width);
-    this->maxTexHeight = std::max(maxTexHeight, meshData.textureData.height);
 
    return;
 }

@@ -170,19 +170,18 @@ bool AssetLoader::parseWavefrontObj(std::vector<glm::vec3> &outAttributes, std::
         this->materialData = {materialIdentifierIndex, triangleCount};
 		this->materialBuffer.push_back(this->materialData);
         
-        this->parseWavefrontMtl(materialPath, materialBuffer, outDiffuse);
+        this->parseWavefrontMtl(materialPath, materialBuffer, tempDiffuse, outDiffuse);
     }
 
-    this->constructIndexBuffer(outAttributes, outIndexes, outDiffuse, this->vertexIndices.size());
+    this->constructIndexBuffer(outAttributes, outIndexes, tempDiffuse, this->vertexIndices.size());
 
     return true;
 };
 
-bool AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint32_t>> data, vector<vec3> &out)
+bool AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint32_t>> data, vector<vec3> &temp, vector<vec3> &out)
 {
-    diffuseCount = 0;
-    texCount = 0;
-
+    // diffuseCount = 0;
+    // texCount = 0;
     
     if(file.is_open())
     {
@@ -235,8 +234,9 @@ bool AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint
                     ======================================================= */
     	            for(size_t j = 0; j < faceCount * 3; j++)
     	            {
-                        out.push_back(diffuse);
+                        temp.push_back(diffuse);
     	            };
+                    out.push_back(diffuse);
     	        };        
             };
         }
@@ -248,9 +248,8 @@ bool AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint
             (currentLine[2] == 'p')
         )
         {
-            texCount += 1;
-            if( diffuseCount == 0 )
-            {
+            // if( diffuseCount == 0 )
+            // {
                 for(auto i: data)
                 {
                     uint32_t faceCount = i[1];
@@ -268,10 +267,13 @@ bool AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint
                             ? fragColor(positiveDiffuseValues.xyz) 
                             : fragColor(images[layer].xyz)
                         ============================================== */
-                        out.push_back(vec3(-0.1f, -0.1f, -0.1f));
+                        temp.push_back(vec3(-0.1f, -0.1f, -0.1f));
+                        countsAsTheyWere.push_back(texCount);
                     }
-                }
-            }
+                } 
+                out.push_back(vec3(-0.1f, -0.1f, -0.1f));
+                texCount += 1;
+            // }
         }
     };
         
@@ -283,7 +285,7 @@ bool AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint
     return true;
 };
     
-bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, FileLoader::Image &outImage, const char* meshPath)
+bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, std::vector<FileLoader::Image> &outImages, const char* meshPath)
 {
     //  TODO:
     //  Consider a threading implentation to speed up loads and not block the main-thread/renderer
@@ -384,6 +386,11 @@ bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDi
                     materials.push_back(colorMaterial);
                 };
 
+                FileLoader::Image image = {};
+                image.width = 0;
+                image.height = 0;
+                image.pixelData = NULL;
+                outImages.push_back(image);
             }
             else if(textureIndex > 0)
             {
@@ -396,9 +403,9 @@ bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDi
                 
                 int32_t objEnd = tex.find("}");
                 std::string objContents = tex.substr(0, objEnd);
-            
+        
                 glbMaterialData texturedMaterial = {};
-                texturedMaterial.diffuse = glm::vec3(-1.0f, -1.0f, -1.0f);
+                texturedMaterial.diffuse = glm::vec3(-0.1f, -0.1f, -0.1f);
                 texturedMaterial.textureIndex = std::stoi(objContents);
                 materials.push_back(texturedMaterial);
             }
@@ -582,9 +589,12 @@ bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDi
         ============================================================ */
 
         glbMaterialData material = materials[mesh.materialIndex];
+        bool usesTextures = false;
         
         if(material.textureIndex >= 0)
         {
+            usesTextures = true;
+
             glbTextureData texture = textures[material.textureIndex];
             glbImageData image = images[texture.imageIndex];
 
@@ -600,7 +610,7 @@ bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDi
             std::memset(buffer, 0, sizeof(unsigned char) * bufferView.byteLength);
             std::memcpy(buffer, &this->binaryData[bufferView.byteOffset], sizeof(unsigned char) * bufferView.byteLength);
 
-            outImage = fileLoader->loadImage(nullptr, buffer, bufferView.byteLength);
+            outImages.push_back(fileLoader->loadImage(nullptr, buffer, bufferView.byteLength));
             delete[] buffer;
         };
         
@@ -669,11 +679,21 @@ bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDi
             normalIndices.push_back(serial + 1);
             uvIndices.push_back(serial + 1);
 
-            outDiffuse.push_back(material.diffuse);
+            tempDiffuse.push_back(material.diffuse);
+            if(usesTextures)
+            {
+                countsAsTheyWere.push_back(texCount);
+            };
+
+        };
+        outDiffuse.push_back(material.diffuse);
+        if(usesTextures)
+        {
+            this->texCount += 1;
         };
     };
 
-    this->constructIndexBuffer(outAttributes, outIndexes, outDiffuse, tempVertexPositions.size());
+    this->constructIndexBuffer(outAttributes, outIndexes, tempDiffuse, tempVertexPositions.size());
 
     return true;
 };
@@ -893,6 +913,11 @@ vector<string> AssetLoader::splitTokensFromLine(const char *wavefrontData, char 
 
 void AssetLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> outDiffuse, uint32_t numOfAttributes)
 {
+    //  At any location where diffuse == (-0.1f, -0.1f, -0.1f)
+    //  Take this->texCount as it was AT THE TIME THE DIFFUSE WAS PUSHED BACK (maybe keep a list of equal size and fetch with i)
+    //  Ensure this->texCount is also inrcemented during glb parsing
+    //  Insert into uvCoordinates.z
+
     std::unordered_set<uint64_t> hashes = {};
     std::map<uint64_t, uint32_t> entries = {};
 
@@ -914,10 +939,23 @@ void AssetLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint3
         uint32_t normalIndex = normalIndices[i];
         uint32_t uvIndex     = uvIndices[i];
         
+        glm::vec3 diffuseColor      = outDiffuse[i];
+        uint32_t layer              = countsAsTheyWere[i];
+        glm::vec3 uv                = this->tempUvs.at(uvIndex - 1);
         glm::vec3 position          = this->tempVertexPositions.at(vertexIndex - 1);
         glm::vec3 normalCoordinates = this->tempNormals.at(normalIndex - 1);
-        glm::vec3 uvCoordinates     = this->tempUvs.at(uvIndex - 1);
-        glm::vec3 diffuseColor      = outDiffuse[i];
+        
+        /* =====================================================
+            It's implicit that we are using a 
+            TextureLoader::StorageType::ARRAY which means that 
+            when a texture is present, we need to store it's 
+            array-layer number. If there's no texture present, 
+            use a uv padded with a zero.
+        ======================================================== */
+
+        glm::vec3 uvCoordinates = (diffuseColor.r + diffuseColor.g + diffuseColor.b) < -0.1f
+        ? glm::vec3(uv.x, uv.y, static_cast<float>(layer))
+        : uv;
 
         /* =========================================================
             https://docs.vulkan.org/tutorial/latest/08_Loading_models.html#_vertex_deduplication:~:text=cppreference.com%20recommends
@@ -1061,6 +1099,10 @@ void AssetLoader::resetMembers()
     this->tempVertexPositions.clear();
     this->tempNormals.clear();
     this->tempUvs.clear();
+    this->tempDiffuse.clear();
+    this->countsAsTheyWere.clear();
+
+    // this->texCount = 0;
 };
 
 AssetLoader::~AssetLoader()

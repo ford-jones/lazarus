@@ -37,11 +37,6 @@ WorldFX::WorldFX(GLuint shaderProgram)
     this->fogDensityUniformLocation     = glGetUniformLocation(this->shader, "fogDensity");
 };
 
-/* =================================================================
-    TODO (priority):
-    For some reason when a skybox is NOT created, everything breaks
-    and openGL spits out a 1282 Error.
-==================================================================== */
 WorldFX::SkyBox WorldFX::createSkyBox(std::string rightPath, std::string leftPath, std::string downPath, std::string upPath, std::string frontPath, std::string backPath)
 {
     this->skyBoxOut = {};
@@ -71,6 +66,7 @@ void WorldFX::drawSkyBox(WorldFX::SkyBox skyboxIn, CameraManager::Camera camera)
 
     glm::mat4 viewFromOrigin = glm::mat4(glm::mat3(camera.viewMatrix)); 
     GLuint uniform = glGetUniformLocation(this->shader, "viewMatrix");
+    
     this->status = glGetError();
     if(this->status != 0)
     {

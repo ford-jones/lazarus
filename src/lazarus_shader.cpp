@@ -75,8 +75,6 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     uniform int samplerType;
     uniform int discardFrags;
 
-    //  uniform float textureLayer;
-
     uniform sampler2D textureAtlas;
     uniform sampler2DArray textureArray;
     uniform samplerCube textureCube;
