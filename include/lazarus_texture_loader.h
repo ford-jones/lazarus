@@ -39,15 +39,23 @@ using std::shared_ptr;
 
 class TextureLoader
 {
-	public:
+	
+	protected:
 		enum StorageType
 		{
 			CUBEMAP=1,
 			ATLAS=2,
 			ARRAY=3
 		};
-
-	protected:
+		struct TextureData
+		{
+			int32_t unitId;
+			
+			// FileLoader::Image image;
+            GLuint samplerId;
+			bool discardAlphaZero;
+            // GLuint layerId;
+		};
 		TextureLoader(StorageType storageVariant);
 		void extendTextureStack(uint32_t maxWidth, uint32_t maxHeight, uint32_t textureLayers);
 		void loadImageToTextureStack(FileLoader::Image imageData, GLuint textureLayer);
