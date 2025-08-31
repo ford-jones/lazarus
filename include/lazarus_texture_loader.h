@@ -43,18 +43,16 @@ class TextureLoader
 	protected:
 		enum StorageType
 		{
-			CUBEMAP=1,
-			ATLAS=2,
-			ARRAY=3
+			CUBEMAP	= 1,
+			ATLAS	= 2,
+			ARRAY	= 3
 		};
 		struct TextureData
 		{
 			int32_t unitId;
-			
-			// FileLoader::Image image;
+
             GLuint samplerId;
 			bool discardAlphaZero;
-            // GLuint layerId;
 		};
 		TextureLoader(StorageType storageVariant);
 		void extendTextureStack(uint32_t maxWidth, uint32_t maxHeight, uint32_t textureLayers);
@@ -67,11 +65,8 @@ class TextureLoader
 		void loadBitmapToTexture(FileLoader::Image imageData, uint32_t xOffset, uint32_t yOffset);
 		
 		virtual ~TextureLoader();
-		
-		GLuint bitmapTexture;
-		GLuint textureStack;
-		GLuint cubeMapTexture;
-		
+
+		GLuint textureId;		
 
 	private:		
 		uint32_t calculateMipLevels(uint32_t width, uint32_t height);

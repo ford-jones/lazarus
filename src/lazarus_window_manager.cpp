@@ -312,6 +312,8 @@ Events::~Events()
 };
 
 WindowManager::WindowManager(const char *title, uint32_t width, uint32_t height)
+	: WindowManager::Events(),
+	  WindowManager::Time()
 {
 	LOG_DEBUG("Constructing Lazarus::WindowManager");
 

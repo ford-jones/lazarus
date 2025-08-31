@@ -20,7 +20,8 @@
 #include "../include/lazarus_mesh.h"
 
 MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
-    : MeshManager::TextureLoader(textureType)
+    : MeshManager::AssetLoader(), 
+      MeshManager::TextureLoader(textureType)
 {
 	LOG_DEBUG("Constructing Lazarus::MeshManager");
 
@@ -41,7 +42,6 @@ MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
     this->modelMatrixUniformLocation    = glGetUniformLocation(this->shaderProgram, "modelMatrix");
     this->meshVariantLocation           = glGetUniformLocation(this->shaderProgram, "samplerType");
     this->discardFragsLocation          = glGetUniformLocation(this->shaderProgram, "discardFrags");
-    // this->textureLayerUniformLocation   = glGetUniformLocation(this->shaderProgram, "textureLayer");  
 
     this->maxTexWidth = 0;
     this->maxTexHeight = 0;
@@ -54,7 +54,6 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     this->meshOut = {};
     this->meshData = {};
     std::vector<glm::vec3> diffuseColors;
-    //  ?
     std::vector<FileLoader::Image> images;
     
     /* ======================================================
@@ -77,11 +76,9 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     uint32_t suffixDelimiter = meshPath.find_last_of(".");
     std::string suffix = meshPath.substr(suffixDelimiter + 1);
 
-    // meshOut.material.type = MaterialType::BASE_COLOR;
-
     if(suffix.compare("obj") == 0)
     {
-        this->parseWavefrontObj(
+        AssetLoader::parseWavefrontObj(
             meshData.attributes,
             diffuseColors,
             meshData.indexes,
@@ -90,24 +87,21 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
         );
         meshOut.type = MeshManager::MeshType::LOADED_WAVEFRONT;
 
-        // if(texturePath != "")
-        // {
-        //     meshOut.material.type = MaterialType::IMAGE_TEXTURE;
-        // }
-        std::cout <<"Wavefront: " << diffuseColors.size() << std::endl;
+        /* ========================================================
+            Unlike glb which has the image data baked-in; textured
+            wavefront meshes have their texture data stored 
+            externally, so load it here.
+        =========================================================== */
+
         for(size_t i = 0; i < diffuseColors.size(); i++)
         {
             glm::vec3 color = diffuseColors[i];
             FileLoader::Image image = {};
+
             if((color.r + color.g + color.b) < -0.1f)
             {
-                // this->layerCount += 1;
-                // meshData.texture.unitId = GL_TEXTURE2;
-                // meshData.texture.samplerId = this->textureStack;
-                // data.layerId = this->layerCount;
                 image = finder->loadImage(meshOut.textureFilepath.c_str());
                 images.push_back(image);
-                // material.texture = data.image;
             }
             else
             {
@@ -121,30 +115,15 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     }
     else if(suffix.compare("glb") == 0)
     {
-        this->parseGlBinary(
+        AssetLoader::parseGlBinary(
             meshData.attributes, 
             diffuseColors, 
             meshData.indexes, 
-            // meshOut.material.texture,
             images,
             meshOut.meshFilepath.c_str()
         );
 
-        std::cout <<"Glb: " << diffuseColors.size() << std::endl;
         meshOut.type = MeshManager::MeshType::LOADED_GLB;
-
-        //  Do this where everything else is done
-        // if(meshOut.material.texture.pixelData != NULL)
-        // {
-        //     this->layerCount += 1;
-
-        //     meshOut.material.type = MaterialType::IMAGE_TEXTURE;
-        //     meshOut.textureFilepath = "";
-
-        //     meshData.texture.unitId = GL_TEXTURE2;
-        //     // meshData.textureLayer = this->layerCount;
-        //     meshData.texture.samplerId = this->textureStack;
-        // };
     };
     
     this->setMaterialProperties(diffuseColors, images);
@@ -191,20 +170,28 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
     meshOut.materialFilepath = "";
     meshOut.textureFilepath = texturePath;
     
-    meshData.texture.unitId = GL_TEXTURE2;
+    meshData.texture.unitId = this->textureStorage == TextureLoader::StorageType::ATLAS
+    ? GL_TEXTURE1
+    : GL_TEXTURE2;
+
     glActiveTexture(meshData.texture.unitId);
 
-    // meshOut.material.type = MaterialType::IMAGE_TEXTURE;
     if(texturePath.size() > 0)
     {
         FileLoader::Image image = finder->loadImage(meshOut.textureFilepath.c_str());
         images.push_back(image);   
         diffuseColors.push_back(vec3(-0.1f, -0.1f, -0.1f));
 
-        texCount += 1;
+        /* ============================================
+            Increment the loaders texture array slice 
+            count to stay in sync with future loads of
+            other assets.
+        =============================================== */
+
+        AssetLoader::layerCount += 1;
     };
 
-    float layer = static_cast<float>(texCount);
+    float layer = static_cast<float>(AssetLoader::layerCount);
 
     /* ======================================================
         Ensure that the origin is centered.
@@ -291,16 +278,14 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, 
     meshOut.materialFilepath = "";
     meshOut.textureFilepath = texturePath;
 
-    // meshOut.material.type = MaterialType::IMAGE_TEXTURE;
+    meshData.texture.unitId = this->textureStorage == TextureLoader::StorageType::CUBEMAP
+    ? GL_TEXTURE3
+    : GL_TEXTURE2;
+
     float layer = 0.0;
-    /* ==================================================
-        Default texture unit is GL_TEXTURE2, which is the
-        samplerArray. Reset it appropriately here.
-    ===================================================== */
+
     if(this->textureStorage == TextureLoader::StorageType::CUBEMAP)
     {
-        // meshData.texture.unitId = GL_TEXTURE3;
-
         FileLoader::Image image = {};
         image.height = 0;
         image.width = 0;
@@ -310,18 +295,22 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, 
     }
     else
     {
-        // meshData.texture.unitId = GL_TEXTURE2;
         if(texturePath.size() > 0)
         {
             FileLoader::Image image = finder->loadImage(meshOut.textureFilepath.c_str());
             images.push_back(image);   
+
+            /* ============================================
+                Increment the loaders texture array slice 
+                count to stay in sync with future loads of
+                other assets.
+            =============================================== */
             
-            texCount += 1;
+            AssetLoader::layerCount += 1;
         };
-        layer = static_cast<float>(texCount);
+        layer = static_cast<float>(AssetLoader::layerCount);
     };
     
-    // glActiveTexture(meshData.texture.unitId);
     diffuseColors.push_back(vec3(-0.1f, -0.1f, -0.1f));
 
     meshData.attributes = {                                                                                          
@@ -474,6 +463,11 @@ void MeshManager::prepareTextures()
     uint32_t width = 0;
     uint32_t height = 0;
 
+    /* =========================================
+        Determine the height and width of the 
+        texture array and allocate the space.
+    ============================================ */
+
     if(globals.getEnforceImageSanity())
     {
         width = globals.getMaxImageWidth();
@@ -481,31 +475,34 @@ void MeshManager::prepareTextures()
     }
     else
     {
-        width = maxTexWidth;
-        height = maxTexHeight;
+        width = this->maxTexWidth;
+        height = this->maxTexHeight;
     }
 
-    this->extendTextureStack(width, height, this->layerCount);
+    TextureLoader::extendTextureStack(width, height, AssetLoader::layerCount);
+
+    /* ===============================================
+        Since memory size has been redefined, the
+        previous contents now need to be rewritten to
+        the new location.
+
+        TODO:
+        Is there some way to invoke a memcpy of the
+        VRAM contents from here?
+    ================================================== */
 
     uint32_t textureCount = 0;
-    for(auto i: dataStore)
+    for(auto i: this->dataStore)
     {
         glActiveTexture(i.second.texture.unitId);
 
-        // std::cout << i.second.images.size() << std::endl;
         if(this->textureStorage == TextureLoader::StorageType::ARRAY)
         {
-            //  Use N of IMAGE_TEXTURE in materials + i for layer
-            //  I.e. keep a texture count
-            std::cout << "n_images: " << i.second.images.size() << std::endl;
             for(size_t j = 0; j < i.second.images.size(); j++)
             {
-                //  this j + 1 could be a killer but i think zero should be skipped
                 if(i.second.images[j].pixelData != NULL)
                 {
-                    std::cout << "textureCount + j: " << textureCount + j << std::endl;
-                    std::cout << "Width: " << i.second.images[j].width << "\t Height: " << i.second.images[j].height << std::endl;
-                    this->loadImageToTextureStack(i.second.images[j], textureCount + j + 1);
+                    TextureLoader::loadImageToTextureStack(i.second.images[j], textureCount + j + 1);
                 };
             };
             textureCount += i.second.images.size();
@@ -530,7 +527,7 @@ void MeshManager::clearMeshStorage()
 	
 	this->errorCode = GL_NO_ERROR;
 
-    this->layerCount = 0;
+    AssetLoader::layerCount = 0;
 
     return;
 };
@@ -549,6 +546,7 @@ void MeshManager::makeSelectable(bool selectable)
             perform a lookup on the vector for the mesh 
             ID which; is then returned to userspace.
         ================================================ */
+
         meshOut.isClickable = true;
         globals.setPickableEntity(meshOut.id);
         dataStore.at(meshOut.id).stencilBufferId = globals.getNumberOfPickableEntities();
@@ -594,14 +592,7 @@ void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
         );
         
         glUniform1i(this->meshVariantLocation, this->textureStorage);
-        // glUniform1i(this->discardFragsLocation, meshIn.material.discardsAlphaZero);
         glUniform1i(this->discardFragsLocation, data.texture.discardAlphaZero);
-        
-        // //  Will cease to exist when a part of vbo
-        // if(data.textureId != 0)
-        // {
-        //     glUniform1f(this->textureLayerUniformLocation, (data.textureLayer - 1));
-        // };
 
         this->checkErrors(__FILE__, __LINE__);
     }
@@ -624,38 +615,32 @@ void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.EBO);
 
     glActiveTexture(data.texture.unitId);
+    /* =========================================
+        When a texture is present bind the id 
+        of it's sampler to the texture target, 
+        overwriting what was previously bound.
 
-    // if(meshIn.material.type == MaterialType::IMAGE_TEXTURE)
-    // {
-        /* =========================================
-            When a texture is present bind the id 
-            of it's sampler to the texture target, 
-            overwriting what was previously bound.
+        Note the textureStoreVariant will be the 
+        same for all materials.
+    ============================================ */
 
-            Note the textureStoreVariant will be the 
-            same for all materials.
-        ============================================ */
-
-        switch (this->textureStorage)
-        {
+    switch (this->textureStorage)
+    {
         case TextureLoader::StorageType::ATLAS:
             glBindTexture(GL_TEXTURE_2D, data.texture.samplerId);
             break;
-        
+    
         case TextureLoader::StorageType::CUBEMAP:
-            //  working
-            // glBindTexture(GL_TEXTURE_CUBE_MAP, this->textureStorage);
             glBindTexture(GL_TEXTURE_CUBE_MAP, data.texture.samplerId);
             break;
         
         case TextureLoader::StorageType::ARRAY:
             glBindTexture(GL_TEXTURE_2D_ARRAY, data.texture.samplerId);
             break;
-        
+    
         default:
             break;
-        };
-    // }
+    };
 
     glDrawElements(GL_TRIANGLES, data.indexes.size(), GL_UNSIGNED_INT, nullptr);
 
@@ -666,14 +651,8 @@ void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
 
 void MeshManager::setMaterialProperties(std::vector<glm::vec3> diffuse, std::vector<FileLoader::Image> images)
 {
-    //  TODO:
-    //  Refactor out this entire function
-    //  1). MeshData material stuff should be cleaned up
-    //  2). These structs should be per-material and in vectors
-
     if(diffuse.size() != images.size())
     {
-        std::cout << "Diffuse: " << diffuse.size() << " Images: " << images.size() << std::endl;
         LOG_ERROR("Load Error: Invalid materials", __FILE__, __LINE__);
         globals.setExecutionState(StatusCode::LAZARUS_ASSET_LOAD_ERROR);
     };
@@ -683,90 +662,29 @@ void MeshManager::setMaterialProperties(std::vector<glm::vec3> diffuse, std::vec
         Material material = {};
         material.diffuse = diffuse[i];
         material.texture = images[i];
-        // data.image = material.texture;
 
         material.id = i;
 
         if((material.diffuse.r + material.diffuse.b + material.diffuse.g) < -0.1f)
         {
             material.type = MaterialType::IMAGE_TEXTURE;
-            this->layerCount += 1;          //  unique to manager
 
             /* ===============================================
-                The data struct must keep it's own copy of the
+                The data struct must keep it's own copy of the 
                 non-null images, used when time to upload / 
                 re-upload.
             ================================================== */
 
             meshData.images.push_back(material.texture);
-
-            switch(this->textureStorage)
-            {
-                case TextureLoader::StorageType::ATLAS:
-                    meshOut.textureFilepath = "";
-    
-                    meshData.texture.unitId = GL_TEXTURE1;
-                    meshData.texture.samplerId = this->bitmapTexture;
-                    // data.layerId = 0;
-                    // material.texture.pixelData = NULL;
-                    // material.texture.height = 0;
-                    // material.texture.width = 0;
-                    break;
-                
-                case TextureLoader::StorageType::CUBEMAP:
-                    meshOut.textureFilepath = "";
-    
-                    meshData.texture.unitId = GL_TEXTURE3;
-                    meshData.texture.samplerId = this->cubeMapTexture;
-                    // data.layerId = 1;
-                    // material.texture.pixelData = NULL;
-                    // material.texture.height = 0;
-                    // material.texture.width = 0;
-                    break;
-                
-                case TextureLoader::StorageType::ARRAY:
-                    meshData.texture.unitId = GL_TEXTURE2;
-                    meshData.texture.samplerId = this->textureStack;
-                    /* =========================================
-                        In the case of glb files, this info has 
-                        already been ascertained during file
-                        parsing.
-                    ============================================ */
-                    // if(meshOut.type != MeshManager::MeshType::LOADED_GLB && 
-                    //     meshOut.textureFilepath.size() > 0)
-                    // {
-                    //     // this->layerCount += 1;
-    
-                    //     // meshData.texture.unitId = GL_TEXTURE2;
-                    //     // meshData.texture.samplerId = this->textureStack;
-                    //     // data.layerId = this->layerCount;
-                    //     data.image = finder->loadImage(meshOut.textureFilepath.c_str());
-                    //     material.texture = data.image;
-                    // }
-                    // else
-                    // {
-                    //     //  If it didnt have a valid uint8 color it should
-                    //     //  have an image texture delivered via an external
-                    //     //  file. If no path is supplied and this isnt a glb
-                    //     //  file (which should have already loaded it's image
-                    //     //  data), we need to error
-                    // }
-                    break;
-            }
         }
         else
         {
             material.type = MaterialType::BASE_COLOR;
             meshOut.textureFilepath = "";
     
-            // data.layerId = 0; 
             meshData.texture.samplerId = 0;
             meshData.texture.unitId = GL_TEXTURE2;
-            // material.texture.pixelData = NULL;
-            // material.texture.height = 0;
-            // material.texture.width = 0;
         };
-        // material.textureStoreVariant = this->textureStorage;
 
         meshOut.materials.push_back(material);
 
@@ -784,10 +702,11 @@ void MeshManager::setMaterialProperties(std::vector<glm::vec3> diffuse, std::vec
 
 void MeshManager::setSharedProperties()
 {
-    //  Placeholder
-    // meshOut.material.id = meshOut.id;
+    //  TODO:
+    //  Create function to change this
+    
     meshData.texture.discardAlphaZero = false;
-    // meshData.textureData = meshOut.material.texture;
+    meshData.texture.samplerId = TextureLoader::textureId;
 
     /* =========================================
         Meshes are created at the origin looking

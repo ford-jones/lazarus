@@ -59,7 +59,7 @@ using std::stringstream;
 class AssetLoader 
 {
     protected:
-        uint32_t texCount;
+        uint32_t layerCount;
     	AssetLoader();	
     	    
         bool parseWavefrontObj(
@@ -192,7 +192,7 @@ class AssetLoader
         //  Clears containers of all their contents.
         void resetMembers();
 
-        std::vector<uint32_t> countsAsTheyWere;
+        std::vector<uint32_t> layers;
 
         std::vector<uint32_t> vertexIndices;
         std::vector<uint32_t> uvIndices;

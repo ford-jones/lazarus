@@ -84,8 +84,8 @@ void WorldFX::drawSkyBox(WorldFX::SkyBox skyboxIn, CameraManager::Camera camera)
 
     glDepthMask(GL_FALSE);
 
-    this->loadMesh(skyboxIn.cube);
-    this->drawMesh(skyboxIn.cube);
+    MeshManager::loadMesh(skyboxIn.cube);
+    MeshManager::drawMesh(skyboxIn.cube);
     
     glDepthMask(GL_TRUE);
 
@@ -177,8 +177,8 @@ void WorldFX::loadSkyMap()
         Do so by using the MeshManager's TextureManager inherited 
         members to perform texture operations for this skybox.
     ================================================================ */
-    this->storeCubeMap(this->skyBoxOut.cubeMap[0].width, this->skyBoxOut.cubeMap[0].height);
-    this->loadCubeMap(this->skyBoxOut.cubeMap);
+    MeshManager::TextureLoader::storeCubeMap(this->skyBoxOut.cubeMap[0].width, this->skyBoxOut.cubeMap[0].height);
+    MeshManager::TextureLoader::loadCubeMap(this->skyBoxOut.cubeMap);
 
     return;
 };

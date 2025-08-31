@@ -138,19 +138,18 @@ class MeshManager
         void clearErrors();
 
         int32_t errorCode;
-        int32_t layerCount;
 
         uint32_t maxTexWidth;
         uint32_t maxTexHeight;
 
 		GLuint shaderProgram;
         GLint modelMatrixUniformLocation;
-        // GLint textureLayerUniformLocation;
         GLint meshVariantLocation;
         GLint discardFragsLocation;
 
         std::unique_ptr<FileLoader> finder;
         TextureLoader::StorageType textureStorage;
+
         /* ====================================
             Convert std::map to std::set once
             instanced rendering is available.

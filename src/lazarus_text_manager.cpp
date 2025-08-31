@@ -189,16 +189,13 @@ FontLoader::~FontLoader()
 
     /* =======================================================
         TODO:
-        - Concatenate any additional texture atlas's produced by
-        this function into the existing atlas in memory at a 
-        y-offset equal to the textureId.
-
-        - Make draw call param optional. If it isn't present 
+        Make draw call param optional. If it isn't present 
         the entire layout should be drawn.
     ========================================================== */
 
 TextManager::TextManager(GLuint shader) 
-    : TextManager::MeshManager(shader, TextureLoader::StorageType::ATLAS)
+    : TextManager::FontLoader(),
+      TextManager::MeshManager(shader, TextureLoader::StorageType::ATLAS)
 {
     LOG_DEBUG("Constructing Lazarus::TextManager");
 
@@ -235,8 +232,8 @@ uint32_t TextManager::extendFontStack(std::string filepath, uint32_t ptSize)
     fonts.clear();
     alphabetHeights.clear();
 
-    this->loaderInit();
-    this->fontIndex = this->loadTrueTypeFont(filepath, ptSize, 0);
+    FontLoader::loaderInit();
+    this->fontIndex = FontLoader::loadTrueTypeFont(filepath, ptSize, 0);
     
     /* ===========================================================================
         The expression (n - 33) AKA (i = 33 && i < 128) occurs in several places 
@@ -276,7 +273,7 @@ uint32_t TextManager::extendFontStack(std::string filepath, uint32_t ptSize)
         this->atlasHeight += rowHeight;
         alphabetHeights.push_back(this->atlasHeight);
         
-        this->storeBitmapTexture(atlasWidth, atlasHeight);
+        MeshManager::TextureLoader::storeBitmapTexture(atlasWidth, atlasHeight);
     }
     
     /* =============================================
@@ -292,9 +289,9 @@ uint32_t TextManager::extendFontStack(std::string filepath, uint32_t ptSize)
         
         for(uint32_t i = 33; i < 128; i++)
         {
-            this->glyph = this->loadCharacter(static_cast<char>(i), (n + 1));
+            this->glyph = FontLoader::loadCharacter(static_cast<char>(i), (n + 1));
 
-            this->loadBitmapToTexture(this->glyph, xOffset, yOffset);
+            MeshManager::TextureLoader::loadBitmapToTexture(this->glyph, xOffset, yOffset);
             xOffset += this->glyph.width;
     
             characters.emplace((i - 33), this->glyph);
@@ -310,7 +307,7 @@ TextManager::Text TextManager::loadText(std::string targetText, uint32_t fontId,
     /* =================================================
         Clear internal child trackers to stop bloat.
     ==================================================== */
-    this->clearMeshStorage();
+    MeshManager::clearMeshStorage();
 
     if(word.size() > 0)
     {
@@ -325,7 +322,7 @@ TextManager::Text TextManager::loadText(std::string targetText, uint32_t fontId,
     for(size_t i = 0; i < targetText.size(); i++)
     {   
         this->setActiveGlyph(targetText[i], fontId, letterSpacing);
-        quad = this->createQuad(
+        quad = MeshManager::createQuad(
             static_cast<float>(this->glyph.width), 
             static_cast<float>(this->rowHeight), 
             "", 
@@ -402,8 +399,8 @@ void TextManager::drawText(TextManager::Text text)
         quad = i;
         
         cameraBuilder->loadCamera(camera);
-        this->loadMesh(quad);
-        this->drawMesh(quad);
+        MeshManager::loadMesh(quad);
+        MeshManager::drawMesh(quad);
     };
 
     return;
@@ -422,7 +419,7 @@ void TextManager::identifyAlphabetDimensions(uint32_t fontId)
 
     for(uint8_t i = 33; i < 128; i++)
     {
-        glyph = this->loadCharacter(static_cast<char>(i), fontId);
+        glyph = FontLoader::loadCharacter(static_cast<char>(i), fontId);
         
         rowWidth += glyph.width;
         if(glyph.height > rowHeight)

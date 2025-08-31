@@ -26,7 +26,7 @@ AssetLoader::AssetLoader()
 	this->materialIdentifierIndex	= 0;
 	this->triangleCount				= 0;
     this->diffuseCount              = 0;
-    this->texCount                  = 0;
+    this->layerCount                = 0;
 
     this->fileLoader                = std::make_unique<FileLoader>();
 
@@ -179,10 +179,7 @@ bool AssetLoader::parseWavefrontObj(std::vector<glm::vec3> &outAttributes, std::
 };
 
 bool AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint32_t>> data, vector<vec3> &temp, vector<vec3> &out)
-{
-    // diffuseCount = 0;
-    // texCount = 0;
-    
+{    
     if(file.is_open())
     {
         file.close();
@@ -248,32 +245,28 @@ bool AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint
             (currentLine[2] == 'p')
         )
         {
-            // if( diffuseCount == 0 )
-            // {
-                for(auto i: data)
+            for(auto i: data)
+            {
+                uint32_t faceCount = i[1];
+                for(size_t j = 0; j < faceCount * 3; j++)
                 {
-                    uint32_t faceCount = i[1];
-                    for(size_t j = 0; j < faceCount * 3; j++)
-                    {
-                        /* ===========================================
-                            Negative values passed here are an indicator
-                            to the fragment shader that it should instead 
-                            interpret the desired frag color of this face
-                            from the current layer of the sampler array 
-                            (an image) instead of a diffuse texture.
-
-                            i.e: 
-                            positiveDiffuseValues
-                            ? fragColor(positiveDiffuseValues.xyz) 
-                            : fragColor(images[layer].xyz)
-                        ============================================== */
-                        temp.push_back(vec3(-0.1f, -0.1f, -0.1f));
-                        countsAsTheyWere.push_back(texCount);
-                    }
-                } 
-                out.push_back(vec3(-0.1f, -0.1f, -0.1f));
-                texCount += 1;
-            // }
+                    /* ===========================================
+                        Negative values passed here are an indicator
+                        to the fragment shader that it should instead 
+                        interpret the desired frag color of this face
+                        from the current layer of the sampler array 
+                        (an image) instead of a diffuse texture.
+                        i.e: 
+                        positiveDiffuseValues
+                        ? fragColor(positiveDiffuseValues.xyz) 
+                        : fragColor(images[layer].xyz)
+                    ============================================== */
+                    temp.push_back(vec3(-0.1f, -0.1f, -0.1f));
+                    layers.push_back(layerCount);
+                }
+            } 
+            out.push_back(vec3(-0.1f, -0.1f, -0.1f));
+            layerCount += 1;
         }
     };
         
@@ -682,14 +675,14 @@ bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDi
             tempDiffuse.push_back(material.diffuse);
             if(usesTextures)
             {
-                countsAsTheyWere.push_back(texCount);
+                layers.push_back(layerCount);
             };
 
         };
         outDiffuse.push_back(material.diffuse);
         if(usesTextures)
         {
-            this->texCount += 1;
+            this->layerCount += 1;
         };
     };
 
@@ -913,11 +906,6 @@ vector<string> AssetLoader::splitTokensFromLine(const char *wavefrontData, char 
 
 void AssetLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> outDiffuse, uint32_t numOfAttributes)
 {
-    //  At any location where diffuse == (-0.1f, -0.1f, -0.1f)
-    //  Take this->texCount as it was AT THE TIME THE DIFFUSE WAS PUSHED BACK (maybe keep a list of equal size and fetch with i)
-    //  Ensure this->texCount is also inrcemented during glb parsing
-    //  Insert into uvCoordinates.z
-
     std::unordered_set<uint64_t> hashes = {};
     std::map<uint64_t, uint32_t> entries = {};
 
@@ -940,7 +928,7 @@ void AssetLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint3
         uint32_t uvIndex     = uvIndices[i];
         
         glm::vec3 diffuseColor      = outDiffuse[i];
-        uint32_t layer              = countsAsTheyWere[i];
+        uint32_t layer              = layers.size() ? layers[i] : 0; // stupid hack, should fix
         glm::vec3 uv                = this->tempUvs.at(uvIndex - 1);
         glm::vec3 position          = this->tempVertexPositions.at(vertexIndex - 1);
         glm::vec3 normalCoordinates = this->tempNormals.at(normalIndex - 1);
@@ -1100,9 +1088,7 @@ void AssetLoader::resetMembers()
     this->tempNormals.clear();
     this->tempUvs.clear();
     this->tempDiffuse.clear();
-    this->countsAsTheyWere.clear();
-
-    // this->texCount = 0;
+    this->layers.clear();
 };
 
 AssetLoader::~AssetLoader()
