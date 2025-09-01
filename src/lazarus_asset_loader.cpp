@@ -390,17 +390,16 @@ bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDi
                 /* =============================================
                     Identify texture index.
                 ================================================ */
-                std::string texIdxIdentifier = std::string(INDEX);
-                int32_t id = json.find(texIdxIdentifier);
-                std::string tex = json.substr(id + texIdxIdentifier.size());
-                
-                int32_t objEnd = tex.find("}");
-                std::string objContents = tex.substr(0, objEnd);
-        
-                glbMaterialData texturedMaterial = {};
-                texturedMaterial.diffuse = glm::vec3(-0.1f, -0.1f, -0.1f);
-                texturedMaterial.textureIndex = std::stoi(objContents);
-                materials.push_back(texturedMaterial);
+                std::vector<std::string> imageTextures = extractContainedContents(json, TEXTUREID.append("{"), "}");
+                for(size_t j = 0; j < imageTextures.size(); j++)
+                {            
+                    int32_t index = this->extractAttributeIndex(imageTextures[j], INDEX);
+
+                    glbMaterialData texturedMaterial = {};
+                    texturedMaterial.diffuse = glm::vec3(-0.1f, -0.1f, -0.1f);
+                    texturedMaterial.textureIndex = index;
+                    materials.push_back(texturedMaterial);
+                };
             }
             else
             {
@@ -464,17 +463,23 @@ bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDi
         else if(json.find(TEXTURES) == 0)
         {
             glbTextureData texture = {};
-
-            texture.samplerIndex = this->extractAttributeIndex(json, SAMPLERID);
-            texture.imageIndex = this->extractAttributeIndex(json, IMAGEID);
-            textures.push_back(texture);
+            std::vector<std::string> textureProperties = extractContainedContents(json, "{", "}");
+            for(size_t j = 0; j < textureProperties.size(); j++)
+            {
+                texture.samplerIndex = this->extractAttributeIndex(textureProperties[j], SAMPLERID);
+                texture.imageIndex = this->extractAttributeIndex(textureProperties[j], IMAGEID);
+                textures.push_back(texture);
+            };
         }
         else if(json.find(IMAGES) == 0)
         {
-            glbImageData image = {}; 
-
-            image.bufferViewIndex = this->extractAttributeIndex(json, BUFFERVIEWID);
-            images.push_back(image);
+            std::vector<std::string> imageProperties = extractContainedContents(json, "{", "}");
+            for(size_t j = 0; j < imageProperties.size(); j++)
+            {
+                glbImageData image = {}; 
+                image.bufferViewIndex = this->extractAttributeIndex(imageProperties[j], BUFFERVIEWID);
+                images.push_back(image);
+            };
         }
         else if(json.find(ACCESSORS) == 0)
         {
