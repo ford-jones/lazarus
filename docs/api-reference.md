@@ -107,6 +107,40 @@ params:
 #### int getNumberOfActiveLights()
 Returns the number of lights known accross all `LightManager` instances.
 
+### Members:
+> **StatusCode**: Various execution status codes (*type:* `enum`)
+> - **LAZARUS_OK** *The engines default state. No problems. (Code: 0)* 
+> - **LAZARUS_FILE_NOT_FOUND** *The specified asset couldn't be found (Code: 101)* 
+> - **LAZARUS_FILE_UNREADABLE** *The located file cannot be read. (Code: 102)* 
+> - **LAZARUS_FILESTREAM_CLOSED** *The filestream input closed unexpectedly. (Code: 103)* 
+> - **LAZARUS_IMAGE_LOAD_FAILURE** *STB was unable to load the contents of the given image file into a 8_8_8_8 (RGBA) buffer. (Code: 104)*
+> - **LAZARUS_IMAGE_RESIZE_FAILURE** *STB was unable to resize the image to the height and width specified at `LAZARUS_MAX_IMAGE_WIDTH` / `LAZARUS_MAX_IMAGE_HEIGHT` (Code: 105)*
+> - **LAZARUS_SHADER_ERROR** *OpenGL does not regard the output from shader compilation to be a valid shader program. (Code: 201)* 
+> - **LAZARUS_VSHADER_COMPILE_FAILURE** *The vertex shader failed to compile. (Code: 202)*
+> - **LAZARUS_FSHADER_COMPILE_FAILURE** *The fragment shader failed to compile. (Code: 203)
+> - **LAZARUS_SHADER_LINKING_FAILURE** *OpenGL failed to link the shaders. (Code: 204)*
+> - **LAZARUS_UNIFORM_NOT_FOUND** *Lazarus failed to perform a lookup on the desired uniform from the vertex or fragment shader. (Code: 205)*
+> - **LAZARUS_MATRIX_LOCATION_ERROR** *Lazarus failed to perform a shader lookup on the desired modelview, projection or view-matrix required to render the target entity. (Code: 206)*
+> - **LAZARUS_OPENGL_ERROR** *An error occured in the OpenGL graphics pipeline. (Code: 301)*
+> - **LAZARUS_NO_CONTEXT** *Unable to find a window with an active OpenGL context. (Code: 302)*
+> - **LAZARUS_WINDOW_ERROR** *An error occured in the window API. (Code: 303)*
+> - **LAZARUS_EVENT_ERROR** *An error occured in the events API (Code: 304)*
+> - **LAZARUS_GLFW_NOINIT** *GL framework wrangler failed to initialise. (Code: 305)*
+> - **LAZARUS_WIN_EXCEEDS_MAX** *The requested window size is larger than the dimensions of the primary monitor. (Code: 306)*
+> - **LAZARUS_TIME_ERROR** *Lazarus tried to perform a time operation but the windows running time was 0ms. (Code: 307)*
+> - **LAZARUS_AUDIO_ERROR** *An error occured in the FMOD audio backend. (Code: 401)*
+> - **LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR** *Desired audio playback location was less than 0 seconds or more than AudioManager::Audio::length. (Code: 402)*
+> - **LAZARUS_AUDIO_LOAD_ERROR** *Unable to load audio sample into a channel. (Code: 403)*
+> - **LAZARUS_INVALID_RADIANS** *Lazarus recieved a rotational value which exceeds 360.0. (Code: 501)*
+> - **LAZARUS_INVALID_CUBEMAP** *The images recieved to construct a cubemap texture are not all of equal height and width (Code: 502)*
+> - **LAZARUS_INVALID_DIMENSIONS** *Lazarus recieved a mesh creation input with value(s) below 0.0 (Code: 504).*
+> - **LAZARUS_INVALID_INTENSITY** *Lazarus recieved a asset-strength multiplier with a value below 0 (Code: 505).*
+> - **LAZARUS_FEATURE_DISABLED** *A function was invoked that relies on settings which are disabled. (Code: 506)*
+> - **LAZARUS_ASSET_LOAD_ERROR** *Failed to load a mesh asset (Code: 601)*
+> - **LAZARUS_FT_INIT_FAILURE** *Lazarus failed to inititialise the freetype2 library. (Code: 701)*
+> - **LAZARUS_FT_LOAD_FAILURE** *Freetype has indicated that it is unable to load the TrueType font from the desired location. (Code: 702)*
+> - **LAZARUS_FT_RENDER_FAILURE** *Despite being able to load the target glyph's splines, freetype was unable to render them into a monochrome bitmap. (Code: 703)*
+
 ## WindowManager:
 A class for making and managing the program's window(s). 
 
@@ -377,7 +411,7 @@ Params:
 > **shader:** *The id of the shader program used to render this mesh. Acquired from the return value of `Shader::initialiseShader()`*
 
 ### Functions:
-#### MeshManager::Mesh create3DAsset(std::string meshPath, std::string materialPath, std::string texturePath, bool selectable)
+#### MeshManager::Mesh create3DAsset(std::string meshPath, std::string materialPath, bool selectable)
 Finds and reads a the `.obj` or `.glb` file located at `meshPath`. \
 Creates a new instance of a `Mesh`, initialises the values of its properties and returns it. 
 
@@ -386,7 +420,6 @@ Returns a new mesh entity.
 Params:
 > **meshPath:** *The relative path to the wavefront mesh asset you wish to render.* 
 > **materialPath:** *The relative path to the wavefront material asset you wish to render. (default: `LAZARUS_TEXTURED_MESH`)*
-> **texturePath:** *The relative path to the texture image. (default: `LAZARUS_DIFFUSE_MESH`)*
 > **selectable:** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (default: `false`)*
 
 #### MeshManager::Mesh createQuad(float width, float height, std::string texturePath, float uvXL, float uvXR, float uvY, bool selectable)
@@ -401,7 +434,8 @@ Params:
 > **texturePath:** *The relative path to the texture image. (optional)*
 > **uvXL:** *The normalised x-axis coordinate of the UV's left-side. Used for text rendering. (optional)*
 > **uvXR:** *The normalised x-axis coordinate of the UV's right-side. Used for text rendering. (optional)*
-> **uvY:** *The normalised y-axis coordinate of the UV's top edge. Used for text rendering. (optional)*
+> **uvYU:** *The normalised y-axis coordinate of the UV's top edge. Used for text rendering. (optional)*
+> **uvYD:** *The normalised y-axis coordinate of the UV's bottom edge. Used for text rendering. (optional)*
 > **selectable:** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (optional)*
 
 #### MeshManager::Mesh createCube(float scale, std::string texturePath, bool selectable)
@@ -414,37 +448,57 @@ Params:
 > **texturePath:** *The relative path to an image texture asset. (optional)*
 > **selectable:** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (optional)*
 
-#### MeshManager::Mesh loadMesh(MeshManager::Mesh meshIn)
+#### MeshManager::Mesh loadMesh(MeshManager::Mesh &meshIn)
 Loads a mesh object's buffer data into their correct GPU uniform positions located inside the shader program that was referenced in the class constructor.
 
 Params:
 > **meshIn:** *The mesh object who's buffer data you wish to pass into the shader program.*
 
-#### MeshManager::Mesh drawMesh(MeshManager::Mesh meshIn)
+#### MeshManager::Mesh drawMesh(MeshManager::Mesh &meshIn)
 Draws the mesh object contents of the shader program's uniforms onto the render loops back buffer (see: `WindowManager::handleBuffers()`). \
 Be sure to bring the back buffer forward to see the draw result.
 
 > Params:
 > **meshIn:** *The mesh object you wish to draw.*
 
-#### void clearMeshStorage()
-Clears the manager's internal child tracker which includes: Associated texture handles, resource ID's, vertex buffer objects and shader flags. All `MeshManager::Mesh` object's created by this manager previously become invalid and their ID's can be reused.
+#### void setDiscardFragments(MeshManager::Mesh &meshIn, bool shouldDiscard)
+Toggle for removing the areas of a face prior to rendering where the meshes texture's alpha value is zero. Used for rendering sprites.
+
+> Params: \
+> **meshIn:** *The mesh object you wish to draw.* \
+> **shouldDiscard:** *The desired value for the option (T/F).*
 
 ### Members:
 > **Mesh:** *A collection of properties which make up a mesh entity. (type: `struct`)* 
 >   - **id:** *The meshes serialised ID. Unique only to the manager instance which created it. (type: `int`)*
->   - **is3D:** *Literal 0 (false) or 1 (true). Flags the shader to treat the mesh as a sprite, discarding fragments with an alpha value higher than 0.1 (type: `int`)*
->   - **isGlyph:** *Literal 0 (false) or 1 (true). Flags the shader to treat the quad as a UTF-8 ascii glyph. (type: `int`)*
->   - **isSkybox:** *Literal 0 (false) or 1 (true). Flags the shader to treat the mesh as a skybox. (type: `int`)*
+>   - **type:** *Which type of asset this mesh is. (type: `MeshManager::MeshType`)*
+>   - **materials:** *The materials used by this mesh. (type: `std::vector<MeshManager::Material>`)*
 >	- **numOfFaces:** *The number of faces that make up the mesh. (type: `int`)* 
 >	- **numOfVertices:** *The number of vertices that make up the mesh. (type: `int`)* 
 >	- **meshFilepath:** *The absolute path (from system root) to the wavefront file containing this mesh's vertex data. (type: `std::string`)*
 >	- **materialFilepath:** *The absolute path (from system root) to the wavefront file containing this mesh's material data. (type: `std::string*`)*
->	- **textureFilepath:** *The absolute path (from system root) to the wavefront file containing this mesh's texture image. (type: `std::string`)*
 >	- **position:** *Where the mesh is position in world space. (type: `glm::vec3`)*
 >	- **direction:** *The mesh's forward-vector. Where the mesh's local coordinate system's z+ is in relation to world space. (type: `glm::vec3`)*
 >	- **scale:** *The size of the mesh. (type: `glm::vec3`)*
+>   - **modelMatrix:** *A 4x4 matrice used to perform transformations on the mesh. You will need this if you're intending you write your own transformations instead of using the `Transform` class. (type: `glm::mat4`)*
 >   - **isClickable** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (type: `bool`)*
+
+> **MeshType:** *Different varieties of meshes (type: `enum`)*
+>   - **LOADED_GLB:** *A mesh which has been loaded from a glb file.*
+>   - **LOADED_WAVEFRONT:** *A mesh which has been loaded from a wavefront file.*
+>   - **PLANE:** *A quad, I.e. Two-dimensional, four sides.*
+>   - **CUBE:** *A cuboid / rectangular prism.*
+
+> **Material:** *The properties which constitute the material that is rendered to a surface. (type: `struct`)*
+>   - **id:** *A serialised ID unique to the material's parent `MeshManager::Mesh`. (type: `int`)*
+>   - **type:** *Which type of material this is. (type: `MeshManager::MaterialType`)*
+>   - **texture:** *If `type` is `MeshManager::MaterialType::IMAGE_TEXTURE`, this struct contains the materials texture data, i.e. width, height and raw bytes. (type: `FileLoader::Image`)*
+>   - **diffuse:** *If `type` is `MeshManager::MaterialType::BASE_COLOR`, this struct contains the materials color value.*
+>   - **discardsAlphaZero:** *If the contents of `texture.pixelData` contain an `RGBA` value with an alpha of zero, discard the fragment.*
+
+> **MaterialType:** *Different varieties of materials (type: `enum`)*
+>   - **IMAGE_TEXTURE:** *Faces using this material are the rendered using a sample from an image.*
+>   - **BASE_COLOR:** *Faces using this material are rendered using their base diffuse coloring.*
 
 ## CameraManager:
 ### Constructor:
@@ -699,35 +753,3 @@ Params:
 >   - **minDistance:** *From the viewpoint, at which distance the fog's attenuation / opacity begins taking effect. (type: `float`).*
 >   - **maxDistance:** *From the viewpoint, at which distance the fog reaches full opacity / coverage. (type: `float`).*
 >   - **density:** *The fog's thickness. Note that this only acts as a modifier of the other visibility values. The fog will still eventually reach full opacity. (type: `float`).*
-
-## Status Codes:
-- **LAZARUS_OK** *The engines default state. No problems. (Code: 0)* 
-- **LAZARUS_FILE_NOT_FOUND** *The specified asset couldn't be found (Code: 101)* 
-- **LAZARUS_FILE_UNREADABLE** *The located file cannot be read. (Code: 102)* 
-- **LAZARUS_FILESTREAM_CLOSED** *The filestream input closed unexpectedly. (Code: 103)* 
-- **LAZARUS_IMAGE_LOAD_FAILURE** *STB was unable to load the contents of the given image file into a 8_8_8_8 (RGBA) buffer. (Code: 104)*
-- **LAZARUS_IMAGE_RESIZE_FAILURE** *STB was unable to resize the image to the height and width specified at `LAZARUS_MAX_IMAGE_WIDTH` / `LAZARUS_MAX_IMAGE_HEIGHT` (Code: 105)*
-- **LAZARUS_FT_INIT_FAILURE** *Lazarus failed to inititialise the freetype2 library. (Code: 106)*
-- **LAZARUS_FT_LOAD_FAILURE** *Freetype has indicated that it is unable to load the TrueType font from the desired location. (Code: 107)*
-- **LAZARUS_FT_RENDER_FAILURE** *Despite being able to load the target glyph's splines, freetype was unable to render them into a monochrome bitmap. (Code: 108)*
-- **LAZARUS_SHADER_ERROR** *OpenGL does not regard the output from shader compilation to be a valid shader program. (Code: 201)* 
-- **LAZARUS_VSHADER_COMPILE_FAILURE** *The vertex shader failed to compile. (Code: 202)*
-- **LAZARUS_FSHADER_COMPILE_FAILURE** *The fragment shader failed to compile. (Code: 203)
-- **LAZARUS_SHADER_LINKING_FAILURE** *OpenGL failed to link the shaders. (Code: 204)*
-- **LAZARUS_UNIFORM_NOT_FOUND** *Lazarus failed to perform a lookup on the desired uniform from the vertex or fragment shader. (Code: 205)*
-- **LAZARUS_MATRIX_LOCATION_ERROR** *Lazarus failed to perform a shader lookup on the desired modelview, projection or view-matrix required to render the target entity. (Code: 206)*
-- **LAZARUS_OPENGL_ERROR** *An error occured in the OpenGL graphics pipeline. (Code: 301)*
-- **LAZARUS_NO_CONTEXT** *Unable to find a window with an active OpenGL context. (Code: 302)*
-- **LAZARUS_WINDOW_ERROR** *An error occured in the window API. (Code: 303)*
-- **LAZARUS_EVENT_ERROR** *An error occured in the events API (Code: 304)*
-- **LAZARUS_GLFW_NOINIT** *GL framework wrangler failed to initialise. (Code: 305)*
-- **LAZARUS_WIN_EXCEEDS_MAX** *The requested window size is larger than the dimensions of the primary monitor. (Code: 306)*
-- **LAZARUS_TIME_ERROR** *Lazarus tried to perform a time operation but the windows running time was 0ms. (Code: 307)*
-- **LAZARUS_AUDIO_ERROR** *An error occured in the FMOD audio backend. (Code: 401)*
-- **LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR** *Desired audio playback location was less than 0 seconds or more than AudioManager::Audio::length. (Code: 402)*
-- **LAZARUS_AUDIO_LOAD_ERROR** *Unable to load audio sample into a channel. (Code: 403)*
-- **LAZARUS_INVALID_RADIANS** *Lazarus recieved a rotational value which exceeds 360.0. (Code: 501)*
-- **LAZARUS_INVALID_CUBEMAP** *The images recieved to construct a cubemap texture are not all of equal height and width (Code: 502)*
-- **LAZARUS_INVALID_DIMENSIONS** *Lazarus recieved a mesh creation input with value(s) below 0.0 (Code: 504).*
-- **LAZARUS_INVALID_INTENSITY** *Lazarus recieved a asset-strength multiplier with a value below 0 (Code: 505).*
-- **LAZARUS_FEATURE_DISABLED** *A function was invoked that relies on settings which are disabled. (Code: 506)*

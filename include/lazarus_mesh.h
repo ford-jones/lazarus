@@ -104,6 +104,10 @@ class MeshManager
         void loadMesh(Mesh &meshIn);
         void drawMesh(Mesh &meshIn);
 
+        //  TODO:
+        //  This isn't quite the appropriate place to do this
+        //  but ok for now
+
         void setDiscardFragments(Mesh &meshIn, bool shouldDiscard);
 
         virtual ~MeshManager();

@@ -679,9 +679,6 @@ void MeshManager::setMaterialProperties(std::vector<glm::vec3> diffuse, std::vec
 
 void MeshManager::setSharedProperties()
 {
-    //  TODO:
-    //  Create function to change this
-    
     meshData.texture.discardAlphaZero = false;
     meshData.texture.samplerId = TextureLoader::textureId;
 
