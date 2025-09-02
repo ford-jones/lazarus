@@ -621,6 +621,12 @@ void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
     return;
 };
 
+void MeshManager::setDiscardFragments(MeshManager::Mesh &meshIn, bool shouldDiscard)
+{
+    MeshManager::MeshData &data = dataStore.at(meshIn.id);
+    data.texture.discardAlphaZero = shouldDiscard;
+};
+
 void MeshManager::setMaterialProperties(std::vector<glm::vec3> diffuse, std::vector<FileLoader::Image> images)
 {
     if(diffuse.size() != images.size())
