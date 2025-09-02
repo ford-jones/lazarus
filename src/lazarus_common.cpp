@@ -65,12 +65,6 @@ float                    LAZARUS_LISTENER_MOUSEX                = 0;
 float                    LAZARUS_LISTENER_MOUSEY                = 0;
 float                    LAZARUS_LISTENER_SCROLLCODE            = 0;
 
-const char*              LAZARUS_SKYBOX_CUBE                    = "Skybox target.";
-const char*              LAZARUS_GLYPH_QUAD                     = "Glyph target.";
-const char*              LAZARUS_PRIMITIVE_MESH                 = "Primitive mesh.";
-const char*              LAZARUS_TEXTURED_MESH                  = "Textured mesh.";
-const char*              LAZARUS_DIFFUSE_MESH                   = "Diffuse colored mesh.";
-
 void GlobalsManager::setEnforceImageSanity(bool shouldEnforce)
 {
     LAZARUS_ENFORCE_IMAGE_SANITY = shouldEnforce;

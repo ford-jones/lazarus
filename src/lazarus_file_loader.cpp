@@ -61,6 +61,12 @@ string FileLoader::relativePathToAbsolute(string filename)
 {
     this->filenameString = std::filesystem::absolute(filename).string();
 
+    bool mountResult = std::filesystem::exists(this->filenameString);
+    if(!mountResult)
+    {
+        LOG_ERROR("Filesystem Error: ", __FILE__, __LINE__);
+        globals.setExecutionState(LAZARUS_FILE_NOT_FOUND);
+    }
     return this->filenameString;
 };
 

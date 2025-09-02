@@ -28,7 +28,6 @@
 #include <memory>
 #include <string>
 
-#include "lazarus_texture_loader.h"
 #include "lazarus_file_loader.h"
 #include "lazarus_mesh.h"
 #include "lazarus_camera.h"

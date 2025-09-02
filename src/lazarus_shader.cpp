@@ -47,6 +47,10 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
 
     #define MAX_LIGHTS 150
 
+	const int CUBEMAP = 1;
+	const int ATLAS = 2;
+	const int ARRAY = 3;
+
     in vec3 fragPosition;
     in vec3 diffuseColor;
     in vec3 normalCoordinate;
@@ -68,11 +72,8 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
 
     uniform vec3 textColor;
 
-    uniform int spriteAsset;
-    uniform int glyphAsset;
-    uniform int isSkyBox;
-
-    uniform float textureLayer;
+    uniform int samplerType;
+    uniform int discardFrags;
 
     uniform sampler2D textureAtlas;
     uniform sampler2DArray textureArray;
@@ -153,43 +154,47 @@ vec4 interpretColorData ()
     }
     else 
     {
-        if( spriteAsset == 1 )
+        vec4 tex = vec4(0.0, 0.0, 0.0, 0.0);
+        switch(samplerType)
         {
-            vec4 tex = texture(textureArray, vec3(textureCoordinate.xy, textureLayer));
-            return tex;
-        } 
-        else if( glyphAsset == 1)
-        {
-            vec4 tex = texture(textureAtlas, textureCoordinate.xy);
+            case ARRAY:
+                //  the array-layer number is stored in the z value of the uv
+
+                tex = texture(textureArray, vec3(textureCoordinate.xy, textureCoordinate.z));
+
+                //  I.e. MeshManager::Mesh::Material::discardAlphaZero
+
+                if(discardFrags == 1 && tex.a < 0.1)
+                {
+                    discard;
+                }
+                break;
             
-            vec4 sampled = vec4(1.0, 1.0, 1.0, tex.r);
-            vec4 text = vec4(textColor, 1.0) * sampled;
+            case ATLAS:
+                vec4 t = texture(textureAtlas, textureCoordinate.xy);
 
-            if(text.a < 0.1)
-            {
-                discard;
-            }
+                //  Bitmaps are stored as a single channel (red)
+                //  Use the value to determine discarded fragments
 
-            return text;           
-        }
-        else if( isSkyBox == 1 )
-        {
-            vec4 tex = texture(textureCube, skyBoxTextureCoordinate);
-            return tex;
-        }
-        else
-        {
-            vec4 tex = texture(textureArray, vec3(textureCoordinate.xy, textureLayer));
+                vec4 sampled = vec4(1.0, 1.0, 1.0, t.r);
+                tex = vec4(textColor, 1.0) * sampled;
 
-            if(tex.a < 0.1)
-            {
-                discard;
-            }
-
-            return tex;
-        } 
-
-    }
+                if(tex.a < 0.1)
+                {
+                    discard;
+                }
+                break;
+            
+            case CUBEMAP:
+                tex = texture(textureCube, skyBoxTextureCoordinate);
+                break;
+            
+            default:
+                break;
+        };
+        
+        return tex;
+    };
 }
 
 void main ()
@@ -197,7 +202,7 @@ void main ()
     vec4 fragColor = interpretColorData();
 
     //  When the fragment is part of a skybox or is observed by an orthographic camera, use color as-is.
-    if(isSkyBox == 1 || isUnderPerspective == 0)
+    if(samplerType == CUBEMAP || isUnderPerspective == 0)
     {
         outFragment = fragColor;
     }
@@ -283,7 +288,6 @@ uint32_t Shader::compileShaders(std::string fragmentShader, std::string vertexSh
     if(!accepted)                                                                                                       //   If it failed
     {
         glGetShaderInfoLog(this->fragShader, 512, NULL, this->message);                                                             //   Retrieve the OpenGL shader logs if there are any and print them to the console
-
         std::string message = std::string("Shader Compilation Error: ").append(this->message);
         LOG_ERROR(message.c_str(), __FILE__, __LINE__);
 

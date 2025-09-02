@@ -19,9 +19,9 @@
 
 /* ================================================================
 	TODO:
-		- Support for texture-per-face loading
-		- Support for multiple textured meshes (layering)
-		- Ideally have each of these functions use immutable storage
+	- Support for texture-per-face loading
+	- Support for multiple textured meshes (layering)
+	- Ideally have each of these functions use immutable storage
 =================================================================== */
 
 #include "../include/lazarus_texture_loader.h"
@@ -36,31 +36,28 @@ TextureLoader::TextureLoader(TextureLoader::StorageType storageVariant)
 	this->image.height = 0;
 	this->image.width = 0;
 
-	this->bitmapTexture = 0;
-	this->textureStack = 0;
+	this->textureId = 0;
 
 	this->errorCode = 0;
-
+	this->storageType = storageVariant;
 	
-	switch (storageVariant)
+	glGenTextures(1, &this->textureId);
+	switch (this->storageType)
 	{
 		case TextureLoader::StorageType::ARRAY:
-			glGenTextures(1, &this->textureStack);
-			glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureStack);
+			glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureId);
 			break;
 		
 		case TextureLoader::StorageType::ATLAS:
-			glGenTextures(1, &this->bitmapTexture);
-			glBindTexture(GL_TEXTURE_2D, this->bitmapTexture);			
+			glBindTexture(GL_TEXTURE_2D, this->textureId);			
 			break;
 
 		case TextureLoader::StorageType::CUBEMAP:
-			glGenTextures(1, &this->cubeMapTexture);
-			glBindTexture(GL_TEXTURE_CUBE_MAP, this->cubeMapTexture);
+			glBindTexture(GL_TEXTURE_CUBE_MAP, this->textureId);
 			break;
 	
-	default:
-		break;
+		default:
+			break;
 	}
 };
 
@@ -69,7 +66,7 @@ void TextureLoader::extendTextureStack(uint32_t maxWidth, uint32_t maxHeight, ui
 	this->clearErrors();
 
 	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureStack);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureId);
 
 	/* =========================================================================
 		Allocate / Reallocate memory to store texture data. Doesn't actually 
@@ -102,7 +99,7 @@ void TextureLoader::loadImageToTextureStack(FileLoader::Image imageData, GLuint 
 	this->image.pixelData = imageData.pixelData;
 
 	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureStack);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureId);
 
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
@@ -140,7 +137,7 @@ void TextureLoader::storeCubeMap(uint32_t width, uint32_t height)
 	this->clearErrors();
 
 	glActiveTexture(GL_TEXTURE3);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, this->cubeMapTexture);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, this->textureId);
 	
 	/* ===========================================================
 		Calculate the depth of the mip map (levels) for the given
@@ -170,7 +167,7 @@ void TextureLoader::loadCubeMap(std::vector<FileLoader::Image> faces)
 	this->clearErrors();
 
 	glActiveTexture(GL_TEXTURE3);
-	glBindTexture(GL_TEXTURE_CUBE_MAP, this->cubeMapTexture);
+	glBindTexture(GL_TEXTURE_CUBE_MAP, this->textureId);
 	
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
@@ -232,7 +229,7 @@ void TextureLoader::storeBitmapTexture(uint32_t maxWidth, uint32_t maxHeight)
 		glActiveTexture calls.
 	============================================== */
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, this->bitmapTexture);
+	glBindTexture(GL_TEXTURE_2D, this->textureId);
 
 	/* ========================================================================================
 		Allocate space for the texture atlas. The texture atlas hasn't been constructed yet so
@@ -274,7 +271,7 @@ void TextureLoader::loadBitmapToTexture(FileLoader::Image imageData, uint32_t xO
 		atlas and the culmilative height of previous alphabet sets.
 	=================================================================== */
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, this->bitmapTexture);
+	glBindTexture(GL_TEXTURE_2D, this->textureId);
 	
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
@@ -374,7 +371,5 @@ TextureLoader::~TextureLoader()
 {
 	LOG_DEBUG("Destroying Lazarus::TextureLoader");
 
-	glDeleteTextures(1, &textureStack);
-	glDeleteTextures(1, &bitmapTexture);
-	glDeleteTextures(1, &cubeMapTexture);
+	glDeleteTextures(1, &textureId);
 };

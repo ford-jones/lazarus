@@ -26,6 +26,7 @@
 
 #include <iostream>
 #include <vector>
+#include <map>
 #include <string>
 
 #ifndef LAZARUS_LIGHT_H
@@ -80,7 +81,7 @@ class LightManager
 
         Light lightOut;
         LightData lightData;
-        std::vector<LightData> lightStore;
+        std::map<uint32_t, LightData> lightStore;
 
         GlobalsManager globals;
 

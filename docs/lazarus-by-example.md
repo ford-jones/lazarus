@@ -300,6 +300,10 @@ Note these inputs can be found at `LAZARUS_DEFAULT_FRAG_LAYOUT`.
 ```c
     #define MAX_LIGHTS 150                          
 
+	const int CUBEMAP   = 1;                        //  Storage variants used for comparison with samplerType
+	const int ATLAS     = 2;
+	const int ARRAY     = 3;
+
     in vec3 fragPosition;                           //  Input 3D fragment position
     in vec3 diffuseColor;                           //  Input fragment color
     in vec3 normalCoordinate;                       //  Input fragment normals
@@ -321,11 +325,8 @@ Note these inputs can be found at `LAZARUS_DEFAULT_FRAG_LAYOUT`.
 
     uniform vec3 textColor;                         //  The color of the text, if the fragment is part of an ascii glyph
 
-    uniform int spriteAsset;                        //  1 if the fragment is part of a 2D cutout (i.e. alpha 0 is removed), otherwise 0
-    uniform int glyphAsset;                         //  1 if fragment is part of an ascii character, otherwise 0
-    uniform int isSkyBox;                           //  1 if the fragment is a skybox, otherwise 0
-
-    uniform float textureLayer;                     //  The index of the render subjects texture in the texture array if one was specified
+    uniform int samplerType;                        //  In-storage variant for identification of texture samplers
+    uniform int discardFrags;                       //  Whether or not fragments with a diffuse-alpha value of zero should be discarded.
 
     uniform sampler2D textureAtlas;                 //  Glyph atlas used for font bitmaps
     uniform sampler2DArray textureArray;            //  Array sampler / testure stack

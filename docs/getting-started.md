@@ -62,12 +62,13 @@ You should now be able to use Lazarus with your project like so:
 
 int main()
 {
-    Lazarus::WindowManager window = Lazarus::WindowManager(800, 600, "Game Window", nullptr, nullptr);
+    Lazarus::WindowManager window = Lazarus::WindowManager("Game Window", nullptr, nullptr);
     window.initialise();
 
     return 0;
 }
 ```
+See [here](./lazarus-by-example.md) for further usage guides.
 
 When compiling your project you will need to pass the following linker flags:
 #### Unix (Linux / Mac):
@@ -156,15 +157,15 @@ xattr -d com.apple.quarantine /usr/local/lib/libfmodL.dylib
 ```
 
 ## Known caveats and limitations:
-1. 3D Mesh assets must be exported to `wavefront` (.obj) file format before being loaded into a scene.
-2. 3D mesh assets have to be **triangulated**, this can be done prior to or on export. *Faces made up of 5 vertex coordinates (polygons) are not supported.*
-3. Materials that appear in `wavefront` (.mtl) material files **must** appear in order they were created. A safe way to ensure this is to number any *named* materials during the modeling process (e.g. `myColor5.mtl`). This is because named materials are often exported in alphabetical order by modeling software which can lead to undesired behaviour.
-4. Upon initialising the render loop and loading of assets, there is an observable "hump" in performance for about 3-5 seconds. A full scene with lights, camera, meshes etc causes a decrease in the framerate by about 12.5% (60 frames becomes 50).
-5. When running Lazarus on OSX the program recieves an OpenGL 1280 (Invalid enum) error, thrown by `Mesh::initialiseMesh`. Apple stopped maintenance for `OpenGL` long ago in favor of their `Metal` API. \
-The repurcussions of this are that we must now use the `GLFW_OPENGL_CORE_PROFILE` to be granted access the modern OpenGL (shader driven) API. The core profile has some gripes with `GLEW`, whatever the issue between them may be - they currently seem inconsequential to this project.
-6. Texture images used in any scene must all have the same pixel width and height. If not the scene *should* still render but you can expect to find holes in your textures.
-7. The xy coordinate system of the orthographic camera created by `Camera::createOrthoCam` has `0.0` mapped to the top left corner of the window, while the perspective camera `Camera::createPerspectiveCam` uses the bottom left.
-8. There is no kerning or centering of TrueType fonts loaded by the `TextManager` class. If you need to render perfectly aligned text it may be better to render it directly to a quad as a texture (See: `Mesh::createQuad`). It could then be rendered along with the rest of the text by loading in an orthographic camera (See: `Camera::createOrthoCam`).
-9. The maximum number of lights permitted in any one scene while using the `LAZARUS_DEFAULT_VERT_SHADER` and/or `LAZARUS_DEFAULT_FRAG_SHADER` is limitted to a maximum size of 150.
-10. The maximum number of entities in any one scene who can be picked or looked up using a pixel with `CameraManager::getPixelOccupant` is limmited to a maximum size of 255.
-11. The gdb loader does not yet support animation.
+1. Regarding Wavefront file format: \
+1.A: Your assets must be **triangulated**, this can be done prior to or on export. \
+1.B: Paths must be *stripped*, i.e. exports should include supplementary filenames *only* - with pathing truncated. \
+1.C: Texture files (Those specified by an `.mtl` file's `Map_Kd` property) should be stored in the same directory as the `.mtl` file. \
+1.D: Materials that appear in `.mtl` material files **must** appear in order they were created. A safe way to ensure this is to number any *named* materials during the modeling process (e.g. `1_metal`). This is because named materials are often exported in alphabetical order by modeling software which can lead to undesired loading behaviour.
+2. This project version locks OpenGL to version 4.1 for compatibility with MacOS.
+3. Texture images used in any scene should all have the same pixel width and height. The scene *should* still render but you can expect to find holes in your textures. Use `GlobalsManager::enforceImageSanity` to ensure images are resized on load.
+4. The xy coordinate system of the orthographic camera created by `Camera::createOrthoCam` has `0.0` mapped to the top left corner of the window, while the perspective camera `Camera::createPerspectiveCam` uses the bottom left.
+5. There is no kerning or centering of TrueType fonts loaded by the `TextManager` class. If you need to render perfectly aligned text it may be better to render it directly to a quad as a texture (See: `Mesh::createQuad`). It could then be rendered along with the rest of the text by loading in an orthographic camera (See: `Camera::createOrthoCam`).
+6. The maximum number of lights permitted in any one scene while using the `LAZARUS_DEFAULT_VERT_SHADER` and/or `LAZARUS_DEFAULT_FRAG_SHADER` is limitted to a maximum size of 150.
+7. The maximum number of entities in any one scene who can be picked or looked up using a pixel with `CameraManager::getPixelOccupant` is limmited to a maximum size of 255.
+8. The gdb loader does not yet support animation.

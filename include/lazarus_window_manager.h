@@ -60,6 +60,8 @@ class Events
     public:
     	//	TODO:
     	//	Create a constructor / destructor
+        //  Create a public getter for retreiving the members
+        //  Make members private
 
         Events();
 
@@ -99,7 +101,8 @@ class WindowManager : public Events, public Time
         int32_t createWindow();
         int32_t setBackgroundColor(float r, float g, float b);
 		int32_t loadConfig();
-
+        int32_t toggleFullscreen();
+        int32_t resize(uint32_t width, uint32_t height);
         int32_t open();
         int32_t close();
 
@@ -114,6 +117,7 @@ class WindowManager : public Events, public Time
         virtual ~WindowManager();
         
 	private:
+        int32_t centerWindow();
 		int32_t initialiseGLEW();
         int32_t checkErrors(const char *file, int line);
 
@@ -131,11 +135,14 @@ class WindowManager : public Events, public Time
 
         Window frame;
 
-        bool launchFullscreen;
+        bool isFullscreen;
         bool enableCursor;
         bool cullFaces;
         bool testDepth;
         bool disableVsync;
+
+        int32_t originalWidth;
+        int32_t originalHeight;
 
         int32_t errorCode;
         const char* errorMessage;
