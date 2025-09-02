@@ -85,7 +85,6 @@ class MeshManager
             
             std::string meshFilepath;
             std::string materialFilepath;
-            std::string textureFilepath;
 
             glm::vec3 position;
             glm::vec3 direction;
@@ -98,7 +97,7 @@ class MeshManager
 		
 		MeshManager(GLuint shader, TextureLoader::StorageType textureType = TextureLoader::StorageType::ARRAY);
 		
-        Mesh create3DAsset(std::string meshPath, std::string materialPath = "", std::string texturePath = "", bool selectable = false);
+        Mesh create3DAsset(std::string meshPath, std::string materialPath = "", bool selectable = false);
         Mesh createQuad(float width, float height, std::string texturePath = "", float uvXL = 0.0, float uvXR = 0.0, float uvYU = 0.0, float uvYD = 0.0, bool selectable = false);
         Mesh createCube(float scale, std::string texturePath = "", bool selectable = false);
 

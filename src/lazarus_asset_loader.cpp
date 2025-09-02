@@ -26,6 +26,7 @@ AssetLoader::AssetLoader()
 	this->materialIdentifierIndex	= 0;
 	this->triangleCount				= 0;
     this->diffuseCount              = 0;
+    this->textureCount              = 0;
     this->layerCount                = 0;
 
     this->fileLoader                = std::make_unique<FileLoader>();
@@ -35,7 +36,7 @@ AssetLoader::AssetLoader()
     this->tempUvs = {};
 };
 
-bool AssetLoader::parseWavefrontObj(std::vector<glm::vec3> &outAttributes, std::vector<glm::vec3> &outDiffuse, std::vector<uint32_t> &outIndexes, const char *meshPath, const char *materialPath) 
+bool AssetLoader::parseWavefrontObj(std::vector<glm::vec3> &outAttributes, std::vector<uint32_t> &outIndexes, std::vector<glm::vec3> &outDiffuse, std::vector<FileLoader::Image> &outImages, const char *meshPath, const char *materialPath) 
 {
     this->resetMembers();
 
@@ -53,7 +54,7 @@ bool AssetLoader::parseWavefrontObj(std::vector<glm::vec3> &outAttributes, std::
     uint32_t positionCount = 0;
     uint32_t uvCount = 0;
     uint32_t normalCount = 0;
-    
+
     while(file.getline(currentLine, UINT8_MAX))
     {
         switch (currentLine[0])
@@ -170,7 +171,7 @@ bool AssetLoader::parseWavefrontObj(std::vector<glm::vec3> &outAttributes, std::
         this->materialData = {materialIdentifierIndex, triangleCount};
 		this->materialBuffer.push_back(this->materialData);
         
-        this->parseWavefrontMtl(materialPath, materialBuffer, tempDiffuse, outDiffuse);
+        this->parseWavefrontMtl(materialPath, materialBuffer, tempDiffuse, outDiffuse, outImages);
     }
 
     this->constructIndexBuffer(outAttributes, outIndexes, tempDiffuse, this->vertexIndices.size());
@@ -178,8 +179,11 @@ bool AssetLoader::parseWavefrontObj(std::vector<glm::vec3> &outAttributes, std::
     return true;
 };
 
-bool AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint32_t>> data, vector<vec3> &temp, vector<vec3> &out)
+bool AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint32_t>> data, vector<vec3> &temp, vector<vec3> &outColors, std::vector<FileLoader::Image> &outImages)
 {    
+    this->textureCount = 0;
+    this->diffuseCount = 0;
+
     if(file.is_open())
     {
         file.close();
@@ -233,7 +237,13 @@ bool AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint
     	            {
                         temp.push_back(diffuse);
     	            };
-                    out.push_back(diffuse);
+                    FileLoader::Image image = {};
+                    image.width = 0;
+                    image.height = 0;
+                    image.pixelData = NULL;
+                    
+                    outColors.push_back(diffuse);
+                    outImages.push_back(image);
     	        };        
             };
         }
@@ -245,27 +255,52 @@ bool AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint
             (currentLine[2] == 'p')
         )
         {
+            textureCount += 1;
             for(auto i: data)
             {
+                uint32_t index = i[0];
                 uint32_t faceCount = i[1];
-                for(size_t j = 0; j < faceCount * 3; j++)
+
+                if(textureCount == index)
                 {
-                    /* ===========================================
-                        Negative values passed here are an indicator
-                        to the fragment shader that it should instead 
-                        interpret the desired frag color of this face
-                        from the current layer of the sampler array 
-                        (an image) instead of a diffuse texture.
-                        i.e: 
-                        positiveDiffuseValues
-                        ? fragColor(positiveDiffuseValues.xyz) 
-                        : fragColor(images[layer].xyz)
-                    ============================================== */
-                    temp.push_back(vec3(-0.1f, -0.1f, -0.1f));
-                    layers.push_back(layerCount);
-                }
+                    for(size_t j = 0; j < faceCount * 3; j++)
+                    {
+                        /* ===========================================
+                            Negative values passed here are an indicator
+                            to the fragment shader that it should instead 
+                            interpret the desired frag color of this face
+                            from the current layer of the sampler array 
+                            (an image) instead of a diffuse texture.
+                            i.e: 
+                            positiveDiffuseValues
+                            ? fragColor(positiveDiffuseValues.xyz) 
+                            : fragColor(images[layer].xyz)
+                        ============================================== */
+                        temp.push_back(vec3(-0.1f, -0.1f, -0.1f));
+                        layers.push_back(layerCount);
+                    };
+                }  
             } 
-            out.push_back(vec3(-0.1f, -0.1f, -0.1f));
+            /* =================================================
+                Construct path to texture file using 
+                pre-computed absolute path to material file and 
+                replacing the file suffix with the name of the 
+                file as indicated by the material file. It's for
+                this reason that wavefront assets must have
+                their path names stripped on export.
+            ==================================================== */
+
+            uint32_t suffix = std::string(materialPath).find_last_of("/");
+            std::string directory = std::string(materialPath).substr(0, suffix).append("/");
+            uint32_t whiteSpace = (std::string(currentLine).find(" ")) + 1;
+            std::string filename = std::string(currentLine).substr(whiteSpace);
+            
+            const char *path = directory.append(filename).c_str();
+            FileLoader::Image image = fileLoader->loadImage(path);
+
+            outColors.push_back(vec3(-0.1f, -0.1f, -0.1f));
+            outImages.push_back(image);
+            
             layerCount += 1;
         }
     };
@@ -278,7 +313,7 @@ bool AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint
     return true;
 };
     
-bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<vec3> &outDiffuse, vector<uint32_t> &outIndexes, std::vector<FileLoader::Image> &outImages, const char* meshPath)
+bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> &outDiffuse, std::vector<FileLoader::Image> &outImages, const char* meshPath)
 {
     //  TODO:
     //  Consider a threading implentation to speed up loads and not block the main-thread/renderer

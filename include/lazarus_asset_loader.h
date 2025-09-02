@@ -64,8 +64,9 @@ class AssetLoader
     	    
         bool parseWavefrontObj(
             std::vector<glm::vec3> &outAttributes,
-            std::vector<glm::vec3> &outDiffuse,
             std::vector<uint32_t> &outIndexes,
+            std::vector<glm::vec3> &outDiffuse,
+            std::vector<FileLoader::Image> &outImages,
             const char *meshPath,
             const char *materialPath
         );
@@ -74,13 +75,14 @@ class AssetLoader
             const char *materialPath,
             std::vector<std::vector<uint32_t>> data,
             std::vector<glm::vec3> &temp,
-            std::vector<glm::vec3> &outDiffuse
+            std::vector<glm::vec3> &outColors,
+            std::vector<FileLoader::Image> &outImages
         );
 
         bool parseGlBinary(
             std::vector<glm::vec3> &outAttributes,
-            std::vector<glm::vec3> &outDiffuse,
             std::vector<uint32_t> &outIndexes,
+            std::vector<glm::vec3> &outDiffuse,
             std::vector<FileLoader::Image> &outImages,
             const char *meshPath
         );
@@ -172,6 +174,7 @@ class AssetLoader
 
         //  wavefront mtl
         uint32_t diffuseCount;
+        uint32_t textureCount;
         glm::vec3 diffuse;
         
         //  Read vertex attributes from temp* members and group them together 

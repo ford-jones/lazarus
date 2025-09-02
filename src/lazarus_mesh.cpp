@@ -49,7 +49,7 @@ MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
     this->textureStorage = textureType;
 };
 
-MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPath, string texturePath, bool selectable)
+MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPath, bool selectable)
 {
     this->meshOut = {};
     this->meshData = {};
@@ -67,7 +67,6 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
 
     meshOut.meshFilepath = meshPath;
     meshOut.materialFilepath = materialPath;
-    meshOut.textureFilepath = texturePath;
     
     /* ==========================================
         Determine whether the file is wavefront
@@ -80,45 +79,20 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     {
         AssetLoader::parseWavefrontObj(
             meshData.attributes,
-            diffuseColors,
             meshData.indexes,
+            diffuseColors,
+            images,
             meshOut.meshFilepath.c_str(),
             materialPath.c_str()
         );
         meshOut.type = MeshManager::MeshType::LOADED_WAVEFRONT;
-
-        /* ========================================================
-            Unlike glb which has the image data baked-in; textured
-            wavefront meshes have their texture data stored 
-            externally, so load it here.
-        =========================================================== */
-
-        for(size_t i = 0; i < diffuseColors.size(); i++)
-        {
-            glm::vec3 color = diffuseColors[i];
-            FileLoader::Image image = {};
-
-            if((color.r + color.g + color.b) < -0.1f)
-            {
-                image = finder->loadImage(meshOut.textureFilepath.c_str());
-                images.push_back(image);
-            }
-            else
-            {
-                image.width = 0;
-                image.height = 0;
-                image.pixelData = NULL;
-
-                images.push_back(image);
-            };
-        };
     }
     else if(suffix.compare("glb") == 0)
     {
         AssetLoader::parseGlBinary(
             meshData.attributes, 
-            diffuseColors, 
             meshData.indexes, 
+            diffuseColors, 
             images,
             meshOut.meshFilepath.c_str()
         );
@@ -168,7 +142,6 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
 
     meshOut.meshFilepath = "";
     meshOut.materialFilepath = "";
-    meshOut.textureFilepath = texturePath;
     
     meshData.texture.unitId = this->textureStorage == TextureLoader::StorageType::ATLAS
     ? GL_TEXTURE1
@@ -178,7 +151,7 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
 
     if(texturePath.size() > 0)
     {
-        FileLoader::Image image = finder->loadImage(meshOut.textureFilepath.c_str());
+        FileLoader::Image image = finder->loadImage(texturePath.c_str());
         images.push_back(image);   
         diffuseColors.push_back(vec3(-0.1f, -0.1f, -0.1f));
 
@@ -276,7 +249,6 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, 
 
     meshOut.meshFilepath = "";
     meshOut.materialFilepath = "";
-    meshOut.textureFilepath = texturePath;
 
     meshData.texture.unitId = this->textureStorage == TextureLoader::StorageType::CUBEMAP
     ? GL_TEXTURE3
@@ -297,7 +269,7 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, 
     {
         if(texturePath.size() > 0)
         {
-            FileLoader::Image image = finder->loadImage(meshOut.textureFilepath.c_str());
+            FileLoader::Image image = finder->loadImage(texturePath.c_str());
             images.push_back(image);   
 
             /* ============================================
@@ -680,7 +652,6 @@ void MeshManager::setMaterialProperties(std::vector<glm::vec3> diffuse, std::vec
         else
         {
             material.type = MaterialType::BASE_COLOR;
-            meshOut.textureFilepath = "";
     
             meshData.texture.samplerId = 0;
             meshData.texture.unitId = GL_TEXTURE2;

@@ -287,7 +287,11 @@ uint32_t TextManager::extendFontStack(std::string filepath, uint32_t ptSize)
         yOffset = alphabetHeights[n * 2];
         xOffset = 0;
         
-        for(uint32_t i = 33; i < 128; i++)
+        /* ==========================================
+            +1 for zero-exclusive keycode indexing
+        ============================================= */
+        
+        for(uint32_t i = 33; i < INT8_MAX + 1; i++)
         {
             this->glyph = FontLoader::loadCharacter(static_cast<char>(i), (n + 1));
 
@@ -417,7 +421,7 @@ void TextManager::identifyAlphabetDimensions(uint32_t fontId)
     this->rowWidth = 0;
     this->rowHeight = 0;
 
-    for(uint8_t i = 33; i < 128; i++)
+    for(uint8_t i = 33; i < INT8_MAX + 1; i++)
     {
         glyph = FontLoader::loadCharacter(static_cast<char>(i), fontId);
         
