@@ -118,7 +118,7 @@ WorldFX::Fog WorldFX::createFog(float minDistance, float maxDistance, float thic
     return this->fogOut;
 };
 
-void WorldFX::loadFog(WorldFX::Fog fogIn)
+void WorldFX::loadFog(WorldFX::Fog fogIn, int32_t shader)
 {
     if(fogIn.density < 0.0f)
     {
@@ -126,11 +126,28 @@ void WorldFX::loadFog(WorldFX::Fog fogIn)
         globals.setExecutionState(StatusCode::LAZARUS_INVALID_INTENSITY);
     };
     
-    glUniform3fv(this->fogColorUniformLocation, 1, &fogIn.color[0]);
-    glUniform3fv(this->fogViewpointUniformLocation, 1, &fogIn.viewpoint[0]);
-    glUniform1f(this->fogMaxDistUniformLocation, fogIn.maxDistance);
-    glUniform1f(this->fogMinDistUniformLocation, fogIn.minDistance);
-    glUniform1f(this->fogDensityUniformLocation, fogIn.density);
+    if(shader == 0)
+    {
+        glUniform3fv(this->fogColorUniformLocation, 1, &fogIn.color[0]);
+        glUniform3fv(this->fogViewpointUniformLocation, 1, &fogIn.viewpoint[0]);
+        glUniform1f(this->fogMaxDistUniformLocation, fogIn.maxDistance);
+        glUniform1f(this->fogMinDistUniformLocation, fogIn.minDistance);
+        glUniform1f(this->fogDensityUniformLocation, fogIn.density);
+    }
+    else
+    {
+        GLuint fogColor       = glGetUniformLocation(shader, "fogColor");
+        GLuint fogViewpoint   = glGetUniformLocation(shader, "fogViewpoint");
+        GLuint fogMaxDist     = glGetUniformLocation(shader, "fogMaxDist");
+        GLuint fogMinDist     = glGetUniformLocation(shader, "fogMinDist");
+        GLuint fogDensity     = glGetUniformLocation(shader, "fogDensity");
+
+        glUniform3fv(fogColor, 1, &fogIn.color[0]);
+        glUniform3fv(fogViewpoint, 1, &fogIn.viewpoint[0]);
+        glUniform1f(fogMaxDist, fogIn.maxDistance);
+        glUniform1f(fogMinDist, fogIn.minDistance);
+        glUniform1f(fogDensity, fogIn.density);
+    };
 
     this->status = glGetError();
     if(this->status != 0)

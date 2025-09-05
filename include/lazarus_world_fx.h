@@ -78,7 +78,7 @@ class WorldFX : private MeshManager
             glm::vec3 color,
             glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f)
         );
-        void loadFog(Fog fogIn);
+        void loadFog(Fog fogIn, int32_t shader = 0);
 
         virtual ~WorldFX();
 
