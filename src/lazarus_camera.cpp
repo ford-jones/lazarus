@@ -36,7 +36,7 @@ CameraManager::CameraManager(GLuint shader)
     this->errorCode                         = 0;
 };
 
-CameraManager::Camera CameraManager::createPerspectiveCam(uint32_t aspectRatioX, uint32_t aspectRatioY)
+CameraManager::Camera CameraManager::createPerspectiveCam(float clipDistance, uint32_t aspectRatioX, uint32_t aspectRatioY)
 {
     srand(time((0)));
     
@@ -60,7 +60,7 @@ CameraManager::Camera CameraManager::createPerspectiveCam(uint32_t aspectRatioX,
     /* ================================
         45° = 0.785398 radians
     =================================== */ 
-    camera.projectionMatrix     = glm::perspective(0.785398f, camera.aspectRatio, 0.1f, 100.0f);
+    camera.projectionMatrix     = glm::perspective(0.785398f, camera.aspectRatio, 0.1f, clipDistance);
 
     camera.usesPerspective      = 1;
 

@@ -57,7 +57,7 @@ class CameraManager
             uint8_t usesPerspective;
         };
 		
-        Camera createPerspectiveCam(uint32_t aspectRatioX = 0, uint32_t aspectRatioY = 0);
+        Camera createPerspectiveCam(float clipDistance = 100.0f, uint32_t aspectRatioX = 0, uint32_t aspectRatioY = 0);
         Camera createOrthoCam(uint32_t aspectRatioX  = 0, uint32_t aspectRatioY = 0);
         void loadCamera(Camera &cameraIn);
         
