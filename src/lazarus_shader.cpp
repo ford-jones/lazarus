@@ -80,6 +80,98 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     uniform samplerCube textureCube;
 
     out vec4 outFragment;
+
+    //  Determine the rgba values of the incoming fragment
+    vec4 _lazarusComputeColor ()
+    {
+        //  rgb with values less than 0 indicate the fragment has no texture and should use diffuse coloring
+        //  Otherwise its a texture so pick out the texels from the appropriate sampler
+
+        if((diffuseColor.r >= 0.0) &&
+           (diffuseColor.g >= 0.0) && 
+           (diffuseColor.b >= 0.0))
+        {
+            return vec4(diffuseColor, 1.0);
+        }
+        else 
+        {
+            vec4 tex = vec4(0.0, 0.0, 0.0, 0.0);
+            switch(samplerType)
+            {
+                case ARRAY:
+                    //  the array-layer number is stored in the z value of the uv
+
+                    tex = texture(textureArray, vec3(textureCoordinate.xy, textureCoordinate.z));
+
+                    //  I.e. MeshManager::Mesh::Material::discardAlphaZero
+
+                    if(discardFrags == 1 && tex.a < 0.1)
+                    {
+                        discard;
+                    }
+                    break;
+
+                case ATLAS:
+                    vec4 t = texture(textureAtlas, textureCoordinate.xy);
+
+                    //  Bitmaps are stored as a single channel (red)
+                    //  Use the value to determine discarded fragments
+
+                    vec4 sampled = vec4(1.0, 1.0, 1.0, t.r);
+                    tex = vec4(textColor, 1.0) * sampled;
+
+                    if(tex.a < 0.1)
+                    {
+                        discard;
+                    }
+                    break;
+
+                case CUBEMAP:
+                    tex = texture(textureCube, skyBoxTextureCoordinate);
+                    break;
+
+                default:
+                    break;
+            };
+
+            return tex;
+        };
+    }
+
+    //  Illuminate the fragment using the lambertian lighting model
+    vec3 _lazarusComputeLambertianReflection (vec4 colorData, vec3 lightPosition, vec3 lightColor) 
+    {
+        vec3 displacement = lightPosition - fragPosition;
+        vec3 direction = normalize(displacement);
+        float diffusion = max(dot(normalCoordinate, direction), 0.0);
+        vec3 color = vec3(colorData.r, colorData.g, colorData.b);
+        vec3 illuminatedFrag = (color * lightColor * diffusion);
+
+        //  Apply inverse square law to illumination result
+        //  Note: Don't apply for directional lights when they are added
+        //  This is better maybe: return illuminatedFrag * min(1.0 / pow(dot(displacement, displacement), 0.5), 1.0);
+        return illuminatedFrag / (dot(displacement, displacement));
+    }
+
+    //  Determines the factor by which fragments should be blended with the fog color by
+    float _lazarusComputeFogFactor()
+    {
+        //  Establish distance between fragment and visibility epicenter
+        float diffX         = pow(fragPosition.x - fogViewpoint.x, 2);
+        float diffY         = pow(fragPosition.y - fogViewpoint.y, 2);
+        float diffZ         = pow(fragPosition.z - fogViewpoint.z, 2);
+        float difference    = sqrt((diffX + diffY + diffZ));
+
+        //  Establish fog thickness: 0.0 = 100%
+        float strength = 1.0 - (clamp(fogDensity, 0.1, 0.9));
+
+        //  Establish fragment's fog-depth
+        float visibilityBounds  = fogMaxDist - difference;
+        float fogBounds         = fogMaxDist - fogMinDist;
+        float fogFactor         = clamp((visibilityBounds / fogBounds), 0.0, strength);
+
+        return fogFactor;
+    }
 )";
 
 const char *LAZARUS_DEFAULT_VERT_SHADER =  R"(
@@ -107,99 +199,9 @@ void main ()
 })"; 
 
 const char *LAZARUS_DEFAULT_FRAG_SHADER = R"(
-//  Illuminate the fragment using the lambertian lighting model
-vec3 calculateLambertianDeflection (vec4 colorData, vec3 lightPosition, vec3 lightColor) 
-{
-    vec3 displacement = lightPosition - fragPosition;
-    vec3 direction = normalize(displacement);
-    float diffusion = max(dot(normalCoordinate, direction), 0.0);
-    vec3 color = vec3(colorData.r, colorData.g, colorData.b);
-    vec3 illuminatedFrag = (color * lightColor * diffusion);
-    
-    //  Apply inverse square law to illumination result
-    //  Note: Don't apply for directional lights when they are added
-    //  This is better maybe: return illuminatedFrag * min(1.0 / pow(dot(displacement, displacement), 0.5), 1.0);
-    return illuminatedFrag / (dot(displacement, displacement));
-}
-
-float calculateFog()
-{
-    //  Establish distance between fragment and visibility epicenter
-    float diffX         = pow(fragPosition.x - fogViewpoint.x, 2);
-    float diffY         = pow(fragPosition.y - fogViewpoint.y, 2);
-    float diffZ         = pow(fragPosition.z - fogViewpoint.z, 2);
-    float difference    = sqrt((diffX + diffY + diffZ));
-
-    //  Establish fog thickness: 0.0 = 100%
-    float strength = 1.0 - (clamp(fogDensity, 0.1, 0.9));
-
-    //  Establish fragment's fog-depth
-    float visibilityBounds  = fogMaxDist - difference;
-    float fogBounds         = fogMaxDist - fogMinDist;
-    float fogFactor         = clamp((visibilityBounds / fogBounds), 0.0, strength);
-
-    return fogFactor;
-}
-
-vec4 interpretColorData ()
-{
-    //  rgb with values less than 0 indicate the fragment has no texture and should use diffuse coloring
-    //  Otherwise its a texture so pick out the texels from the appropriate sampler
-
-    if((diffuseColor.r >= 0.0) &&
-       (diffuseColor.g >= 0.0) && 
-       (diffuseColor.b >= 0.0))
-    {
-        return vec4(diffuseColor, 1.0);
-    }
-    else 
-    {
-        vec4 tex = vec4(0.0, 0.0, 0.0, 0.0);
-        switch(samplerType)
-        {
-            case ARRAY:
-                //  the array-layer number is stored in the z value of the uv
-
-                tex = texture(textureArray, vec3(textureCoordinate.xy, textureCoordinate.z));
-
-                //  I.e. MeshManager::Mesh::Material::discardAlphaZero
-
-                if(discardFrags == 1 && tex.a < 0.1)
-                {
-                    discard;
-                }
-                break;
-            
-            case ATLAS:
-                vec4 t = texture(textureAtlas, textureCoordinate.xy);
-
-                //  Bitmaps are stored as a single channel (red)
-                //  Use the value to determine discarded fragments
-
-                vec4 sampled = vec4(1.0, 1.0, 1.0, t.r);
-                tex = vec4(textColor, 1.0) * sampled;
-
-                if(tex.a < 0.1)
-                {
-                    discard;
-                }
-                break;
-            
-            case CUBEMAP:
-                tex = texture(textureCube, skyBoxTextureCoordinate);
-                break;
-            
-            default:
-                break;
-        };
-        
-        return tex;
-    };
-}
-
 void main ()
 {
-    vec4 fragColor = interpretColorData();
+    vec4 fragColor = _lazarusComputeColor();
 
     //  When the fragment is part of a skybox or is observed by an orthographic camera, use color as-is.
     if(samplerType == CUBEMAP || isUnderPerspective == 0)
@@ -213,14 +215,15 @@ void main ()
         //  Calculate the fragment's diffuse lighting for each light in the scene.
         for(int i = 0; i < lightCount; i++)
         {
-            illuminationResult += (calculateLambertianDeflection(fragColor, lightPositions[i], lightColors[i]) * lightBrightness[i]);
+            vec3 reflection = _lazarusComputeLambertianReflection(fragColor, lightPositions[i], lightColors[i]);
+            illuminationResult += (reflection * lightBrightness[i]);
         };
 
         outFragment = vec4(illuminationResult, 1.0);
 
         if(fogDensity > 0.0)
         {
-            float fogFactor = calculateFog();
+            float fogFactor = _lazarusComputeFogFactor();
             outFragment = vec4((mix(fogColor.xyz, illuminationResult, fogFactor)), 1.0);
         }
     }
