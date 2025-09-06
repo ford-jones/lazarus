@@ -296,7 +296,8 @@ flat out int isUnderPerspective;            //  Output required by default progr
 ```
 
 #### Pixel / Fragment shader inputs:
-Note these inputs can be found at `LAZARUS_DEFAULT_FRAG_LAYOUT`.
+Note these inputs can be found at `LAZARUS_DEFAULT_FRAG_LAYOUT`. \
+Anything not used from here will be optimised-out when compiled.
 ```c
     #define MAX_LIGHTS 150                          
 
@@ -333,4 +334,8 @@ Note these inputs can be found at `LAZARUS_DEFAULT_FRAG_LAYOUT`.
     uniform samplerCube textureCube;                //  Cubemap sampler used for skyboxes
 
     out vec4 outFragment;                           //  The output fragment color
+
+    vec4 _lazarusComputeColor();                    //  Evaluate inputs and determine fragment's rgba values
+    vec3 _lazarusComputeLambertianReflection();     //  Calculate the fragment's diffuse lighting
+    float _lazarusComputeFogFactor();               //  Calculate fog attenuation
 ```
