@@ -301,41 +301,42 @@ Anything not used from here will be optimised-out when compiled.
 ```c
     #define MAX_LIGHTS 150                          
 
-	const int CUBEMAP   = 1;                        //  Storage variants used for comparison with samplerType
+	const int CUBEMAP   = 1;                                //  Storage variants used for comparison with samplerType
 	const int ATLAS     = 2;
 	const int ARRAY     = 3;
 
-    in vec3 fragPosition;                           //  Input 3D fragment position
-    in vec3 diffuseColor;                           //  Input fragment color
-    in vec3 normalCoordinate;                       //  Input fragment normals
-    in vec3 textureCoordinate;                      //  Input UV coordinates 
-    in vec3 skyBoxTextureCoordinate;                //  Input UV coords for skyboxes
+    in vec3 fragPosition;                                   //  Input 3D fragment position
+    in vec3 diffuseColor;                                   //  Input fragment color
+    in vec3 normalCoordinate;                               //  Input fragment normals
+    in vec3 textureCoordinate;                              //  Input UV coordinates 
+    in vec3 skyBoxTextureCoordinate;                        //  Input UV coords for skyboxes
 
-    flat in int isUnderPerspective;                 //  1 if a perspective camera is being used to observe this fragment, otherwise 0
+    flat in int isUnderPerspective;                         //  1 if a perspective camera is being used to observe this fragment, otherwise 0
 
-    uniform int lightCount;                         //  The number of lights currently bound to lazarus
-    uniform vec3 lightPositions[MAX_LIGHTS];        //  A container of 3D light positions in-order
-    uniform vec3 lightColors[MAX_LIGHTS];           //  A container of light color values in-order
-    uniform float lightBrightness[MAX_LIGHTS];      //  A container of light brightness variables in-order
+    uniform int lightCount;                                 //  The number of lights currently bound to lazarus
+    uniform vec3 lightPositions[MAX_LIGHTS];                //  A container of 3D light positions in-order
+    uniform vec3 lightColors[MAX_LIGHTS];                   //  A container of light color values in-order
+    uniform float lightBrightness[MAX_LIGHTS];              //  A container of light brightness variables in-order
 
-    uniform vec3 fogColor;                          //  The color of environmental fog if it is present
-    uniform vec3 fogViewpoint;                      //  Where the epicenter from which fog thickness attenuates out from
-    uniform float fogMaxDist;                       //  The maximum distance at which environment fog effects are observable
-    uniform float fogMinDist;                       //  The minimum distance at which environment fog effects are observable
-    uniform float fogDensity;                       //  Thickness of environment fog if present
+    uniform vec3 fogColor;                                  //  The color of environmental fog if it is present
+    uniform vec3 fogViewpoint;                              //  Where the epicenter from which fog thickness attenuates out from
+    uniform float fogMaxDist;                               //  The maximum distance at which environment fog effects are observable
+    uniform float fogMinDist;                               //  The minimum distance at which environment fog effects are observable
+    uniform float fogDensity;                               //  Thickness of environment fog if present
 
-    uniform vec3 textColor;                         //  The color of the text, if the fragment is part of an ascii glyph
+    uniform vec3 textColor;                                 //  The color of the text, if the fragment is part of an ascii glyph
 
-    uniform int samplerType;                        //  In-storage variant for identification of texture samplers
-    uniform int discardFrags;                       //  Whether or not fragments with a diffuse-alpha value of zero should be discarded.
+    uniform int samplerType;                                //  In-storage variant for identification of texture samplers
+    uniform int discardFrags;                               //  Whether or not fragments with a diffuse-alpha value of zero should be discarded.
 
-    uniform sampler2D textureAtlas;                 //  Glyph atlas used for font bitmaps
-    uniform sampler2DArray textureArray;            //  Array sampler / testure stack
-    uniform samplerCube textureCube;                //  Cubemap sampler used for skyboxes
+    uniform sampler2D textureAtlas;                         //  Glyph atlas used for font bitmaps
+    uniform sampler2DArray textureArray;                    //  Array sampler / testure stack
+    uniform samplerCube textureCube;                        //  Cubemap sampler used for skyboxes
 
-    out vec4 outFragment;                           //  The output fragment color
+    out vec4 outFragment;                                   //  The output fragment color
 
-    vec4 _lazarusComputeColor();                    //  Evaluate inputs and determine fragment's rgba values
-    vec3 _lazarusComputeLambertianReflection();     //  Calculate the fragment's diffuse lighting
-    float _lazarusComputeFogFactor();               //  Calculate fog attenuation
+    vec4 _lazarusComputeColor();                            //  Evaluate inputs and determine fragment's rgba values
+    vec3 _lazarusComputeLambertianReflection(vec3 color);   //  Calculate the fragment's diffuse lighting
+    float _lazarusComputeFogFactor();                       //  Calculate fog attenuation
 ```
+**It should be noted that `_lazarusComputeColor()` will only return a value for a textured mesh when it is called from the program which the `MeshManager` was instantiated with.**

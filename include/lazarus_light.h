@@ -55,7 +55,7 @@ class LightManager
         virtual ~LightManager();
 
         Light createLightSource(glm::vec3 location, glm::vec3 color, float brightness = 1.0f);
-        void loadLightSource(Light &lightIn);
+        void loadLightSource(Light &lightIn, int32_t shader = 0);
 
     private:
         void checkErrors(const char *file, uint32_t line);

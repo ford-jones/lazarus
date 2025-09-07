@@ -139,18 +139,28 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     }
 
     //  Illuminate the fragment using the lambertian lighting model
-    vec3 _lazarusComputeLambertianReflection (vec4 colorData, vec3 lightPosition, vec3 lightColor) 
+    vec3 _lazarusComputeLambertianReflection (vec3 colorData) 
     {
-        vec3 displacement = lightPosition - fragPosition;
-        vec3 direction = normalize(displacement);
-        float diffusion = max(dot(normalCoordinate, direction), 0.0);
-        vec3 color = vec3(colorData.r, colorData.g, colorData.b);
-        vec3 illuminatedFrag = (color * lightColor * diffusion);
+        vec3 result = vec3(0.0, 0.0, 0.0);
 
-        //  Apply inverse square law to illumination result
-        //  Note: Don't apply for directional lights when they are added
-        //  This is better maybe: return illuminatedFrag * min(1.0 / pow(dot(displacement, displacement), 0.5), 1.0);
-        return illuminatedFrag / (dot(displacement, displacement));
+        //  Calculate the fragment's diffuse lighting for each light in the scene.
+        for(int i = 0; i < lightCount; i++)
+        {
+            vec3 displacement = lightPositions[i] - fragPosition;
+            vec3 direction = normalize(displacement);
+            float diffusion = max(dot(normalCoordinate, direction), 0.0);
+            vec3 color = vec3(colorData.r, colorData.g, colorData.b);
+            vec3 illuminatedFrag = (color * lightColors[i] * diffusion);
+
+            //  Apply inverse square law to illumination result
+            //  Note: Don't apply for directional lights when they are added
+            //  This is better maybe: return illuminatedFrag * min(1.0 / pow(dot(displacement, displacement), 0.5), 1.0);
+            vec3 reflection = illuminatedFrag / (dot(displacement, displacement));
+
+            result += (reflection * lightBrightness[i]);
+        };
+
+        return result;
     }
 
     //  Determines the factor by which fragments should be blended with the fog color by
@@ -210,21 +220,15 @@ void main ()
     }
     else
     {
-        vec3 illuminationResult = 0.1 * fragColor.rgb;
+        vec3 lighting = 0.1 * fragColor.rgb;
+        lighting += _lazarusComputeLambertianReflection(fragColor.rgb);
 
-        //  Calculate the fragment's diffuse lighting for each light in the scene.
-        for(int i = 0; i < lightCount; i++)
-        {
-            vec3 reflection = _lazarusComputeLambertianReflection(fragColor, lightPositions[i], lightColors[i]);
-            illuminationResult += (reflection * lightBrightness[i]);
-        };
-
-        outFragment = vec4(illuminationResult, 1.0);
+        outFragment = vec4(lighting, 1.0);
 
         if(fogDensity > 0.0)
         {
             float fogFactor = _lazarusComputeFogFactor();
-            outFragment = vec4((mix(fogColor.xyz, illuminationResult, fogFactor)), 1.0);
+            outFragment = vec4((mix(fogColor.xyz, lighting, fogFactor)), 1.0);
         }
     }
 
