@@ -40,6 +40,62 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
     out vec3 skyBoxTextureCoordinate;
 
     flat out int isUnderPerspective;
+
+    vec3 _lazarusComputeWorldPosition()
+    {
+        vec4 worldPosition = modelMatrix * vec4(inVertex, 1.0);
+   
+        //  Determine the vertex's clip-space position
+        if(usesPerspective != 0)
+        {
+           gl_Position = perspectiveProjectionMatrix * viewMatrix * worldPosition;   
+        }
+        else
+        {
+            gl_Position = orthoProjectionMatrix * viewMatrix * worldPosition;
+        }
+
+        //  Required by fragment shader to determine lighting outcome
+        isUnderPerspective = usesPerspective;
+
+        //  Truncate w value, we don't need it now that clipping
+        //  output (gl_Position) has been calculated.
+        vec3 result = vec3(worldPosition);
+
+        return result;
+    };
+
+    vec3 _lazarusComputeNormalDirection()
+    {
+        //  Invert the matrix and swap it's rows and columns.
+        //  This is required for preservation of the normal direction, which must remain
+        //  perpendicular to the surface and would otherwise fail to when the 
+        //  scale of the surface is non uniform.
+        //  http://www.lighthouse3d.com/tutorials/glsl-12-tutorial/the-normal-matrix/
+        mat4 inverseTranspose = transpose(inverse(modelMatrix));
+
+        //  Truncate bottom row of matrix for clean multiplication against vec3
+        vec3 result = mat3(inverseTranspose) * inNormal;
+
+        return result;
+    };
+)";
+
+const char *LAZARUS_DEFAULT_VERT_SHADER =  R"(
+    void main ()
+    {
+       vec3 worldPosition = _lazarusComputeWorldPosition();
+       vec3 normalDirection = _lazarusComputeNormalDirection();
+
+       fragPosition = worldPosition;
+       diffuseColor = inDiffuse;
+       normalCoordinate = normalDirection;
+       textureCoordinate = inTexCoord;
+
+       skyBoxTextureCoordinate = -inVertex;
+
+       return;
+    };
 )";
 
 const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
@@ -84,6 +140,8 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     //  Determine the rgba values of the incoming fragment
     vec4 _lazarusComputeColor ()
     {
+        vec4 result = vec4(0.0, 0.0, 0.0, 0.0);
+
         //  rgb with values less than 0 indicate the fragment has no texture and should use diffuse coloring
         //  Otherwise its a texture so pick out the texels from the appropriate sampler
 
@@ -91,51 +149,51 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
            (diffuseColor.g >= 0.0) && 
            (diffuseColor.b >= 0.0))
         {
-            return vec4(diffuseColor, 1.0);
+            result = vec4(diffuseColor, 1.0);
         }
         else 
         {
-            vec4 tex = vec4(0.0, 0.0, 0.0, 0.0);
             switch(samplerType)
             {
                 case ARRAY:
                     //  the array-layer number is stored in the z value of the uv
 
-                    tex = texture(textureArray, vec3(textureCoordinate.xy, textureCoordinate.z));
+                    result = texture(textureArray, vec3(textureCoordinate.xy, textureCoordinate.z));
 
                     //  I.e. MeshManager::Mesh::Material::discardAlphaZero
 
-                    if(discardFrags == 1 && tex.a < 0.1)
+                    if(discardFrags == 1 && result.a < 0.1)
                     {
                         discard;
                     }
                     break;
 
                 case ATLAS:
-                    vec4 t = texture(textureAtlas, textureCoordinate.xy);
+                    vec4 tex = texture(textureAtlas, textureCoordinate.xy);
 
                     //  Bitmaps are stored as a single channel (red)
-                    //  Use the value to determine discarded fragments
+                    //  Use the value to determine alpha and discard
+                    //  those which are 0.
 
-                    vec4 sampled = vec4(1.0, 1.0, 1.0, t.r);
-                    tex = vec4(textColor, 1.0) * sampled;
+                    vec4 sampled = vec4(1.0, 1.0, 1.0, tex.r);
+                    result = vec4(textColor, 1.0) * sampled;
 
-                    if(tex.a < 0.1)
+                    if(result.a < 0.1)
                     {
                         discard;
                     }
                     break;
 
                 case CUBEMAP:
-                    tex = texture(textureCube, skyBoxTextureCoordinate);
+                    result = texture(textureCube, skyBoxTextureCoordinate);
                     break;
 
                 default:
                     break;
             };
-
-            return tex;
         };
+
+        return result;
     }
 
     //  Illuminate the fragment using the lambertian lighting model
@@ -178,62 +236,39 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
         //  Establish fragment's fog-depth
         float visibilityBounds  = fogMaxDist - difference;
         float fogBounds         = fogMaxDist - fogMinDist;
-        float fogFactor         = clamp((visibilityBounds / fogBounds), 0.0, strength);
+        float result            = clamp((visibilityBounds / fogBounds), 0.0, strength);
 
-        return fogFactor;
+        return result;
     }
-)";
-
-const char *LAZARUS_DEFAULT_VERT_SHADER =  R"(
-void main ()
-{
-   vec4 worldPosition = modelMatrix * vec4(inVertex, 1.0);
-   
-   if(usesPerspective != 0)
-   {
-      gl_Position = perspectiveProjectionMatrix * viewMatrix * worldPosition;   
-   }
-   else
-   {
-      gl_Position = orthoProjectionMatrix * viewMatrix * worldPosition;
-   }
-   
-   fragPosition = vec3(worldPosition);
-   diffuseColor = inDiffuse;
-   normalCoordinate = mat3(transpose(inverse(modelMatrix))) * inNormal;
-   textureCoordinate = inTexCoord;
-
-   isUnderPerspective = usesPerspective;
-
-   skyBoxTextureCoordinate = -inVertex;
-})"; 
+)"; 
 
 const char *LAZARUS_DEFAULT_FRAG_SHADER = R"(
-void main ()
-{
-    vec4 fragColor = _lazarusComputeColor();
-
-    //  When the fragment is part of a skybox or is observed by an orthographic camera, use color as-is.
-    if(samplerType == CUBEMAP || isUnderPerspective == 0)
+    void main ()
     {
-        outFragment = fragColor;
-    }
-    else
-    {
-        vec3 lighting = 0.1 * fragColor.rgb;
-        lighting += _lazarusComputeLambertianReflection(fragColor.rgb);
+        vec4 fragColor = _lazarusComputeColor();
 
-        outFragment = vec4(lighting, 1.0);
-
-        if(fogDensity > 0.0)
+        //  When the fragment is part of a skybox or is observed by an orthographic camera, use color as-is.
+        if(samplerType == CUBEMAP || isUnderPerspective == 0)
         {
-            float fogFactor = _lazarusComputeFogFactor();
-            outFragment = vec4((mix(fogColor.xyz, lighting, fogFactor)), 1.0);
+            outFragment = fragColor;
         }
-    }
+        else
+        {
+            vec3 lighting = 0.1 * fragColor.rgb;
+            lighting += _lazarusComputeLambertianReflection(fragColor.rgb);
 
-    return;
-})"; 
+            outFragment = vec4(lighting, 1.0);
+
+            if(fogDensity > 0.0)
+            {
+                float fogFactor = _lazarusComputeFogFactor();
+                outFragment = vec4((mix(fogColor.xyz, lighting, fogFactor)), 1.0);
+            }
+        }
+
+        return;
+    }
+)"; 
 
 Shader::Shader()
 {
