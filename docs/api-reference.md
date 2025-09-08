@@ -557,7 +557,7 @@ Retrieves the ID of a pixel occupant in view which has `MeshManager::Mesh::isCli
 A management class for light assets and their properties. 
 
 ### Constructor:
-#### LightManager(GLuint shader)
+#### LightManager(int shader)
 
 Params:
 > **shader:** *The id of the shader program used to render this light. Acquired from the return value of `Shader::initialiseShader()`*
@@ -573,11 +573,12 @@ Params:
 > **color:** *The desired RGB color of the light.*
 > **brightness:** *The light's intensity / luminesence.*
 
-#### void loadLightSource(LightManager::Light &lightData)
+#### void loadLightSource(LightManager::Light &lightData, int shader)
 Passes the light object's locative (x,y,z) values into the vertex shader and its' colour (r,g,b) values into the fragment shader.
 
 Params:
 > **lightData:** *A reference to the light asset you would like to render.*
+> **shader:** *Alternative shader destination to upload light properties rather than that which this `LightManager` was instantiated with. Note that usage of this option has performance expenses. (optional)*
 
 ### Members:
 > **Light:** *A collection of properties which make up a light entity. (type: `struct`)*
@@ -741,6 +742,14 @@ Params:
 > **thickness:** *The fog's density.*
 > **color:** *The fog's RGB color values.*
 > **position:** *The worldspace coordinates of the viewpoint. (default: `{0.0, 0.0, 0.0} (origin)`).*
+
+
+#### void loadFog(WorldFx::Fog &fogIn, int shader)
+Load fog properties to the GPU to be used in subsequent draw calls.
+
+Params:
+> **fogIn:** *The fog to be uploaded.* \
+> **shader:** *The destination shader program which fog properties should be uploaded to instead of that which was specified during instantiation. Note that usage of this function has performance expenses. (optional)*
 
 ### Members:
 > **SkyBox**: *A collection of properties which make up a skybox object. (type: `struct`.)*

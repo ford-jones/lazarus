@@ -34,13 +34,18 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
-      - name: Read changelogs
-        id: readLog
-        run: |
-          content=$(jq -Rs . < .github/changelogs/latest.md)
-          echo "::set-output name=data::${content}"
       - name: Update website release notes
         shell: bash
         run: |
-          curl --request POST --url "https://lazarus-server.onrender.com/addChangeLog" --header "Content-Type: application/json" --data "{\"date\": \"$(date +\"%Y.%m.%d%H%M%S\")\", \"title\": \"${{ env.tag }}\", \"description\": \"CI release notes\", \"changeLog\":${{ steps.readLog.outputs.data }}}" --include
-
+          payload=$(jq -n \
+            --arg date "$(date +"%Y.%m.%d%H%M%S")" \
+            --arg title "${{ env.tag }}" \
+            --arg description "CI release notes" \
+            --rawfile changeLog .github/changelogs/latest.md \
+            '{date: $date, title: $title, description: $description, changeLog: $changeLog}')
+          
+          curl --request POST \
+            --url "https://lazarus-server.onrender.com/addChangeLog" \
+            --header "Content-Type: application/json" \
+            --data "$payload" \
+            --include
