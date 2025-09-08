@@ -1,5 +1,6 @@
-# Version: 2025.09.08011456
+# Version: 2025.09.08011613
 
+* [b8937ef](https://github.com/ford-jones/lazarus/commit/b8937ef904b55bba00d2a74faa2de08d31e6464b): [Changelog CI] Add Changelog for Version 2025.09.08011456
 * [28c79e9](https://github.com/ford-jones/lazarus/commit/28c79e91fe65e3ee14b5eb2d82343bfb9aa3f665): Fix: Remediated CI mess
 * [6b67a7c](https://github.com/ford-jones/lazarus/commit/6b67a7c194eeb2697a612f4b28ad7fc3c6d30b81): Clean: Resolved merge conflicts
 * [50d2307](https://github.com/ford-jones/lazarus/commit/50d2307e7f59f2340bcd816ccdd33cd73814a882): Fix: Enables dynamic shader usage with lighting
