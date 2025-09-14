@@ -258,6 +258,69 @@ void Events::updateKeyboardState()
 			case GLFW_KEY_RIGHT_SUPER :
 				this->keyEventString = "fn-r";
 				break;
+			case GLFW_KEY_BACKSPACE :
+				this->keyEventString = "backspace";
+				break;
+			case GLFW_KEY_CAPS_LOCK :
+				this->keyEventString = "capslock";
+				break;
+			case GLFW_KEY_ESCAPE :
+				this->keyEventString = "esc";
+				break;
+			case GLFW_KEY_F1 :
+				this->keyEventString = "f1";
+				break;
+			case GLFW_KEY_F2 :
+				this->keyEventString = "f2";
+				break;
+			case GLFW_KEY_F3 :
+				this->keyEventString = "f3";
+				break;
+			case GLFW_KEY_F4 :
+				this->keyEventString = "f4";
+				break;
+			case GLFW_KEY_F5 :
+				this->keyEventString = "f5";
+				break;
+			case GLFW_KEY_F6 :
+				this->keyEventString = "f6";
+				break;
+			case GLFW_KEY_F7 :
+				this->keyEventString = "f7";
+				break;
+			case GLFW_KEY_F8 :
+				this->keyEventString = "f8";
+				break;
+			case GLFW_KEY_F9 :
+				this->keyEventString = "f9";
+				break;
+			case GLFW_KEY_F10 :
+				this->keyEventString = "f10";
+				break;
+			case GLFW_KEY_F11 :
+				this->keyEventString = "f11";
+				break;
+			case GLFW_KEY_F12 :
+				this->keyEventString = "f12";
+				break;
+			case GLFW_KEY_DELETE :
+				this->keyEventString = "delete";
+				break;
+			case GLFW_KEY_HOME :
+				this->keyEventString = "home";
+				break;
+			case GLFW_KEY_INSERT :
+				this->keyEventString = "insert";
+				break;
+			case GLFW_KEY_END :
+				this->keyEventString = "end";
+				break;
+			case GLFW_KEY_PAGE_UP :
+				this->keyEventString = "pgup";
+				break;
+			case GLFW_KEY_PAGE_DOWN :
+				this->keyEventString = "pgdn";
+				break;
 			default :
 				this->keyEventString = glfwGetKeyName(keyEventCode, keyEventOsCode);
 				break;
