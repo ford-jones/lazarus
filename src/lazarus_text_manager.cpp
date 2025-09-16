@@ -227,12 +227,16 @@ TextManager::TextManager(GLuint shader)
     this->uvD = 0.0;
 };
 
+void TextManager::initialise()
+{
+    FontLoader::loaderInit();
+};
+
 uint32_t TextManager::extendFontStack(std::string filepath, uint32_t ptSize)
 {
     fonts.clear();
     alphabetHeights.clear();
-
-    FontLoader::loaderInit();
+    
     this->fontIndex = FontLoader::loadTrueTypeFont(filepath, ptSize, 0);
     
     /* ===========================================================================

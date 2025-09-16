@@ -89,7 +89,8 @@ class TextManager : private FontLoader, private MeshManager
             std::string targetString;
             glm::vec3 color;
         };
-        
+
+        void initialise();
         uint32_t extendFontStack(std::string filepath, uint32_t ptSize = 12);
         Text loadText(std::string targetText, uint32_t fontId, glm::vec2 location, glm::vec3 color = glm::vec3(0.0f, 0.0f, 0.0f), uint32_t letterSpacing = 1, Text textIn = {});
         void drawText(Text text);
