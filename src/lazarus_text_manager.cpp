@@ -187,12 +187,6 @@ FontLoader::~FontLoader()
     FT_Done_FreeType(this->lib);
 };
 
-    /* =======================================================
-        TODO:
-        Make draw call param optional. If it isn't present 
-        the entire layout should be drawn.
-    ========================================================== */
-
 TextManager::TextManager(GLuint shader) 
     : TextManager::FontLoader(),
       TextManager::MeshManager(shader, TextureLoader::StorageType::ATLAS)
@@ -200,6 +194,7 @@ TextManager::TextManager(GLuint shader)
     LOG_DEBUG("Constructing Lazarus::TextManager");
 
     this->shaderProgram = shader;
+    this->textColorUniformLocation = glGetUniformLocation(this->shaderProgram, "textColor");
     this->cameraBuilder = std::make_unique<CameraManager>(this->shaderProgram);
     
     this->textOut = {};
@@ -209,8 +204,6 @@ TextManager::TextManager(GLuint shader)
     this->alphabetHeights = {};
 
     this->translationStride = 0;
-
-    this->textColor = glm::vec3(0.0f, 0.0f, 0.0f);
 
     this->fontIndex = 0;
     this->layoutIndex = 0;
@@ -227,12 +220,29 @@ TextManager::TextManager(GLuint shader)
     this->uvD = 0.0;
 };
 
+void TextManager::initialise()
+{
+    FontLoader::loaderInit();
+
+    /* ===============================================
+        Unlike other mesh assets (i.e. 3D mesh or 
+        sprites), quads which are wrapped with a glyph
+        texture are rendered using an orthographic 
+        projection matrix which is overlain over the 
+        perspective projection matrix. This is done by 
+        saving glyph draw calls till last, prior to 
+        swapping the front and back buffers. This 
+        gives the effect of 2D / HUD text.
+    ================================================== */
+    
+    this->camera = cameraBuilder->createOrthoCam(globals.getDisplayWidth(), globals.getDisplayHeight());
+};
+
 uint32_t TextManager::extendFontStack(std::string filepath, uint32_t ptSize)
 {
     fonts.clear();
     alphabetHeights.clear();
-
-    FontLoader::loaderInit();
+    
     this->fontIndex = FontLoader::loadTrueTypeFont(filepath, ptSize, 0);
     
     /* ===========================================================================
@@ -306,10 +316,35 @@ uint32_t TextManager::extendFontStack(std::string filepath, uint32_t ptSize)
     return fonts.size() - 1;
 };
 
-TextManager::Text TextManager::loadText(std::string targetText, uint32_t fontId, glm::vec2 location, glm::vec3 color, uint32_t letterSpacing, TextManager::Text textIn)
+// TextManager::Text TextManager::createText(std::string targetText, uint32_t fontId, glm::vec2 location, glm::vec3 color, uint32_t letterSpacing, TextManager::Text textIn)
+TextManager::Text TextManager::createText(std::string targetText, uint32_t fontId, glm::vec2 location, glm::vec3 color, uint32_t letterSpacing)
+{
+    this->layoutIndex += 1;
+    textOut.layoutIndex = this->layoutIndex;
+    
+    textOut.color = color;
+    textOut.targetString = targetText;
+    textOut.location = location;
+    textOut.fontIndex = fontId;
+    textOut.letterSpacing = letterSpacing;
+    
+    this->layoutEntry = std::pair<int, std::vector<MeshManager::Mesh>>(this->layoutIndex, {});
+    this->layout.insert(this->layoutEntry);
+
+    this->loadText(textOut);
+
+    return textOut;
+};
+
+void TextManager::loadText(TextManager::Text textIn)
 {
     /* =================================================
-        Clear internal child trackers to stop bloat.
+        Creation of these tiles takes up space in the
+        manager's dataStore and will grow indefinitely
+        if not flushed out. 
+
+        Also helps ensure the location of the tiles at
+        the time of draw. I.e. index 0 .. n
     ==================================================== */
     MeshManager::clearMeshStorage();
 
@@ -317,15 +352,20 @@ TextManager::Text TextManager::loadText(std::string targetText, uint32_t fontId,
     {
         this->word.clear();
     };
-    
-    this->setTextColor(color);
-    textOut.color = color;
-    textOut.targetString = targetText;
-    textOut.location = location;
 
-    for(size_t i = 0; i < targetText.size(); i++)
+    this->translationStride = 0;
+    
+    /* ==========================================
+        Generate new tiles which are used as 
+        texture surfaces for a letter. 
+        
+        Letters are identified by their UV 
+        coordinates from within the glyph atlas.
+    ============================================= */
+    
+    for(size_t i = 0; i < textIn.targetString.size(); i++)
     {   
-        this->setActiveGlyph(targetText[i], fontId, letterSpacing);
+        this->setActiveGlyph(textIn.targetString[i], textIn.fontIndex, textIn.letterSpacing);
         quad = MeshManager::createQuad(
             static_cast<float>(this->glyph.width), 
             static_cast<float>(this->rowHeight), 
@@ -337,66 +377,40 @@ TextManager::Text TextManager::loadText(std::string targetText, uint32_t fontId,
         );
 
         /* =============================================
-            Add ((createQuad input's x & y) / 2) to the 
-            translation to offset from bottom left-most
-            corner instead of the origin.
+            Translate the tile to it's location within
+            the word, relative to the other letters.
         ================================================ */
         transformer.translateMeshAsset(
             quad, 
-            static_cast<float>((location.x + (this->glyph.width / 2.0f)) + this->translationStride), 
-            static_cast<float>((location.y + (this->rowHeight / 2.0f))), 
+            static_cast<float>((textIn.location.x + (this->glyph.width / 2.0f)) + this->translationStride), 
+            static_cast<float>((textIn.location.y + (this->rowHeight / 2.0f))), 
             0.0f
         );
-        this->translationStride += (this->glyph.width + letterSpacing);
+        this->translationStride += (this->glyph.width + textIn.letterSpacing);
 
         this->word.push_back(quad);
     };
 
-    /* =================================================
-        The layoutID argument exists so that the user  
-        can specify an existing layout object to 
-        update / replace instead of creating anew. This 
-        is useful for text which needs to be updated 
-        inside the render loop - for instance FPS, 
-        entity coordinates or any other string which 
+    /* ============================================
+        Cleanup the layout at the locaiton of an
+        entry and assume it's position with the new
+        set of tiles.
+    =============================================== */
 
-        might update on-the-fly.
-    ==================================================== */
-    if(textIn.layoutIndex)
-    {
-        layout.erase(textIn.layoutIndex);
-        layout.insert_or_assign(textIn.layoutIndex, this->word);
+    layout.erase(textIn.layoutIndex);
+    layout.insert_or_assign(textIn.layoutIndex, this->word);
         
-        this->translationStride = 0;
-    } 
-    else 
-    {
-        this->layoutIndex += 1;
-        this->textOut.layoutIndex = this->layoutIndex;
-        this->layoutEntry = std::pair<int, std::vector<MeshManager::Mesh>>(this->layoutIndex, this->word);
-        this->layout.insert(this->layoutEntry);
+    this->translationStride = 0;
 
-        this->translationStride = 0;
-    };
-
-    /* ===============================================
-        Unlike other mesh assets (i.e. 3D mesh or 
-        sprites), quads which are wrapped with a glyph
-        texture are rendered using an orthographic 
-        projection matrix which is overlain over the 
-        perspective projection matrix. This is done by 
-        saving glyph draw calls till last, prior to 
-        swapping the front and back buffers. This 
-        gives the effect of 2D / HUD text.
-    ================================================== */
-    this->camera = cameraBuilder->createOrthoCam(globals.getDisplayWidth(), globals.getDisplayHeight());
-
-    return textOut;
+    //  TODO:
+    //  Check opengl errors 
+    
+    glUniform3fv(this->textColorUniformLocation, 1, &textIn.color[0]);
 };
 
-void TextManager::drawText(TextManager::Text text)
+void TextManager::drawText(TextManager::Text textIn)
 {    
-    this->word = layout.at(text.layoutIndex);
+    this->word = layout.at(textIn.layoutIndex);
 
     for(auto i: this->word)
     {
@@ -430,7 +444,6 @@ void TextManager::identifyAlphabetDimensions(uint32_t fontId)
         {
             rowHeight = glyph.height;
         };
-
     };
 
     return;
@@ -463,16 +476,6 @@ void TextManager::setActiveGlyph(char target, uint32_t fontId, uint32_t spacing)
         this->characters = this->fonts.at(fontId);
         this->glyph = this->characters.at((this->targetKey - 33));
     };
-};
-
-void TextManager::setTextColor(glm::vec3 color)
-{
-    //  TODO:
-    //  Check opengl errors 
-    
-    this->textColor = color;
-    GLuint textColorUniformLocation = glGetUniformLocation(this->shaderProgram, "textColor");
-    glUniform3fv(textColorUniformLocation, 1, &this->textColor[0]);
 };
 
 void TextManager::lookUpUVs(uint8_t keyCode, uint32_t fontId)

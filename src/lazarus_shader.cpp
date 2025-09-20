@@ -40,6 +40,62 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
     out vec3 skyBoxTextureCoordinate;
 
     flat out int isUnderPerspective;
+
+    vec3 _lazarusComputeWorldPosition()
+    {
+        vec4 worldPosition = modelMatrix * vec4(inVertex, 1.0);
+   
+        //  Determine the vertex's clip-space position
+        if(usesPerspective != 0)
+        {
+           gl_Position = perspectiveProjectionMatrix * viewMatrix * worldPosition;   
+        }
+        else
+        {
+            gl_Position = orthoProjectionMatrix * viewMatrix * worldPosition;
+        }
+
+        //  Required by fragment shader to determine lighting outcome
+        isUnderPerspective = usesPerspective;
+
+        //  Truncate w value, we don't need it now that clipping
+        //  output (gl_Position) has been calculated.
+        vec3 result = vec3(worldPosition);
+
+        return result;
+    };
+
+    vec3 _lazarusComputeNormalDirection()
+    {
+        //  Invert the matrix and swap it's rows and columns.
+        //  This is required for preservation of the normal direction, which must remain
+        //  perpendicular to the surface and would otherwise fail to when the 
+        //  scale of the surface is non uniform.
+        //  http://www.lighthouse3d.com/tutorials/glsl-12-tutorial/the-normal-matrix/
+        mat4 inverseTranspose = transpose(inverse(modelMatrix));
+
+        //  Truncate bottom row of matrix for clean multiplication against vec3
+        vec3 result = mat3(inverseTranspose) * inNormal;
+
+        return result;
+    };
+)";
+
+const char *LAZARUS_DEFAULT_VERT_SHADER =  R"(
+    void main ()
+    {
+       vec3 worldPosition = _lazarusComputeWorldPosition();
+       vec3 normalDirection = _lazarusComputeNormalDirection();
+
+       fragPosition = worldPosition;
+       diffuseColor = inDiffuse;
+       normalCoordinate = normalDirection;
+       textureCoordinate = inTexCoord;
+
+       skyBoxTextureCoordinate = -inVertex;
+
+       return;
+    };
 )";
 
 const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
@@ -84,6 +140,8 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     //  Determine the rgba values of the incoming fragment
     vec4 _lazarusComputeColor ()
     {
+        vec4 result = vec4(0.0, 0.0, 0.0, 0.0);
+
         //  rgb with values less than 0 indicate the fragment has no texture and should use diffuse coloring
         //  Otherwise its a texture so pick out the texels from the appropriate sampler
 
@@ -91,51 +149,51 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
            (diffuseColor.g >= 0.0) && 
            (diffuseColor.b >= 0.0))
         {
-            return vec4(diffuseColor, 1.0);
+            result = vec4(diffuseColor, 1.0);
         }
         else 
         {
-            vec4 tex = vec4(0.0, 0.0, 0.0, 0.0);
             switch(samplerType)
             {
                 case ARRAY:
                     //  the array-layer number is stored in the z value of the uv
 
-                    tex = texture(textureArray, vec3(textureCoordinate.xy, textureCoordinate.z));
+                    result = texture(textureArray, vec3(textureCoordinate.xy, textureCoordinate.z));
 
                     //  I.e. MeshManager::Mesh::Material::discardAlphaZero
 
-                    if(discardFrags == 1 && tex.a < 0.1)
+                    if(discardFrags == 1 && result.a < 0.1)
                     {
                         discard;
                     }
                     break;
 
                 case ATLAS:
-                    vec4 t = texture(textureAtlas, textureCoordinate.xy);
+                    vec4 tex = texture(textureAtlas, textureCoordinate.xy);
 
                     //  Bitmaps are stored as a single channel (red)
-                    //  Use the value to determine discarded fragments
+                    //  Use the value to determine alpha and discard
+                    //  those which are 0.
 
-                    vec4 sampled = vec4(1.0, 1.0, 1.0, t.r);
-                    tex = vec4(textColor, 1.0) * sampled;
+                    vec4 sampled = vec4(1.0, 1.0, 1.0, tex.r);
+                    result = vec4(textColor, 1.0) * sampled;
 
-                    if(tex.a < 0.1)
+                    if(result.a < 0.1)
                     {
                         discard;
                     }
                     break;
 
                 case CUBEMAP:
-                    tex = texture(textureCube, skyBoxTextureCoordinate);
+                    result = texture(textureCube, skyBoxTextureCoordinate);
                     break;
 
                 default:
                     break;
             };
-
-            return tex;
         };
+
+        return result;
     }
 
     //  Illuminate the fragment using the lambertian lighting model
@@ -178,62 +236,39 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
         //  Establish fragment's fog-depth
         float visibilityBounds  = fogMaxDist - difference;
         float fogBounds         = fogMaxDist - fogMinDist;
-        float fogFactor         = clamp((visibilityBounds / fogBounds), 0.0, strength);
+        float result            = clamp((visibilityBounds / fogBounds), 0.0, strength);
 
-        return fogFactor;
+        return result;
     }
-)";
-
-const char *LAZARUS_DEFAULT_VERT_SHADER =  R"(
-void main ()
-{
-   vec4 worldPosition = modelMatrix * vec4(inVertex, 1.0);
-   
-   if(usesPerspective != 0)
-   {
-      gl_Position = perspectiveProjectionMatrix * viewMatrix * worldPosition;   
-   }
-   else
-   {
-      gl_Position = orthoProjectionMatrix * viewMatrix * worldPosition;
-   }
-   
-   fragPosition = vec3(worldPosition);
-   diffuseColor = inDiffuse;
-   normalCoordinate = mat3(transpose(inverse(modelMatrix))) * inNormal;
-   textureCoordinate = inTexCoord;
-
-   isUnderPerspective = usesPerspective;
-
-   skyBoxTextureCoordinate = -inVertex;
-})"; 
+)"; 
 
 const char *LAZARUS_DEFAULT_FRAG_SHADER = R"(
-void main ()
-{
-    vec4 fragColor = _lazarusComputeColor();
-
-    //  When the fragment is part of a skybox or is observed by an orthographic camera, use color as-is.
-    if(samplerType == CUBEMAP || isUnderPerspective == 0)
+    void main ()
     {
-        outFragment = fragColor;
-    }
-    else
-    {
-        vec3 lighting = 0.1 * fragColor.rgb;
-        lighting += _lazarusComputeLambertianReflection(fragColor.rgb);
+        vec4 fragColor = _lazarusComputeColor();
 
-        outFragment = vec4(lighting, 1.0);
-
-        if(fogDensity > 0.0)
+        //  When the fragment is part of a skybox or is observed by an orthographic camera, use color as-is.
+        if(samplerType == CUBEMAP || isUnderPerspective == 0)
         {
-            float fogFactor = _lazarusComputeFogFactor();
-            outFragment = vec4((mix(fogColor.xyz, lighting, fogFactor)), 1.0);
+            outFragment = fragColor;
         }
-    }
+        else
+        {
+            vec3 lighting = 0.1 * fragColor.rgb;
+            lighting += _lazarusComputeLambertianReflection(fragColor.rgb);
 
-    return;
-})"; 
+            outFragment = vec4(lighting, 1.0);
+
+            if(fogDensity > 0.0)
+            {
+                float fogFactor = _lazarusComputeFogFactor();
+                outFragment = vec4((mix(fogColor.xyz, lighting, fogFactor)), 1.0);
+            }
+        }
+
+        return;
+    }
+)"; 
 
 Shader::Shader()
 {
@@ -247,6 +282,7 @@ Shader::Shader()
 uint32_t Shader::compileShaders(std::string fragmentShader, std::string vertexShader)
 {
     this->reset();
+    this->clearErrors();
     this->vertReader = std::make_unique<FileLoader>();
     this->fragReader = std::make_unique<FileLoader>();
 
@@ -317,6 +353,7 @@ uint32_t Shader::compileShaders(std::string fragmentShader, std::string vertexSh
         return globals.getExecutionState();
     }
 
+    this->checkErrors(__FILE__, __LINE__);
     this->verifyProgram(this->shaderProgram);
     
     this->linkedPrograms.push_back(this->shaderProgram);
@@ -328,26 +365,19 @@ uint32_t Shader::compileShaders(std::string fragmentShader, std::string vertexSh
 
 void Shader::setActiveShader(uint32_t program)
 {
+    this->clearErrors();
     this->verifyProgram(program);
     glUseProgram(this->shaderProgram);
     
-    this->errorCode = glGetError(); 
-    if(this->errorCode != GL_NO_ERROR)
-    {
-        std::string message = std::string("OpenGL Error: ").append(std::to_string(this->errorCode));
-        LOG_ERROR(message.c_str(), __FILE__, __LINE__);
-
-        globals.setExecutionState(StatusCode::LAZARUS_SHADER_ERROR);
-    };
+    //  TODO:
+    //  Things like this should probably use the shaderError code
+    this->checkErrors(__FILE__, __LINE__);
 
     return;
 };
 
 void Shader::uploadUniform(std::string identifier, void *data)
 {
-    //  TODO:
-    //  Check openGL errors through here with glGetError
-
     const char *uniformName = identifier.c_str();
 
     const GLchar *name[1] = {
@@ -362,7 +392,8 @@ void Shader::uploadUniform(std::string identifier, void *data)
     GLint size = 0;
     GLchar *n = NULL;
 
-
+    this->clearErrors();
+    
     //  Lookup uniform location
     GLuint uniformLocation = glGetUniformLocation(this->shaderProgram, uniformName);
     
@@ -384,7 +415,8 @@ void Shader::uploadUniform(std::string identifier, void *data)
         &type,
         n
     );
-
+    this->checkErrors(__FILE__, __LINE__);
+    this->clearErrors();
     //  Upload uniform data
     switch (type)
     {
@@ -435,7 +467,7 @@ void Shader::uploadUniform(std::string identifier, void *data)
         };
 
         default:
-            LOG_ERROR("Shader Error: ", __FILE__, __LINE__);
+            this->checkErrors(__FILE__, __LINE__);
 
             globals.setExecutionState(StatusCode::LAZARUS_SHADER_ERROR);
             break;
@@ -482,6 +514,44 @@ void Shader::reset()
 	this->shaderProgram = 0;	
 
     return;
+};
+
+void Shader::checkErrors(const char *file, uint32_t line)
+{
+    this->errorCode = glGetError();
+    
+    if(this->errorCode != GL_NO_ERROR)
+    {
+        std::string message = std::string("Shader Error: ").append(std::to_string(this->errorCode));
+        LOG_ERROR(message.c_str(), file, line);
+
+        globals.setExecutionState(StatusCode::LAZARUS_OPENGL_ERROR);
+    }
+
+    return;
+};
+
+void Shader::clearErrors()
+{
+    /* ============================================================
+        Reset OpenGL's error state by flushing out all of the 
+        internal state flags containing the error value (which may 
+        be several). This is so that persistence of an errors 
+        life span is limitted to that function which caused it. 
+        By doing so, subsequent glGetError calls made from a function
+        other than that which actually caused the error will NOT 
+        throw. 
+        
+        Absolutely painful, see:
+        https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetError.xhtml#:~:text=glGetError%20should%20always%20be%20called%20in%20a%20loop
+    ================================================================ */
+
+    this->errorCode = glGetError();
+
+    while(this->errorCode != GL_NO_ERROR)
+    {
+        this->errorCode = glGetError();
+    };
 };
 
 Shader::~Shader()

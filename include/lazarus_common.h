@@ -55,9 +55,9 @@ extern uint32_t                  LAZARUS_MAX_IMAGE_HEIGHT;
 
 /* Events */
 
-extern uint32_t                  LAZARUS_LISTENER_KEYCODE;
-extern uint32_t                  LAZARUS_LISTENER_SCANCODE;
-extern uint32_t                  LAZARUS_LISTENER_MOUSECODE;
+extern int32_t                  LAZARUS_LISTENER_KEYCODE;
+extern int32_t                  LAZARUS_LISTENER_SCANCODE;
+extern int32_t                  LAZARUS_LISTENER_MOUSECODE;
 extern float                     LAZARUS_LISTENER_MOUSEX;
 extern float                     LAZARUS_LISTENER_MOUSEY;
 extern float                     LAZARUS_LISTENER_SCROLLCODE;

@@ -62,21 +62,34 @@ class Events
     	//	Create a constructor / destructor
         //  Create a public getter for retreiving the members
         //  Make members private
+        enum EventType
+        {
+            KEY_PRESS = 1,
+            CLICK = 2,
+            MOUSE_MOVE = 3,
+            SCROLL = 4
+        };
+
+        struct Event
+        {
+            EventType type;
+            uint32_t code;
+        };
 
         Events();
 
     	void eventsInit();
         void monitorEvents();
 
-        std::string keyEventString;
-        uint32_t keyEventCode;
-		uint32_t keyEventOsCode;
+        std::string keyName;
+        uint32_t keyCode;
+		uint32_t scanCode;
 
-		uint32_t mouseEventCode;
+		uint32_t clickState;
 		uint32_t mousePositionX;
 		uint32_t mousePositionY;
 		
-		int8_t scrollEventCode;
+		int8_t scrollState;
 
         virtual ~Events();
 		

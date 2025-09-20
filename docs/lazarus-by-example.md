@@ -293,6 +293,9 @@ out vec3 textureCoordinate;                 //  Output UV for render subject
 out vec3 skyBoxTextureCoordinate;           //  Output for skybox UV
 
 flat out int isUnderPerspective;            //  Output required by default program for rendering text / glyphs
+
+vec3 _lazarusComputeWorldPosition();        //  Determine the output vertex position in worldspace coordinates and calculates the relevant clip-space coordinates
+vec3 _lazarusComputeNormalDirection()       //  Determine the direction vector of the output vertex normals. Ensures preservation of the normal direction over non-uniform surfaces.
 ```
 
 #### Pixel / Fragment shader inputs:

@@ -86,25 +86,18 @@ Time::~Time()
 	LOG_DEBUG("Destroying Lazarus::WindowManager::Time");
 };
 
-/* =======================================
-	TODO: 
-    - Initialise image
-    - Return window / make public
-    - Handle resizing
-    - Click location (see: glReadPixels())
-========================================== */
 Events::Events()
 {
 	LOG_DEBUG("Constructing Lazarus::WindowManager::Events");
 
-	keyEventString	    = "";
+	keyName	    		= "";
+	keyCode 	    	= 0;
+	scanCode 			= 0;
 
-	keyEventCode 	    = 0;
-	keyEventOsCode 		= 0;
-	mouseEventCode 	    = LAZARUS_MOUSE_NOCLICK;
+	clickState 	    = LAZARUS_MOUSE_NOCLICK;
 	mousePositionX 		= 0;
 	mousePositionY 		= 0;
-	scrollEventCode 	= 0;
+	scrollState 	= 0;
 
 	errorCode 			= 0;
 	errorMessage 		= NULL;
@@ -187,81 +180,147 @@ void Events::monitorEvents()
 };
 
 void Events::updateKeyboardState()
-{
-	/* ==============================
-		TODO: 
-		Create cases and unique strings for remaining weird keys:
-		- capslock 
-		- pgup/down 
-		- screenshot 
-	================================= */
+{	
+	this->keyName = "";
+	this->keyCode = 0;
+	this->scanCode = 0;
 	
-	this->keyEventString = "";
-	this->keyEventCode = 0;
-	this->keyEventOsCode = 0;
-	
-	this->keyEventCode = LAZARUS_LISTENER_KEYCODE;
-	this->keyEventOsCode = LAZARUS_LISTENER_SCANCODE;
-	
-	if(keyEventCode > 0)
+	this->keyCode = LAZARUS_LISTENER_KEYCODE;
+	this->scanCode = LAZARUS_LISTENER_SCANCODE;
+
+	/* =========================================
+		Check the static global value as it 
+		accounts for signedness, which is needed
+		to check the name of GLFW_KEY_UNKNOWN
+		with the scancode
+	============================================ */
+	switch(LAZARUS_LISTENER_KEYCODE)
 	{
-		switch(keyEventCode)
-		{
-			case GLFW_KEY_UP :
-				this->keyEventString = "up";
-				break;
-			case GLFW_KEY_DOWN :
-				this->keyEventString = "down";
-				break;
-			case GLFW_KEY_LEFT :
-				this->keyEventString = "left";
-				break;
-			case GLFW_KEY_RIGHT :
-				this->keyEventString = "right";
-				break;
-			case GLFW_KEY_ENTER :
-				this->keyEventString = "enter";
-				break;
-			case GLFW_KEY_SPACE :
-				this->keyEventString = "space";
-				break;
-			case GLFW_KEY_TAB :
-				this->keyEventString = "tab";
-				break;
-			case GLFW_KEY_LEFT_SHIFT :
-				this->keyEventString = "shift-l";
-				break;
-			case GLFW_KEY_RIGHT_SHIFT :
-				this->keyEventString = "shift-r";
-				break;
-			case GLFW_KEY_LEFT_CONTROL :
-				this->keyEventString = "ctrl-l";
-				break;
-			case GLFW_KEY_RIGHT_CONTROL :
-				this->keyEventString = "ctrl-r";
-				break;
-			/* ==================================
-				TODO: 
-				alt and super keys seem buggy?
-				investigate.
-			===================================== */
-			
-			case GLFW_KEY_LEFT_ALT :
-				this->keyEventString = "alt-l";
-				break;
-			case GLFW_KEY_RIGHT_ALT :
-				this->keyEventString = "alt-r";
-				break;
-			case GLFW_KEY_LEFT_SUPER :
-				this->keyEventString = "fn-l";
-				break;
-			case GLFW_KEY_RIGHT_SUPER :
-				this->keyEventString = "fn-r";
-				break;
-			default :
-				this->keyEventString = glfwGetKeyName(keyEventCode, keyEventOsCode);
-				break;
-		};
+		case GLFW_KEY_UP :
+			this->keyName = "up";
+			break;
+		case GLFW_KEY_DOWN :
+			this->keyName = "down";
+			break;
+		case GLFW_KEY_LEFT :
+			this->keyName = "left";
+			break;
+		case GLFW_KEY_RIGHT :
+			this->keyName = "right";
+			break;
+		case GLFW_KEY_ENTER :
+			this->keyName = "enter";
+			break;
+		case GLFW_KEY_SPACE :
+			this->keyName = "space";
+			break;
+		case GLFW_KEY_TAB :
+			this->keyName = "tab";
+			break;
+		case GLFW_KEY_LEFT_SHIFT :
+			this->keyName = "shift-l";
+			break;
+		case GLFW_KEY_RIGHT_SHIFT :
+			this->keyName = "shift-r";
+			break;
+		case GLFW_KEY_LEFT_CONTROL :
+			this->keyName = "ctrl-l";
+			break;
+		case GLFW_KEY_RIGHT_CONTROL :
+			this->keyName = "ctrl-r";
+			break;
+		/* ==================================
+			TODO: 
+			alt and super keys seem buggy?
+			investigate.
+		===================================== */
+		
+		case GLFW_KEY_LEFT_ALT :
+			this->keyName = "alt-l";
+			break;
+		case GLFW_KEY_RIGHT_ALT :
+			this->keyName = "alt-r";
+			break;
+		case GLFW_KEY_LEFT_SUPER :
+			this->keyName = "fn-l";
+			break;
+		case GLFW_KEY_RIGHT_SUPER :
+			this->keyName = "fn-r";
+			break;
+		case GLFW_KEY_BACKSPACE :
+			this->keyName = "backspace";
+			break;
+		case GLFW_KEY_CAPS_LOCK :
+			this->keyName = "capslock";
+			break;
+		case GLFW_KEY_ESCAPE :
+			this->keyName = "esc";
+			break;
+		case GLFW_KEY_F1 :
+			this->keyName = "f1";
+			break;
+		case GLFW_KEY_F2 :
+			this->keyName = "f2";
+			break;
+		case GLFW_KEY_F3 :
+			this->keyName = "f3";
+			break;
+		case GLFW_KEY_F4 :
+			this->keyName = "f4";
+			break;
+		case GLFW_KEY_F5 :
+			this->keyName = "f5";
+			break;
+		case GLFW_KEY_F6 :
+			this->keyName = "f6";
+			break;
+		case GLFW_KEY_F7 :
+			this->keyName = "f7";
+			break;
+		case GLFW_KEY_F8 :
+			this->keyName = "f8";
+			break;
+		case GLFW_KEY_F9 :
+			this->keyName = "f9";
+			break;
+		case GLFW_KEY_F10 :
+			this->keyName = "f10";
+			break;
+		case GLFW_KEY_F11 :
+			this->keyName = "f11";
+			break;
+		case GLFW_KEY_F12 :
+			this->keyName = "f12";
+			break;
+		case GLFW_KEY_DELETE :
+			this->keyName = "delete";
+			break;
+		case GLFW_KEY_HOME :
+			this->keyName = "home";
+			break;
+		case GLFW_KEY_INSERT :
+			this->keyName = "insert";
+			break;
+		case GLFW_KEY_END :
+			this->keyName = "end";
+			break;
+		case GLFW_KEY_PAGE_UP :
+			this->keyName = "pgup";
+			break;
+		case GLFW_KEY_PAGE_DOWN :
+			this->keyName = "pgdn";
+			break;
+		case GLFW_KEY_UNKNOWN :
+			/* ============================================
+				Unkown key. Use the scancode (which is 
+				specific to the hardware as opposed to the 
+				ascii code).
+			=============================================== */
+			this->keyName = glfwGetKeyName(keyCode, scanCode);
+			break;
+		default :
+			this->keyName = static_cast<char>(keyCode);
+			break;
 	};
 
 	return;
@@ -269,11 +328,11 @@ void Events::updateKeyboardState()
 
 void Events::updateMouseState()
 {
-	this->mouseEventCode = LAZARUS_MOUSE_NOCLICK;
+	this->clickState 	 = LAZARUS_MOUSE_NOCLICK;
 	this->mousePositionX = 0.0f;
 	this->mousePositionY = 0.0f;
 	
-	this->mouseEventCode = LAZARUS_LISTENER_MOUSECODE;
+	this->clickState 	 = LAZARUS_LISTENER_MOUSECODE;
 	this->mousePositionX = static_cast<int>(LAZARUS_LISTENER_MOUSEX + 0.5f);
 	this->mousePositionY = static_cast<int>(LAZARUS_LISTENER_MOUSEY + 0.5f);		
 	
@@ -283,7 +342,7 @@ void Events::updateMouseState()
 		It will do for now, but should probably be changed to some sort of incrementing / decrementing number
 		At the very least, it should be reset to 0 when the scrollwheel is not in motion
 	============================================================ */
-	this->scrollEventCode = static_cast<int>(LAZARUS_LISTENER_SCROLLCODE);
+	this->scrollState = static_cast<int>(LAZARUS_LISTENER_SCROLLCODE);
 
 	return;
 };

@@ -52,8 +52,10 @@ class Shader
         virtual ~Shader();
 
     private: 
-        void reset();
         void verifyProgram(uint32_t program);
+        void reset();
+        void checkErrors(const char *file, uint32_t line);
+        void clearErrors();
 
         unique_ptr<FileLoader> vertReader;
         unique_ptr<FileLoader> fragReader;
