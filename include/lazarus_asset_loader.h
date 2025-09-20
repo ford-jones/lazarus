@@ -62,7 +62,7 @@ class AssetLoader
         uint32_t layerCount;
     	AssetLoader();	
     	    
-        bool parseWavefrontObj(
+        uint16_t parseWavefrontObj(
             std::vector<glm::vec3> &outAttributes,
             std::vector<uint32_t> &outIndexes,
             std::vector<glm::vec3> &outDiffuse,
@@ -71,7 +71,7 @@ class AssetLoader
             const char *materialPath
         );
 
-        bool parseWavefrontMtl(
+        uint16_t parseWavefrontMtl(
             const char *materialPath,
             std::vector<std::vector<uint32_t>> data,
             std::vector<glm::vec3> &temp,
@@ -79,7 +79,7 @@ class AssetLoader
             std::vector<FileLoader::Image> &outImages
         );
 
-        bool parseGlBinary(
+        uint16_t parseGlBinary(
             std::vector<glm::vec3> &outAttributes,
             std::vector<uint32_t> &outIndexes,
             std::vector<glm::vec3> &outDiffuse,
@@ -147,7 +147,7 @@ class AssetLoader
         
         //  Open a glb file and validate it. 
         //  populate members with respective chunkData.
-        void loadGlbChunks(const char *filepath);
+        uint16_t loadGlbChunks(const char *filepath);
         //  Hydrate 'buffer' with values pulled from this->binaryData at the locations specified by
         //  the 'accessor' and it's corresponding bufferView.
         void populateBufferFromAccessor(glbAccessorData accessor, std::vector<glm::vec3> &buffer);
@@ -179,7 +179,7 @@ class AssetLoader
         
         //  Read vertex attributes from temp* members and group them together 
         //  in sets of three's if possible.
-        void constructTriangle();
+        uint16_t constructTriangle();
 
         //  Shared
         
@@ -191,9 +191,9 @@ class AssetLoader
         //  Deduplicate vertex attributes and construct a serial for those that are unique to be 
         //  passed to the renderers IBO. Interleaves attributes in the order that is expected by
         //  the renderers VBO.
-        void constructIndexBuffer(std::vector<glm::vec3> &outAttributes, std::vector<uint32_t> &outIndexes, std::vector<glm::vec3> outDiffuse, uint32_t numOfAttributes);
+        uint16_t constructIndexBuffer(std::vector<glm::vec3> &outAttributes, std::vector<uint32_t> &outIndexes, std::vector<glm::vec3> outDiffuse, uint32_t numOfAttributes);
         //  Clears containers of all their contents.
-        void resetMembers();
+        uint16_t resetMembers();
 
         std::vector<uint32_t> layers;
 
@@ -209,8 +209,6 @@ class AssetLoader
         glm::vec3 vertex;
         glm::vec3 uv;
         glm::vec3 normal;
-
-        GlobalsManager globals;
 };
 
 #endif
