@@ -85,6 +85,8 @@ class TextManager : private FontLoader, private MeshManager
         struct Text
         {
             uint32_t layoutIndex;
+            uint32_t fontIndex;
+            uint32_t letterSpacing;
             glm::vec2 location;
             std::string targetString;
             glm::vec3 color;
@@ -92,17 +94,19 @@ class TextManager : private FontLoader, private MeshManager
 
         void initialise();
         uint32_t extendFontStack(std::string filepath, uint32_t ptSize = 12);
-        Text loadText(std::string targetText, uint32_t fontId, glm::vec2 location, glm::vec3 color = glm::vec3(0.0f, 0.0f, 0.0f), uint32_t letterSpacing = 1, Text textIn = {});
-        void drawText(Text text);
+        // Text createText(std::string targetText, uint32_t fontId, glm::vec2 location, glm::vec3 color = glm::vec3(0.0f, 0.0f, 0.0f), uint32_t letterSpacing = 1, Text textIn = {});
+        Text createText(std::string targetText, uint32_t fontId, glm::vec2 location, glm::vec3 color = glm::vec3(0.0f, 0.0f, 0.0f), uint32_t letterSpacing = 1);
+        void loadText(Text textIn);
+        void drawText(Text textIn);
         virtual ~TextManager();
-        
+
         uint32_t fontCount;
         
         private: 
         Text textOut;
+        void updateLayout(Text &textIn);
         void identifyAlphabetDimensions(uint32_t fontId);
         void setActiveGlyph(char target, uint32_t fontId, uint32_t spacing);
-        void setTextColor(glm::vec3 color);
         void lookUpUVs(uint8_t keyCode, uint32_t fontId);
         
         uint8_t targetKey;
@@ -122,10 +126,10 @@ class TextManager : private FontLoader, private MeshManager
         float uvU;
         float uvD;
         
+        GLuint textColorUniformLocation;
+
         GLuint textureId;
         GLuint shaderProgram;
-        
-        glm::vec3 textColor;
         
         Transform transformer;
         GlobalsManager globals;
