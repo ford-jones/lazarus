@@ -674,11 +674,11 @@ params:
 > **filepath:** *The relative path to the TrueType `.ttf` font file.* \
 > **ptSize:** *The desired character pt size. (default: `12`)*
 
-#### TextManager::Text loadText(std::string targetText, int fontId, glm::vec2 location, glm::vec3 color, int letterSpacing, TextManager::Text textIn)
+#### TextManager::Text createText(std::string targetText, int fontId, glm::vec2 location, glm::vec3 color, int letterSpacing)
 Loads the desired text using glyphs from the selected font. Sets the text's colour, position on the screen and letterspacing. It's worth noting \
 here that a space `' '` is equal to `letterSpacing * 8`.
 
-Pushes the text string into *this* `TextManager`' layout container. Optionally overwrite / update the contents of an existing piece of text by specifying an existing `layoutID` / layout index.
+Inserted as an entry in the layout.
 
 Returns a new `TextManager::Text` object.
 
@@ -688,17 +688,24 @@ Params:
 > **location:** *The x and y-axis screen space coordinates of where the upper-left-most point of the first character is positioned.*
 > **color:** *The desired RGB text color. (default: `{0.0, 0.0, 0.0} (black)`)* \
 > **letterSpacing:** *How much spacing (in pixels) to put between each character. Word spacing is equal to this value * 8. (default: `1`)* \
-> **textIn** *An existing text string in the layout container to update/replace upon successful load. (optional)*
 
-#### void drawText(TextManager::Text text)
+#### void TextManager::loadText(TextManager::Text textIn)
+Updates the layout with any changes from `textIn` and prepares values in memory for drawing.
+
+Params:
+> **textIn:** *A utf-8 encoded string to be drawn orthographically to the screen.*
+
+#### void drawText(TextManager::Text textIn)
 Draws text that has been loaded into the layout at the location of `text.layoutIndex` onto the screen.
 
 Params:
-> **text:** *A text object previously loaded by `TextManager::loadText`.*
+> **textIn:** *A text object previously loaded by `TextManager::loadText`.*
 
 ### Members:
 > **Text:** *A collection of properties which make up a string of text.*
 >   - **layoutIndex:** *An identifier for performing lookup on strings loaded into the layout container. (type: `int`)*
+>   - **fontIndex:** *Which font should be used when drawing the string. (type: `int`)*
+>   - **letterSpacing:** *The width (in pixels) used between each letter. (type: `int`)*
 >   - **locationX:** *The x-axis coordinate of the bottom left bounds of the string's first character. (type: `int`)*
 >   - **locationY:** *The y-axis coordinate of the bottom left bounds of the string's first character. (type: `int`)*
 >   - **targetString:** *The UTF-8 Ascii string literal to be rendered. (type: `std::string`)*
