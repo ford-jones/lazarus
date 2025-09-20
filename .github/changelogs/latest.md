@@ -1,5 +1,6 @@
-# Version: 2025.09.20131645
+# Version: 2025.09.20131852
 
+* [5f2c1a8](https://github.com/ford-jones/lazarus/commit/5f2c1a881f6a3bf568719ed8661faeea9f0802ec): [Changelog CI] Add Changelog for Version 2025.09.20131645
 * [2657fda](https://github.com/ford-jones/lazarus/commit/2657fda58a1e2e1d540887748f90cbb553c68631): Docs: Updated text manager public functions
 * [0651786](https://github.com/ford-jones/lazarus/commit/0651786ce1ea9f6b9da58c45cea0495cf1f30a1d): Update: Improved error handling for shaders
 * [88df896](https://github.com/ford-jones/lazarus/commit/88df89689add124f9d4778858273ea40bc2c63f3): Update: Ensures text pipelines coherence with other parts of the library
