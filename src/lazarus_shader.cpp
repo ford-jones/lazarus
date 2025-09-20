@@ -282,6 +282,7 @@ Shader::Shader()
 uint32_t Shader::compileShaders(std::string fragmentShader, std::string vertexShader)
 {
     this->reset();
+    this->clearErrors();
     this->vertReader = std::make_unique<FileLoader>();
     this->fragReader = std::make_unique<FileLoader>();
 
@@ -352,6 +353,7 @@ uint32_t Shader::compileShaders(std::string fragmentShader, std::string vertexSh
         return globals.getExecutionState();
     }
 
+    this->checkErrors(__FILE__, __LINE__);
     this->verifyProgram(this->shaderProgram);
     
     this->linkedPrograms.push_back(this->shaderProgram);
@@ -363,26 +365,19 @@ uint32_t Shader::compileShaders(std::string fragmentShader, std::string vertexSh
 
 void Shader::setActiveShader(uint32_t program)
 {
+    this->clearErrors();
     this->verifyProgram(program);
     glUseProgram(this->shaderProgram);
     
-    this->errorCode = glGetError(); 
-    if(this->errorCode != GL_NO_ERROR)
-    {
-        std::string message = std::string("OpenGL Error: ").append(std::to_string(this->errorCode));
-        LOG_ERROR(message.c_str(), __FILE__, __LINE__);
-
-        globals.setExecutionState(StatusCode::LAZARUS_SHADER_ERROR);
-    };
+    //  TODO:
+    //  Things like this should probably use the shaderError code
+    this->checkErrors(__FILE__, __LINE__);
 
     return;
 };
 
 void Shader::uploadUniform(std::string identifier, void *data)
 {
-    //  TODO:
-    //  Check openGL errors through here with glGetError
-
     const char *uniformName = identifier.c_str();
 
     const GLchar *name[1] = {
@@ -397,7 +392,8 @@ void Shader::uploadUniform(std::string identifier, void *data)
     GLint size = 0;
     GLchar *n = NULL;
 
-
+    this->clearErrors();
+    
     //  Lookup uniform location
     GLuint uniformLocation = glGetUniformLocation(this->shaderProgram, uniformName);
     
@@ -419,7 +415,8 @@ void Shader::uploadUniform(std::string identifier, void *data)
         &type,
         n
     );
-
+    this->checkErrors(__FILE__, __LINE__);
+    this->clearErrors();
     //  Upload uniform data
     switch (type)
     {
@@ -470,7 +467,7 @@ void Shader::uploadUniform(std::string identifier, void *data)
         };
 
         default:
-            LOG_ERROR("Shader Error: ", __FILE__, __LINE__);
+            this->checkErrors(__FILE__, __LINE__);
 
             globals.setExecutionState(StatusCode::LAZARUS_SHADER_ERROR);
             break;
@@ -517,6 +514,44 @@ void Shader::reset()
 	this->shaderProgram = 0;	
 
     return;
+};
+
+void Shader::checkErrors(const char *file, uint32_t line)
+{
+    this->errorCode = glGetError();
+    
+    if(this->errorCode != GL_NO_ERROR)
+    {
+        std::string message = std::string("Shader Error: ").append(std::to_string(this->errorCode));
+        LOG_ERROR(message.c_str(), file, line);
+
+        globals.setExecutionState(StatusCode::LAZARUS_OPENGL_ERROR);
+    }
+
+    return;
+};
+
+void Shader::clearErrors()
+{
+    /* ============================================================
+        Reset OpenGL's error state by flushing out all of the 
+        internal state flags containing the error value (which may 
+        be several). This is so that persistence of an errors 
+        life span is limitted to that function which caused it. 
+        By doing so, subsequent glGetError calls made from a function
+        other than that which actually caused the error will NOT 
+        throw. 
+        
+        Absolutely painful, see:
+        https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetError.xhtml#:~:text=glGetError%20should%20always%20be%20called%20in%20a%20loop
+    ================================================================ */
+
+    this->errorCode = glGetError();
+
+    while(this->errorCode != GL_NO_ERROR)
+    {
+        this->errorCode = glGetError();
+    };
 };
 
 Shader::~Shader()

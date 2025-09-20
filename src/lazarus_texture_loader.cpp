@@ -19,8 +19,7 @@
 
 /* ================================================================
 	TODO:
-	- Support for texture-per-face loading
-	- Support for multiple textured meshes (layering)
+	- Support layered textures (layering)
 	- Ideally have each of these functions use immutable storage
 =================================================================== */
 

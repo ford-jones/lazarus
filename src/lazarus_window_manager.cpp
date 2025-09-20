@@ -86,13 +86,6 @@ Time::~Time()
 	LOG_DEBUG("Destroying Lazarus::WindowManager::Time");
 };
 
-/* =======================================
-	TODO: 
-    - Initialise image
-    - Return window / make public
-    - Handle resizing
-    - Click location (see: glReadPixels())
-========================================== */
 Events::Events()
 {
 	LOG_DEBUG("Constructing Lazarus::WindowManager::Events");
@@ -187,15 +180,7 @@ void Events::monitorEvents()
 };
 
 void Events::updateKeyboardState()
-{
-	/* ==============================
-		TODO: 
-		Create cases and unique strings for remaining weird keys:
-		- capslock 
-		- pgup/down 
-		- screenshot 
-	================================= */
-	
+{	
 	this->keyName = "";
 	this->keyCode = 0;
 	this->scanCode = 0;

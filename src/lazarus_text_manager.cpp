@@ -187,12 +187,6 @@ FontLoader::~FontLoader()
     FT_Done_FreeType(this->lib);
 };
 
-    /* =======================================================
-        TODO:
-        Make draw call param optional. If it isn't present 
-        the entire layout should be drawn.
-    ========================================================== */
-
 TextManager::TextManager(GLuint shader) 
     : TextManager::FontLoader(),
       TextManager::MeshManager(shader, TextureLoader::StorageType::ATLAS)
@@ -410,6 +404,7 @@ void TextManager::loadText(TextManager::Text textIn)
 
     //  TODO:
     //  Check opengl errors 
+    
     glUniform3fv(this->textColorUniformLocation, 1, &textIn.color[0]);
 };
 
