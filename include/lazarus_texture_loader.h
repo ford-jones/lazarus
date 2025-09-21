@@ -55,14 +55,14 @@ class TextureLoader
 			bool discardAlphaZero;
 		};
 		TextureLoader(StorageType storageVariant);
-		void extendTextureStack(uint32_t maxWidth, uint32_t maxHeight, uint32_t textureLayers);
-		void loadImageToTextureStack(FileLoader::Image imageData, GLuint textureLayer);
+		lazarus_result extendTextureStack(uint32_t maxWidth, uint32_t maxHeight, uint32_t textureLayers);
+		lazarus_result loadImageToTextureStack(FileLoader::Image imageData, GLuint textureLayer);
 		
-		void storeCubeMap(uint32_t width, uint32_t height);
-		void loadCubeMap(std::vector<FileLoader::Image> faces);
+		lazarus_result storeCubeMap(uint32_t width, uint32_t height);
+		lazarus_result loadCubeMap(std::vector<FileLoader::Image> faces);
 		
-		void storeBitmapTexture(uint32_t maxWidth, uint32_t maxHeight);
-		void loadBitmapToTexture(FileLoader::Image imageData, uint32_t xOffset, uint32_t yOffset);
+		lazarus_result storeBitmapTexture(uint32_t maxWidth, uint32_t maxHeight);
+		lazarus_result loadBitmapToTexture(FileLoader::Image imageData, uint32_t xOffset, uint32_t yOffset);
 		
 		virtual ~TextureLoader();
 
@@ -70,16 +70,14 @@ class TextureLoader
 
 	private:		
 		uint32_t calculateMipLevels(uint32_t width, uint32_t height);
-		void checkErrors(const char *file, uint32_t line);
-		void clearErrors();
+		lazarus_result checkErrors(const char *file, uint32_t line);
+		lazarus_result clearErrors();
 		
 		GLenum errorCode;
 
 		shared_ptr<FileLoader> loader;
 		FileLoader::Image image;
 		StorageType storageType;
-
-		GlobalsManager globals;
 };
 
 #endif

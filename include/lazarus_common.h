@@ -67,7 +67,7 @@ extern float                     LAZARUS_LISTENER_SCROLLCODE;
 
 extern const uint32_t            LAZARUS_MOUSE_NOCLICK;
 
-enum StatusCode
+typedef enum lazarus_result
 {
     //  good
 
@@ -124,50 +124,50 @@ enum StatusCode
     LAZARUS_FT_INIT_FAILURE                = 701,
     LAZARUS_FT_LOAD_FAILURE                = 702,
     LAZARUS_FT_RENDER_FAILURE              = 703
-};
+} lazarus_result;
 
 class GlobalsManager
 {
     public:        
-        void setMaxImageSize(uint32_t width, uint32_t height);
-        uint32_t getMaxImageWidth();
-        uint32_t getMaxImageHeight();
+        static void setMaxImageSize(uint32_t width, uint32_t height);
+        static uint32_t getMaxImageWidth();
+        static uint32_t getMaxImageHeight();
 
-        void setEnforceImageSanity(bool shouldEnforce);
-        bool getEnforceImageSanity();
+        static void setEnforceImageSanity(bool shouldEnforce);
+        static bool getEnforceImageSanity();
 
-        void setCursorHidden(bool shouldHide);
-        bool getCursorHidden();
+        static void setCursorHidden(bool shouldHide);
+        static bool getCursorHidden();
 
-        void setBackFaceCulling(bool shouldCull);
-        bool getBackFaceCulling();
+        static void setBackFaceCulling(bool shouldCull);
+        static bool getBackFaceCulling();
 
-        void setDepthTest(bool shouldTest);
-        bool getDepthTest();
+        static void setDepthTest(bool shouldTest);
+        static bool getDepthTest();
 
-        void setLaunchInFullscreen(bool shouldEnlarge);
-        bool getLaunchInFullscreen();
+        static void setLaunchInFullscreen(bool shouldEnlarge);
+        static bool getLaunchInFullscreen();
 
-        void setExecutionState(uint32_t state);
-        uint32_t getExecutionState();
+        static void setExecutionState(uint32_t state);
+        static uint32_t getExecutionState();
 
-        void setVsyncDisabled(bool shouldDisable);
-        bool getVsyncDisabled();
+        static void setVsyncDisabled(bool shouldDisable);
+        static bool getVsyncDisabled();
 
-        void setNumberOfActiveLights(uint32_t count);
-        uint32_t getNumberOfActiveLights();
+        static void setNumberOfActiveLights(uint32_t count);
+        static uint32_t getNumberOfActiveLights();
 
-        void setDisplaySize(uint32_t width, uint32_t height);
-        uint32_t getDisplayWidth();
-        uint32_t getDisplayHeight();
+        static void setDisplaySize(uint32_t width, uint32_t height);
+        static uint32_t getDisplayWidth();
+        static uint32_t getDisplayHeight();
 
-        void setManageStencilBuffer(bool shouldManage);
-        bool getManageStencilBuffer();
+        static void setManageStencilBuffer(bool shouldManage);
+        static bool getManageStencilBuffer();
 
-        uint32_t getNumberOfPickableEntities();
+        static uint32_t getNumberOfPickableEntities();
 
-        void setPickableEntity(uint32_t entityId);
-        uint8_t getPickableEntity(uint8_t index);
+        static void setPickableEntity(uint32_t entityId);
+        static uint8_t getPickableEntity(uint8_t index);
 };
 
 #endif

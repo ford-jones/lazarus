@@ -39,7 +39,6 @@ void LOG_ERROR(const char *ERR_MESSAGE, const char *ERR_FILENAME, uint32_t ERR_L
     return;
 };
 
-uint32_t                 LAZARUS_EXECUTION_STATUS               = 0;
 uint32_t                 LAZARUS_PRIMARY_DISPLAY_WIDTH          = 0;
 uint32_t                 LAZARUS_PRIMARY_DISPLAY_HEIGHT         = 0;
 uint32_t                 LAZARUS_LIGHT_COUNT                    = 0;
@@ -111,18 +110,6 @@ uint32_t GlobalsManager::getMaxImageWidth()
 uint32_t GlobalsManager::getMaxImageHeight() 
 {
     return LAZARUS_MAX_IMAGE_HEIGHT;
-};
-
-void GlobalsManager::setExecutionState(uint32_t state)
-{
-    LAZARUS_EXECUTION_STATUS = state;
-    
-    return;   
-};
-
-uint32_t GlobalsManager::getExecutionState()
-{
-    return LAZARUS_EXECUTION_STATUS;
 };
 
 void GlobalsManager::setCursorHidden(bool shouldHide)

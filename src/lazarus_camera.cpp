@@ -25,8 +25,8 @@ CameraManager::CameraManager(GLuint shader)
     this->camera = {};
     this->shader                            = shader;
 
-    this->pixelHeight                       = globals.getDisplayWidth();
-    this->pixelWidth                        = globals.getDisplayHeight();
+    this->pixelHeight                       = GlobalsManager::getDisplayWidth();
+    this->pixelWidth                        = GlobalsManager::getDisplayHeight();
 
     this->viewLocation                      = glGetUniformLocation(shader, "viewMatrix");
     this->perspectiveProjectionLocation     = glGetUniformLocation(shader, "perspectiveProjectionMatrix");
@@ -34,17 +34,19 @@ CameraManager::CameraManager(GLuint shader)
 
     this->pixel                             = 0;
     this->errorCode                         = 0;
+    this->aspectRatio = 0.0f;
 };
 
-CameraManager::Camera CameraManager::createPerspectiveCam(float clipDistance, uint32_t aspectRatioX, uint32_t aspectRatioY)
+lazarus_result CameraManager::createPerspectiveCam(CameraManager::Camera &out, CameraManager::CameraConfig options)
 {
     srand(time((0)));
     
     this->camera = {};
     
     camera.id                   = 1 + (rand() % 2147483647);
+    camera.config               = options;
 
-    this->setAspectRatio(aspectRatioX, aspectRatioY);
+    this->setAspectRatio(camera.config.aspectRatioX, camera.config.aspectRatioY);
 
     /* ===============================================
         The direction of the back of the camera, so
@@ -60,22 +62,24 @@ CameraManager::Camera CameraManager::createPerspectiveCam(float clipDistance, ui
     /* ================================
         45° = 0.785398 radians
     =================================== */ 
-    camera.projectionMatrix     = glm::perspective(0.785398f, camera.aspectRatio, 0.1f, clipDistance);
+    camera.projectionMatrix     = glm::perspective(0.785398f, this->aspectRatio, 0.1f, camera.config.clippingDistance);
 
     camera.usesPerspective      = 1;
 
-    return camera;
+    out = camera;
+    return lazarus_result::LAZARUS_OK;
 };
 
-CameraManager::Camera CameraManager::createOrthoCam(uint32_t aspectRatioX, uint32_t aspectRatioY)
+lazarus_result CameraManager::createOrthoCam(CameraManager::Camera &out, CameraManager::CameraConfig options)
 {
     srand(time((0)));
 
     this->camera = {};
 
-    camera.id                   = 1 + (rand() % 2147483647);
-
-    this->setAspectRatio(aspectRatioX, aspectRatioY);
+    camera.id                       = 1 + (rand() % 2147483647);
+    camera.config.aspectRatioX      = options.aspectRatioX;
+    camera.config.aspectRatioY      = options.aspectRatioY;
+    camera.config.clippingDistance  = 0.0f;
 
     /* ================================================
         Negative Z so as to be "back" from the viewing
@@ -86,14 +90,15 @@ CameraManager::Camera CameraManager::createOrthoCam(uint32_t aspectRatioX, uint3
     camera.upVector             = vec3(0.0f, 1.0f, 0.0f);
     
     camera.viewMatrix           = glm::lookAt(camera.position, (camera.position + camera.direction), camera.upVector);
-    camera.projectionMatrix     = glm::ortho(0.0f, static_cast<float>(aspectRatioX), 0.0f, static_cast<float>(aspectRatioY));
+    camera.projectionMatrix     = glm::ortho(0.0f, static_cast<float>(camera.config.aspectRatioX), 0.0f, static_cast<float>(camera.config.aspectRatioY));
 
     camera.usesPerspective      = 0;
 
-    return camera;
+    out = camera;
+    return lazarus_result::LAZARUS_OK;
 };
 
-void CameraManager::loadCamera(CameraManager::Camera &cameraIn)
+lazarus_result CameraManager::loadCamera(CameraManager::Camera &cameraIn)
 {
     this->clearErrors();
     
@@ -111,15 +116,16 @@ void CameraManager::loadCamera(CameraManager::Camera &cameraIn)
         GLuint location = glGetUniformLocation(this->shader, "usesPerspective");
         glUniform1i(location, cameraIn.usesPerspective);
 
-        this->checkErrors(__FILE__, __LINE__);
+        return this->checkErrors(__FILE__, __LINE__);
     }
     else
     {
         LOG_ERROR("Camera Error:", __FILE__, __LINE__);
-        globals.setExecutionState(StatusCode::LAZARUS_MATRIX_LOCATION_ERROR);
+        
+        return lazarus_result::LAZARUS_MATRIX_LOCATION_ERROR;
     };
 
-    return;
+    return lazarus_result::LAZARUS_OK;
 };
 
 /* ==============================================
@@ -128,11 +134,11 @@ void CameraManager::loadCamera(CameraManager::Camera &cameraIn)
     in worldspace out from the camera.
 ================================================= */
 
-uint8_t CameraManager::getPixelOccupant(uint32_t positionX, uint32_t positionY)
+lazarus_result CameraManager::getPixelOccupant(uint32_t positionX, uint32_t positionY, uint8_t &out)
 {
-    this->pixel = 0;
-    if(globals.getManageStencilBuffer())
+    if(GlobalsManager::getManageStencilBuffer())
     {
+        this->pixel = 0;
         if(positionX < pixelWidth && positionY < pixelHeight) {
             this->clearErrors();
             /* ============================================
@@ -161,18 +167,23 @@ uint8_t CameraManager::getPixelOccupant(uint32_t positionX, uint32_t positionY)
                 &this->pixel
             );
 
+            lazarus_result status = this->checkErrors(__FILE__, __LINE__);
+            if(status != lazarus_result::LAZARUS_OK)
+            {
+                out = 0;
+                return status;
+            };
+
             if(pixel)
             {
-                uint8_t stencilId = globals.getPickableEntity(pixel);
-                pixel = stencilId;
+                uint8_t stencilId = GlobalsManager::getPickableEntity(pixel);
+                out = stencilId;
             };
-            
-            this->checkErrors(__FILE__, __LINE__);
         }
         /* =================================================
             else
             {
-                globals.setExecutionState(StatusCode::LAZARUS_INVALID_COORDINATE);
+                globals.setExecutionState(lazarus_result::LAZARUS_INVALID_COORDINATE);
             };
 
             Would be good to have this here but out of frame
@@ -181,14 +192,16 @@ uint8_t CameraManager::getPixelOccupant(uint32_t positionX, uint32_t positionY)
     }
     else
     {
+        out = 0;
+
         LOG_ERROR("Camera Error:", __FILE__, __LINE__);
-        globals.setExecutionState(StatusCode::LAZARUS_FEATURE_DISABLED);
+        return lazarus_result::LAZARUS_FEATURE_DISABLED;
     }
     
-    return pixel;
+    return lazarus_result::LAZARUS_OK;
 };
 
-void CameraManager::setAspectRatio(uint32_t x, uint32_t y)
+lazarus_result CameraManager::setAspectRatio(uint32_t x, uint32_t y)
 {
     /* ===============================================
         If a target aspect ratio has been defined then
@@ -197,17 +210,17 @@ void CameraManager::setAspectRatio(uint32_t x, uint32_t y)
     ================================================== */
     if((x + y) > 0)
     {
-        camera.aspectRatio      = static_cast<float>(x) / static_cast<float>(y);
+        this->aspectRatio      = static_cast<float>(x) / static_cast<float>(y);
     }
     else
     {
-        camera.aspectRatio      = static_cast<float>(this->pixelHeight) / static_cast<float>(this->pixelWidth);
+        this->aspectRatio      = static_cast<float>(this->pixelHeight) / static_cast<float>(this->pixelWidth);
     };   
 
-    return;
+    return lazarus_result::LAZARUS_OK;
 };
 
-void CameraManager::checkErrors(const char *file, uint32_t line)
+lazarus_result CameraManager::checkErrors(const char *file, uint32_t line)
 {
     this->errorCode = glGetError();
     
@@ -216,13 +229,13 @@ void CameraManager::checkErrors(const char *file, uint32_t line)
         std::string message = std::string("OpenGL Error: ").append(std::to_string(this->errorCode));
         LOG_ERROR(message.c_str(), file, line);
 
-        globals.setExecutionState(StatusCode::LAZARUS_OPENGL_ERROR);
+        return lazarus_result::LAZARUS_OPENGL_ERROR;
     }
 
-    return;
+    return lazarus_result::LAZARUS_OK;
 };
 
-void CameraManager::clearErrors()
+lazarus_result CameraManager::clearErrors()
 {
     this->errorCode = glGetError();
     
@@ -230,6 +243,8 @@ void CameraManager::clearErrors()
     {
         this->errorCode = glGetError();
     };
+
+    return lazarus_result::LAZARUS_OK;
 };
 
 CameraManager::~CameraManager()

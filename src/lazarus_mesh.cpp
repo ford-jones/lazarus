@@ -49,7 +49,7 @@ MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
     this->textureStorage = textureType;
 };
 
-MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPath, bool selectable)
+lazarus_result MeshManager::create3DAsset(MeshManager::Mesh &out, MeshManager::AssetConfig options)
 {
     this->meshOut = {};
     this->meshData = {};
@@ -65,47 +65,61 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     meshData.texture.unitId = GL_TEXTURE2;
     glActiveTexture(meshData.texture.unitId);
 
-    meshOut.meshFilepath = meshPath;
-    meshOut.materialFilepath = materialPath;
+    meshOut.meshFilepath = options.meshPath;
+    meshOut.materialFilepath = options.materialPath;
     
     /* ==========================================
         Determine whether the file is wavefront
         or gltf/glb.
     ============================================= */
-    uint32_t suffixDelimiter = meshPath.find_last_of(".");
-    std::string suffix = meshPath.substr(suffixDelimiter + 1);
+    uint32_t suffixDelimiter = meshOut.meshFilepath.find_last_of(".");
+    std::string suffix = meshOut.meshFilepath.substr(suffixDelimiter + 1);
 
+    lazarus_result status = lazarus_result::LAZARUS_OK;
     if(suffix.compare("obj") == 0)
     {
-        AssetLoader::parseWavefrontObj(
+        status = AssetLoader::parseWavefrontObj(
             meshData.attributes,
             meshData.indexes,
             diffuseColors,
             images,
             meshOut.meshFilepath.c_str(),
-            materialPath.c_str()
+            meshOut.materialFilepath.c_str()
         );
         meshOut.type = MeshManager::MeshType::LOADED_WAVEFRONT;
     }
     else if(suffix.compare("glb") == 0)
     {
-        AssetLoader::parseGlBinary(
+        status = AssetLoader::parseGlBinary(
             meshData.attributes, 
             meshData.indexes, 
             diffuseColors, 
             images,
             meshOut.meshFilepath.c_str()
-        );
-
+        );    
         meshOut.type = MeshManager::MeshType::LOADED_GLB;
     };
-    
-    this->setMaterialProperties(diffuseColors, images);
-    this->setSharedProperties();
-    this->initialiseMesh();
-    this->makeSelectable(selectable);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
 
-    return meshOut;
+    status = this->setMaterialProperties(diffuseColors, images);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+    this->setSharedProperties();
+
+    status = this->initialiseMesh();
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+    this->makeSelectable(options.selectable);
+
+    out = this->meshOut;
+    return lazarus_result::LAZARUS_OK;
 };
 
 /* ========================================================================================
@@ -124,12 +138,13 @@ MeshManager::Mesh MeshManager::create3DAsset(string meshPath, string materialPat
     a quad under the hood.
 =========================================================================================== */
 
-MeshManager::Mesh MeshManager::createQuad(float width, float height, string texturePath, float uvXL, float uvXR, float uvYU, float uvYD, bool selectable)
+lazarus_result MeshManager::createQuad(MeshManager::Mesh &out, MeshManager::QuadConfig options)
 {
-    if(width < 0.0f || height < 0.0f)
+    if(options.width < 0.0f || options.height < 0.0f)
     {
         LOG_ERROR("Asset Error:", __FILE__, __LINE__);
-        globals.setExecutionState(StatusCode::LAZARUS_INVALID_DIMENSIONS);
+
+        return lazarus_result::LAZARUS_INVALID_DIMENSIONS;
     };
 
     std::vector<glm::vec3> diffuseColors = {};
@@ -149,9 +164,17 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
 
     glActiveTexture(meshData.texture.unitId);
 
-    if(texturePath.size() > 0)
+    lazarus_result status = lazarus_result::LAZARUS_OK;
+
+    if(options.texturePath.size() > 0)
     {
-        FileLoader::Image image = finder->loadImage(texturePath.c_str());
+        FileLoader::Image image = {};
+        status = finder->loadImage(image, options.texturePath.c_str());
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
+
         images.push_back(image);   
         diffuseColors.push_back(vec3(-0.1f, -0.1f, -0.1f));
 
@@ -171,10 +194,10 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
         (E.g. width 2.0f, height 2.0f becomes 
         width -1.0f, height +1.0f) 
     ========================================================= */
-    float xMin = -(width / 2.0f);
-    float xMax = width / 2.0f;
-    float yMax = height / 2.0f;
-    float yMin = -(height / 2.0f);
+    float xMin = -(options.width / 2.0f);
+    float xMax = options.width / 2.0f;
+    float yMax = options.height / 2.0f;
+    float yMin = -(options.height / 2.0f);
     /* ==========================================================
         If the UV params aren't their default values (0.0) then
         this mesh is being created for a glyph which needs to be 
@@ -182,21 +205,21 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
 
         Otherwise it's a generic sprite.
     ============================================================= */
-    if(uvXL || uvXR || uvYU > 0.0f)
+    if(options.uvXL || options.uvXR || options.uvYU > 0.0f)
     {
     /* ======================================================================================================
             Vertex positions,           Diffuse colors,             Normals,                    UVs 
     ========================================================================================================= */
         meshData.attributes = {                                                                                          
-            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, uvYD, 0.0f),
-            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, uvYD, 0.0f), 
-            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXL, uvYU, 0.0f),
-            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(uvXR, uvYU, 0.0f),
+            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(options.uvXL, options.uvYD, 0.0f),
+            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(options.uvXR, options.uvYD, 0.0f), 
+            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(options.uvXL, options.uvYU, 0.0f),
+            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(options.uvXR, options.uvYU, 0.0f),
 
-            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXR, uvYU, 0.0f),
-            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXR, uvYD, 0.0f),
-            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXL, uvYU, 0.0f),
-            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(uvXL, uvYD, 0.0f),
+            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(options.uvXR, options.uvYU, 0.0f),
+            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(options.uvXR, options.uvYD, 0.0f),
+            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(options.uvXL, options.uvYU, 0.0f),
+            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(options.uvXL, options.uvYD, 0.0f),
         };
     }
     else
@@ -227,20 +250,30 @@ MeshManager::Mesh MeshManager::createQuad(float width, float height, string text
         6, 5, 7
     };
 
-    this->setMaterialProperties(diffuseColors, images);
+    status = this->setMaterialProperties(diffuseColors, images);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
     this->setSharedProperties();
-    this->initialiseMesh();
-    this->makeSelectable(selectable);
 
-    return meshOut;
+    status = this->initialiseMesh();
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+    this->makeSelectable(options.selectable);
+
+    out = this->meshOut;
+    return status;
 }
 
-MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, bool selectable)
+lazarus_result MeshManager::createCube(MeshManager::Mesh &out, MeshManager::CubeConfig options)
 {
     std::vector<glm::vec3> diffuseColors = {};
     std::vector<FileLoader::Image> images = {};
 
-    float vertexPosition = scale / 2.0f; 
+    float vertexPosition = options.scale / 2.0f; 
 
     this->meshOut = {};
     this->meshData = {};
@@ -255,6 +288,8 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, 
     : GL_TEXTURE2;
 
     float layer = 0.0;
+    
+    lazarus_result status = lazarus_result::LAZARUS_OK;
 
     if(this->textureStorage == TextureLoader::StorageType::CUBEMAP)
     {
@@ -267,9 +302,15 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, 
     }
     else
     {
-        if(texturePath.size() > 0)
+        if(options.texturePath.size() > 0)
         {
-            FileLoader::Image image = finder->loadImage(texturePath.c_str());
+            FileLoader::Image image = {};
+            status = finder->loadImage(image, options.texturePath.c_str());
+            if(status != lazarus_result::LAZARUS_OK)
+            {
+                return status;
+            };
+
             images.push_back(image);   
 
             /* ============================================
@@ -345,15 +386,25 @@ MeshManager::Mesh MeshManager::createCube(float scale, std::string texturePath, 
         20, 21, 22, 20, 23, 21
     };
 
-    this->setMaterialProperties(diffuseColors, images);
+    status = this->setMaterialProperties(diffuseColors, images);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
     this->setSharedProperties();
-    this->initialiseMesh();
-    this->makeSelectable(selectable);
 
-    return this->meshOut;
+    status = this->initialiseMesh();
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+    this->makeSelectable(options.selectable);
+
+    out = this->meshOut;
+    return status;
 };
 
-void MeshManager::initialiseMesh()
+lazarus_result MeshManager::initialiseMesh()
 {	
     glGenVertexArrays(1, &meshData.VAO);
    	glBindVertexArray(meshData.VAO);
@@ -396,7 +447,11 @@ void MeshManager::initialiseMesh()
         glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)(3 * sizeof(vec3)));
         glEnableVertexAttribArray(3);
 
-        this->checkErrors(__FILE__, __LINE__);
+        lazarus_result status = this->checkErrors(__FILE__, __LINE__);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
 
         meshOut.id = dataStore.size() + 1;
         meshData.id = meshOut.id;
@@ -416,7 +471,11 @@ void MeshManager::initialiseMesh()
             {
                 if(meshOut.materials[i].type == MaterialType::IMAGE_TEXTURE)
                 {
-                    this->prepareTextures();
+                    status = this->prepareTextures();
+                    if(status != lazarus_result::LAZARUS_OK)
+                    {
+                        return status;
+                    };
                 };
             };
         };
@@ -424,13 +483,14 @@ void MeshManager::initialiseMesh()
     else
     {
         LOG_ERROR("Asset Error:", __FILE__, __LINE__);
-        globals.setExecutionState(StatusCode::LAZARUS_MATRIX_LOCATION_ERROR);
+
+        return lazarus_result::LAZARUS_MATRIX_LOCATION_ERROR;
     };
 	
-    return;
+    return LAZARUS_OK;
 };
 
-void MeshManager::prepareTextures()
+lazarus_result MeshManager::prepareTextures()
 {
     uint32_t width = 0;
     uint32_t height = 0;
@@ -440,10 +500,10 @@ void MeshManager::prepareTextures()
         texture array and allocate the space.
     ============================================ */
 
-    if(globals.getEnforceImageSanity())
+    if(GlobalsManager::getEnforceImageSanity())
     {
-        width = globals.getMaxImageWidth();
-        height = globals.getMaxImageHeight();
+        width = GlobalsManager::getMaxImageWidth();
+        height = GlobalsManager::getMaxImageHeight();
     }
     else
     {
@@ -451,7 +511,11 @@ void MeshManager::prepareTextures()
         height = this->maxTexHeight;
     }
 
-    TextureLoader::extendTextureStack(width, height, AssetLoader::layerCount);
+    lazarus_result status = TextureLoader::extendTextureStack(width, height, AssetLoader::layerCount);
+    if (status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
 
     /* ===============================================
         Since memory size has been redefined, the
@@ -474,18 +538,23 @@ void MeshManager::prepareTextures()
             {
                 if(i.second.images[j].pixelData != NULL)
                 {
-                    TextureLoader::loadImageToTextureStack(i.second.images[j], textureCount + j + 1);
+                    status = TextureLoader::loadImageToTextureStack(i.second.images[j], textureCount + j + 1);
+                    if (status != lazarus_result::LAZARUS_OK)
+                    {
+                        return status;
+                    };
                 };
             };
             textureCount += i.second.images.size();
         };
     };
 
-    return;
+    return lazarus_result::LAZARUS_OK;
 };
 
-void MeshManager::clearMeshStorage()
+lazarus_result MeshManager::clearMeshStorage()
 {	
+    this->clearErrors();
     for(auto i: dataStore)
     {
         glDeleteBuffers         (1, &i.second.VBO);
@@ -498,13 +567,13 @@ void MeshManager::clearMeshStorage()
     this->dataStore = {};
 	
 	this->errorCode = GL_NO_ERROR;
-
+    
     AssetLoader::layerCount = 0;
-
-    return;
+    
+    return this->checkErrors(__FILE__, __LINE__);
 };
 
-void MeshManager::makeSelectable(bool selectable)
+lazarus_result MeshManager::makeSelectable(bool selectable)
 {
     if(selectable)
     {
@@ -520,8 +589,8 @@ void MeshManager::makeSelectable(bool selectable)
         ================================================ */
 
         meshOut.isClickable = true;
-        globals.setPickableEntity(meshOut.id);
-        dataStore.at(meshOut.id).stencilBufferId = globals.getNumberOfPickableEntities();
+        GlobalsManager::setPickableEntity(meshOut.id);
+        dataStore.at(meshOut.id).stencilBufferId = GlobalsManager::getNumberOfPickableEntities();
     }
     else
     {
@@ -529,19 +598,19 @@ void MeshManager::makeSelectable(bool selectable)
         dataStore.at(meshOut.id).stencilBufferId = 0;
     };
 
-    return;
+    return lazarus_result::LAZARUS_OK;
 };
 
-void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
+lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
 {
     MeshManager::MeshData &data = dataStore.at(meshIn.id);
-
+    lazarus_result status = lazarus_result::LAZARUS_OK;
     /* ===================================================
         Fill the stencil buffer with 0's. 
         Wherever an entity is occupying screenspace, fill 
         the buffercwith the mesh's selection.
     ====================================================== */
-    if(globals.getManageStencilBuffer())
+    if(GlobalsManager::getManageStencilBuffer())
     {
         this->clearErrors();
 
@@ -549,8 +618,12 @@ void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
         glClearStencil(0x00);
         glStencilFunc(GL_ALWAYS, data.stencilBufferId, 0xFF);
         
-        this->checkErrors(__FILE__, __LINE__);
-    }
+        status = this->checkErrors(__FILE__, __LINE__);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
+    };
 
     if(this->modelMatrixUniformLocation >= 0)
     {
@@ -566,18 +639,23 @@ void MeshManager::loadMesh(MeshManager::Mesh &meshIn)
         glUniform1i(this->meshVariantLocation, this->textureStorage);
         glUniform1i(this->discardFragsLocation, data.texture.discardAlphaZero);
 
-        this->checkErrors(__FILE__, __LINE__);
+        status = this->checkErrors(__FILE__, __LINE__);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
     }
     else
     {
         LOG_ERROR("Asset Error:", __FILE__, __LINE__);
-        globals.setExecutionState(StatusCode::LAZARUS_MATRIX_LOCATION_ERROR);
+
+        status = lazarus_result::LAZARUS_MATRIX_LOCATION_ERROR;
     };
 
-    return;
+    return status;
 };
 
-void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
+lazarus_result MeshManager::drawMesh(MeshManager::Mesh &meshIn)
 {
     MeshManager::MeshData &data = dataStore.at(meshIn.id);
 
@@ -616,23 +694,24 @@ void MeshManager::drawMesh(MeshManager::Mesh &meshIn)
 
     glDrawElements(GL_TRIANGLES, data.indexes.size(), GL_UNSIGNED_INT, nullptr);
 
-    this->checkErrors(__FILE__, __LINE__);
-
-    return;
+    return this->checkErrors(__FILE__, __LINE__);
 };
 
-void MeshManager::setDiscardFragments(MeshManager::Mesh &meshIn, bool shouldDiscard)
+lazarus_result MeshManager::setDiscardFragments(MeshManager::Mesh &meshIn, bool shouldDiscard)
 {
     MeshManager::MeshData &data = dataStore.at(meshIn.id);
     data.texture.discardAlphaZero = shouldDiscard;
+
+    return lazarus_result::LAZARUS_OK;
 };
 
-void MeshManager::setMaterialProperties(std::vector<glm::vec3> diffuse, std::vector<FileLoader::Image> images)
+lazarus_result MeshManager::setMaterialProperties(std::vector<glm::vec3> diffuse, std::vector<FileLoader::Image> images)
 {
     if(diffuse.size() != images.size())
     {
         LOG_ERROR("Load Error: Invalid materials", __FILE__, __LINE__);
-        globals.setExecutionState(StatusCode::LAZARUS_ASSET_LOAD_ERROR);
+
+        return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
     };
 
     for(size_t i = 0; i < diffuse.size(); i++)
@@ -674,10 +753,10 @@ void MeshManager::setMaterialProperties(std::vector<glm::vec3> diffuse, std::vec
         this->maxTexHeight = std::max(maxTexHeight, material.texture.height);
     };
 
-    return;
+    return lazarus_result::LAZARUS_OK;
 };
 
-void MeshManager::setSharedProperties()
+lazarus_result MeshManager::setSharedProperties()
 {
     meshData.texture.discardAlphaZero = false;
     meshData.texture.samplerId = TextureLoader::textureId;
@@ -698,10 +777,10 @@ void MeshManager::setSharedProperties()
     meshOut.numOfVertices = meshData.attributes.size() / 4;
     meshOut.numOfFaces = (meshOut.numOfVertices) / 3;
 
-   return;
+   return lazarus_result::LAZARUS_OK;
 }
 
-void MeshManager::checkErrors(const char *file, uint32_t line)
+lazarus_result MeshManager::checkErrors(const char *file, uint32_t line)
 {
     this->errorCode = glGetError();
     
@@ -710,13 +789,13 @@ void MeshManager::checkErrors(const char *file, uint32_t line)
         std::string message = std::string("OpenGL Error: ").append(std::to_string(this->errorCode));
         LOG_ERROR(message.c_str(), file, line);
 
-        globals.setExecutionState(StatusCode::LAZARUS_OPENGL_ERROR);
+        return lazarus_result::LAZARUS_OPENGL_ERROR;
     }
 
-    return;
+    return lazarus_result::LAZARUS_OK;
 };
 
-void MeshManager::clearErrors()
+lazarus_result MeshManager::clearErrors()
 {
     /* ============================================================
         Reset OpenGL's error state by flushing out all of the 
@@ -737,6 +816,8 @@ void MeshManager::clearErrors()
     {
         this->errorCode = glGetError();
     };
+
+    return lazarus_result::LAZARUS_OK;
 };
 
 MeshManager::~MeshManager()

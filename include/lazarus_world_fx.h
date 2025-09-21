@@ -39,10 +39,9 @@ class WorldFX : private MeshManager
 {
     public:
         WorldFX(GLuint shaderProgram);
-
-        struct SkyBox
+        struct Skybox
         {
-            std::vector<std::string> paths;
+            std::vector<string> paths;
             std::vector<FileLoader::Image> cubeMap;
 
             MeshManager::Mesh cube;
@@ -58,32 +57,23 @@ class WorldFX : private MeshManager
             float density;
         };
 
-        /* ==================================================================================================================================================
-                                            +x                    -x                    -y                  +y                    +z                    -z
-        ===================================================================================================================================================== */
-        SkyBox createSkyBox(
-            std::string rightPath, 
-            std::string leftPath, 
-            std::string downPath, 
-            std::string upPath, 
-            std::string frontPath, 
-            std::string backPath
-        );
-        void drawSkyBox(SkyBox skyboxIn, CameraManager::Camera camera);
+        lazarus_result createSkyBox(Skybox &out, std::string rightPath, std::string leftPath, std::string downPath, std::string upPath, std::string frontPath, std::string backPath);
+        lazarus_result drawSkyBox(Skybox skyboxIn, CameraManager::Camera camera);
 
-        Fog createFog(
+        lazarus_result createFog(
+            Fog &out,
             float minDistance, 
             float maxDistance, 
             float thickness, 
             glm::vec3 color,
             glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f)
         );
-        void loadFog(Fog fogIn, int32_t shader = 0);
+        lazarus_result loadFog(Fog fogIn, int32_t shader = 0);
 
         virtual ~WorldFX();
 
     private:
-        void loadSkyMap();
+        lazarus_result loadSkyMap();
 
         GLuint shader;
 
@@ -93,12 +83,12 @@ class WorldFX : private MeshManager
         GLint fogMinDistUniformLocation;
         GLint fogDensityUniformLocation;
 
-        SkyBox skyBoxOut;
+        Skybox skyBoxOut;
         Fog fogOut;
-        GlobalsManager globals;
+
         std::unique_ptr<FileLoader> imageLoader;
 
-        int32_t status;
+        int32_t error;
 };
 
 #endif

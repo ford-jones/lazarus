@@ -94,26 +94,52 @@ class MeshManager
 
             bool isClickable;
         };
-		
+        struct AssetConfig
+        {
+            std::string meshPath = "";
+            std::string materialPath = "";
+            bool selectable = false;
+        };
+        struct QuadConfig
+        {
+            std::string texturePath = "";
+            float width = 0.0f;
+            float height = 0.0f;
+            float uvXL = 0.0f;
+            float uvXR = 0.0f;
+            float uvYU = 0.0f;
+            float uvYD = 0.0f;
+            bool selectable = false;
+        };
+        struct CubeConfig
+        {
+            std::string texturePath = "";
+            float scale = 1.0f;
+            bool selectable = false;
+        };
+        
 		MeshManager(GLuint shader, TextureLoader::StorageType textureType = TextureLoader::StorageType::ARRAY);
 		
-        Mesh create3DAsset(std::string meshPath, std::string materialPath = "", bool selectable = false);
-        Mesh createQuad(float width, float height, std::string texturePath = "", float uvXL = 0.0, float uvXR = 0.0, float uvYU = 0.0, float uvYD = 0.0, bool selectable = false);
-        Mesh createCube(float scale, std::string texturePath = "", bool selectable = false);
+        // Mesh create3DAsset(std::string meshPath, std::string materialPath = "", bool selectable = false);
+        // Mesh createQuad(float width, float height, std::string texturePath = "", float uvXL = 0.0, float uvXR = 0.0, float uvYU = 0.0, float uvYD = 0.0, bool selectable = false);
+        // Mesh createCube(float scale, std::string texturePath = "", bool selectable = false);
+        lazarus_result create3DAsset(Mesh &out, AssetConfig options);
+        lazarus_result createQuad(Mesh &out, QuadConfig options);
+        lazarus_result createCube(Mesh &out, CubeConfig options);
 
-        void loadMesh(Mesh &meshIn);
-        void drawMesh(Mesh &meshIn);
+        lazarus_result loadMesh(Mesh &meshIn);
+        lazarus_result drawMesh(Mesh &meshIn);
 
         //  TODO:
         //  This isn't quite the appropriate place to do this
         //  but ok for now
 
-        void setDiscardFragments(Mesh &meshIn, bool shouldDiscard);
+        lazarus_result setDiscardFragments(Mesh &meshIn, bool shouldDiscard);
 
         virtual ~MeshManager();
     
     protected:
-        void clearMeshStorage();
+        lazarus_result clearMeshStorage();
 
     private:
         struct MeshData
@@ -133,14 +159,14 @@ class MeshManager
             std::vector<glm::vec3> attributes;
         };
 
-        void setMaterialProperties(std::vector<glm::vec3> diffuse, std::vector<FileLoader::Image> images);
-        void setSharedProperties();
-        void initialiseMesh();
-        void makeSelectable(bool selectable);
-        void prepareTextures();
+        lazarus_result setMaterialProperties(std::vector<glm::vec3> diffuse, std::vector<FileLoader::Image> images);
+        lazarus_result setSharedProperties();
+        lazarus_result initialiseMesh();
+        lazarus_result makeSelectable(bool selectable);
+        lazarus_result prepareTextures();
         
-        void checkErrors(const char *file, uint32_t line);
-        void clearErrors();
+        lazarus_result checkErrors(const char *file, uint32_t line);
+        lazarus_result clearErrors();
 
         int32_t errorCode;
 
@@ -163,9 +189,6 @@ class MeshManager
         Mesh meshOut;
         MeshData meshData;
         std::map<uint32_t, MeshData> dataStore;
-
-        GlobalsManager globals;
-        
 };
 
 #endif

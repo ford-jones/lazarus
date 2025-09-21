@@ -29,7 +29,6 @@
 
 #include <string>
 #include <memory>
-#include <time.h>
 #include <vector>
 #include <cmath>
 #include <glm/glm.hpp>
@@ -47,6 +46,12 @@ using std::vector;
 class AudioManager
 {
 	public:
+		struct AudioConfig
+		{
+			std::string filepath = "";
+			bool is3D = false;
+			int32_t loopCount = 0;
+		};
 		struct Audio 
 		{
 			uint32_t id;
@@ -54,27 +59,27 @@ class AudioManager
 
 			glm::vec3 sourceLocation;
 			
-			bool is3D;
 			bool isPaused;
-			
-			int32_t loopCount;
 			
 			uint32_t duration;
 			uint32_t audioIndex;
+
+			AudioConfig config;
 		};
+
 
 		AudioManager();
 
-		void initialise();
-		Audio createAudio(string filepath, bool is3D = false, int32_t loopCount = 0);
-		void loadAudio(Audio &audioIn);
+		lazarus_result initialise();
+		lazarus_result createAudio(Audio &out, AudioConfig options);
+		lazarus_result loadAudio(Audio &audioIn);
 
-		void setPlaybackCursor(Audio &audioIn, uint32_t seconds);
-		void playAudio(Audio &audioIn);
-		void pauseAudio(Audio &audioIn);
+		lazarus_result setPlaybackCursor(Audio &audioIn, uint32_t seconds);
+		lazarus_result playAudio(Audio &audioIn);
+		lazarus_result pauseAudio(Audio &audioIn);
 
-		void updateSourceLocation(Audio &audioIn, glm::vec3 location);
-		void updateListenerLocation(glm::vec3 location);
+		lazarus_result updateSourceLocation(Audio &audioIn, glm::vec3 location);
+		lazarus_result updateListenerLocation(glm::vec3 location);
 
 		virtual ~AudioManager();
 
@@ -89,8 +94,8 @@ class AudioManager
 			FMOD_VECTOR currentSourcePosition;
 			FMOD_VECTOR sourceVelocity;
 		};
-		void validateAudioHandle(AudioData &audioData);
-		void checkErrors(FMOD_RESULT res, const char *file, uint32_t line);
+		lazarus_result validateAudioHandle(AudioData &audioData);
+		lazarus_result checkErrors(FMOD_RESULT res, const char *file, uint32_t line);
 
 		uint32_t audioDuration;
 
@@ -109,8 +114,6 @@ class AudioManager
 		AudioData audioData;
 
 		Audio audioOut;
-
-		GlobalsManager globals;
 };
 
 #endif

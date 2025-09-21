@@ -46,16 +46,16 @@ class Shader
 {
     public:
     	Shader();
-        uint32_t compileShaders(std::string fragmentShader = "", std::string vertexShader = "");
-        void uploadUniform(std::string identifier, void *data);
-        void setActiveShader(uint32_t program);
+        lazarus_result compileShaders(uint32_t &program, std::string fragmentShader = "", std::string vertexShader = "");
+        lazarus_result uploadUniform(std::string identifier, void *data);
+        lazarus_result setActiveShader(uint32_t program);
         virtual ~Shader();
 
     private: 
-        void verifyProgram(uint32_t program);
-        void reset();
-        void checkErrors(const char *file, uint32_t line);
-        void clearErrors();
+        lazarus_result verifyProgram(uint32_t program);
+        lazarus_result reset();
+        lazarus_result checkErrors(const char *file, uint32_t line);
+        lazarus_result clearErrors();
 
         unique_ptr<FileLoader> vertReader;
         unique_ptr<FileLoader> fragReader;
@@ -78,10 +78,7 @@ class Shader
         char *message;
 
         std::vector<GLuint> linkedPrograms;
-        std::vector<GLuint> shaderSources;
-
-        GlobalsManager globals;
-        
+        std::vector<GLuint> shaderSources;        
 };
 
 #endif

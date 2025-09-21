@@ -279,7 +279,7 @@ Shader::Shader()
     this->reset();
 };
 
-uint32_t Shader::compileShaders(std::string fragmentShader, std::string vertexShader)
+lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentShader, std::string vertexShader)
 {
     this->reset();
     this->clearErrors();
@@ -288,7 +288,11 @@ uint32_t Shader::compileShaders(std::string fragmentShader, std::string vertexSh
 
     if(fragmentShader != "")
     {
-        this->fragSource = fragReader->loadText(fragmentShader.c_str());
+        lazarus_result status = fragReader->loadText(fragmentShader.c_str(), this->fragSource);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
     }
     else
     {
@@ -297,7 +301,11 @@ uint32_t Shader::compileShaders(std::string fragmentShader, std::string vertexSh
 
     if(vertexShader != "")
     {
-        this->vertSource = vertReader->loadText(vertexShader.c_str());
+        lazarus_result status = vertReader->loadText(vertexShader.c_str(), this->vertSource);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
     }
     else
     {
@@ -321,8 +329,7 @@ uint32_t Shader::compileShaders(std::string fragmentShader, std::string vertexSh
         std::string message = std::string("Shader Compilation Error: ").append(this->message);
         LOG_ERROR(message.c_str(), __FILE__, __LINE__);
 
-        globals.setExecutionState(StatusCode::LAZARUS_VSHADER_COMPILE_FAILURE);
-        return globals.getExecutionState();
+        return lazarus_result::LAZARUS_VSHADER_COMPILE_FAILURE;
     };
 
     glShaderSource      (this->fragShader, 1, &this->fragShaderProgram, NULL);                                                      //   Link the shader.frag file contents to the newly created OpenGL fragment shader instance
@@ -334,8 +341,7 @@ uint32_t Shader::compileShaders(std::string fragmentShader, std::string vertexSh
         std::string message = std::string("Shader Compilation Error: ").append(this->message);
         LOG_ERROR(message.c_str(), __FILE__, __LINE__);
 
-        globals.setExecutionState(StatusCode::LAZARUS_FSHADER_COMPILE_FAILURE);
-        return globals.getExecutionState();
+        return lazarus_result::LAZARUS_FSHADER_COMPILE_FAILURE;
     };
 
     glAttachShader      (this->shaderProgram, this->vertShader);                                                                    //   Attatch the compiled vert shader to the shader program
@@ -349,21 +355,31 @@ uint32_t Shader::compileShaders(std::string fragmentShader, std::string vertexSh
         std::string message = std::string("Shader Error: ").append(this->message);
         LOG_ERROR(message.c_str(), __FILE__, __LINE__);
 
-        globals.setExecutionState(StatusCode::LAZARUS_SHADER_LINKING_FAILURE);
-        return globals.getExecutionState();
+        return lazarus_result::LAZARUS_SHADER_LINKING_FAILURE;
     }
 
-    this->checkErrors(__FILE__, __LINE__);
-    this->verifyProgram(this->shaderProgram);
+    lazarus_result status = this->checkErrors(__FILE__, __LINE__);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+
+    status = this->verifyProgram(this->shaderProgram);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+    
     
     this->linkedPrograms.push_back(this->shaderProgram);
     this->shaderSources.push_back(this->vertShader);
     this->shaderSources.push_back(this->fragShader);
-
-    return shaderProgram;
+    
+    program = this->shaderProgram;
+    return lazarus_result::LAZARUS_OK;
 };
 
-void Shader::setActiveShader(uint32_t program)
+lazarus_result Shader::setActiveShader(uint32_t program)
 {
     this->clearErrors();
     this->verifyProgram(program);
@@ -371,12 +387,10 @@ void Shader::setActiveShader(uint32_t program)
     
     //  TODO:
     //  Things like this should probably use the shaderError code
-    this->checkErrors(__FILE__, __LINE__);
-
-    return;
+    return this->checkErrors(__FILE__, __LINE__);
 };
 
-void Shader::uploadUniform(std::string identifier, void *data)
+lazarus_result Shader::uploadUniform(std::string identifier, void *data)
 {
     const char *uniformName = identifier.c_str();
 
@@ -415,7 +429,11 @@ void Shader::uploadUniform(std::string identifier, void *data)
         &type,
         n
     );
-    this->checkErrors(__FILE__, __LINE__);
+    lazarus_result status = this->checkErrors(__FILE__, __LINE__);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
     this->clearErrors();
     //  Upload uniform data
     switch (type)
@@ -467,33 +485,30 @@ void Shader::uploadUniform(std::string identifier, void *data)
         };
 
         default:
-            this->checkErrors(__FILE__, __LINE__);
-
-            globals.setExecutionState(StatusCode::LAZARUS_SHADER_ERROR);
-            break;
+            return lazarus_result::LAZARUS_SHADER_ERROR;
+            // break;
     }
-
-    return;
+    return this->checkErrors(__FILE__, __LINE__);
 };
 
-void Shader::verifyProgram(uint32_t program)
+lazarus_result Shader::verifyProgram(uint32_t program)
 {
     //  Validate existence of the program
     if(glIsProgram(program) != GL_TRUE)
     {
         LOG_ERROR("Shader Error: ", __FILE__, __LINE__);
 
-        globals.setExecutionState(StatusCode::LAZARUS_SHADER_ERROR);
+        return lazarus_result::LAZARUS_SHADER_ERROR;
     }
     else
     {
         this->shaderProgram = program;
     };
 
-    return;
+    return lazarus_result::LAZARUS_OK;
 };
 
-void Shader::reset()
+lazarus_result Shader::reset()
 {
     this->vertLayout = LAZARUS_DEFAULT_VERT_LAYOUT;
     this->fragLayout = LAZARUS_DEFAULT_FRAG_LAYOUT;
@@ -513,10 +528,10 @@ void Shader::reset()
 	this->fragShader = 0;
 	this->shaderProgram = 0;	
 
-    return;
+    return lazarus_result::LAZARUS_OK;
 };
 
-void Shader::checkErrors(const char *file, uint32_t line)
+lazarus_result Shader::checkErrors(const char *file, uint32_t line)
 {
     this->errorCode = glGetError();
     
@@ -525,13 +540,13 @@ void Shader::checkErrors(const char *file, uint32_t line)
         std::string message = std::string("Shader Error: ").append(std::to_string(this->errorCode));
         LOG_ERROR(message.c_str(), file, line);
 
-        globals.setExecutionState(StatusCode::LAZARUS_OPENGL_ERROR);
+        return lazarus_result::LAZARUS_OPENGL_ERROR;
     }
 
-    return;
+    return lazarus_result::LAZARUS_OK;
 };
 
-void Shader::clearErrors()
+lazarus_result Shader::clearErrors()
 {
     /* ============================================================
         Reset OpenGL's error state by flushing out all of the 
@@ -552,6 +567,8 @@ void Shader::clearErrors()
     {
         this->errorCode = glGetError();
     };
+
+    return lazarus_result::LAZARUS_OK;
 };
 
 Shader::~Shader()

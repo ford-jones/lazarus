@@ -62,7 +62,7 @@ class AssetLoader
         uint32_t layerCount;
     	AssetLoader();	
     	    
-        uint16_t parseWavefrontObj(
+        lazarus_result parseWavefrontObj(
             std::vector<glm::vec3> &outAttributes,
             std::vector<uint32_t> &outIndexes,
             std::vector<glm::vec3> &outDiffuse,
@@ -71,7 +71,7 @@ class AssetLoader
             const char *materialPath
         );
 
-        uint16_t parseWavefrontMtl(
+        lazarus_result parseWavefrontMtl(
             const char *materialPath,
             std::vector<std::vector<uint32_t>> data,
             std::vector<glm::vec3> &temp,
@@ -79,7 +79,7 @@ class AssetLoader
             std::vector<FileLoader::Image> &outImages
         );
 
-        uint16_t parseGlBinary(
+        lazarus_result parseGlBinary(
             std::vector<glm::vec3> &outAttributes,
             std::vector<uint32_t> &outIndexes,
             std::vector<glm::vec3> &outDiffuse,
@@ -147,7 +147,7 @@ class AssetLoader
         
         //  Open a glb file and validate it. 
         //  populate members with respective chunkData.
-        uint16_t loadGlbChunks(const char *filepath);
+        lazarus_result loadGlbChunks(const char *filepath);
         //  Hydrate 'buffer' with values pulled from this->binaryData at the locations specified by
         //  the 'accessor' and it's corresponding bufferView.
         void populateBufferFromAccessor(glbAccessorData accessor, std::vector<glm::vec3> &buffer);
@@ -179,7 +179,7 @@ class AssetLoader
         
         //  Read vertex attributes from temp* members and group them together 
         //  in sets of three's if possible.
-        uint16_t constructTriangle();
+        lazarus_result constructTriangle();
 
         //  Shared
         
@@ -191,9 +191,9 @@ class AssetLoader
         //  Deduplicate vertex attributes and construct a serial for those that are unique to be 
         //  passed to the renderers IBO. Interleaves attributes in the order that is expected by
         //  the renderers VBO.
-        uint16_t constructIndexBuffer(std::vector<glm::vec3> &outAttributes, std::vector<uint32_t> &outIndexes, std::vector<glm::vec3> outDiffuse, uint32_t numOfAttributes);
+        lazarus_result constructIndexBuffer(std::vector<glm::vec3> &outAttributes, std::vector<uint32_t> &outIndexes, std::vector<glm::vec3> outDiffuse, uint32_t numOfAttributes);
         //  Clears containers of all their contents.
-        uint16_t resetMembers();
+        lazarus_result resetMembers();
 
         std::vector<uint32_t> layers;
 

@@ -39,7 +39,7 @@ Transform::Transform()
 	this->rotation = vec3(0.0, 0.0, 0.0);
 };
 
-void Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
+lazarus_result Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
 {
 	this->localCoordinates = glm::vec3(x, y, z);
     mesh.modelMatrix = glm::translate(mesh.modelMatrix, this->localCoordinates);
@@ -57,10 +57,10 @@ void Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, fl
     mesh.position.y = this->worldCoordinates.y;
     mesh.position.z = this->worldCoordinates.z;
 
-	return;
+	return lazarus_result::LAZARUS_OK;
 };
 
-void Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, float yaw, float roll)
+lazarus_result Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, float yaw, float roll)
 {
 	/* ===================================================
 		Extract the current z axis rotation values from
@@ -75,10 +75,10 @@ void Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, float yaw,
     mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
 	mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(roll), glm::vec3(0.0f, 0.0f, 1.0f));
 	
-    return;
+    return lazarus_result::LAZARUS_OK;
 };
 
-void Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
+lazarus_result Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
 {
 	float sum = (x + y + z);
 	float max = std::max(0.0f, sum);
@@ -87,18 +87,18 @@ void Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float 
 	{
         LOG_ERROR("Transform Error", __FILE__, __LINE__);
 
-		globals.setExecutionState(StatusCode::LAZARUS_INVALID_DIMENSIONS);	
+		return lazarus_result::LAZARUS_INVALID_DIMENSIONS;	
 	}
 	else
 	{
 		mesh.scale = glm::vec3(x, y, z);
 		mesh.modelMatrix = glm::scale(mesh.modelMatrix, mesh.scale);
-	};
 
-	return;
+		return lazarus_result::LAZARUS_OK;
+	};
 };
 
-void Transform::translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity)
+lazarus_result Transform::translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity)
 {
 	/* =========================================
 		TODO:
@@ -130,17 +130,17 @@ void Transform::translateCameraAsset(CameraManager::Camera &camera, float x, flo
 
 	camera.viewMatrix = glm::lookAt(camera.position, (camera.position + camera.direction), camera.upVector);
 	
-	return;
+	return lazarus_result::LAZARUS_OK;
 };
 
-void Transform::rotateCameraAsset(CameraManager::Camera &camera, float pitch, float yaw, float roll)
+lazarus_result Transform::rotateCameraAsset(CameraManager::Camera &camera, float pitch, float yaw, float roll)
 {	
 	
 	if((pitch > 360.0f) || (pitch < -360.0f))
 	{
         LOG_ERROR("Transform Error", __FILE__, __LINE__);
 		
-		globals.setExecutionState(StatusCode::LAZARUS_INVALID_RADIANS);
+		return lazarus_result::LAZARUS_INVALID_RADIANS;
 	}
 	else
 	{
@@ -161,10 +161,10 @@ void Transform::rotateCameraAsset(CameraManager::Camera &camera, float pitch, fl
 		camera.viewMatrix = glm::lookAt(camera.position, (camera.position + camera.direction), camera.upVector);
 	}
 	
-	return;
+	return lazarus_result::LAZARUS_OK;
 };
 
-void Transform::orbitCameraAsset(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX, float tarY, float tarZ)
+lazarus_result Transform::orbitCameraAsset(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX, float tarY, float tarZ)
 {	
 	this->rotation = vec3(0.0, 0.0, 0.0);
 
@@ -172,7 +172,7 @@ void Transform::orbitCameraAsset(CameraManager::Camera &camera, float azimuth, f
 	{
         LOG_ERROR("Transform Error", __FILE__, __LINE__);
 
-		globals.setExecutionState(StatusCode::LAZARUS_INVALID_RADIANS);
+		return lazarus_result::LAZARUS_INVALID_RADIANS;
 	}
 	else
 	{
@@ -190,16 +190,16 @@ void Transform::orbitCameraAsset(CameraManager::Camera &camera, float azimuth, f
 		camera.position = camera.direction + (this->rotation * radius);
 		
 		camera.viewMatrix = glm::lookAt(camera.position, camera.direction, camera.upVector);
+
+		return lazarus_result::LAZARUS_OK;
 	}
-	
-	return;
 };
 
-void Transform::translateLightAsset(LightManager::Light &light, float x, float y, float z)
+lazarus_result Transform::translateLightAsset(LightManager::Light &light, float x, float y, float z)
 {
-	light.position += vec3(x, y, z);
+	light.config.position += vec3(x, y, z);
 	
-	return;
+	return lazarus_result::LAZARUS_OK;
 };
 
 float Transform::determineUpVector(float rotation)
@@ -235,7 +235,7 @@ float Transform::degreesToRadians(float in, bool enforceLimits)
 	{
         LOG_ERROR("Transform Error", __FILE__, __LINE__);
 
-		globals.setExecutionState(StatusCode::LAZARUS_INVALID_RADIANS);
+		return lazarus_result::LAZARUS_INVALID_RADIANS;
 	};
 
 	this->outRadians = in * this->pi / 180.0f;

@@ -41,25 +41,27 @@
 class LightManager
 {
     public:
+        struct LightConfig
+        {
+            glm::vec3 position = glm::vec3(1.0f, 1.0f, 1.0f); 
+            glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f);
+            float brightness = 1.0f;
+        };
         struct Light
         {
             uint32_t id;
-            
-            float brightness;
-
-            glm::vec3 position;                     //  The (x,y,z) location of the light source
-            glm::vec3 color;                        //  The (r,g,b) color of the light
+            LightConfig config;
         };
         
         LightManager(GLuint shader);
         virtual ~LightManager();
 
-        Light createLightSource(glm::vec3 location, glm::vec3 color, float brightness = 1.0f);
-        void loadLightSource(Light &lightIn, int32_t shader = 0);
+        lazarus_result createLightSource(Light &out, LightConfig options);
+        lazarus_result loadLightSource(Light &lightIn, int32_t shader = 0);
 
     private:
-        void checkErrors(const char *file, uint32_t line);
-        void clearErrors();
+        lazarus_result checkErrors(const char *file, uint32_t line);
+        lazarus_result clearErrors();
         struct LightData
         {
             /* ==========================================
@@ -82,9 +84,6 @@ class LightManager
         Light lightOut;
         LightData lightData;
         std::map<uint32_t, LightData> lightStore;
-
-        GlobalsManager globals;
-
 };
 
 #endif
