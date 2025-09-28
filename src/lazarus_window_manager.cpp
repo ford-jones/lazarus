@@ -185,7 +185,7 @@ lazarus_result Events::monitorEvents()
 	return this->checkErrors(__FILE__, __LINE__);
 };
 
-lazarus_result Events::updateKeyboardState()
+void Events::updateKeyboardState()
 {	
 	this->keyName = "";
 	this->keyCode = 0;
@@ -329,10 +329,10 @@ lazarus_result Events::updateKeyboardState()
 			break;
 	};
 
-	return lazarus_result::LAZARUS_OK;
+	return;
 };
 
-lazarus_result Events::updateMouseState()
+void Events::updateMouseState()
 {
 	this->clickState 	 = LAZARUS_MOUSE_NOCLICK;
 	this->mousePositionX = 0.0f;
@@ -350,7 +350,7 @@ lazarus_result Events::updateMouseState()
 	============================================================ */
 	this->scrollState = static_cast<int>(LAZARUS_LISTENER_SCROLLCODE);
 
-	return lazarus_result::LAZARUS_OK;
+	return;
 };
 
 lazarus_result Events::checkErrors(const char *file, int line)
@@ -789,12 +789,12 @@ lazarus_result WindowManager::centerWindow()
 	return this->checkErrors(__FILE__, __LINE__);
 };
 
-lazarus_result WindowManager::initialiseGLEW()
+void WindowManager::initialiseGLEW()
 {
     glewExperimental = GL_TRUE;
     glewInit();
 
-    return lazarus_result::LAZARUS_OK;
+    return;
 };
 
 WindowManager::~WindowManager() 

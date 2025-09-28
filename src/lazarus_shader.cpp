@@ -370,7 +370,6 @@ lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentSha
         return status;
     };
     
-    
     this->linkedPrograms.push_back(this->shaderProgram);
     this->shaderSources.push_back(this->vertShader);
     this->shaderSources.push_back(this->fragShader);
@@ -508,7 +507,7 @@ lazarus_result Shader::verifyProgram(uint32_t program)
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result Shader::reset()
+void Shader::reset()
 {
     this->vertLayout = LAZARUS_DEFAULT_VERT_LAYOUT;
     this->fragLayout = LAZARUS_DEFAULT_FRAG_LAYOUT;
@@ -528,7 +527,7 @@ lazarus_result Shader::reset()
 	this->fragShader = 0;
 	this->shaderProgram = 0;	
 
-    return lazarus_result::LAZARUS_OK;
+    return;
 };
 
 lazarus_result Shader::checkErrors(const char *file, uint32_t line)
@@ -546,7 +545,7 @@ lazarus_result Shader::checkErrors(const char *file, uint32_t line)
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result Shader::clearErrors()
+void Shader::clearErrors()
 {
     /* ============================================================
         Reset OpenGL's error state by flushing out all of the 
@@ -568,7 +567,7 @@ lazarus_result Shader::clearErrors()
         this->errorCode = glGetError();
     };
 
-    return lazarus_result::LAZARUS_OK;
+    return;
 };
 
 Shader::~Shader()

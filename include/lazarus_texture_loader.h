@@ -69,9 +69,9 @@ class TextureLoader
 		GLuint textureId;		
 
 	private:		
-		uint32_t calculateMipLevels(uint32_t width, uint32_t height);
+		void calculateMipLevels(uint32_t &mipCount, uint32_t width, uint32_t height);
 		lazarus_result checkErrors(const char *file, uint32_t line);
-		lazarus_result clearErrors();
+		void clearErrors();
 		
 		GLenum errorCode;
 

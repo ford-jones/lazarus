@@ -149,7 +149,7 @@ lazarus_result LightManager::checkErrors(const char *file, uint32_t line)
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result LightManager::clearErrors()
+void LightManager::clearErrors()
 {
     this->errorCode = glGetError();
     
@@ -158,7 +158,7 @@ lazarus_result LightManager::clearErrors()
         this->errorCode = glGetError();
     };
 
-    return lazarus_result::LAZARUS_OK;
+    return;
 };
 
 LightManager::~LightManager()

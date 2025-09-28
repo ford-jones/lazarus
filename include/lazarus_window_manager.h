@@ -56,10 +56,6 @@ class Time
 class Events
 {
     public:
-    	//	TODO:
-    	//	Create a constructor / destructor
-        //  Create a public getter for retreiving the members
-        //  Make members private
         enum EventType
         {
             KEY_PRESS = 1,
@@ -93,8 +89,8 @@ class Events
 		
     private:
         lazarus_result checkErrors(const char *file, int line);
-        lazarus_result updateKeyboardState();
-        lazarus_result updateMouseState();
+        void updateKeyboardState();
+        void updateMouseState();
 
         int32_t errorCode;
         const char* errorMessage;
@@ -126,8 +122,8 @@ class WindowManager : public Events, public Time
         virtual ~WindowManager();
         
 	private:
+        void initialiseGLEW();
         lazarus_result centerWindow();
-		lazarus_result initialiseGLEW();
         lazarus_result checkErrors(const char *file, int line);
 
         //  Dont know why I made this private

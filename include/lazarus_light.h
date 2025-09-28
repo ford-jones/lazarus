@@ -62,7 +62,7 @@ class LightManager
 
     private:
         lazarus_result checkErrors(const char *file, uint32_t line);
-        lazarus_result clearErrors();
+        void clearErrors();
         struct LightData
         {
             /* ==========================================

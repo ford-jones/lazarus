@@ -43,6 +43,7 @@ class CameraManager
         CameraManager(GLuint shader);
         struct CameraConfig
         {
+            std::string name = "CAMERA_";
             uint32_t aspectRatioX = 0;
             uint32_t aspectRatioY = 0;
             float clippingDistance = 100.0f;
@@ -72,7 +73,7 @@ class CameraManager
         virtual ~CameraManager();
 
     private:
-        lazarus_result setAspectRatio(uint32_t x, uint32_t y);
+        void setAspectRatio(uint32_t x, uint32_t y);
         lazarus_result checkErrors(const char *file, uint32_t line);
         lazarus_result clearErrors();
 

@@ -587,7 +587,7 @@ lazarus_result MeshManager::clearMeshStorage()
     return this->checkErrors(__FILE__, __LINE__);
 };
 
-lazarus_result MeshManager::makeSelectable(bool selectable)
+void MeshManager::makeSelectable(bool selectable)
 {
     if(selectable)
     {
@@ -612,7 +612,7 @@ lazarus_result MeshManager::makeSelectable(bool selectable)
         dataStore.at(meshOut.id).stencilBufferId = 0;
     };
 
-    return lazarus_result::LAZARUS_OK;
+    return;
 };
 
 lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
@@ -711,12 +711,12 @@ lazarus_result MeshManager::drawMesh(MeshManager::Mesh &meshIn)
     return this->checkErrors(__FILE__, __LINE__);
 };
 
-lazarus_result MeshManager::setDiscardFragments(MeshManager::Mesh &meshIn, bool shouldDiscard)
+void MeshManager::setDiscardFragments(MeshManager::Mesh &meshIn, bool shouldDiscard)
 {
     MeshManager::MeshData &data = dataStore.at(meshIn.id);
     data.texture.discardAlphaZero = shouldDiscard;
 
-    return lazarus_result::LAZARUS_OK;
+    return;
 };
 
 lazarus_result MeshManager::setMaterialProperties(std::vector<glm::vec3> diffuse, std::vector<FileLoader::Image> images)
@@ -770,7 +770,7 @@ lazarus_result MeshManager::setMaterialProperties(std::vector<glm::vec3> diffuse
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result MeshManager::setSharedProperties()
+void MeshManager::setSharedProperties()
 {
     meshData.texture.discardAlphaZero = false;
     meshData.texture.samplerId = TextureLoader::textureId;
@@ -791,7 +791,7 @@ lazarus_result MeshManager::setSharedProperties()
     meshOut.numOfVertices = meshData.attributes.size() / 4;
     meshOut.numOfFaces = (meshOut.numOfVertices) / 3;
 
-   return lazarus_result::LAZARUS_OK;
+   return;
 }
 
 lazarus_result MeshManager::checkErrors(const char *file, uint32_t line)
@@ -809,7 +809,7 @@ lazarus_result MeshManager::checkErrors(const char *file, uint32_t line)
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result MeshManager::clearErrors()
+void MeshManager::clearErrors()
 {
     /* ============================================================
         Reset OpenGL's error state by flushing out all of the 
@@ -831,7 +831,7 @@ lazarus_result MeshManager::clearErrors()
         this->errorCode = glGetError();
     };
 
-    return lazarus_result::LAZARUS_OK;
+    return;
 };
 
 MeshManager::~MeshManager()

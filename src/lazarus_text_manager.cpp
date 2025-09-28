@@ -141,24 +141,26 @@ lazarus_result FontLoader::createBitmap()
     }
     else
     {
-        return this->setImageData(
+        this->setImageData(
             fontFace->glyph->bitmap.width, 
             fontFace->glyph->bitmap.rows, 
             fontFace->glyph->bitmap.buffer
         );
+
+        return lazarus_result::LAZARUS_OK;
     };
 };
 
-lazarus_result FontLoader::setImageData(uint32_t width, uint32_t height, unsigned char *data)
+void FontLoader::setImageData(uint32_t width, uint32_t height, unsigned char *data)
 {
     this->image.width = width;
     this->image.height = height;
     this->image.pixelData = data;
 
-    return lazarus_result::LAZARUS_OK;
+    return;
 };
 
-lazarus_result FontLoader::flipGlyph()
+void FontLoader::flipGlyph()
 {
     FT_Vector pixelStore;
 
@@ -187,7 +189,7 @@ lazarus_result FontLoader::flipGlyph()
     pixelStore.x += fontFace->glyph->advance.x;
     pixelStore.y += fontFace->glyph->advance.y;
 
-    return lazarus_result::LAZARUS_OK;
+    return;
 };
 
 FontLoader::~FontLoader()
@@ -523,7 +525,7 @@ lazarus_result TextManager::identifyAlphabetDimensions(uint32_t fontId)
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result TextManager::setActiveGlyph(char target, uint32_t fontId, uint32_t spacing)
+void TextManager::setActiveGlyph(char target, uint32_t fontId, uint32_t spacing)
 {
     /* =====================================================
         If the active glyph is a space; set the UV coordinates
@@ -551,10 +553,10 @@ lazarus_result TextManager::setActiveGlyph(char target, uint32_t fontId, uint32_
         this->glyph = this->characters.at((this->targetKey - 33));
     };
 
-    return lazarus_result::LAZARUS_OK;
+    return;
 };
 
-lazarus_result TextManager::lookUpUVs(uint8_t keyCode, uint32_t fontId)
+void TextManager::lookUpUVs(uint8_t keyCode, uint32_t fontId)
 {
     this->characters = this->fonts.at(fontId);
     uint8_t range = keyCode - 33;
@@ -587,7 +589,7 @@ lazarus_result TextManager::lookUpUVs(uint8_t keyCode, uint32_t fontId)
     this->uvU = static_cast<float>(this->alphabetHeights[(fontId * 2) + 1]) / uvRangeY;
     this->uvD = static_cast<float>(this->alphabetHeights[(fontId * 2)]) / uvRangeY;
 
-    return lazarus_result::LAZARUS_OK;
+    return;
 };
 
 TextManager::~TextManager()

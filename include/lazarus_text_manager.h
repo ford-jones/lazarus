@@ -57,8 +57,8 @@ class FontLoader
 
     private:
         lazarus_result createBitmap();
-        lazarus_result flipGlyph();
-        lazarus_result setImageData(uint32_t width, uint32_t height, unsigned char *data);
+        void flipGlyph();
+        void setImageData(uint32_t width, uint32_t height, unsigned char *data);
 
         std::unique_ptr<FileLoader> fileReader;
         std::string absolutePath;
@@ -112,10 +112,9 @@ class TextManager : private FontLoader, private MeshManager
         
         private: 
         Text textOut;
-        lazarus_result updateLayout(Text &textIn);
         lazarus_result identifyAlphabetDimensions(uint32_t fontId);
-        lazarus_result setActiveGlyph(char target, uint32_t fontId, uint32_t spacing);
-        lazarus_result lookUpUVs(uint8_t keyCode, uint32_t fontId);
+        void setActiveGlyph(char target, uint32_t fontId, uint32_t spacing);
+        void lookUpUVs(uint8_t keyCode, uint32_t fontId);
         
         uint8_t targetKey;
         

@@ -46,6 +46,11 @@ lazarus_result CameraManager::createPerspectiveCam(CameraManager::Camera &out, C
     camera.id                   = 1 + (rand() % 2147483647);
     camera.config               = options;
 
+    if(camera.config.name == "CAMERA_")
+    {
+        camera.config.name.append(std::to_string(camera.id));
+    };
+
     this->setAspectRatio(camera.config.aspectRatioX, camera.config.aspectRatioY);
 
     /* ===============================================
@@ -80,10 +85,12 @@ lazarus_result CameraManager::createOrthoCam(CameraManager::Camera &out, CameraM
     camera.config.aspectRatioX      = options.aspectRatioX;
     camera.config.aspectRatioY      = options.aspectRatioY;
     camera.config.clippingDistance  = 0.0f;
+    camera.config.name              = options.name;
 
-    camera.config.name = options.name != "LIGHT_"
-    ? options.name
-    : options.name.append(std::to_string(camera.id));
+    if(camera.config.name == "CAMERA_")
+    {
+        camera.config.name.append(std::to_string(camera.id));
+    };
 
     /* ================================================
         Negative Z so as to be "back" from the viewing
@@ -205,7 +212,7 @@ lazarus_result CameraManager::getPixelOccupant(uint32_t positionX, uint32_t posi
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result CameraManager::setAspectRatio(uint32_t x, uint32_t y)
+void CameraManager::setAspectRatio(uint32_t x, uint32_t y)
 {
     /* ===============================================
         If a target aspect ratio has been defined then
@@ -221,7 +228,7 @@ lazarus_result CameraManager::setAspectRatio(uint32_t x, uint32_t y)
         this->aspectRatio      = static_cast<float>(this->pixelHeight) / static_cast<float>(this->pixelWidth);
     };   
 
-    return lazarus_result::LAZARUS_OK;
+    return;
 };
 
 lazarus_result CameraManager::checkErrors(const char *file, uint32_t line)

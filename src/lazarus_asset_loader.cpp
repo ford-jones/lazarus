@@ -987,7 +987,7 @@ vector<string> AssetLoader::splitTokensFromLine(const char *wavefrontData, char 
     return tokenStore;
 }
 
-lazarus_result AssetLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> outDiffuse, uint32_t numOfAttributes)
+void AssetLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> outDiffuse, uint32_t numOfAttributes)
 {
     std::unordered_set<uint64_t> hashes = {};
     std::map<uint64_t, uint32_t> entries = {};
@@ -1095,7 +1095,7 @@ lazarus_result AssetLoader::constructIndexBuffer(vector<vec3> &outAttributes, ve
         }
     }
 
-    return lazarus_result::LAZARUS_OK;
+    return;
 }
 
 lazarus_result AssetLoader::constructTriangle()
@@ -1132,7 +1132,7 @@ lazarus_result AssetLoader::constructTriangle()
     return lazarus_result::LAZARUS_OK;
 }
 
-lazarus_result AssetLoader::resetMembers()
+void AssetLoader::resetMembers()
 {
     /* =============================
         Glb
@@ -1172,7 +1172,7 @@ lazarus_result AssetLoader::resetMembers()
     this->tempDiffuse.clear();
     this->layers.clear();
 
-    return lazarus_result::LAZARUS_OK;
+    return;
 };
 
 AssetLoader::~AssetLoader()

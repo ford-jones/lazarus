@@ -143,7 +143,9 @@ lazarus_result TextureLoader::storeCubeMap(uint32_t width, uint32_t height)
 		each mip of each face.
 	============================================================== */
 
-	uint32_t mipCount = this->calculateMipLevels(width, height);
+	uint32_t mipCount = 0;
+	this->calculateMipLevels(mipCount, width, height);
+	
 	glTexStorage2D(
 		GL_TEXTURE_CUBE_MAP, 
 		mipCount, 
@@ -299,7 +301,7 @@ lazarus_result TextureLoader::loadBitmapToTexture(FileLoader::Image imageData, u
 	return this->checkErrors(__FILE__, __LINE__);
 };
 
-uint32_t TextureLoader::calculateMipLevels(uint32_t width, uint32_t height)
+void TextureLoader::calculateMipLevels(uint32_t &mipCount, uint32_t width, uint32_t height)
 {
 	uint32_t loopCount = 0;
 
@@ -335,7 +337,9 @@ uint32_t TextureLoader::calculateMipLevels(uint32_t width, uint32_t height)
 		}
 	}
 
-	return loopCount;
+	mipCount = loopCount;
+
+	return;
 };
 
 lazarus_result TextureLoader::checkErrors(const char *file, uint32_t line)
@@ -353,7 +357,7 @@ lazarus_result TextureLoader::checkErrors(const char *file, uint32_t line)
 	return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result TextureLoader::clearErrors()
+void TextureLoader::clearErrors()
 {
 	this->errorCode = glGetError();
 	
@@ -362,7 +366,7 @@ lazarus_result TextureLoader::clearErrors()
 		this->errorCode = glGetError();
 	};
 
-	return lazarus_result::LAZARUS_OK;
+	return;
 };
 
 TextureLoader::~TextureLoader()

@@ -53,9 +53,9 @@ class Shader
 
     private: 
         lazarus_result verifyProgram(uint32_t program);
-        lazarus_result reset();
+        void reset();
         lazarus_result checkErrors(const char *file, uint32_t line);
-        lazarus_result clearErrors();
+        void clearErrors();
 
         unique_ptr<FileLoader> vertReader;
         unique_ptr<FileLoader> fragReader;

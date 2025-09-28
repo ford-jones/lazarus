@@ -138,7 +138,7 @@ class MeshManager
         //  This isn't quite the appropriate place to do this
         //  but ok for now
 
-        lazarus_result setDiscardFragments(Mesh &meshIn, bool shouldDiscard);
+        void setDiscardFragments(Mesh &meshIn, bool shouldDiscard);
 
         virtual ~MeshManager();
     
@@ -164,13 +164,13 @@ class MeshManager
         };
 
         lazarus_result setMaterialProperties(std::vector<glm::vec3> diffuse, std::vector<FileLoader::Image> images);
-        lazarus_result setSharedProperties();
         lazarus_result initialiseMesh();
-        lazarus_result makeSelectable(bool selectable);
         lazarus_result prepareTextures();
+        void makeSelectable(bool selectable);
+        void setSharedProperties();
         
         lazarus_result checkErrors(const char *file, uint32_t line);
-        lazarus_result clearErrors();
+        void clearErrors();
 
         int32_t errorCode;
 
