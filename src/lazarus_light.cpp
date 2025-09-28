@@ -43,6 +43,10 @@ lazarus_result LightManager::createLightSource(LightManager::Light &out, LightMa
 
     lightOut.id = lightStore.size();
     lightOut.config = options;
+    if(lightOut.config.name == "LIGHT_")
+    {
+        lightOut.config.name.append(std::to_string(lightOut.id));
+    };
     
     this->lightCount += 1;
     lightData.uniformIndex                   =   (this->lightCount - 1);

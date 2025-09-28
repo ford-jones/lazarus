@@ -65,6 +65,10 @@ lazarus_result AudioManager::createAudio(AudioManager::Audio &out, AudioManager:
 	out.id = audioStore.size();
 	out.sourceLocation = {0.0f, 0.0f, 0.0f};
 	out.config = options;
+	if(out.config.name == "SAMPLE_")
+	{
+		out.config.name.append(std::to_string(this->audioStore.size()));
+	};
 	out.isPaused = true;
 	out.audioIndex = 0;
 

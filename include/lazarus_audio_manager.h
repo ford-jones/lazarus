@@ -49,13 +49,14 @@ class AudioManager
 		struct AudioConfig
 		{
 			std::string filepath = "";
+			std::string name = "SAMPLE_";
 			bool is3D = false;
 			int32_t loopCount = 0;
 		};
 		struct Audio 
 		{
 			uint32_t id;
-			string path;
+			std::string path;
 
 			glm::vec3 sourceLocation;
 			

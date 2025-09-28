@@ -68,6 +68,12 @@ lazarus_result MeshManager::create3DAsset(MeshManager::Mesh &out, MeshManager::A
     meshOut.meshFilepath = options.meshPath;
     meshOut.materialFilepath = options.materialPath;
     
+    //  TODO:
+    //  If not present populate from file contents instead of filename
+    this->meshOut.name = options.name.size()
+    ? options.name
+    : meshOut.meshFilepath + "_" + std::to_string(this->dataStore.size());
+
     /* ==========================================
         Determine whether the file is wavefront
         or gltf/glb.
@@ -157,6 +163,10 @@ lazarus_result MeshManager::createQuad(MeshManager::Mesh &out, MeshManager::Quad
 
     meshOut.meshFilepath = "";
     meshOut.materialFilepath = "";
+
+    this->meshOut.name = options.name.size() 
+    ? options.name 
+    : this->meshOut.name.append(std::to_string(this->dataStore.size()));
     
     meshData.texture.unitId = this->textureStorage == TextureLoader::StorageType::ATLAS
     ? GL_TEXTURE1
@@ -283,6 +293,10 @@ lazarus_result MeshManager::createCube(MeshManager::Mesh &out, MeshManager::Cube
     meshOut.meshFilepath = "";
     meshOut.materialFilepath = "";
 
+    this->meshOut.name = options.name.size() 
+    ? options.name 
+    : this->meshOut.name.append(std::to_string(this->dataStore.size()));
+    
     meshData.texture.unitId = this->textureStorage == TextureLoader::StorageType::CUBEMAP
     ? GL_TEXTURE3
     : GL_TEXTURE2;

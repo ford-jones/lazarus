@@ -76,6 +76,7 @@ class MeshManager
         struct Mesh
         {
             uint32_t id;
+            std::string name;
 
             MeshType type;
             std::vector<Material> materials;
@@ -98,10 +99,12 @@ class MeshManager
         {
             std::string meshPath = "";
             std::string materialPath = "";
+            std::string name = "";
             bool selectable = false;
         };
         struct QuadConfig
         {
+            std::string name = "QUAD_";
             std::string texturePath = "";
             float width = 0.0f;
             float height = 0.0f;
@@ -113,6 +116,7 @@ class MeshManager
         };
         struct CubeConfig
         {
+            std::string name = "CUBE_";
             std::string texturePath = "";
             float scale = 1.0f;
             bool selectable = false;

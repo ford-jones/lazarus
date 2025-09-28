@@ -81,6 +81,10 @@ lazarus_result CameraManager::createOrthoCam(CameraManager::Camera &out, CameraM
     camera.config.aspectRatioY      = options.aspectRatioY;
     camera.config.clippingDistance  = 0.0f;
 
+    camera.config.name = options.name != "LIGHT_"
+    ? options.name
+    : options.name.append(std::to_string(camera.id));
+
     /* ================================================
         Negative Z so as to be "back" from the viewing
         plane.
