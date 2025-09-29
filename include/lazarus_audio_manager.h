@@ -68,7 +68,6 @@ class AudioManager
 			AudioConfig config;
 		};
 
-
 		AudioManager();
 
 		lazarus_result initialise();

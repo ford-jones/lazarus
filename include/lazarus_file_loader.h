@@ -54,16 +54,16 @@ class FileLoader
         lazarus_result loadImage(Image &out, const char *filepath = NULL, const unsigned char *raw = NULL, uint32_t size = 0);
         lazarus_result loadText(std::string filepath, std::string &out);
         
+        virtual ~FileLoader();
+        
+    private:
+		unsigned char *imageData;
+        unsigned char *outResize;
+        
 		int32_t imageWidth;
         int32_t imageHeight;
         int32_t channelCount;
 
-        virtual ~FileLoader();
-        
-	private:
-		unsigned char *imageData;
-        unsigned char *outResize;
-        
         int32_t resizeStatus;
 		
         std::stringstream stringstream;

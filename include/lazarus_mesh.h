@@ -124,9 +124,6 @@ class MeshManager
         
 		MeshManager(GLuint shader, TextureLoader::StorageType textureType = TextureLoader::StorageType::ARRAY);
 		
-        // Mesh create3DAsset(std::string meshPath, std::string materialPath = "", bool selectable = false);
-        // Mesh createQuad(float width, float height, std::string texturePath = "", float uvXL = 0.0, float uvXR = 0.0, float uvYU = 0.0, float uvYD = 0.0, bool selectable = false);
-        // Mesh createCube(float scale, std::string texturePath = "", bool selectable = false);
         lazarus_result create3DAsset(Mesh &out, AssetConfig options);
         lazarus_result createQuad(Mesh &out, QuadConfig options);
         lazarus_result createCube(Mesh &out, CubeConfig options);

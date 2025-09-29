@@ -148,9 +148,6 @@ class GlobalsManager
         static void setLaunchInFullscreen(bool shouldEnlarge);
         static bool getLaunchInFullscreen();
 
-        static void setExecutionState(uint32_t state);
-        static uint32_t getExecutionState();
-
         static void setVsyncDisabled(bool shouldDisable);
         static bool getVsyncDisabled();
 
