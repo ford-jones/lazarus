@@ -179,25 +179,38 @@ int main()
 
     //  Default shader
     Lazarus::Shader shader = Lazarus::Shader();
-    int shaderID = shader.compileShaders();
-    shader.setActiveShader(shaderID);
+    int shaderID = -1;
+    shader.compileShaders(shaderID);    //  shaderID assumes the index of the newly linked shader
+    shader.setActiveShader(shaderID);   //  activate the shader found at shaderID
 
     //  Camera
     Lazarus::CameraManager cameraManager = Lazarus::CameraManager(shaderID);
-    Lazarus::CameraManager::Camera camera = cameraManager.createOrthoCam(
-        globals.getDisplayWidth(), 
-        globals.getDisplayHeight()
-    );
+
+    //  Configure camera settings
+    Lazarus::CameraManager::CameraConfig cameraSettings = {};
+    cameraSettings.aspectRatioX = globals.getDisplayWidth();
+    cameraSettings.aspectRatioY = globals.getDisplayHeight();
+
+    //  Generate camera
+    Lazarus::CameraManager::Camera camera = {};
+    cameraManager.createOrthoCam(camera, cameraSettings); //  upon success, camera is given a value
 ```
 
 Now lets create our geometry:
 ```cpp
+    //  Instantiate a new mesh manager (this can be stack'd or heap'd, here we use the stack).
+    //  The ID of the shader that will be used to render this instance's resources must be provided
     Lazarus::MeshManager meshManager = Lazarus::MeshManager(shaderID);
-    //  Orthographically viewed, sizing corresponds to pixel-width
-    Lazarus::MeshManager::Mesh quad = meshManager.createQuad(
-        500,
-        500
-    );
+
+    //  Configure the mesh asset
+    //  Note: when orthographically viewed, sizing corresponds to pixel-width
+    Lazarus::MeshManager::QuadConfig quadSettings = {};
+    quadSettings.width = 500;
+    quadSettings.height = 500;
+
+    //  Generate asset
+    Lazarus::MeshManager::Quad quad = {};
+    meshManager.createQuad(quad, quadSettings); //  upon success, quad is given a value
 ```
 
 The active shader has been set and our resources are prepared. From here we can begin our render loop, where per-frame we will load our scene's data onto the GPU and use our shader to render the output upon each draw call. Then we present the next frame to observe the outcome.
@@ -216,18 +229,16 @@ The active shader has been set and our resources are prepared. From here we can 
         meshManager.loadMesh(quad);
 
         //  Draw next frame
-        meshManager.drawMesh(quad);
+        lazarus_result engineStatus = meshManager.drawMesh(quad);
 
         //  Check errors
-        int status = globals.getExecutionState();
-        if(status != LAZARUS_OK)
+        //  Note: a lazarus_result shall be returned by most functions in the api
+        if(engineStatus != LAZARUS_OK)
         {
             window.close();
-        }
-        else
-        {
-            window.presentNextFrame();
-        }
+        };
+
+        window.presentNextFrame();
     }
 
     //  Exit
@@ -235,7 +246,7 @@ The active shader has been set and our resources are prepared. From here we can 
 };
 ```
 
-You should see something like this: congratulations - you've just drawn your first "scene" with Lazarus. \
+You should see something like this: congratulations - you've just drawn your first scene with Lazarus! \
 ![helloQuad1](images/helloQuad1.png)
 
 ### Transforming assets:

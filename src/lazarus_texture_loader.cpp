@@ -60,7 +60,7 @@ TextureLoader::TextureLoader(TextureLoader::StorageType storageVariant)
 	}
 };
 
-void TextureLoader::extendTextureStack(uint32_t maxWidth, uint32_t maxHeight, uint32_t textureLayers)
+lazarus_result TextureLoader::extendTextureStack(uint32_t maxWidth, uint32_t maxHeight, uint32_t textureLayers)
 {
 	this->clearErrors();
 
@@ -84,12 +84,10 @@ void TextureLoader::extendTextureStack(uint32_t maxWidth, uint32_t maxHeight, ui
 		NULL															//	pixel data, NULL because the texture will be subImage'd in later
 	);
 
-	this->checkErrors(__FILE__, __LINE__);
-
-	return;
+	return this->checkErrors(__FILE__, __LINE__);
 };
 
-void TextureLoader::loadImageToTextureStack(FileLoader::Image imageData, GLuint textureLayer)
+lazarus_result TextureLoader::loadImageToTextureStack(FileLoader::Image imageData, GLuint textureLayer)
 {	
 	this->clearErrors();
 
@@ -126,12 +124,10 @@ void TextureLoader::loadImageToTextureStack(FileLoader::Image imageData, GLuint 
 		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);	
 	}
 
-	this->checkErrors(__FILE__, __LINE__);
-
-	return;
+	return this->checkErrors(__FILE__, __LINE__);
 };
 
-void TextureLoader::storeCubeMap(uint32_t width, uint32_t height)
+lazarus_result TextureLoader::storeCubeMap(uint32_t width, uint32_t height)
 {
 	this->clearErrors();
 
@@ -147,7 +143,9 @@ void TextureLoader::storeCubeMap(uint32_t width, uint32_t height)
 		each mip of each face.
 	============================================================== */
 
-	uint32_t mipCount = this->calculateMipLevels(width, height);
+	uint32_t mipCount = 0;
+	this->calculateMipLevels(mipCount, width, height);
+	
 	glTexStorage2D(
 		GL_TEXTURE_CUBE_MAP, 
 		mipCount, 
@@ -156,12 +154,10 @@ void TextureLoader::storeCubeMap(uint32_t width, uint32_t height)
 		height
 	);
 
-	this->checkErrors(__FILE__, __LINE__);
-
-	return;
+	return this->checkErrors(__FILE__, __LINE__);
 };
 
-void TextureLoader::loadCubeMap(std::vector<FileLoader::Image> faces)
+lazarus_result TextureLoader::loadCubeMap(std::vector<FileLoader::Image> faces)
 {	
 	this->clearErrors();
 
@@ -173,7 +169,7 @@ void TextureLoader::loadCubeMap(std::vector<FileLoader::Image> faces)
 	if(faces.size() > 6)
 	{
 		LOG_ERROR("Texture Error:", __FILE__, __LINE__);
-		globals.setExecutionState(StatusCode::LAZARUS_INVALID_CUBEMAP);
+		return lazarus_result::LAZARUS_INVALID_CUBEMAP;
 	}
 	else
 	{
@@ -200,7 +196,11 @@ void TextureLoader::loadCubeMap(std::vector<FileLoader::Image> faces)
 				(const void *)faces[i].pixelData
 			);
 
-			this->checkErrors(__FILE__, __LINE__);
+			lazarus_result status = this->checkErrors(__FILE__, __LINE__);
+			if(status != lazarus_result::LAZARUS_OK)
+			{
+				return status;
+			};
 		};
 
 		glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
@@ -211,13 +211,11 @@ void TextureLoader::loadCubeMap(std::vector<FileLoader::Image> faces)
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
-		this->checkErrors(__FILE__, __LINE__);
+		return this->checkErrors(__FILE__, __LINE__);
 	};
-
-	return;
 };
 
-void TextureLoader::storeBitmapTexture(uint32_t maxWidth, uint32_t maxHeight)
+lazarus_result TextureLoader::storeBitmapTexture(uint32_t maxWidth, uint32_t maxHeight)
 {
 	this->clearErrors();
 	/* ===========================================
@@ -251,12 +249,10 @@ void TextureLoader::storeBitmapTexture(uint32_t maxWidth, uint32_t maxHeight)
 		0
 	);
 
-	this->checkErrors(__FILE__, __LINE__);
-
-	return;
+	return this->checkErrors(__FILE__, __LINE__);
 };
 
-void TextureLoader::loadBitmapToTexture(FileLoader::Image imageData, uint32_t xOffset, uint32_t yOffset)
+lazarus_result TextureLoader::loadBitmapToTexture(FileLoader::Image imageData, uint32_t xOffset, uint32_t yOffset)
 {
 	this->image.width = imageData.width;
 	this->image.height = imageData.height;
@@ -285,7 +281,12 @@ void TextureLoader::loadBitmapToTexture(FileLoader::Image imageData, uint32_t xO
 		GL_UNSIGNED_BYTE, 
 		(void *)this->image.pixelData
 	);
-	this->checkErrors(__FILE__, __LINE__);
+	lazarus_result status = this->checkErrors(__FILE__, __LINE__);
+
+	if(status != lazarus_result::LAZARUS_OK)
+	{
+		return status;
+	};
 
 	this->clearErrors();
 
@@ -297,12 +298,10 @@ void TextureLoader::loadBitmapToTexture(FileLoader::Image imageData, uint32_t xO
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);	
 
-	this->checkErrors(__FILE__, __LINE__);
-
-	return;
+	return this->checkErrors(__FILE__, __LINE__);
 };
 
-uint32_t TextureLoader::calculateMipLevels(uint32_t width, uint32_t height)
+void TextureLoader::calculateMipLevels(uint32_t &mipCount, uint32_t width, uint32_t height)
 {
 	uint32_t loopCount = 0;
 
@@ -338,10 +337,12 @@ uint32_t TextureLoader::calculateMipLevels(uint32_t width, uint32_t height)
 		}
 	}
 
-	return loopCount;
+	mipCount = loopCount;
+
+	return;
 };
 
-void TextureLoader::checkErrors(const char *file, uint32_t line)
+lazarus_result TextureLoader::checkErrors(const char *file, uint32_t line)
 {
     this->errorCode = glGetError();
     
@@ -350,10 +351,10 @@ void TextureLoader::checkErrors(const char *file, uint32_t line)
         std::string message = std::string("OpenGL Error: ").append(std::to_string(this->errorCode));
         LOG_ERROR(message.c_str(), file, line);
 
-		globals.setExecutionState(StatusCode::LAZARUS_OPENGL_ERROR);
+		return lazarus_result::LAZARUS_OPENGL_ERROR;
     } 
 
-	return;
+	return lazarus_result::LAZARUS_OK;
 };
 
 void TextureLoader::clearErrors()
@@ -364,6 +365,8 @@ void TextureLoader::clearErrors()
 	{
 		this->errorCode = glGetError();
 	};
+
+	return;
 };
 
 TextureLoader::~TextureLoader()

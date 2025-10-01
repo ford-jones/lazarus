@@ -32,21 +32,21 @@ Time::Time()
 	this->timeDelta 			= 0.0f;
 };
 
-void Time::monitorElapsedUptime()
+lazarus_result Time::monitorElapsedUptime()
 {
 	this->elapsedTime = glfwGetTime();
 	if(elapsedTime <= 0.0f)
 	{
 		LOG_ERROR("Time Error: ", __FILE__, __LINE__);
- 		globals.setExecutionState(StatusCode::LAZARUS_TIME_ERROR);
+ 		return lazarus_result::LAZARUS_TIME_ERROR;
 	};
 
 	this->msSinceLastRender = (this->elapsedTime - this->internalSeconds);
 
-	return;
+	return lazarus_result::LAZARUS_OK;
 };
 
-void Time::monitorTimeDelta()
+lazarus_result Time::monitorTimeDelta()
 {
 	this->monitorFPS();
 
@@ -54,13 +54,13 @@ void Time::monitorTimeDelta()
 	if(timeDelta <= 0.0f)
 	{
 		LOG_ERROR("Time Error: ", __FILE__, __LINE__);
-		globals.setExecutionState(StatusCode::LAZARUS_TIME_ERROR);
+		return lazarus_result::LAZARUS_TIME_ERROR;
 	};
 
-	return;
+	return lazarus_result::LAZARUS_OK;
 };
 
-void Time::monitorFPS()
+lazarus_result Time::monitorFPS()
 {
 	this->frameCount++;	
 	this->monitorElapsedUptime();
@@ -71,14 +71,14 @@ void Time::monitorFPS()
 		if(this->framesPerSecond <= 0) 
 		{
 			LOG_ERROR("Time Error: ", __FILE__, __LINE__);
-			globals.setExecutionState(StatusCode::LAZARUS_TIME_ERROR);
+			return lazarus_result::LAZARUS_TIME_ERROR;
 		};
 
 		this->frameCount = 0;
 		this->internalSeconds += 1.0f;
 	};
 
-	return;
+	return lazarus_result::LAZARUS_OK;
 };
 
 Time::~Time()
@@ -104,11 +104,15 @@ Events::Events()
 	win 		        = NULL;
 };
 
-void Events::eventsInit()
+lazarus_result Events::eventsInit()
 {
 	win = glfwGetCurrentContext();
 
-	this->checkErrors(__FILE__, __LINE__);
+	lazarus_result status = this->checkErrors(__FILE__, __LINE__);
+	if(status != lazarus_result::LAZARUS_OK)
+	{
+		return status;
+	};
 	
 	if(win != NULL)
 	{
@@ -155,28 +159,30 @@ void Events::eventsInit()
 			return;
 		});
 
-		this->checkErrors(__FILE__, __LINE__);
+		return this->checkErrors(__FILE__, __LINE__);
 	}
 	else 
 	{
         LOG_ERROR("GLFW Error: No OpenGL context.", __FILE__, __LINE__);
 
-		globals.setExecutionState(StatusCode::LAZARUS_NO_CONTEXT);
-
-		return;
+		return lazarus_result::LAZARUS_NO_CONTEXT;
 	};
 };
 
-void Events::monitorEvents()
+lazarus_result Events::monitorEvents()
 {	
     glfwPollEvents();
 	
+	/* ===================================
+		Don't need to check these, they 
+		are always OK as the cb's are 
+		void.
+	====================================== */
+
     this->updateKeyboardState();
     this->updateMouseState();
 
-	this->checkErrors(__FILE__, __LINE__);
-	
-	return;
+	return this->checkErrors(__FILE__, __LINE__);
 };
 
 void Events::updateKeyboardState()
@@ -347,7 +353,7 @@ void Events::updateMouseState()
 	return;
 };
 
-int32_t Events::checkErrors(const char *file, int line)
+lazarus_result Events::checkErrors(const char *file, int line)
 {
     errorCode = glfwGetError(&errorMessage); 
     if(errorCode != GLFW_NO_ERROR)
@@ -355,14 +361,12 @@ int32_t Events::checkErrors(const char *file, int line)
 		std::string message = std::string("Event Error: ").append(errorMessage);
         LOG_ERROR(message.c_str(), file, line);
 
-        globals.setExecutionState(StatusCode::LAZARUS_EVENT_ERROR);
-        
-        return errorCode;
+        return lazarus_result::LAZARUS_EVENT_ERROR;
     }
     else 
     {
-    	return GLFW_NO_ERROR;
-    }
+    	return lazarus_result::LAZARUS_OK;
+    };
 };
 
 Events::~Events()
@@ -383,11 +387,11 @@ WindowManager::WindowManager(const char *title, uint32_t width, uint32_t height)
     this->frame.height = height;
     this->frame.title = title;
 
-    this->isFullscreen = globals.getLaunchInFullscreen();
-    this->enableCursor = globals.getCursorHidden();
-    this->cullFaces = globals.getBackFaceCulling();
-    this->testDepth = globals.getDepthTest();
-    this->disableVsync = globals.getVsyncDisabled();
+    this->isFullscreen 	= GlobalsManager::getLaunchInFullscreen();
+    this->enableCursor 	= GlobalsManager::getCursorHidden();
+    this->cullFaces 	= GlobalsManager::getBackFaceCulling();
+    this->testDepth 	= GlobalsManager::getDepthTest();
+    this->disableVsync 	= GlobalsManager::getVsyncDisabled();
 
 	this->isOpen = false;
 
@@ -403,16 +407,17 @@ WindowManager::WindowManager(const char *title, uint32_t width, uint32_t height)
     this->cursor = NULL;
 };
 
-int32_t WindowManager::createWindow()
+lazarus_result WindowManager::createWindow()
 {
+	lazarus_result status = lazarus_result::LAZARUS_OK;
+
     if(!glfwInit())
     {
+        glfwTerminate();
         LOG_ERROR("GLFW Error: GLFW missing.", __FILE__, __LINE__);
 
-        globals.setExecutionState(StatusCode::LAZARUS_GLFW_NOINIT);
-        
-        glfwTerminate();
-        return -1;
+        status = lazarus_result::LAZARUS_GLFW_NOINIT;
+		return status;
     };
 
     /* ==================================================
@@ -426,12 +431,13 @@ int32_t WindowManager::createWindow()
       explicitly request this older version of the GL context
       with GLEW experimental features also turned on.
     ===================================================== */
+
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    this->checkErrors(__FILE__, __LINE__);
+    status = this->checkErrors(__FILE__, __LINE__);
 
     this->monitor = glfwGetPrimaryMonitor();
     this->videoMode = glfwGetVideoMode(this->monitor);
@@ -443,8 +449,8 @@ int32_t WindowManager::createWindow()
     {
 		LOG_ERROR("GLFW Error: ", __FILE__, __LINE__);
 
-        globals.setExecutionState(StatusCode::LAZARUS_WIN_EXCEEDS_MAX);
-        return -1;
+        status = lazarus_result::LAZARUS_WIN_EXCEEDS_MAX;
+        return status;
     };
 
     int32_t targetWidth = 0;
@@ -473,12 +479,22 @@ int32_t WindowManager::createWindow()
         )
     );
 
-    globals.setDisplaySize(targetWidth, targetHeight);
+    GlobalsManager::setDisplaySize(targetWidth, targetHeight);
 
-	this->centerWindow();
+	status = this->centerWindow();
+	if(status != lazarus_result::LAZARUS_OK)
+	{
+		return status;
+	};
+
     glfwMakeContextCurrent(this->window);
 
-	this->checkErrors(__FILE__, __LINE__);
+	status = this->checkErrors(__FILE__, __LINE__);
+	if(status != lazarus_result::LAZARUS_OK)
+	{
+		return status;
+	};
+
     /* ========================================================================== 
         Note that alot of the GL ecosystem uses C-style callbacks. The repercussion
         being that pointers such as "this" cannot be used because of the required
@@ -509,7 +525,7 @@ int32_t WindowManager::createWindow()
     return this->checkErrors(__FILE__, __LINE__);;
 };
 
-int32_t WindowManager::setBackgroundColor(float r, float g, float b)
+lazarus_result WindowManager::setBackgroundColor(float r, float g, float b)
 {
 	glClearColor(r, g, b, 1.0);
 
@@ -518,7 +534,7 @@ int32_t WindowManager::setBackgroundColor(float r, float g, float b)
 	return this->checkErrors(__FILE__, __LINE__);;
 };
 
-int32_t WindowManager::loadConfig()
+lazarus_result WindowManager::loadConfig()
 {	
 	if(enableCursor == true)
 	{
@@ -553,14 +569,17 @@ int32_t WindowManager::loadConfig()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 
     glFrontFace(GL_CCW);
-	this->checkErrors(__FILE__, __LINE__);
 
-	this->setBackgroundColor(0.0, 0.0, 0.0);
+	lazarus_result status = this->checkErrors(__FILE__, __LINE__);
+	if(status != lazarus_result::LAZARUS_OK)
+	{
+		return status;
+	};
 	
-	return this->checkErrors(__FILE__, __LINE__);;
+	return this->setBackgroundColor(0.0, 0.0, 0.0);
 };
 
-int32_t WindowManager::toggleFullscreen()
+lazarus_result WindowManager::toggleFullscreen()
 {
 	if(!this->isFullscreen)
 	{
@@ -611,14 +630,19 @@ int32_t WindowManager::toggleFullscreen()
 			0
 		);
 
-		this->centerWindow();
+		lazarus_result status = this->centerWindow();
+		if(status != lazarus_result::LAZARUS_OK)
+		{
+			return status;
+		};
+
 		this->isFullscreen = false;
 	};
 
 	return this->checkErrors(__FILE__, __LINE__);
 };
 
-int32_t WindowManager::resize(uint32_t width, uint32_t height)
+lazarus_result WindowManager::resize(uint32_t width, uint32_t height)
 {
 	/* ===========================================
 		Due to this being set as the glfw 
@@ -631,14 +655,14 @@ int32_t WindowManager::resize(uint32_t width, uint32_t height)
 
 	this->frame.height = height;
 	this->frame.width = width;
-	globals.setDisplaySize(width, height);
+	GlobalsManager::setDisplaySize(width, height);
 
 	glViewport(0, 0, this->frame.width, this->frame.height);
 
 	return this->checkErrors(__FILE__, __LINE__);
 };
 
-int32_t WindowManager::open()
+lazarus_result WindowManager::open()
 {
     glfwSetWindowShouldClose(this->window, GLFW_FALSE);
     this->isOpen = true;
@@ -646,7 +670,7 @@ int32_t WindowManager::open()
     return this->checkErrors(__FILE__, __LINE__);;
 }
 
-int32_t WindowManager::close()
+lazarus_result WindowManager::close()
 {
     glfwSetWindowShouldClose(this->window, GLFW_TRUE);
     this->isOpen = false;
@@ -654,10 +678,15 @@ int32_t WindowManager::close()
     return this->checkErrors(__FILE__, __LINE__);;
 }
 
-int32_t WindowManager::createCursor(uint32_t sizeX, uint32_t sizeY, uint32_t targetX, uint32_t targetY, std::string filepath)
+lazarus_result WindowManager::createCursor(uint32_t sizeX, uint32_t sizeY, uint32_t targetX, uint32_t targetY, std::string filepath)
 {		
     fileReader = std::make_unique<FileLoader>();
-    this->image = fileReader->loadImage(filepath.c_str());
+	
+    lazarus_result status = fileReader->loadImage(this->image, filepath.c_str());
+	if(status != lazarus_result::LAZARUS_OK)
+	{
+		return status;
+	};
 
 	this->glfwImage.width = sizeX;
 	this->glfwImage.height = sizeY;
@@ -669,14 +698,13 @@ int32_t WindowManager::createCursor(uint32_t sizeX, uint32_t sizeY, uint32_t tar
 	return this->checkErrors(__FILE__, __LINE__);
 };
 
-int32_t WindowManager::snapCursor(float moveX, float moveY)
+lazarus_result WindowManager::snapCursor(float moveX, float moveY)
 {
-    if(moveX > globals.getDisplayWidth() || moveY > globals.getDisplayHeight())
+    if(moveX > GlobalsManager::getDisplayWidth() || moveY > GlobalsManager::getDisplayHeight())
     {
 		LOG_ERROR("GLFW Error:", __FILE__, __LINE__);
 		
-        globals.setExecutionState(StatusCode::LAZARUS_INVALID_COORDINATE);
-		return -1;
+        return lazarus_result::LAZARUS_INVALID_COORDINATE;
     }
     else
     {
@@ -686,7 +714,7 @@ int32_t WindowManager::snapCursor(float moveX, float moveY)
 };
 
 
-int32_t WindowManager::presentNextFrame()
+lazarus_result WindowManager::presentNextFrame()
 {
 	glfwSwapBuffers(this->window);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -702,16 +730,16 @@ int32_t WindowManager::presentNextFrame()
 	only being able to store 8-bit numbers 
 	in the stencil-depth buffer.
 ============================================ */
-int32_t WindowManager::monitorPixelOccupants()
+lazarus_result WindowManager::monitorPixelOccupants()
 {
 	/* ==========================================
 		Notifies MeshManager::drawMesh to draw 
 		not only VBO contents but also to draw to
 		the stencil buffer.
 	============================================= */
-	if(!globals.getManageStencilBuffer()) 
+	if(!GlobalsManager::getManageStencilBuffer()) 
 	{
-		globals.setManageStencilBuffer(true);
+		GlobalsManager::setManageStencilBuffer(true);
 	};
 
 	/* ==========================================
@@ -736,7 +764,7 @@ int32_t WindowManager::monitorPixelOccupants()
 	return this->checkErrors(__FILE__, __LINE__);
 };
 
-int32_t WindowManager::checkErrors(const char *file, int line)
+lazarus_result WindowManager::checkErrors(const char *file, int line)
 {
     errorCode = glfwGetError(&errorMessage); 
     if(errorCode != GLFW_NO_ERROR)
@@ -744,17 +772,15 @@ int32_t WindowManager::checkErrors(const char *file, int line)
         std::string message = std::string("Window Error: ").append(errorMessage);
         LOG_ERROR(message.c_str(), file, line);
 
-        globals.setExecutionState(StatusCode::LAZARUS_WINDOW_ERROR);
-        
-        return errorCode;
+        return lazarus_result::LAZARUS_WINDOW_ERROR;
     }
     else 
     {
-    	return GLFW_NO_ERROR;
+    	return lazarus_result::LAZARUS_OK;
     }
 };
 
-int32_t WindowManager::centerWindow()
+lazarus_result WindowManager::centerWindow()
 {
 	int32_t windowLocationX = floor((videoMode->width - this->frame.width) / 2);
 	int32_t windowLocationY = floor((videoMode->height - this->frame.height) / 2);
@@ -763,12 +789,12 @@ int32_t WindowManager::centerWindow()
 	return this->checkErrors(__FILE__, __LINE__);
 };
 
-int32_t WindowManager::initialiseGLEW()
+void WindowManager::initialiseGLEW()
 {
     glewExperimental = GL_TRUE;
     glewInit();
 
-    return GLEW_NO_ERROR;
+    return;
 };
 
 WindowManager::~WindowManager() 

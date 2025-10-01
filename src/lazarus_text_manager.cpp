@@ -27,7 +27,7 @@ FontLoader::FontLoader()
 
     this->lib = NULL;
     this->fontFace = NULL;
-    this->status = 0;
+    this->result = 0;
 
     this->fontStack = {};
 
@@ -36,46 +36,53 @@ FontLoader::FontLoader()
     this->setImageData(0, 0, NULL);
 };
 
-void FontLoader::loaderInit()
+lazarus_result FontLoader::loaderInit()
 {
-    status = FT_Init_FreeType(&lib);
+    result = FT_Init_FreeType(&lib);
 
-    if(status != FT_Err_Ok)
+    if(result != FT_Err_Ok)
     {
-        std::string message = std::string("FontLoader Error: ").append(std::to_string(this->status));
+        std::string message = std::string("FontLoader Error: ").append(std::to_string(this->result));
         LOG_ERROR(message.c_str(), __FILE__, __LINE__);
 
-        globals.setExecutionState(StatusCode::LAZARUS_FT_INIT_FAILURE);
-    }
+        return lazarus_result::LAZARUS_FT_INIT_FAILURE;
+    };
+
+    return lazarus_result::LAZARUS_OK;
 };
 
-int32_t FontLoader::loadTrueTypeFont(std::string filepath, uint32_t charHeight, uint32_t charWidth)
+lazarus_result FontLoader::loadTrueTypeFont(uint32_t &index, std::string filepath, uint32_t ptSize)
 {
+    this->absolutePath.clear();
     fileReader = std::make_unique<FileLoader>();
-    absolutePath = fileReader->relativePathToAbsolute(filepath);
 
-    status = FT_New_Face(lib, absolutePath.c_str(), 0, &fontFace);
-
-    if(status != FT_Err_Ok)
+    lazarus_result status = fileReader->relativePathToAbsolute(filepath, this->absolutePath);
+    if(status != lazarus_result::LAZARUS_OK)
     {
-        std::string message = std::string("FontLoader Error: ").append(std::to_string(this->status));
+        return status;
+    };
+
+    result = FT_New_Face(lib, this->absolutePath.c_str(), 0, &fontFace);
+
+    if(result != FT_Err_Ok)
+    {
+        std::string message = std::string("FontLoader Error: ").append(std::to_string(this->result));
         LOG_ERROR(message.c_str(), __FILE__, __LINE__);
 
-        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
-
-        return -1;
+        return lazarus_result::LAZARUS_FILE_UNREADABLE;
     } 
     else 
     {
-        FT_Set_Pixel_Sizes(fontFace, 0, charHeight);
+        FT_Set_Pixel_Sizes(fontFace, 0, ptSize);
 
         fontStack.push_back(fontFace);
 
-        return fontStack.size();
+        index = fontStack.size();
+        return lazarus_result::LAZARUS_OK;
     }
 };
 
-FileLoader::Image FontLoader::loadCharacter(char character, uint32_t fontIndex)
+lazarus_result FontLoader::loadCharacter(FileLoader::Image &glyph, char character, uint32_t fontIndex)
 {
     this->fontFace = fontStack[fontIndex - 1];
     this->keyCode = static_cast<uint8_t>(character);
@@ -96,37 +103,41 @@ FileLoader::Image FontLoader::loadCharacter(char character, uint32_t fontIndex)
     this->flipGlyph();
 
     this->glyphIndex = FT_Get_Char_Index(fontFace, keyCode);
-    status = FT_Load_Glyph(fontFace, glyphIndex, FT_LOAD_DEFAULT);
+    result = FT_Load_Glyph(fontFace, glyphIndex, FT_LOAD_DEFAULT);
 
-    if(status != FT_Err_Ok)
+    if(result != FT_Err_Ok)
     {
-        std::string message = std::string("FontLoader Error: ").append(std::to_string(this->status));
+        std::string message = std::string("FontLoader Error: ").append(std::to_string(this->result));
         LOG_ERROR(message.c_str(), __FILE__, __LINE__);
 
-        globals.setExecutionState(StatusCode::LAZARUS_FT_LOAD_FAILURE);
-
         this->setImageData(0, 0, NULL);
+        return lazarus_result::LAZARUS_FT_LOAD_FAILURE;
     }
     else
     {
-        this->createBitmap();
+        lazarus_result status = this->createBitmap();
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
     }
 
-    return this->image;
+    glyph = this->image;
+    return lazarus_result::LAZARUS_OK;
 };
 
-void FontLoader::createBitmap()
+lazarus_result FontLoader::createBitmap()
 {
-    status = FT_Render_Glyph(fontFace->glyph, FT_RENDER_MODE_NORMAL);
+    result = FT_Render_Glyph(fontFace->glyph, FT_RENDER_MODE_NORMAL);
 
-    if(status != FT_Err_Ok)
+    if(result != FT_Err_Ok)
     {
-        std::string message = std::string("FontLoader Error: ").append(std::to_string(this->status));
+        std::string message = std::string("FontLoader Error: ").append(std::to_string(this->result));
         LOG_ERROR(message.c_str(), __FILE__, __LINE__);
-
-        globals.setExecutionState(StatusCode::LAZARUS_FT_RENDER_FAILURE);
-
+        
         this->setImageData(0, 0, NULL);
+        
+        return lazarus_result::LAZARUS_FT_RENDER_FAILURE;
     }
     else
     {
@@ -135,6 +146,8 @@ void FontLoader::createBitmap()
             fontFace->glyph->bitmap.rows, 
             fontFace->glyph->bitmap.buffer
         );
+
+        return lazarus_result::LAZARUS_OK;
     };
 };
 
@@ -143,6 +156,8 @@ void FontLoader::setImageData(uint32_t width, uint32_t height, unsigned char *da
     this->image.width = width;
     this->image.height = height;
     this->image.pixelData = data;
+
+    return;
 };
 
 void FontLoader::flipGlyph()
@@ -173,6 +188,8 @@ void FontLoader::flipGlyph()
     ============================================= */
     pixelStore.x += fontFace->glyph->advance.x;
     pixelStore.y += fontFace->glyph->advance.y;
+
+    return;
 };
 
 FontLoader::~FontLoader()
@@ -205,6 +222,7 @@ TextManager::TextManager(GLuint shader)
 
     this->translationStride = 0;
 
+    this->targetKey = 0;
     this->fontIndex = 0;
     this->layoutIndex = 0;
 
@@ -220,9 +238,19 @@ TextManager::TextManager(GLuint shader)
     this->uvD = 0.0;
 };
 
-void TextManager::initialise()
+lazarus_result TextManager::initialise()
 {
-    FontLoader::loaderInit();
+    this->camera = {};
+    CameraManager::CameraConfig config = {};
+
+    config.aspectRatioX = GlobalsManager::getDisplayWidth();
+    config.aspectRatioY = GlobalsManager::getDisplayHeight();
+
+    lazarus_result status = FontLoader::loaderInit();
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
 
     /* ===============================================
         Unlike other mesh assets (i.e. 3D mesh or 
@@ -234,20 +262,24 @@ void TextManager::initialise()
         swapping the front and back buffers. This 
         gives the effect of 2D / HUD text.
     ================================================== */
-    
-    this->camera = cameraBuilder->createOrthoCam(globals.getDisplayWidth(), globals.getDisplayHeight());
+
+    return cameraBuilder->createOrthoCam(camera, config);
 };
 
-uint32_t TextManager::extendFontStack(std::string filepath, uint32_t ptSize)
+lazarus_result TextManager::extendFontStack(uint32_t &fontId, std::string filepath, uint32_t ptSize)
 {
     fonts.clear();
     alphabetHeights.clear();
     
-    this->fontIndex = FontLoader::loadTrueTypeFont(filepath, ptSize, 0);
+    lazarus_result status = FontLoader::loadTrueTypeFont(this->fontIndex, filepath, ptSize);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
     
     /* ===========================================================================
         The expression (n - 33) AKA (i = 33 && i < 128) occurs in several places 
-        and is used to skip control keys as well as calculate the span offset for 
+        and is used to skip control keys as well as calculate the offset for 
         non-control characters (i.e. keycodes which don't have a unicode UTF-8 
         glyph associated with them. e.g. shift / ctrl).
     ============================================================================== */
@@ -275,15 +307,25 @@ uint32_t TextManager::extendFontStack(std::string filepath, uint32_t ptSize)
         yOffset = this->atlasHeight;
         alphabetHeights.push_back(yOffset);
 
-        this->identifyAlphabetDimensions(n + 1);
+        status = this->identifyAlphabetDimensions(n + 1);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
+
         if(rowWidth > atlasWidth)
         {
             this->atlasWidth = rowWidth;
         }
+
         this->atlasHeight += rowHeight;
         alphabetHeights.push_back(this->atlasHeight);
         
-        MeshManager::TextureLoader::storeBitmapTexture(atlasWidth, atlasHeight);
+        status = MeshManager::TextureLoader::storeBitmapTexture(atlasWidth, atlasHeight);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
     }
     
     /* =============================================
@@ -303,9 +345,18 @@ uint32_t TextManager::extendFontStack(std::string filepath, uint32_t ptSize)
         
         for(uint32_t i = 33; i < INT8_MAX + 1; i++)
         {
-            this->glyph = FontLoader::loadCharacter(static_cast<char>(i), (n + 1));
+            status = FontLoader::loadCharacter(this->glyph, static_cast<char>(i), (n + 1));
+            if(status != lazarus_result::LAZARUS_OK)
+            {
+                return status;
+            };
 
-            MeshManager::TextureLoader::loadBitmapToTexture(this->glyph, xOffset, yOffset);
+            status = MeshManager::TextureLoader::loadBitmapToTexture(this->glyph, xOffset, yOffset);
+            if(status != lazarus_result::LAZARUS_OK)
+            {
+                return status;
+            };
+
             xOffset += this->glyph.width;
     
             characters.emplace((i - 33), this->glyph);
@@ -313,31 +364,36 @@ uint32_t TextManager::extendFontStack(std::string filepath, uint32_t ptSize)
         fonts.push_back(characters);
     };
 
-    return fonts.size() - 1;
+    fontId = fonts.size() - 1;
+    return lazarus_result::LAZARUS_OK;
 };
 
-// TextManager::Text TextManager::createText(std::string targetText, uint32_t fontId, glm::vec2 location, glm::vec3 color, uint32_t letterSpacing, TextManager::Text textIn)
-TextManager::Text TextManager::createText(std::string targetText, uint32_t fontId, glm::vec2 location, glm::vec3 color, uint32_t letterSpacing)
+lazarus_result TextManager::createText(TextManager::Text &out, TextManager::TextConfig options)
 {
     this->layoutIndex += 1;
+
     textOut.layoutIndex = this->layoutIndex;
-    
-    textOut.color = color;
-    textOut.targetString = targetText;
-    textOut.location = location;
-    textOut.fontIndex = fontId;
-    textOut.letterSpacing = letterSpacing;
+    textOut.config = options;
     
     this->layoutEntry = std::pair<int, std::vector<MeshManager::Mesh>>(this->layoutIndex, {});
     this->layout.insert(this->layoutEntry);
 
-    this->loadText(textOut);
+    lazarus_result status = this->loadText(textOut);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
 
-    return textOut;
+    out = this->textOut;
+    return lazarus_result::LAZARUS_OK;
 };
 
-void TextManager::loadText(TextManager::Text textIn)
+lazarus_result TextManager::loadText(TextManager::Text textIn)
 {
+    lazarus_result status = lazarus_result::LAZARUS_OK;
+
+    TextManager::TextConfig &settings = textIn.config;
+    
     /* =================================================
         Creation of these tiles takes up space in the
         manager's dataStore and will grow indefinitely
@@ -346,6 +402,7 @@ void TextManager::loadText(TextManager::Text textIn)
         Also helps ensure the location of the tiles at
         the time of draw. I.e. index 0 .. n
     ==================================================== */
+    
     MeshManager::clearMeshStorage();
 
     if(word.size() > 0)
@@ -362,31 +419,41 @@ void TextManager::loadText(TextManager::Text textIn)
         Letters are identified by their UV 
         coordinates from within the glyph atlas.
     ============================================= */
-    
-    for(size_t i = 0; i < textIn.targetString.size(); i++)
-    {   
-        this->setActiveGlyph(textIn.targetString[i], textIn.fontIndex, textIn.letterSpacing);
-        quad = MeshManager::createQuad(
-            static_cast<float>(this->glyph.width), 
-            static_cast<float>(this->rowHeight), 
-            "", 
-            this->uvL, 
-            this->uvR, 
-            this->uvU, 
-            this->uvD
-        );
 
+    for(size_t i = 0; i < textIn.config.targetString.size(); i++)
+    {   
+        this->setActiveGlyph(settings.targetString[i], settings.fontIndex, settings.letterSpacing);
+
+        MeshManager::QuadConfig quadSettings = {};
+        quadSettings.width = this->glyph.width;
+        quadSettings.height = this->glyph.height;
+        quadSettings.texturePath = "";
+        quadSettings.uvXL = this->uvL;
+        quadSettings.uvXR = this->uvR;
+        quadSettings.uvYU = this->uvU;
+        quadSettings.uvYD = this->uvD;
+
+        status = MeshManager::createQuad(this->quad, quadSettings);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
         /* =============================================
             Translate the tile to it's location within
             the word, relative to the other letters.
         ================================================ */
-        transformer.translateMeshAsset(
+        status = transformer.translateMeshAsset(
             quad, 
-            static_cast<float>((textIn.location.x + (this->glyph.width / 2.0f)) + this->translationStride), 
-            static_cast<float>((textIn.location.y + (this->rowHeight / 2.0f))), 
+            static_cast<float>((settings.location.x + (this->glyph.width / 2.0f)) + this->translationStride), 
+            static_cast<float>((settings.location.y + (this->rowHeight / 2.0f))), 
             0.0f
         );
-        this->translationStride += (this->glyph.width + textIn.letterSpacing);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
+
+        this->translationStride += (this->glyph.width + settings.letterSpacing);
 
         this->word.push_back(quad);
     };
@@ -405,12 +472,17 @@ void TextManager::loadText(TextManager::Text textIn)
     //  TODO:
     //  Check opengl errors 
     
-    glUniform3fv(this->textColorUniformLocation, 1, &textIn.color[0]);
+    glUniform3fv(this->textColorUniformLocation, 1, &textIn.config.color[0]);
+
+    return status;
 };
 
-void TextManager::drawText(TextManager::Text textIn)
+lazarus_result TextManager::drawText(TextManager::Text textIn)
 {    
     this->word = layout.at(textIn.layoutIndex);
+
+    //  TODO:
+    //  Check errors
 
     for(auto i: this->word)
     {
@@ -421,10 +493,10 @@ void TextManager::drawText(TextManager::Text textIn)
         MeshManager::drawMesh(quad);
     };
 
-    return;
+    return lazarus_result::LAZARUS_OK;
 };
 
-void TextManager::identifyAlphabetDimensions(uint32_t fontId)
+lazarus_result TextManager::identifyAlphabetDimensions(uint32_t fontId)
 {
     /* =====================================================
         Glyphs will be loaded into the texture atlas in a 
@@ -437,7 +509,11 @@ void TextManager::identifyAlphabetDimensions(uint32_t fontId)
 
     for(uint8_t i = 33; i < INT8_MAX + 1; i++)
     {
-        glyph = FontLoader::loadCharacter(static_cast<char>(i), fontId);
+        lazarus_result status = FontLoader::loadCharacter(this->glyph, static_cast<char>(i), fontId);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
         
         rowWidth += glyph.width;
         if(glyph.height > rowHeight)
@@ -446,7 +522,7 @@ void TextManager::identifyAlphabetDimensions(uint32_t fontId)
         };
     };
 
-    return;
+    return lazarus_result::LAZARUS_OK;
 };
 
 void TextManager::setActiveGlyph(char target, uint32_t fontId, uint32_t spacing)
@@ -476,6 +552,8 @@ void TextManager::setActiveGlyph(char target, uint32_t fontId, uint32_t spacing)
         this->characters = this->fonts.at(fontId);
         this->glyph = this->characters.at((this->targetKey - 33));
     };
+
+    return;
 };
 
 void TextManager::lookUpUVs(uint8_t keyCode, uint32_t fontId)
@@ -510,6 +588,8 @@ void TextManager::lookUpUVs(uint8_t keyCode, uint32_t fontId)
     this->uvR = static_cast<float>(targetXR) / uvRangeX;
     this->uvU = static_cast<float>(this->alphabetHeights[(fontId * 2) + 1]) / uvRangeY;
     this->uvD = static_cast<float>(this->alphabetHeights[(fontId * 2)]) / uvRangeY;
+
+    return;
 };
 
 TextManager::~TextManager()

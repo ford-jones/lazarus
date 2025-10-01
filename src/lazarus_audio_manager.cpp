@@ -39,70 +39,77 @@ AudioManager::AudioManager()
 	this->audioDuration = 0;
 };
 
-void AudioManager::initialise()
+lazarus_result AudioManager::initialise()
 {
+	this->reader = std::make_unique<FileLoader>();
+
 	this->result = FMOD::System_Create(&this->system);
 	/* ==============================================
 		Initialise the system with a right-handed 
 		coordinate system, the same as OpenGL's
 	================================================= */
 	this->result = system->init(512, FMOD_INIT_3D_RIGHTHANDED, 0);
-
 	this->result = system->createChannelGroup("lazarusGroup", &this->mixer);
 
-	this->checkErrors(this->result, __FILE__, __LINE__);
-
-	return;
+	return this->checkErrors(this->result, __FILE__, __LINE__);
 };
 
-AudioManager::Audio AudioManager::createAudio(string filepath, bool is3D, int32_t loopCount)
+lazarus_result AudioManager::createAudio(AudioManager::Audio &out, AudioManager::AudioConfig options)
 {
-	this->audioOut = {};
+	lazarus_result status = reader->relativePathToAbsolute(options.filepath, out.path);
+	if(status != lazarus_result::LAZARUS_OK)
+	{
+		return status;
+	};
 
-	this->reader = std::make_unique<FileLoader>();
+	out.id = audioStore.size();
+	out.sourceLocation = {0.0f, 0.0f, 0.0f};
+	out.config = options;
+	if(out.config.name == "SAMPLE_")
+	{
+		out.config.name.append(std::to_string(this->audioStore.size()));
+	};
+	out.isPaused = true;
+	out.audioIndex = 0;
 
-	srand(time((0)));
-	audioOut.id = 1 + (rand() % 2147483647);
-
-	audioOut.sourceLocation = {0.0f, 0.0f, 0.0f};
-
-	audioOut.path = reader->relativePathToAbsolute(filepath);
-	audioOut.is3D = is3D;
-	audioOut.loopCount = loopCount;
-	audioOut.isPaused = true;
-	audioOut.audioIndex = 0;
-
-	return audioOut;
+	return lazarus_result::LAZARUS_OK;
 };
 
-void AudioManager::setPlaybackCursor(AudioManager::Audio &audioIn, uint32_t seconds)
+lazarus_result AudioManager::setPlaybackCursor(AudioManager::Audio &audioIn, uint32_t seconds)
 {
 	AudioData &audioData = this->audioStore[audioIn.audioIndex - 1];
 
-	this->validateAudioHandle(audioData);
+	lazarus_result status = this->validateAudioHandle(audioData);
+	if(status != lazarus_result::LAZARUS_OK)
+	{		
+		return status;
+	};
 
 	this->result = audioData.channel->setPosition((seconds * 100), FMOD_TIMEUNIT_MS);
-
 	if(result != FMOD_OK)
 	{
 		LOG_ERROR("Sound Error:", __FILE__, __LINE__);
-		globals.setExecutionState(StatusCode::LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR);
+		return lazarus_result::LAZARUS_AUDIO_PLAYBACK_POSITION_ERROR;
 	};
 
-	return;
+	return LAZARUS_OK;
 };
 
-void AudioManager::loadAudio(AudioManager::Audio &audioIn)
+lazarus_result AudioManager::loadAudio(AudioManager::Audio &audioIn)
 {	
 	AudioData data = {} ;
 	
 	data.group = this->mixer;
 
-	(audioIn.is3D == true) 
+	(audioIn.config.is3D == true) 
 	? this->result = system->createSound(audioIn.path.c_str(), FMOD_3D, NULL, &data.sound) 
 	: this->result = system->createSound(audioIn.path.c_str(), FMOD_DEFAULT, NULL, &data.sound);
 	
-	this->checkErrors(this->result, __FILE__, __LINE__);
+	lazarus_result status = this->checkErrors(this->result, __FILE__, __LINE__);
+	if(status != lazarus_result::LAZARUS_OK)
+	{
+		return status;
+	};
 	
 	if(data.sound != NULL)
 	{
@@ -115,40 +122,51 @@ void AudioManager::loadAudio(AudioManager::Audio &audioIn)
 		this->checkErrors(this->result, __FILE__, __LINE__);
 
 		this->result = data.sound->getLength(&audioDuration, FMOD_TIMEUNIT_MS);
-		this->checkErrors(this->result, __FILE__, __LINE__);
+
+		lazarus_result status = this->checkErrors(this->result, __FILE__, __LINE__);
+		if(status != lazarus_result::LAZARUS_OK)
+		{
+			return status;
+		};
 
 		audioIn.duration = ceil(audioDuration / 1000);
 
-		if (audioIn.loopCount != 0)
+		if (audioIn.config.loopCount != 0)
 		{
 			data.channel->setMode(FMOD_LOOP_NORMAL);
-			data.channel->setLoopCount(audioIn.loopCount);
+			data.channel->setLoopCount(audioIn.config.loopCount);
 		};
 		
 		this->result = data.channel->setPaused(true);
-		this->checkErrors(this->result, __FILE__, __LINE__);
 
+		status = this->checkErrors(this->result, __FILE__, __LINE__);
+		if(status != lazarus_result::LAZARUS_OK)
+		{
+			return status;
+		};
 	}
 	else
 	{
 		LOG_ERROR("Sound Error:", __FILE__, __LINE__);
 
-		globals.setExecutionState(StatusCode::LAZARUS_FILE_NOT_FOUND);
+		return lazarus_result::LAZARUS_FILE_NOT_FOUND;
 	}
-
-	this->checkErrors(this->result, __FILE__, __LINE__);
 	
 	this->audioStore.push_back(data);
 	audioIn.audioIndex = this->audioStore.size();
 
-	return;
+	return lazarus_result::LAZARUS_OK;
 };
 
-void AudioManager::playAudio(AudioManager::Audio &audioIn)
+lazarus_result AudioManager::playAudio(AudioManager::Audio &audioIn)
 {
 	AudioData &audioData = this->audioStore[audioIn.audioIndex - 1];
 
-	this->validateAudioHandle(audioData);
+	lazarus_result status = this->validateAudioHandle(audioData);
+	if(status != lazarus_result::LAZARUS_OK)
+	{
+		return status;
+	};
 
 	if(audioIn.isPaused == true)
 	{
@@ -156,16 +174,18 @@ void AudioManager::playAudio(AudioManager::Audio &audioIn)
 		audioIn.isPaused = false;
 	}
 
-	this->checkErrors(this->result, __FILE__, __LINE__);
-
-	return;
+	return this->checkErrors(this->result, __FILE__, __LINE__);
 };
 
-void AudioManager::pauseAudio(AudioManager::Audio &audioIn)
+lazarus_result AudioManager::pauseAudio(AudioManager::Audio &audioIn)
 {
 	AudioData &audioData = this->audioStore[audioIn.audioIndex - 1];
 
-	this->validateAudioHandle(audioData);
+	lazarus_result status = this->validateAudioHandle(audioData);
+	if(status != lazarus_result::LAZARUS_OK)
+	{
+		return status;
+	};
 
 	if(audioIn.isPaused == false)
 	{
@@ -173,14 +193,18 @@ void AudioManager::pauseAudio(AudioManager::Audio &audioIn)
 		audioIn.isPaused = true;
 	}
 
-	return;
+	return this->checkErrors(this->result, __FILE__, __LINE__);
 };
 
-void AudioManager::updateSourceLocation(AudioManager::Audio &audioIn, glm::vec3 location)
+lazarus_result AudioManager::updateSourceLocation(AudioManager::Audio &audioIn, glm::vec3 location)
 {
 	AudioData &audioData = this->audioStore[audioIn.audioIndex - 1];
 
-	this->validateAudioHandle(audioData);
+	lazarus_result status = this->validateAudioHandle(audioData);
+	if(status != lazarus_result::LAZARUS_OK)
+	{
+		return status;
+	};
 
 	audioData.currentSourcePosition = {location.x, location.y, location.z};
 
@@ -193,7 +217,11 @@ void AudioManager::updateSourceLocation(AudioManager::Audio &audioIn, glm::vec3 
 	this->result = audioData.channel->set3DAttributes(&audioData.currentSourcePosition, &audioData.sourceVelocity);
 
 	this->result = system->update();
-	this->checkErrors(this->result, __FILE__, __LINE__);
+	status = checkErrors(this->result, __FILE__, __LINE__);
+	if(status != lazarus_result::LAZARUS_OK)
+	{
+		return status;
+	};
 
 	audioData.prevSourcePosition = audioData.currentSourcePosition;
 
@@ -203,10 +231,10 @@ void AudioManager::updateSourceLocation(AudioManager::Audio &audioIn, glm::vec3 
 		audioData.prevSourcePosition.z
 	};
 
-	return;
+	return LAZARUS_OK;
 };
 
-void AudioManager::updateListenerLocation(glm::vec3 location)
+lazarus_result AudioManager::updateListenerLocation(glm::vec3 location)
 {
 	this->currentListenerPosition = {location.x, location.y, location.z};
 
@@ -229,17 +257,19 @@ void AudioManager::updateListenerLocation(glm::vec3 location)
 		&this->listenerUp
 	);
 	
-	this->checkErrors(this->result, __FILE__, __LINE__);
+	lazarus_result status = this->checkErrors(this->result, __FILE__, __LINE__);
+	if(status != lazarus_result::LAZARUS_OK)
+	{
+		return status;
+	};
 
 	this->result = system->update();
 	this->prevListenerPosition = this->currentListenerPosition;
 
-	this->checkErrors(this->result, __FILE__, __LINE__);
-
-	return;
+	return this->checkErrors(this->result, __FILE__, __LINE__);
 };
 
-void AudioManager::validateAudioHandle(AudioData &audioData)
+lazarus_result AudioManager::validateAudioHandle(AudioData &audioData)
 {
 	/* =========================================
 		Channel handles become invalid upon it's
@@ -272,24 +302,24 @@ void AudioManager::validateAudioHandle(AudioData &audioData)
 		{
 			LOG_ERROR("Sound Error:", __FILE__, __LINE__);
 
-			globals.setExecutionState(StatusCode::LAZARUS_AUDIO_LOAD_ERROR);
+			return lazarus_result::LAZARUS_AUDIO_LOAD_ERROR;
 		};
 	};
 
-	return;
+	return lazarus_result::LAZARUS_OK;
 };
 
-void AudioManager::checkErrors(FMOD_RESULT res, const char *file, uint32_t line) 
+lazarus_result AudioManager::checkErrors(FMOD_RESULT res, const char *file, uint32_t line) 
 {
 	if(res != FMOD_OK)
 	{
 		std::string message = std::string("Sound Error: ").append(std::to_string(res));
 		LOG_ERROR(message.c_str(), file, line);
 
-		globals.setExecutionState(StatusCode::LAZARUS_AUDIO_ERROR);
+		return lazarus_result::LAZARUS_AUDIO_ERROR;
 	};
 
-	return;
+	return lazarus_result::LAZARUS_OK;
 };
 
 AudioManager::~AudioManager()

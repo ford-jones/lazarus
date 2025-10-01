@@ -29,20 +29,24 @@ LightManager::LightManager(GLuint shader)
     this->lightStore = {};
 
     this->lightCountLocation = glGetUniformLocation(this->shaderProgram, "lightCount");
-    this->lightCount = globals.getNumberOfActiveLights();
+    this->lightCount = GlobalsManager::getNumberOfActiveLights();
 
     this->errorCode = 0;
 }
 
-LightManager::Light LightManager::createLightSource(glm::vec3 location, glm::vec3 color, float brightness)
+lazarus_result LightManager::createLightSource(LightManager::Light &out, LightManager::LightConfig options)
 {	
     this->lightOut = {};
     this->lightData = {};
     
-    lightOut.id             = lightStore.size();
-    lightOut.brightness     = brightness;
-    lightOut.position       = location;
-    lightOut.color          = color;
+    this->clearErrors();
+
+    lightOut.id = lightStore.size();
+    lightOut.config = options;
+    if(lightOut.config.name == "LIGHT_")
+    {
+        lightOut.config.name.append(std::to_string(lightOut.id));
+    };
     
     this->lightCount += 1;
     lightData.uniformIndex                   =   (this->lightCount - 1);
@@ -50,18 +54,29 @@ LightManager::Light LightManager::createLightSource(glm::vec3 location, glm::vec
     lightData.lightColorUniformLocation      =   glGetUniformLocation(this->shaderProgram, (std::string("lightColors[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
     lightData.brightnessUniformLocation      =   glGetUniformLocation(this->shaderProgram, (std::string("lightBrightness[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
 
+    lazarus_result status = this->checkErrors(__FILE__, __LINE__);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+
     lightStore.insert(std::pair<uint32_t, LightManager::LightData>(lightOut.id, lightData));
+    GlobalsManager::setNumberOfActiveLights(this->lightCount);
 
-    globals.setNumberOfActiveLights(this->lightCount);
-
-    return lightOut;
+    out = lightOut;
+    return lazarus_result::LAZARUS_OK;
 };
 
-void LightManager::loadLightSource(LightManager::Light &lightIn, int32_t shader)
+lazarus_result LightManager::loadLightSource(LightManager::Light &lightIn, int32_t shader)
 {
     this->lightData = lightStore.at(lightIn.id);
 
-    if(lightIn.brightness < 0.0f) globals.setExecutionState(StatusCode::LAZARUS_INVALID_INTENSITY);
+    if(lightIn.config.brightness < 0.0f)
+    {
+        LOG_ERROR("Light Error: ", __FILE__, __LINE__);
+
+        return lazarus_result::LAZARUS_INVALID_INTENSITY;
+    }
     
     if(shader == 0)
     {
@@ -74,15 +89,17 @@ void LightManager::loadLightSource(LightManager::Light &lightIn, int32_t shader)
             this->clearErrors();
     
             glUniform1i         (this->lightCountLocation, this->lightCount);
-            glUniform1f         (lightData.brightnessUniformLocation, lightIn.brightness);
-            glUniform3fv        (lightData.lightPositionUniformLocation, 1, &lightIn.position[0]);
-            glUniform3fv        (lightData.lightColorUniformLocation, 1, &lightIn.color[0]);
+            glUniform1f         (lightData.brightnessUniformLocation, lightIn.config.brightness);
+            glUniform3fv        (lightData.lightPositionUniformLocation, 1, &lightIn.config.position[0]);
+            glUniform3fv        (lightData.lightColorUniformLocation, 1, &lightIn.config.color[0]);
     
-            this->checkErrors(__FILE__, __LINE__);
+            return this->checkErrors(__FILE__, __LINE__);
         }
         else
         {
-            globals.setExecutionState(StatusCode::LAZARUS_UNIFORM_NOT_FOUND);
+            LOG_ERROR("Light Error: ", __FILE__, __LINE__);
+
+            return lazarus_result::LAZARUS_UNIFORM_NOT_FOUND;
         };
     }
     else
@@ -107,17 +124,17 @@ void LightManager::loadLightSource(LightManager::Light &lightIn, int32_t shader)
         GLuint brightnessLocation   = glGetUniformLocation(shader, (std::string("lightBrightness[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
 
         glUniform1i         (countLocation, this->lightCount);
-        glUniform1f         (brightnessLocation, lightIn.brightness);
-        glUniform3fv        (positionLocation, 1, &lightIn.position[0]);
-        glUniform3fv        (colorLocation, 1, &lightIn.color[0]);
+        glUniform1f         (brightnessLocation, lightIn.config.brightness);
+        glUniform3fv        (positionLocation, 1, &lightIn.config.position[0]);
+        glUniform3fv        (colorLocation, 1, &lightIn.config.color[0]);
     
-        this->checkErrors(__FILE__, __LINE__);
+        return this->checkErrors(__FILE__, __LINE__);
     };
 
-    return;
+    return lazarus_result::LAZARUS_OK;
 };
 
-void LightManager::checkErrors(const char *file, uint32_t line)
+lazarus_result LightManager::checkErrors(const char *file, uint32_t line)
 {
     this->errorCode = glGetError();
     
@@ -126,10 +143,10 @@ void LightManager::checkErrors(const char *file, uint32_t line)
         std::string message = std::string("OpenGL Error: ").append(std::to_string(this->errorCode));
         LOG_ERROR(message.c_str(), file, line);
 
-        globals.setExecutionState(StatusCode::LAZARUS_OPENGL_ERROR);
+        return lazarus_result::LAZARUS_OPENGL_ERROR;
     }
 
-    return;
+    return lazarus_result::LAZARUS_OK;
 };
 
 void LightManager::clearErrors()
@@ -140,6 +157,8 @@ void LightManager::clearErrors()
     {
         this->errorCode = glGetError();
     };
+
+    return;
 };
 
 LightManager::~LightManager()

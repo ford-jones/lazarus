@@ -36,19 +36,25 @@ AssetLoader::AssetLoader()
     this->tempUvs = {};
 };
 
-bool AssetLoader::parseWavefrontObj(std::vector<glm::vec3> &outAttributes, std::vector<uint32_t> &outIndexes, std::vector<glm::vec3> &outDiffuse, std::vector<FileLoader::Image> &outImages, const char *meshPath, const char *materialPath) 
+lazarus_result AssetLoader::parseWavefrontObj(std::vector<glm::vec3> &outAttributes, std::vector<uint32_t> &outIndexes, std::vector<glm::vec3> &outDiffuse, std::vector<FileLoader::Image> &outImages, const char *meshPath, const char *materialPath) 
 {
     this->resetMembers();
+    lazarus_result status = lazarus_result::LAZARUS_OK;
 
-    std::string path = fileLoader->relativePathToAbsolute(meshPath);
+    std::string path = "";
+    status = fileLoader->relativePathToAbsolute(meshPath, path);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+
     file.open(path);
 
     if( !file.is_open() )
     {
         LOG_ERROR("Filesystem Error:", __FILE__, __LINE__);
-        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
-        
-        return false;
+
+        return lazarus_result::LAZARUS_FILE_UNREADABLE;
     }
 
     uint32_t positionCount = 0;
@@ -146,8 +152,7 @@ bool AssetLoader::parseWavefrontObj(std::vector<glm::vec3> &outAttributes, std::
                     }
                 }            
 
-                this->constructTriangle();
-
+                status = this->constructTriangle();
                 break;
             /* ===============================================
                 usemtl = Use material identifier
@@ -163,6 +168,11 @@ bool AssetLoader::parseWavefrontObj(std::vector<glm::vec3> &outAttributes, std::
             default:
                 break;
         }
+
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
     }
 
     if (file.eof())
@@ -176,11 +186,13 @@ bool AssetLoader::parseWavefrontObj(std::vector<glm::vec3> &outAttributes, std::
 
     this->constructIndexBuffer(outAttributes, outIndexes, tempDiffuse, this->vertexIndices.size());
 
-    return true;
+    return lazarus_result::LAZARUS_OK;
 };
 
-bool AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint32_t>> data, vector<vec3> &temp, vector<vec3> &outColors, std::vector<FileLoader::Image> &outImages)
+lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint32_t>> data, vector<vec3> &temp, vector<vec3> &outColors, std::vector<FileLoader::Image> &outImages)
 {    
+    lazarus_result status = lazarus_result::LAZARUS_OK;
+
     this->textureCount = 0;
     this->diffuseCount = 0;
 
@@ -189,14 +201,20 @@ bool AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint
         file.close();
     };
     
-    std::string path = fileLoader->relativePathToAbsolute(materialPath);
+    std::string path = "";
+    status = fileLoader->relativePathToAbsolute(materialPath, path);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+    
     file.open(path);
     
     if( !file.is_open() )
     {
         LOG_ERROR("Filesystem Error:", __FILE__, __LINE__);
-        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
-        return false;
+
+        return lazarus_result::LAZARUS_FILE_UNREADABLE;
     }   
     
     while(file.getline(currentLine, UINT8_MAX)) 
@@ -296,7 +314,13 @@ bool AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint
             std::string filename = std::string(currentLine).substr(whiteSpace);
             
             const char *path = directory.append(filename).c_str();
-            FileLoader::Image image = fileLoader->loadImage(path);
+
+            FileLoader::Image image = {};
+            status = fileLoader->loadImage(image, path);
+            if(status != lazarus_result::LAZARUS_OK)
+            {
+                return status;
+            };
 
             outColors.push_back(vec3(-0.1f, -0.1f, -0.1f));
             outImages.push_back(image);
@@ -310,10 +334,10 @@ bool AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint
         file.close();
     }
         
-    return true;
+    return status;
 };
     
-bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> &outDiffuse, std::vector<FileLoader::Image> &outImages, const char* meshPath)
+lazarus_result AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> &outDiffuse, std::vector<FileLoader::Image> &outImages, const char* meshPath)
 {
     //  TODO:
     //  Consider a threading implentation to speed up loads and not block the main-thread/renderer
@@ -321,6 +345,7 @@ bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<uint32_t> &o
     //  Extract animation data
 
     this->resetMembers();
+    lazarus_result status = lazarus_result::LAZARUS_OK;
 
     std::string PRIMITIVES = "\"primitives\":[";
     std::string MATERIALS = "\"materials\":[";
@@ -345,8 +370,18 @@ bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<uint32_t> &o
     std::string BYTELENGTH = "\"byteLength\":";
     std::string BYTESTRIDE = "\"byteStride\":";
     
-    std::string path = fileLoader->relativePathToAbsolute(meshPath);
-    this->loadGlbChunks(path.c_str());
+    std::string path = "";
+    status = fileLoader->relativePathToAbsolute(meshPath, path);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+
+    status = this->loadGlbChunks(path.c_str());
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
 
     std::vector<std::string> propertyIdentifiers = {ACCESSORS,PRIMITIVES,MATERIALS,TEXTURES,IMAGES,BUFFERVIEW,BUFFERS};
     std::vector<std::string> propertyStrings = {};
@@ -439,7 +474,8 @@ bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<uint32_t> &o
             else
             {
                 LOG_ERROR("Asset Error:", __FILE__, __LINE__);
-                globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
+
+                return lazarus_result::LAZARUS_FILE_UNREADABLE;
             };
         }
         else if(json.find(PRIMITIVES) == 0)
@@ -461,7 +497,8 @@ bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<uint32_t> &o
                     if(index < 0)
                     {
                         LOG_ERROR("Asset Error:", __FILE__, __LINE__);
-                        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
+                        
+                        return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
                     };
 
 
@@ -643,7 +680,14 @@ bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<uint32_t> &o
             std::memset(buffer, 0, sizeof(unsigned char) * bufferView.byteLength);
             std::memcpy(buffer, &this->binaryData[bufferView.byteOffset], sizeof(unsigned char) * bufferView.byteLength);
 
-            outImages.push_back(fileLoader->loadImage(nullptr, buffer, bufferView.byteLength));
+            FileLoader::Image loadResult = {};
+            status = fileLoader->loadImage(loadResult, nullptr, buffer, bufferView.byteLength);
+            if(status != lazarus_result::LAZARUS_OK)
+            {
+                return status;
+            };
+
+            outImages.push_back(loadResult);
             delete[] buffer;
         };
         
@@ -728,7 +772,7 @@ bool AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<uint32_t> &o
 
     this->constructIndexBuffer(outAttributes, outIndexes, tempDiffuse, tempVertexPositions.size());
 
-    return true;
+    return lazarus_result::LAZARUS_OK;
 };
 
 void AssetLoader::populateBufferFromAccessor(glbAccessorData accessor, std::vector<glm::vec3> &buffer)
@@ -811,16 +855,15 @@ template<typename T> void AssetLoader::populateVectorFromMemory(glbAccessorData 
     }
 }
 
-void AssetLoader::loadGlbChunks(const char *filepath)
+lazarus_result AssetLoader::loadGlbChunks(const char *filepath)
 {
     file.open(filepath, std::ios::in | std::ios::binary);
 
     if(!file.is_open())
     {
         LOG_ERROR("Filesystem Error:", __FILE__, __LINE__);
-        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
 
-        return;
+        return lazarus_result::LAZARUS_FILE_UNREADABLE;
     }
     else
     {
@@ -864,7 +907,7 @@ void AssetLoader::loadGlbChunks(const char *filepath)
         file.read(binaryData.data(), chunkSize);
         file.close();
 
-        return;
+        return lazarus_result::LAZARUS_OK;
     }
 }
 
@@ -1055,7 +1098,7 @@ void AssetLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint3
     return;
 }
 
-void AssetLoader::constructTriangle()
+lazarus_result AssetLoader::constructTriangle()
 {
     /* =======================================================
         The faces of a wavefront mesh will be treated as 
@@ -1070,9 +1113,8 @@ void AssetLoader::constructTriangle()
     {
         LOG_ERROR("Asset Error:", __FILE__, __LINE__);
 
-        globals.setExecutionState(StatusCode::LAZARUS_FILE_UNREADABLE);
-
-        return;
+        return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
+        
     }
 
     this->vertexIndices.push_back(std::stoi(this->attributeIndexes[0]));
@@ -1087,7 +1129,7 @@ void AssetLoader::constructTriangle()
 
     attributeIndexes.clear();
 
-    return;
+    return lazarus_result::LAZARUS_OK;
 }
 
 void AssetLoader::resetMembers()
@@ -1129,6 +1171,8 @@ void AssetLoader::resetMembers()
     this->tempUvs.clear();
     this->tempDiffuse.clear();
     this->layers.clear();
+
+    return;
 };
 
 AssetLoader::~AssetLoader()

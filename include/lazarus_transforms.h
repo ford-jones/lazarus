@@ -46,15 +46,15 @@ class Transform
 {	
     public:
 		Transform();
-		void translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z);
-    	void rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, float yaw, float roll);
-		void scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z);
+		lazarus_result translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z);
+    	lazarus_result rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, float yaw, float roll);
+		lazarus_result scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z);
 
-		void translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity = 1.0);
-		void rotateCameraAsset(CameraManager::Camera &camera, float pitch, float yaw, float roll);
-		void orbitCameraAsset(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX = 0.0, float tarY = 0.0, float tarZ = 0.0);
+		lazarus_result translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity = 1.0);
+		lazarus_result rotateCameraAsset(CameraManager::Camera &camera, float pitch, float yaw, float roll);
+		lazarus_result orbitCameraAsset(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX = 0.0, float tarY = 0.0, float tarZ = 0.0);
 
-		void translateLightAsset(LightManager::Light &light, float x, float y, float z);
+		lazarus_result translateLightAsset(LightManager::Light &light, float x, float y, float z);
 
 		virtual ~Transform();
 		
@@ -70,9 +70,6 @@ class Transform
 
 		glm::vec3 localCoordinates;
 		glm::vec4 worldCoordinates;
-
-		GlobalsManager globals;
-
 };
 
 #endif

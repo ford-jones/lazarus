@@ -52,62 +52,61 @@ FileLoader::FileLoader()
 	this->imageHeight = 0;
 	this->imageHeight = 0;
 	this->channelCount = 0;	
-
-    this->textData = NULL;
-
 };
 
-string FileLoader::relativePathToAbsolute(string filename) 
+lazarus_result FileLoader::relativePathToAbsolute(std::string filename, std::string &out) 
 {
-    this->filenameString = std::filesystem::absolute(filename).string();
+    this->path.clear();
+    this->path = std::filesystem::absolute(filename);
 
-    bool mountResult = std::filesystem::exists(this->filenameString);
-    if(!mountResult)
+    bool fileMounted = std::filesystem::exists(this->path);
+    if(!fileMounted)
     {
         LOG_ERROR("Filesystem Error: ", __FILE__, __LINE__);
-        globals.setExecutionState(LAZARUS_FILE_NOT_FOUND);
+        return lazarus_result::LAZARUS_FILE_NOT_FOUND;
     }
-    return this->filenameString;
+    out.append(this->path.string());
+
+    return lazarus_result::LAZARUS_OK;
 };
 
-const char *FileLoader::loadText(string filepath) 
+lazarus_result FileLoader::loadText(std::string filepath, std::string &out) 
 {
+    this->path.clear();
     if(std::filesystem::exists(filepath))
     {
-        this->absolutePath = this->relativePathToAbsolute(filepath);
+        std::string absolutePath = "";
+        lazarus_result status = this->relativePathToAbsolute(filepath, absolutePath);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
+
         ifstream fileStream(absolutePath);
 
         if(fileStream.is_open())
         {
             this->stringstream << fileStream.rdbuf();
+            out.append(stringstream.str());
 
-            this->contents = stringstream.str();
-            this->textData = this->contents.c_str();
-
-            return textData;
+            return lazarus_result::LAZARUS_OK;
         } 
         else 
         {
             LOG_ERROR("Filesystem Error:", __FILE__, __LINE__);
-            globals.setExecutionState(StatusCode::LAZARUS_FILESTREAM_CLOSED);
 
-            this->textData = std::to_string(StatusCode::LAZARUS_FILESTREAM_CLOSED).c_str();
-
-            return this->textData;
+            return lazarus_result::LAZARUS_FILESTREAM_CLOSED;
         };
     }
     else 
     {
         LOG_ERROR("Filesystem Error:", __FILE__, __LINE__);
-        globals.setExecutionState(StatusCode::LAZARUS_FILE_NOT_FOUND);
 
-        this->textData = std::to_string(StatusCode::LAZARUS_FILE_NOT_FOUND).c_str();
-
-        return this->textData;
+        return lazarus_result::LAZARUS_FILE_NOT_FOUND;
     };
 };
 
-FileLoader::Image FileLoader::loadImage(const char *filename, const unsigned char *raw, uint32_t size)
+lazarus_result FileLoader::loadImage(FileLoader::Image &out, const char *filename, const unsigned char *raw, uint32_t size)
 {
     this->imageData = {};
     this->outResize = {};
@@ -139,9 +138,9 @@ FileLoader::Image FileLoader::loadImage(const char *filename, const unsigned cha
 
     if(imageData != NULL) 
     {
-        this->enforceResize = globals.getEnforceImageSanity();
-        this->maxWidth = globals.getMaxImageWidth();
-        this->maxHeight = globals.getMaxImageHeight();
+        this->enforceResize = GlobalsManager::getEnforceImageSanity();
+        this->maxWidth = GlobalsManager::getMaxImageWidth();
+        this->maxHeight = GlobalsManager::getMaxImageHeight();
 
         if(enforceResize == true && this->maxWidth > 0 && this->maxHeight > 0)
         {   
@@ -164,41 +163,62 @@ FileLoader::Image FileLoader::loadImage(const char *filename, const unsigned cha
 
             if(resizeStatus == 1)
             {
-                outImage.pixelData = outResize;
-                outImage.height = this->maxWidth;
-                outImage.width = this->maxHeight;
+                /* ===============================================
+                    Resize success, send back result.
+                ================================================== */
+
+                out.pixelData = outResize;
+                out.height = this->maxWidth;
+                out.width = this->maxHeight;
+
+                return lazarus_result::LAZARUS_OK;
             }
             else 
             {
-                outImage.pixelData = this->imageData;
-                outImage.height = imageHeight;
-                outImage.width = imageWidth;
+                /* ================================================
+                    Resize failed so send back the image as it was
+                    when loaded.
+                =================================================== */
+
+                out.pixelData = this->imageData;
+                out.height = imageHeight;
+                out.width = imageWidth;
 
                 LOG_ERROR("Filesystem Error:", __FILE__, __LINE__);
-                globals.setExecutionState(StatusCode::LAZARUS_IMAGE_RESIZE_FAILURE);
+
+                return lazarus_result::LAZARUS_IMAGE_RESIZE_FAILURE;
             }
 
         }
         else
         {
-            outImage.pixelData = this->imageData;
-            outImage.height = imageHeight;
-            outImage.width = imageWidth;
+            /* ==========================================
+                Send back the data as-is, user doesn't
+                want to resize.
+            ============================================= */
+
+            out.pixelData = this->imageData;
+            out.height = imageHeight;
+            out.width = imageWidth;
+
+            return lazarus_result::LAZARUS_OK;
         }
     }
 	else
 	{
-        outImage.pixelData = NULL;
-        outImage.height = 0;
-        outImage.width = 0;
+        /* ===============
+            Load failed.
+        ================== */
+
+        out.pixelData = NULL;
+        out.height = 0;
+        out.width = 0;
 
         std::string message = std::string("Filesystem Error: ").append(stbi_failure_reason());
 		LOG_ERROR(message.c_str(), __FILE__, __LINE__);
 
-        globals.setExecutionState(StatusCode::LAZARUS_IMAGE_LOAD_FAILURE);
+        return lazarus_result::LAZARUS_IMAGE_LOAD_FAILURE;
 	};
-	
-	return outImage;
 };
 
 FileLoader::~FileLoader()

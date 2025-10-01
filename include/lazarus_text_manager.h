@@ -49,14 +49,14 @@ class FontLoader
     public:
         FontLoader();
 
-        void loaderInit();
-        int32_t loadTrueTypeFont(std::string filepath, uint32_t charHeight, uint32_t charWidth);
-        FileLoader::Image loadCharacter(char character, uint32_t fontIndex);
+        lazarus_result loaderInit();
+        lazarus_result loadTrueTypeFont(uint32_t &index, std::string filepath, uint32_t ptSize);
+        lazarus_result loadCharacter(FileLoader::Image &glyph, char character, uint32_t fontIndex);
 
         virtual ~FontLoader();
 
     private:
-        void createBitmap();
+        lazarus_result createBitmap();
         void flipGlyph();
         void setImageData(uint32_t width, uint32_t height, unsigned char *data);
 
@@ -70,42 +70,49 @@ class FontLoader
         FT_Matrix transformationMatrix;
         FT_Library lib;
         FT_Face fontFace;
-        FT_Error status;
+        FT_Error result;
         std::vector<FT_Face> fontStack;
         
-        GlobalsManager globals;
         FileLoader::Image image;
 };
+
+//  TODO:
+//  Add functionality for scaling text / adjusting ptsize
 
 class TextManager : private FontLoader, private MeshManager
 {
     public:
         TextManager(GLuint shader);
 
+        struct TextConfig
+        {
+            uint32_t fontIndex = 0;
+            uint32_t letterSpacing = 1;
+            glm::vec2 location = vec2(0.0f, 0.0f);
+            std::string targetString = "";
+            glm::vec3 color = vec3(0.0f, 0.0f, 0.0f);            
+        };
+
         struct Text
         {
             uint32_t layoutIndex;
-            uint32_t fontIndex;
-            uint32_t letterSpacing;
-            glm::vec2 location;
-            std::string targetString;
-            glm::vec3 color;
+            TextConfig config;
         };
 
-        void initialise();
-        uint32_t extendFontStack(std::string filepath, uint32_t ptSize = 12);
-        // Text createText(std::string targetText, uint32_t fontId, glm::vec2 location, glm::vec3 color = glm::vec3(0.0f, 0.0f, 0.0f), uint32_t letterSpacing = 1, Text textIn = {});
-        Text createText(std::string targetText, uint32_t fontId, glm::vec2 location, glm::vec3 color = glm::vec3(0.0f, 0.0f, 0.0f), uint32_t letterSpacing = 1);
-        void loadText(Text textIn);
-        void drawText(Text textIn);
+        lazarus_result initialise();
+        lazarus_result extendFontStack(uint32_t &fontId, std::string filepath, uint32_t ptSize = 12);
+        
+        lazarus_result createText(Text &out, TextConfig options);
+        lazarus_result loadText(Text textIn);
+        lazarus_result drawText(Text textIn);
+        
         virtual ~TextManager();
 
         uint32_t fontCount;
         
         private: 
         Text textOut;
-        void updateLayout(Text &textIn);
-        void identifyAlphabetDimensions(uint32_t fontId);
+        lazarus_result identifyAlphabetDimensions(uint32_t fontId);
         void setActiveGlyph(char target, uint32_t fontId, uint32_t spacing);
         void lookUpUVs(uint8_t keyCode, uint32_t fontId);
         
@@ -132,7 +139,6 @@ class TextManager : private FontLoader, private MeshManager
         GLuint shaderProgram;
         
         Transform transformer;
-        GlobalsManager globals;
         FileLoader::Image glyph;
         
         std::unique_ptr<CameraManager> cameraBuilder;
@@ -147,8 +153,6 @@ class TextManager : private FontLoader, private MeshManager
         std::pair<uint32_t, std::vector<MeshManager::Mesh>> layoutEntry;
         std::map<uint32_t, std::vector<MeshManager::Mesh>> layout;
         std::map<uint8_t, FileLoader::Image> characters;
-    
     };
     
-    #endif
-    
+#endif
