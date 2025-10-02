@@ -77,7 +77,7 @@ window.presentNextFrame();
 ```
 
 At this point your application may start recieving messages from the OS such as the one in the image below. Don't worry - this is normal, as our application does not yet have anything to respond *to.* We'll remediate this in the next section which looks at how Lazarus manages events. \
-![Error](images/noResponse.png)
+![Error](https://drive.google.com/thumbnail?id=120qmRnMSWGpAxI9UAYFf1wxnL_DpFvTK&sz=w800)
 
 ### Managing events:
 Events in Lazarus are intrinsically tied to the window context in which they were created and dispatched. The window object in question will inherit an `EventManager` interface, which uses callbacks to retrieve information from the programs event loop asynchronously without blocking the application's control flow. 
@@ -247,7 +247,7 @@ The active shader has been set and our resources are prepared. From here we can 
 ```
 
 You should see something like this: congratulations - you've just drawn your first scene with Lazarus! \
-![helloQuad1](images/helloQuad1.png)
+![helloQuad1](https://drive.google.com/thumbnail?id=174WZ32_dxPwt21R8WW5k7vS-xvaukIdi&sz=w800)
 
 ### Transforming assets:
 *But why is it all the way down there?* Because under observation of our orthographic camera, metrics are taken in pixel dimensions from the bottom-left corner of the viewport. Although it may be confusing in this context, it might make sense a little later if you are looking to create UI or HUD components. This is the same coordinate system that is used internally for the layout of text and glyphs. \
@@ -266,7 +266,7 @@ To fix the issue; lets center our quad using a transform.
 ```
     
 Here it is! You'll also observe that the geometry was partially clipped. With the quad centered we can now see it in full. \
-![helloQuad2](images/helloQuad2.png)
+![helloQuad2](https://drive.google.com/thumbnail?id=1HNdYXlDgjj1AOdB9BZNAjpgJGqTTICwh&sz=w800)
 
 For more on this; see the [Mesh section of the API Reference](./api-reference.md#meshmanager).
 
