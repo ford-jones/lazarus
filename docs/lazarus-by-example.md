@@ -253,11 +253,7 @@ You should see something like this: congratulations - you've just drawn your fir
 *But why is it all the way down there?* Because under observation of our orthographic camera, metrics are taken in pixel dimensions from the bottom-left corner of the viewport. Although it may be confusing in this context, it might make sense a little later if you are looking to create UI or HUD components. This is the same coordinate system that is used internally for the layout of text and glyphs. \
 To fix the issue; lets center our quad using a transform.
 ```cpp
-    Lazarus::MeshManager meshManager = Lazarus::MeshManager(shaderID);
-    Lazarus::MeshManager::Mesh quad = meshManager.createQuad(
-        500,
-        500
-    );
+    meshManager.createQuad(quad, quadSettings);
 
     // After creating the quad, move it to the center of the screen
     Lazarus::Transform transformer = Lazarus::Transform();
