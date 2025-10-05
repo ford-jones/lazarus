@@ -94,10 +94,10 @@ Events::Events()
 	keyCode 	    	= 0;
 	scanCode 			= 0;
 
-	clickState 	    = LAZARUS_MOUSE_NOCLICK;
+	clickState 			= LAZARUS_MOUSE_NOCLICK;
 	mousePositionX 		= 0;
 	mousePositionY 		= 0;
-	scrollState 	= 0;
+	scrollState 		= 0;
 
 	errorCode 			= 0;
 	errorMessage 		= NULL;
@@ -155,7 +155,7 @@ lazarus_result Events::eventsInit()
 		});
 
 		glfwSetScrollCallback(win, [](GLFWwindow *win, double xoffset, double yoffset){
-			LAZARUS_LISTENER_SCROLLCODE = yoffset;
+			LAZARUS_LISTENER_SCROLLCODE = yoffset;	
 			return;
 		});
 
@@ -171,13 +171,16 @@ lazarus_result Events::eventsInit()
 
 lazarus_result Events::monitorEvents()
 {	
+	/* ========================================================
+		The glfw scroll state when monitored can only be on or
+		off - there is no scroll "neutral" state, so one is 
+		created here. It's only changed then when the callback
+		is fired and the result is polled. it will then be 
+		reset here appropriately.
+	=========================================================== */
+	LAZARUS_LISTENER_SCROLLCODE = 0;
+
     glfwPollEvents();
-	
-	/* ===================================
-		Don't need to check these, they 
-		are always OK as the cb's are 
-		void.
-	====================================== */
 
     this->updateKeyboardState();
     this->updateMouseState();
@@ -339,16 +342,15 @@ void Events::updateMouseState()
 	this->mousePositionY = 0.0f;
 	
 	this->clickState 	 = LAZARUS_LISTENER_MOUSECODE;
+	
+	/* ===================
+		Ceil / round up
+	====================== */
+
 	this->mousePositionX = static_cast<int>(LAZARUS_LISTENER_MOUSEX + 0.5f);
 	this->mousePositionY = static_cast<int>(LAZARUS_LISTENER_MOUSEY + 0.5f);		
-	
-	/* =========================================================
-		TODO: 
-		Right now scroll can only be either 1 (up) || -1 (down)
-		It will do for now, but should probably be changed to some sort of incrementing / decrementing number
-		At the very least, it should be reset to 0 when the scrollwheel is not in motion
-	============================================================ */
-	this->scrollState = static_cast<int>(LAZARUS_LISTENER_SCROLLCODE);
+
+	this->scrollState = LAZARUS_LISTENER_SCROLLCODE;	
 
 	return;
 };
