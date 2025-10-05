@@ -94,11 +94,10 @@ Events::Events()
 	keyCode 	    	= 0;
 	scanCode 			= 0;
 
-	clickState 	    = LAZARUS_MOUSE_NOCLICK;
+	clickState 			= LAZARUS_MOUSE_NOCLICK;
 	mousePositionX 		= 0;
 	mousePositionY 		= 0;
 	scrollState 		= 0;
-	previousScroll		= 0;
 
 	errorCode 			= 0;
 	errorMessage 		= NULL;
@@ -156,30 +155,7 @@ lazarus_result Events::eventsInit()
 		});
 
 		glfwSetScrollCallback(win, [](GLFWwindow *win, double xoffset, double yoffset){
-			/* =========================================================
-				This one's quite silly. GLFW never clears the value of 
-				its yoffset, so once you've scrolled once in either
-				direction the scroll state is locked until changed to
-				something else. And that something can't be 0 ever again
-				so basically locked in infinite up or down state.
-
-				To combat this, ensure we can never checkin the 
-				same state twice in a row. Such that at the fastest rate
-				of scroll possible, scroll and no-scroll states appear
-				one for one.
-			============================================================ */
-
-			float previous = LAZARUS_LISTENER_SCROLLCODE;
-			
-			if(previous == yoffset)
-			{
-				LAZARUS_LISTENER_SCROLLCODE = 0;
-			}		
-			else
-			{
-				LAZARUS_LISTENER_SCROLLCODE = yoffset;	
-			}
-
+			LAZARUS_LISTENER_SCROLLCODE = yoffset;	
 			return;
 		});
 
@@ -195,13 +171,16 @@ lazarus_result Events::eventsInit()
 
 lazarus_result Events::monitorEvents()
 {	
+	/* ========================================================
+		The glfw scroll state when monitored can only be on or
+		off - there is no scroll "neutral" state, so one is 
+		created here. It's only changed then when the callback
+		is fired and the result is polled. it will then be 
+		reset here appropriately.
+	=========================================================== */
+	LAZARUS_LISTENER_SCROLLCODE = 0;
+
     glfwPollEvents();
-	
-	/* ===================================
-		Don't need to check these, they 
-		are always OK as the cb's are 
-		void.
-	====================================== */
 
     this->updateKeyboardState();
     this->updateMouseState();
@@ -370,28 +349,8 @@ void Events::updateMouseState()
 
 	this->mousePositionX = static_cast<int>(LAZARUS_LISTENER_MOUSEX + 0.5f);
 	this->mousePositionY = static_cast<int>(LAZARUS_LISTENER_MOUSEY + 0.5f);		
-	
-	/* ========================================================
-		Callbacks are only fired upon receiving an input signal
-		from the system. As such, the scroll cb's major 
-		shortcoming in eliminating persistent "on" states is
-		that its possible outcomes still include an "on" state
-		and the input signal could end right there. To fully 
-		eliminate the possibility of infinite up / down state
-		we need to check the previous state in our process as
-		well as the glfw process.
-	=========================================================== */
 
-	if(previousScroll == LAZARUS_LISTENER_SCROLLCODE)
-	{
-		this->scrollState = 0;
-	}		
-	else
-	{
-		this->scrollState = LAZARUS_LISTENER_SCROLLCODE;	
-	}
-	
-	this->previousScroll = LAZARUS_LISTENER_SCROLLCODE;
+	this->scrollState = LAZARUS_LISTENER_SCROLLCODE;	
 
 	return;
 };

@@ -84,7 +84,6 @@ class Events
 		uint32_t mousePositionY;
 		
 		float scrollState;
-        float previousScroll;
 
         virtual ~Events();
 		
