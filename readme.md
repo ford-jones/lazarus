@@ -488,9 +488,14 @@ Anything not used from here will be optimised-out when compiled.
 ```c
     #define MAX_LIGHTS 150                          
 
-    const int CUBEMAP   = 1;                                //  Storage variants used for comparison with samplerType
+    //  Texture storage types for comparisson with samplerType
+    const int CUBEMAP   = 1;
     const int ATLAS     = 2;
     const int ARRAY     = 3;
+
+    //  Light variants
+    const int DIRECTIONAL_LIGHT = 1;
+    const int POINT_LIGHT       = 2;
 
     in vec3 fragPosition;                                   //  Input 3D fragment position
     in vec3 diffuseColor;                                   //  Input fragment color
@@ -501,7 +506,9 @@ Anything not used from here will be optimised-out when compiled.
     flat in int isUnderPerspective;                         //  1 if a perspective camera is being used to observe this fragment, otherwise 0
 
     uniform int lightCount;                                 //  The number of lights currently bound to lazarus
-    uniform vec3 lightPositions[MAX_LIGHTS];                //  A container of 3D light positions in-order
+    uniform int lightTypes[MAX_LIGHTS];                     //  Contains the active light type (point-light/directional) located at [i]
+    uniform vec3 lightDirections[MAX_LIGHTS];               //  A container of direction-vectors pertaining to lights of the DIRECTIONAL_LIGHT type
+    uniform vec3 lightPositions[MAX_LIGHTS];                //  A container of 3D light positions pertaining to lights of type POINT_LIGHT in-order
     uniform vec3 lightColors[MAX_LIGHTS];                   //  A container of light color values in-order
     uniform float lightBrightness[MAX_LIGHTS];              //  A container of light brightness variables in-order
 
@@ -1104,11 +1111,16 @@ Params:
 >	- **id:** *This light's unique id. (type: `int`)*
 >   - **config:** *Object settings. (type: `LightManager::LightConfig`)*
 
+> **LightType:** *Diffrent varieties of lights. (type: `enum`)*
+>   - **DIRECTIONAL:** *Luminence from a far away point such as the sun. Is treated as constant accross the surface of an object.*
+>   - **POINT:** *Light which shines at all angles from a point in space with range-based attenuation, like a lightbulb.*
+
 > **LightConfig:** *Creation function input-settings. (type: `struct`)*
 >   - **name:** *What to call this asset. (type: `std::string`, default: `"LIGHT_" + n`)*
 >   - **position:** *The x, y, z location of the light. (type: `glm::vec3`, default: `(0.0, 0.0, 0.0)`)*
 >   - **color:** *The light's shade of RGB color. (type: `glm::vec3`, default: `(1.0, 1.0, 1.0)`)*
 >   - **brightness:** *The light's luminescent intensity. (type: `float`, default: `1.0f`)*
+>   - **type:** *Which variant of light this is. (type: `LightType`, default: `LightType::DIRECTIONAL`)*
 
 ## AudioManager:
 A management class using an `FMOD` backend for loading audio, as well as handling audio locations and listeners. 
