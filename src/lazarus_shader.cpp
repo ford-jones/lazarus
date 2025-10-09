@@ -103,9 +103,14 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
 
     #define MAX_LIGHTS 150
 
+    //  Texture storage types
 	const int CUBEMAP = 1;
 	const int ATLAS = 2;
 	const int ARRAY = 3;
+
+    //  Light variants
+    const int DIRECTIONAL_LIGHT = 1;
+    const int POINT_LIGHT = 2;
 
     in vec3 fragPosition;
     in vec3 diffuseColor;
@@ -116,7 +121,9 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     flat in int isUnderPerspective;
 
     uniform int lightCount;
+    uniform int lightTypes[MAX_LIGHTS];
     uniform vec3 lightPositions[MAX_LIGHTS];
+    uniform vec3 lightDirections[MAX_LIGHTS];
     uniform vec3 lightColors[MAX_LIGHTS];
     uniform float lightBrightness[MAX_LIGHTS];
 
@@ -204,18 +211,31 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
         //  Calculate the fragment's diffuse lighting for each light in the scene.
         for(int i = 0; i < lightCount; i++)
         {
-            vec3 displacement = lightPositions[i] - fragPosition;
-            vec3 direction = normalize(displacement);
-            float diffusion = max(dot(normalCoordinate, direction), 0.0);
-            vec3 color = vec3(colorData.r, colorData.g, colorData.b);
-            vec3 illuminatedFrag = (color * lightColors[i] * diffusion);
+            if(lightTypes[i] == DIRECTIONAL_LIGHT)
+            {
+                vec3 direction = lightDirections[i];
+                vec3 color = lightColors[i] * lightBrightness[i];
 
-            //  Apply inverse square law to illumination result
-            //  Note: Don't apply for directional lights when they are added
-            //  This is better maybe: return illuminatedFrag * min(1.0 / pow(dot(displacement, displacement), 0.5), 1.0);
-            vec3 reflection = illuminatedFrag / (dot(displacement, displacement));
+                result = colorData;
+                result *= color * (max(0.0, dot(normalCoordinate, direction)));
+            }
+            else if(lightTypes[i] == POINT_LIGHT)
+            {
+                vec3 color = vec3(colorData.r, colorData.g, colorData.b);
+                vec3 displacement = lightPositions[i] - fragPosition;
 
-            result += (reflection * lightBrightness[i]);
+                vec3 direction = normalize(displacement);
+                float diffusion = max(dot(normalCoordinate, direction), 0.0);
+
+                vec3 illuminatedFrag = (color * lightColors[i] * diffusion);
+
+                //  Apply inverse square law to illumination result
+                //  Note: Don't apply for directional lights when they are added
+                //  This is better maybe: return illuminatedFrag * min(1.0 / pow(dot(displacement, displacement), 0.5), 1.0);
+                vec3 reflection = illuminatedFrag / (dot(displacement, displacement));
+
+                result += (reflection * lightBrightness[i]);
+            };
         };
 
         return result;
@@ -380,8 +400,13 @@ lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentSha
 
 lazarus_result Shader::setActiveShader(uint32_t program)
 {
+    lazarus_result status = this->verifyProgram(program);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+    
     this->clearErrors();
-    this->verifyProgram(program);
     glUseProgram(this->shaderProgram);
     
     //  TODO:
