@@ -102,7 +102,7 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     #version 410 core
 
     #define MAX_LIGHTS 150
-
+    
     //  Texture storage types
 	const int CUBEMAP = 1;
 	const int ATLAS = 2;
@@ -217,7 +217,7 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
                 vec3 color = lightColors[i] * lightBrightness[i];
 
                 result = colorData;
-                result *= color * (max(0.0, dot(normalCoordinate, direction)));
+                result += color * (max(0.0, dot(normalCoordinate, direction)));
             }
             else if(lightTypes[i] == POINT_LIGHT)
             {
