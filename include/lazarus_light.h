@@ -33,18 +33,22 @@
 #define LAZARUS_LIGHT_H
 
 //	TODO:
-//	Create a directional light
-
-//	TODO:
-//	Allow users to functionally change the light color
+//	functional settings updates
 
 class LightManager
 {
     public:
+        enum LightType 
+        {
+            DIRECTIONAL = 1,
+            POINT = 2
+        };
         struct LightConfig
         {
             std::string name = "LIGHT_";
+            LightType type = LightType::DIRECTIONAL;
             glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f); 
+            glm::vec3 direction = glm::vec3(1.0f, 0.0, 0.0);
             glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f);
             float brightness = 1.0f;
         };
@@ -71,7 +75,9 @@ class LightManager
             ============================================= */
             uint32_t uniformIndex;
 
+            GLint lightTypeUniformLocation;
             GLint lightPositionUniformLocation;
+            GLint lightDirectionUniformLocation;
             GLint lightColorUniformLocation;
             GLint brightnessUniformLocation;
         };
