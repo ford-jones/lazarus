@@ -1,5 +1,5 @@
 # Lazarus Engine
-#### *Version: 0.12.6*
+#### *Version: 0.14.0*
 ## Table of contents:
 
 - [Getting Started](#getting-started)
@@ -1117,7 +1117,8 @@ Params:
 
 > **LightConfig:** *Creation function input-settings. (type: `struct`)*
 >   - **name:** *What to call this asset. (type: `std::string`, default: `"LIGHT_" + n`)*
->   - **position:** *The x, y, z location of the light. (type: `glm::vec3`, default: `(0.0, 0.0, 0.0)`)*
+>   - **direction:** *The x, y, z direction of the light. Ignored when `type` is set to ``LightType::POINT`. (type: `glm::vec3`, default: `(1.0, 0.0, 0.0)`)*
+>   - **position:** *The x, y, z location of the light. Ignored when `type` is set to ``LightType::DIRECTIONAL`. (type: `glm::vec3`, default: `(0.0, 0.0, 0.0)`)*
 >   - **color:** *The light's shade of RGB color. (type: `glm::vec3`, default: `(1.0, 1.0, 1.0)`)*
 >   - **brightness:** *The light's luminescent intensity. (type: `float`, default: `1.0f`)*
 >   - **type:** *Which variant of light this is. (type: `LightType`, default: `LightType::DIRECTIONAL`)*
