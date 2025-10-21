@@ -42,7 +42,7 @@ Transform::Transform()
 lazarus_result Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
 {
 	this->localCoordinates = glm::vec3(x, y, z);
-    mesh.modelMatrix = glm::translate(mesh.modelMatrix, this->localCoordinates);
+    *mesh.modelMatrix = glm::translate(*mesh.modelMatrix, this->localCoordinates);
 
 	/* ===========================================================================
 		Find worldspace coordinates by multiplying object-space coordinates by the 
@@ -51,7 +51,7 @@ lazarus_result Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, f
 		See: https://learnopengl.com/img/getting-started/coordinate_systems.png
 	=============================================================================== */
 	
-	this->worldCoordinates = mesh.modelMatrix * glm::vec4(this->localCoordinates, 1.0);
+	this->worldCoordinates = *mesh.modelMatrix * glm::vec4(this->localCoordinates, 1.0);
 
     mesh.position.x = this->worldCoordinates.x;
     mesh.position.y = this->worldCoordinates.y;
@@ -69,11 +69,13 @@ lazarus_result Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, 
 		forward / direction vector.
 	====================================================== */
 
-	mesh.direction = mesh.modelMatrix * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f); 
+	mesh.direction = *mesh.modelMatrix * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f); 
 
-    mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
-    mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
-	mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(roll), glm::vec3(0.0f, 0.0f, 1.0f));
+	glm::mat4 m = *mesh.modelMatrix;
+
+    *mesh.modelMatrix = glm::rotate(m, this->degreesToRadians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
+    *mesh.modelMatrix = glm::rotate(m, this->degreesToRadians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
+	*mesh.modelMatrix = glm::rotate(m, this->degreesToRadians(roll), glm::vec3(0.0f, 0.0f, 1.0f));
 	
     return lazarus_result::LAZARUS_OK;
 };
@@ -92,7 +94,7 @@ lazarus_result Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float
 	else
 	{
 		mesh.scale = glm::vec3(x, y, z);
-		mesh.modelMatrix = glm::scale(mesh.modelMatrix, mesh.scale);
+		*mesh.modelMatrix = glm::scale(*mesh.modelMatrix, mesh.scale);
 
 		return lazarus_result::LAZARUS_OK;
 	};
