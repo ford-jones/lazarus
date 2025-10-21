@@ -91,7 +91,7 @@ class MeshManager
             glm::vec3 direction;
             glm::vec3 scale;
 
-            glm::mat4 modelMatrix;
+            glm::mat4 *modelMatrix;
 
             bool isClickable;
         };
@@ -100,6 +100,7 @@ class MeshManager
             std::string meshPath = "";
             std::string materialPath = "";
             std::string name = "";
+            uint32_t instanceCount = 1;
             bool selectable = false;
         };
         struct QuadConfig
@@ -112,6 +113,7 @@ class MeshManager
             float uvXR = 0.0f;
             float uvYU = 0.0f;
             float uvYD = 0.0f;
+            uint32_t instanceCount = 1;
             bool selectable = false;
         };
         struct CubeConfig
@@ -119,12 +121,13 @@ class MeshManager
             std::string name = "CUBE_";
             std::string texturePath = "";
             float scale = 1.0f;
+            uint32_t instanceCount = 1;
             bool selectable = false;
         };
         
 		MeshManager(GLuint shader, TextureLoader::StorageType textureType = TextureLoader::StorageType::ARRAY);
 		
-        lazarus_result create3DAsset(Mesh &out, AssetConfig options);
+        lazarus_result create3DAsset(std::vector<Mesh> &out, AssetConfig options);
         lazarus_result createQuad(Mesh &out, QuadConfig options);
         lazarus_result createCube(Mesh &out, CubeConfig options);
 
@@ -147,10 +150,12 @@ class MeshManager
         {
             uint32_t id;
             int32_t stencilBufferId;
+            uint32_t instanceCount;
 
             GLuint VAO;
             GLuint VBO;
             GLuint EBO;
+            GLuint MBO;
             
             MeshType type;
             TextureLoader::TextureData texture;
@@ -158,6 +163,7 @@ class MeshManager
             std::vector<FileLoader::Image> images;
             std::vector<uint32_t> indexes;
             std::vector<glm::vec3> attributes;
+            std::map<uint32_t, glm::mat4> instanceMatrices;
         };
 
         lazarus_result setMaterialProperties(std::vector<glm::vec3> diffuse, std::vector<FileLoader::Image> images);
@@ -175,7 +181,7 @@ class MeshManager
         uint32_t maxTexHeight;
 
 		GLuint shaderProgram;
-        GLint modelMatrixUniformLocation;
+        // GLint modelMatrixUniformLocation;
         GLint meshVariantLocation;
         GLint discardFragsLocation;
 

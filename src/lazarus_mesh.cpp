@@ -39,7 +39,8 @@ MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
     glUniform1i(glGetUniformLocation(this->shaderProgram, "textureArray"), 2);
     glUniform1i(glGetUniformLocation(this->shaderProgram, "textureCube"), 3);
 
-    this->modelMatrixUniformLocation    = glGetUniformLocation(this->shaderProgram, "modelMatrix");
+    // this->modelMatrixUniformLocation    = glGetUniformLocation(this->shaderProgram, "modelMatrix");
+
     this->meshVariantLocation           = glGetUniformLocation(this->shaderProgram, "samplerType");
     this->discardFragsLocation          = glGetUniformLocation(this->shaderProgram, "discardFrags");
 
@@ -49,7 +50,7 @@ MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
     this->textureStorage = textureType;
 };
 
-lazarus_result MeshManager::create3DAsset(MeshManager::Mesh &out, MeshManager::AssetConfig options)
+lazarus_result MeshManager::create3DAsset(std::vector<MeshManager::Mesh> &out, MeshManager::AssetConfig options)
 {
     this->meshOut = {};
     this->meshData = {};
@@ -105,11 +106,13 @@ lazarus_result MeshManager::create3DAsset(MeshManager::Mesh &out, MeshManager::A
         );    
         meshOut.type = MeshManager::MeshType::LOADED_GLB;
     };
+    meshData.instanceCount = options.instanceCount;
+    
     if(status != lazarus_result::LAZARUS_OK)
     {
         return status;
     };
-
+    
     status = this->setMaterialProperties(diffuseColors, images);
     if(status != lazarus_result::LAZARUS_OK)
     {
@@ -124,7 +127,13 @@ lazarus_result MeshManager::create3DAsset(MeshManager::Mesh &out, MeshManager::A
     };
     this->makeSelectable(options.selectable);
 
-    out = this->meshOut;
+    for(size_t i = 0; i < meshData.instanceCount; i ++)
+    {
+        MeshManager::Mesh m = this->meshOut;
+        m.modelMatrix = &meshData.instanceMatrices.at(i);
+        out.push_back(m);
+    };
+
     return lazarus_result::LAZARUS_OK;
 };
 
@@ -259,6 +268,7 @@ lazarus_result MeshManager::createQuad(MeshManager::Mesh &out, MeshManager::Quad
         4, 5, 6, 
         6, 5, 7
     };
+    meshData.instanceCount = options.instanceCount;
 
     status = this->setMaterialProperties(diffuseColors, images);
     if(status != lazarus_result::LAZARUS_OK)
@@ -399,6 +409,7 @@ lazarus_result MeshManager::createCube(MeshManager::Mesh &out, MeshManager::Cube
         16, 17, 18, 16, 19, 17,
         20, 21, 22, 20, 23, 21
     };
+    meshData.instanceCount = options.instanceCount;
 
     status = this->setMaterialProperties(diffuseColors, images);
     if(status != lazarus_result::LAZARUS_OK)
@@ -423,8 +434,8 @@ lazarus_result MeshManager::initialiseMesh()
     glGenVertexArrays(1, &meshData.VAO);
    	glBindVertexArray(meshData.VAO);
 
-    if(this->modelMatrixUniformLocation >= 0)
-    {
+    // if(this->modelMatrixUniformLocation <= 0)
+    // {
         this->clearErrors();
 
         glGenBuffers(1, &meshData.EBO);
@@ -467,13 +478,46 @@ lazarus_result MeshManager::initialiseMesh()
             return status;
         };
 
+        this->clearErrors();
+
+        glGenBuffers(1, &meshData.MBO);
+        glBindBuffer(GL_ARRAY_BUFFER, meshData.MBO);
+
+        glBufferData(
+            GL_ARRAY_BUFFER, 
+            meshData.instanceCount * sizeof(glm::mat4), 
+            &meshData.instanceMatrices[0], 
+            GL_DYNAMIC_DRAW
+        );
+
+        //  Per-instance model matrix (instancing)
+        glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, (4 * sizeof(glm::vec4)), (void*)0);
+        glEnableVertexAttribArray(4);
+        glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, (4 * sizeof(glm::vec4)), (void*)(1 * sizeof(glm::vec4)));
+        glEnableVertexAttribArray(5);
+        glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, (4 * sizeof(glm::vec4)), (void*)(2 * sizeof(glm::vec4)));
+        glEnableVertexAttribArray(6);
+        glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, (4 * sizeof(glm::vec4)), (void*)(3 * sizeof(glm::vec4)));
+        glEnableVertexAttribArray(7);
+
+        glVertexAttribDivisor(4, 1);
+        glVertexAttribDivisor(5, 1);
+        glVertexAttribDivisor(6, 1);
+        glVertexAttribDivisor(7, 1);
+
+        status = this->checkErrors(__FILE__, __LINE__);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
+
         meshOut.id = dataStore.size() + 1;
         meshData.id = meshOut.id;
         this->dataStore.insert(std::pair<uint32_t, MeshManager::MeshData>(meshOut.id, meshData));
-
+        
         /* ===============================================================
-            Reload the entire texture stack / array if the mesh isn't
-            being used for anything special. I.e. reallocate the space and
+        Reload the entire texture stack / array if the mesh isn't
+        being used for anything special. I.e. reallocate the space and
             upload all of the textures again. In the cases where a mesh is 
             used for some special purpose different texture loaders are 
             used. 
@@ -493,13 +537,13 @@ lazarus_result MeshManager::initialiseMesh()
                 };
             };
         };
-    }
-    else
-    {
-        LOG_ERROR("Asset Error:", __FILE__, __LINE__);
+    // }
+    // else
+    // {
+    //     LOG_ERROR("Asset Error:", __FILE__, __LINE__);
 
-        return lazarus_result::LAZARUS_MATRIX_LOCATION_ERROR;
-    };
+    //     return lazarus_result::LAZARUS_MATRIX_LOCATION_ERROR;
+    // };
 	
     return LAZARUS_OK;
 };
@@ -572,6 +616,7 @@ lazarus_result MeshManager::clearMeshStorage()
     for(auto i: dataStore)
     {
         glDeleteBuffers         (1, &i.second.VBO);
+        glDeleteBuffers         (1, &i.second.MBO);
         glDeleteBuffers         (1, &i.second.EBO);
         glDeleteVertexArrays    (1, &i.second.VAO);
     };
@@ -619,6 +664,15 @@ lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
 {
     MeshManager::MeshData &data = dataStore.at(meshIn.id);
     lazarus_result status = lazarus_result::LAZARUS_OK;
+
+    glBindBuffer(GL_ARRAY_BUFFER, data.MBO);
+    glBufferData(
+        GL_ARRAY_BUFFER, 
+        meshData.instanceCount * sizeof(glm::mat4), 
+        &meshData.instanceMatrices[0], 
+        GL_DYNAMIC_DRAW
+    );
+
     /* ===================================================
         Fill the stencil buffer with 0's. 
         Wherever an entity is occupying screenspace, fill 
@@ -639,16 +693,18 @@ lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
         };
     };
 
-    if(this->modelMatrixUniformLocation >= 0)
-    {
+    // if(this->modelMatrixUniformLocation <= 0)
+    // {
         this->clearErrors();
 
-        glUniformMatrix4fv(
-            this->modelMatrixUniformLocation, 
-            1, 
-            GL_FALSE, 
-            &meshIn.modelMatrix[0][0]
-        );
+        // glUniformMatrix4fv(
+            //     this->modelMatrixUniformLocation, 
+            //     1, 
+            //     GL_FALSE, 
+            //     &meshIn.modelMatrix[0][0]
+            // );
+            
+        //  SET THE VBO
         
         glUniform1i(this->meshVariantLocation, this->textureStorage);
         glUniform1i(this->discardFragsLocation, data.texture.discardAlphaZero);
@@ -658,13 +714,13 @@ lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
         {
             return status;
         };
-    }
-    else
-    {
-        LOG_ERROR("Asset Error:", __FILE__, __LINE__);
+    // }
+    // else
+    // {
+    //     LOG_ERROR("Asset Error:", __FILE__, __LINE__);
 
-        status = lazarus_result::LAZARUS_MATRIX_LOCATION_ERROR;
-    };
+    //     status = lazarus_result::LAZARUS_MATRIX_LOCATION_ERROR;
+    // };
 
     return status;
 };
@@ -706,7 +762,14 @@ lazarus_result MeshManager::drawMesh(MeshManager::Mesh &meshIn)
             break;
     };
 
-    glDrawElements(GL_TRIANGLES, data.indexes.size(), GL_UNSIGNED_INT, nullptr);
+    // glDrawElements(GL_TRIANGLES, data.indexes.size(), GL_UNSIGNED_INT, nullptr);
+    glDrawElementsInstanced(
+        GL_TRIANGLES, 
+        data.indexes.size(), 
+        GL_UNSIGNED_INT, 
+        nullptr, 
+        data.instanceCount
+    );
 
     return this->checkErrors(__FILE__, __LINE__);
 };
@@ -775,6 +838,11 @@ void MeshManager::setSharedProperties()
     meshData.texture.discardAlphaZero = false;
     meshData.texture.samplerId = TextureLoader::textureId;
 
+    for(size_t i = 0; i < meshData.instanceCount; i++)
+    {
+        meshData.instanceMatrices.insert(std::pair<uint32_t, glm::mat4>(i, glm::mat4(1.0f)));
+    };
+
     /* =========================================
         Meshes are created at the origin looking
         down the z-axis at 1:1 scale to that 
@@ -786,7 +854,7 @@ void MeshManager::setSharedProperties()
     meshOut.direction = glm::vec3(0.0f, 0.0f, 1.0f);
     meshOut.scale = glm::vec3(1.0f, 1.0f, 1.0f);
 
-    meshOut.modelMatrix = mat4(1.0f);
+    // meshOut.modelMatrix = mat4(1.0f);
 
     meshOut.numOfVertices = meshData.attributes.size() / 4;
     meshOut.numOfFaces = (meshOut.numOfVertices) / 3;

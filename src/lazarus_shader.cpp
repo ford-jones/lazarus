@@ -21,10 +21,14 @@
 const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
     #version 410 core
 
+    //  VBO 1
     layout(location = 0) in vec3 inVertex;
     layout(location = 1) in vec3 inDiffuse;
     layout(location = 2) in vec3 inNormal;
     layout(location = 3) in vec3 inTexCoord;
+
+    //  VBO 2 (MBO)
+    layout(location = 4) in mat4 instanceModelMatrix;
 
     uniform int usesPerspective;
 
@@ -43,7 +47,7 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
 
     vec3 _lazarusComputeWorldPosition()
     {
-        vec4 worldPosition = modelMatrix * vec4(inVertex, 1.0);
+        vec4 worldPosition = instanceModelMatrix * vec4(inVertex, 1.0);
    
         //  Determine the vertex's clip-space position
         if(usesPerspective != 0)
@@ -72,7 +76,7 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
         //  perpendicular to the surface and would otherwise fail to when the 
         //  scale of the surface is non uniform.
         //  http://www.lighthouse3d.com/tutorials/glsl-12-tutorial/the-normal-matrix/
-        mat4 inverseTranspose = transpose(inverse(modelMatrix));
+        mat4 inverseTranspose = transpose(inverse(instanceModelMatrix));
 
         //  Truncate bottom row of matrix for clean multiplication against vec3
         vec3 result = mat3(inverseTranspose) * inNormal;
