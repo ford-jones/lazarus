@@ -220,8 +220,7 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
                 vec3 direction = lightDirections[i];
                 vec3 color = lightColors[i] * lightBrightness[i];
 
-                result = colorData;
-                result += color * (max(0.0, dot(normalCoordinate, direction)));
+                result += (colorData + color) * (max(0.0, dot(normalCoordinate, direction)));
             }
             else if(lightTypes[i] == POINT_LIGHT)
             {
