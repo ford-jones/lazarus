@@ -269,6 +269,11 @@ lazarus_result MeshManager::createQuad(MeshManager::Mesh &out, MeshManager::Quad
         6, 5, 7
     };
     meshData.instanceCount = options.instanceCount;
+    
+    for(size_t i = 0; i < meshData.instanceCount; i ++)
+    {
+        this->meshOut.matrices.insert(std::pair<uint32_t, glm::mat4>(i, glm::mat4(1.0f)));
+    };
 
     status = this->setMaterialProperties(diffuseColors, images);
     if(status != lazarus_result::LAZARUS_OK)
@@ -410,6 +415,11 @@ lazarus_result MeshManager::createCube(MeshManager::Mesh &out, MeshManager::Cube
         20, 21, 22, 20, 23, 21
     };
     meshData.instanceCount = options.instanceCount;
+    
+    for(size_t i = 0; i < meshData.instanceCount; i ++)
+    {
+        this->meshOut.matrices.insert(std::pair<uint32_t, glm::mat4>(i, glm::mat4(1.0f)));
+    };
 
     status = this->setMaterialProperties(diffuseColors, images);
     if(status != lazarus_result::LAZARUS_OK)
@@ -682,7 +692,14 @@ lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
     lazarus_result status = lazarus_result::LAZARUS_OK;
 
     std::vector<glm::mat4> mats;
-    std::transform(meshIn.matrices.begin(), meshIn.matrices.end(), std::back_inserter(mats), [](const std::pair<uint32_t, glm::mat4> &pair){return pair.second; });
+    std::transform(
+        meshIn.matrices.begin(), 
+        meshIn.matrices.end(), 
+        std::back_inserter(mats), 
+        [](const std::pair<uint32_t, glm::mat4> &pair){
+            return pair.second; 
+        }
+    );
 
     glBindVertexArray(data.VAO);
     glBindBuffer(GL_ARRAY_BUFFER, data.MBO);

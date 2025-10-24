@@ -432,6 +432,7 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
         quadSettings.uvXR = this->uvR;
         quadSettings.uvYU = this->uvU;
         quadSettings.uvYD = this->uvD;
+        quadSettings.instanceCount = 1;
 
         status = MeshManager::createQuad(this->quad, quadSettings);
         if(status != lazarus_result::LAZARUS_OK)
