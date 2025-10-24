@@ -39,8 +39,6 @@ MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
     glUniform1i(glGetUniformLocation(this->shaderProgram, "textureArray"), 2);
     glUniform1i(glGetUniformLocation(this->shaderProgram, "textureCube"), 3);
 
-    // this->modelMatrixUniformLocation    = glGetUniformLocation(this->shaderProgram, "modelMatrix");
-
     this->meshVariantLocation           = glGetUniformLocation(this->shaderProgram, "samplerType");
     this->discardFragsLocation          = glGetUniformLocation(this->shaderProgram, "discardFrags");
 
@@ -50,7 +48,7 @@ MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
     this->textureStorage = textureType;
 };
 
-lazarus_result MeshManager::create3DAsset(std::vector<MeshManager::Mesh> &out, MeshManager::AssetConfig options)
+lazarus_result MeshManager::create3DAsset(MeshManager::Mesh &out, MeshManager::AssetConfig options)
 {
     this->meshOut = {};
     this->meshData = {};
@@ -108,6 +106,11 @@ lazarus_result MeshManager::create3DAsset(std::vector<MeshManager::Mesh> &out, M
     };
     meshData.instanceCount = options.instanceCount;
     
+    for(size_t i = 0; i < meshData.instanceCount; i ++)
+    {
+        this->meshOut.matrices.insert(std::pair<uint32_t, glm::mat4>(i, glm::mat4(1.0f)));
+    };
+    
     if(status != lazarus_result::LAZARUS_OK)
     {
         return status;
@@ -127,12 +130,9 @@ lazarus_result MeshManager::create3DAsset(std::vector<MeshManager::Mesh> &out, M
     };
     this->makeSelectable(options.selectable);
 
-    for(size_t i = 0; i < meshData.instanceCount; i ++)
-    {
-        MeshManager::Mesh m = this->meshOut;
-        m.modelMatrix = &meshData.instanceMatrices.at(i);
-        out.push_back(m);
-    };
+    out = this->meshOut;
+
+    glBindVertexArray(0);
 
     return lazarus_result::LAZARUS_OK;
 };
@@ -434,116 +434,132 @@ lazarus_result MeshManager::initialiseMesh()
     glGenVertexArrays(1, &meshData.VAO);
    	glBindVertexArray(meshData.VAO);
 
-    // if(this->modelMatrixUniformLocation <= 0)
-    // {
-        this->clearErrors();
+    this->clearErrors();
 
-        glGenBuffers(1, &meshData.EBO);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshData.EBO);
-        glBufferData(
-            GL_ELEMENT_ARRAY_BUFFER, 
-            meshData.indexes.size() * sizeof(uint32_t), 
-            &meshData.indexes[0], 
-            GL_STATIC_DRAW
-        );
+    glGenBuffers(1, &meshData.EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshData.EBO);
+    glBufferData(
+        GL_ELEMENT_ARRAY_BUFFER, 
+        meshData.indexes.size() * sizeof(uint32_t), 
+        &meshData.indexes[0], 
+        GL_STATIC_DRAW
+    );
 
-        glGenBuffers(1, &meshData.VBO);
-        glBindBuffer(GL_ARRAY_BUFFER, meshData.VBO);
-        glBufferData(
-            GL_ARRAY_BUFFER, 
-            meshData.attributes.size() * sizeof(vec3), 
-            &meshData.attributes[0], 
-            GL_STATIC_DRAW
-        );
+    glGenBuffers(1, &meshData.VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, meshData.VBO);
+    glBufferData(
+        GL_ARRAY_BUFFER, 
+        meshData.attributes.size() * sizeof(vec3), 
+        &meshData.attributes[0], 
+        GL_STATIC_DRAW
+    );
 
-        //  Vertex Positions
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)0);
-        glEnableVertexAttribArray(0);
+    //  Vertex Positions
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)0);
 
-        //  Diffuse Colors
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)(1 * sizeof(vec3)));
-        glEnableVertexAttribArray(1);
+    //  Diffuse Colors
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)(1 * sizeof(vec3)));
 
-        //  Normals
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)(2 * sizeof(vec3)));
-        glEnableVertexAttribArray(2);
+    //  Normals
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)(2 * sizeof(vec3)));
 
-        //  UV Coordinates
-        glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)(3 * sizeof(vec3)));
-        glEnableVertexAttribArray(3);
+    //  UV Coordinates
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)(3 * sizeof(vec3)));
 
-        lazarus_result status = this->checkErrors(__FILE__, __LINE__);
-        if(status != lazarus_result::LAZARUS_OK)
-        {
-            return status;
-        };
+    lazarus_result status = this->checkErrors(__FILE__, __LINE__);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+    
+    this->clearErrors();
 
-        this->clearErrors();
+    /* =================================================================
+        Convert matrice map (RB BT, uint32_t key) to a vector of 
+        map[i].second
+    ==================================================================== */
+    std::vector<glm::mat4> mats;
+    std::transform(
+        this->meshOut.matrices.begin(), 
+        this->meshOut.matrices.end(), 
+        std::back_inserter(mats), 
+        [](const std::pair<uint32_t, glm::mat4> &pair){
+            return pair.second;
+        }
+    );
 
-        glGenBuffers(1, &meshData.MBO);
-        glBindBuffer(GL_ARRAY_BUFFER, meshData.MBO);
+    /* ===========================================================
+        Create a secondary VBO used for storing per-instance
+        model-matrix data. This data is changed very frequently, 
+        so use dynamic drawing.
+    ============================================================== */
+    glGenBuffers(1, &meshData.MBO);
+    glBindBuffer(GL_ARRAY_BUFFER, meshData.MBO);
 
-        glBufferData(
-            GL_ARRAY_BUFFER, 
-            meshData.instanceCount * sizeof(glm::mat4), 
-            &meshData.instanceMatrices[0], 
-            GL_DYNAMIC_DRAW
-        );
+    glBufferData(
+        GL_ARRAY_BUFFER, 
+        this->meshOut.matrices.size() * sizeof(glm::mat4), 
+        &mats[0][0],
+        GL_DYNAMIC_DRAW
+    );
 
-        //  Per-instance model matrix (instancing)
-        glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, (4 * sizeof(glm::vec4)), (void*)0);
-        glEnableVertexAttribArray(4);
-        glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, (4 * sizeof(glm::vec4)), (void*)(1 * sizeof(glm::vec4)));
-        glEnableVertexAttribArray(5);
-        glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, (4 * sizeof(glm::vec4)), (void*)(2 * sizeof(glm::vec4)));
-        glEnableVertexAttribArray(6);
-        glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, (4 * sizeof(glm::vec4)), (void*)(3 * sizeof(glm::vec4)));
-        glEnableVertexAttribArray(7);
+    /* =============================================================
+        The largest data type available in GLSL is a vec4 (16 bytes)
+        1 / 4 of the size required to store a matrice.
+        Use attribute divisors to delineate matrice columns down to 
+        4 vec4's. These then occupy locations 4 - 7 in the vertex
+        shader layout.
+    ================================================================ */
+    glEnableVertexAttribArray(4);
+    glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, (4 * sizeof(glm::vec4)), (void*)0);
+    glEnableVertexAttribArray(5);
+    glVertexAttribPointer(5, 4, GL_FLOAT, GL_FALSE, (4 * sizeof(glm::vec4)), (void*)(1 * sizeof(glm::vec4)));
+    glEnableVertexAttribArray(6);
+    glVertexAttribPointer(6, 4, GL_FLOAT, GL_FALSE, (4 * sizeof(glm::vec4)), (void*)(2 * sizeof(glm::vec4)));
+    glEnableVertexAttribArray(7);
+    glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, (4 * sizeof(glm::vec4)), (void*)(3 * sizeof(glm::vec4)));
 
-        glVertexAttribDivisor(4, 1);
-        glVertexAttribDivisor(5, 1);
-        glVertexAttribDivisor(6, 1);
-        glVertexAttribDivisor(7, 1);
+    glVertexAttribDivisor(4, 1);
+    glVertexAttribDivisor(5, 1);
+    glVertexAttribDivisor(6, 1);
+    glVertexAttribDivisor(7, 1);
 
-        status = this->checkErrors(__FILE__, __LINE__);
-        if(status != lazarus_result::LAZARUS_OK)
-        {
-            return status;
-        };
+    status = this->checkErrors(__FILE__, __LINE__);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
 
-        meshOut.id = dataStore.size() + 1;
-        meshData.id = meshOut.id;
-        this->dataStore.insert(std::pair<uint32_t, MeshManager::MeshData>(meshOut.id, meshData));
-        
-        /* ===============================================================
+    meshOut.id = dataStore.size() + 1;
+    meshData.id = meshOut.id;
+    this->dataStore.insert(std::pair<uint32_t, MeshManager::MeshData>(meshOut.id, meshData));
+    
+    /* ===============================================================
         Reload the entire texture stack / array if the mesh isn't
         being used for anything special. I.e. reallocate the space and
-            upload all of the textures again. In the cases where a mesh is 
-            used for some special purpose different texture loaders are 
-            used. 
-        ================================================================== */
+        upload all of the textures again. In the cases where a mesh is 
+        used for some special purpose different texture loaders are 
+        used. 
+    ================================================================== */
 
-        if(this->textureStorage == TextureLoader::StorageType::ARRAY)
+    if(this->textureStorage == TextureLoader::StorageType::ARRAY)
+    {
+        for(size_t i = 0; i < meshOut.materials.size(); i++)
         {
-            for(size_t i = 0; i < meshOut.materials.size(); i++)
+            if(meshOut.materials[i].type == MaterialType::IMAGE_TEXTURE)
             {
-                if(meshOut.materials[i].type == MaterialType::IMAGE_TEXTURE)
+                status = this->prepareTextures();
+                if(status != lazarus_result::LAZARUS_OK)
                 {
-                    status = this->prepareTextures();
-                    if(status != lazarus_result::LAZARUS_OK)
-                    {
-                        return status;
-                    };
+                    return status;
                 };
             };
         };
-    // }
-    // else
-    // {
-    //     LOG_ERROR("Asset Error:", __FILE__, __LINE__);
-
-    //     return lazarus_result::LAZARUS_MATRIX_LOCATION_ERROR;
-    // };
+    };
 	
     return LAZARUS_OK;
 };
@@ -665,12 +681,16 @@ lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
     MeshManager::MeshData &data = dataStore.at(meshIn.id);
     lazarus_result status = lazarus_result::LAZARUS_OK;
 
+    std::vector<glm::mat4> mats;
+    std::transform(meshIn.matrices.begin(), meshIn.matrices.end(), std::back_inserter(mats), [](const std::pair<uint32_t, glm::mat4> &pair){return pair.second; });
+
+    glBindVertexArray(data.VAO);
     glBindBuffer(GL_ARRAY_BUFFER, data.MBO);
-    glBufferData(
+    glBufferSubData(
         GL_ARRAY_BUFFER, 
-        meshData.instanceCount * sizeof(glm::mat4), 
-        &meshData.instanceMatrices[0], 
-        GL_DYNAMIC_DRAW
+        0, 
+        meshIn.matrices.size() * sizeof(glm::mat4), 
+        &mats[0][0]
     );
 
     /* ===================================================
@@ -693,34 +713,16 @@ lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
         };
     };
 
-    // if(this->modelMatrixUniformLocation <= 0)
-    // {
-        this->clearErrors();
-
-        // glUniformMatrix4fv(
-            //     this->modelMatrixUniformLocation, 
-            //     1, 
-            //     GL_FALSE, 
-            //     &meshIn.modelMatrix[0][0]
-            // );
-            
-        //  SET THE VBO
+    this->clearErrors();
         
-        glUniform1i(this->meshVariantLocation, this->textureStorage);
-        glUniform1i(this->discardFragsLocation, data.texture.discardAlphaZero);
+    glUniform1i(this->meshVariantLocation, this->textureStorage);
+    glUniform1i(this->discardFragsLocation, data.texture.discardAlphaZero);
 
-        status = this->checkErrors(__FILE__, __LINE__);
-        if(status != lazarus_result::LAZARUS_OK)
-        {
-            return status;
-        };
-    // }
-    // else
-    // {
-    //     LOG_ERROR("Asset Error:", __FILE__, __LINE__);
-
-    //     status = lazarus_result::LAZARUS_MATRIX_LOCATION_ERROR;
-    // };
+    status = this->checkErrors(__FILE__, __LINE__);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
 
     return status;
 };
@@ -762,7 +764,6 @@ lazarus_result MeshManager::drawMesh(MeshManager::Mesh &meshIn)
             break;
     };
 
-    // glDrawElements(GL_TRIANGLES, data.indexes.size(), GL_UNSIGNED_INT, nullptr);
     glDrawElementsInstanced(
         GL_TRIANGLES, 
         data.indexes.size(), 
@@ -770,6 +771,8 @@ lazarus_result MeshManager::drawMesh(MeshManager::Mesh &meshIn)
         nullptr, 
         data.instanceCount
     );
+
+    glBindVertexArray(0);
 
     return this->checkErrors(__FILE__, __LINE__);
 };
@@ -838,11 +841,6 @@ void MeshManager::setSharedProperties()
     meshData.texture.discardAlphaZero = false;
     meshData.texture.samplerId = TextureLoader::textureId;
 
-    for(size_t i = 0; i < meshData.instanceCount; i++)
-    {
-        meshData.instanceMatrices.insert(std::pair<uint32_t, glm::mat4>(i, glm::mat4(1.0f)));
-    };
-
     /* =========================================
         Meshes are created at the origin looking
         down the z-axis at 1:1 scale to that 
@@ -853,8 +851,6 @@ void MeshManager::setSharedProperties()
     meshOut.position = glm::vec3(0.0f, 0.0f, 0.0f);
     meshOut.direction = glm::vec3(0.0f, 0.0f, 1.0f);
     meshOut.scale = glm::vec3(1.0f, 1.0f, 1.0f);
-
-    // meshOut.modelMatrix = mat4(1.0f);
 
     meshOut.numOfVertices = meshData.attributes.size() / 4;
     meshOut.numOfFaces = (meshOut.numOfVertices) / 3;

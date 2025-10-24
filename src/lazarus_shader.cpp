@@ -28,11 +28,11 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
     layout(location = 3) in vec3 inTexCoord;
 
     //  VBO 2 (MBO)
+    //  Occupies 4, 5, 6 and 7 (4 * vec4), dilineated by glVertexAttribDivisor
     layout(location = 4) in mat4 instanceModelMatrix;
 
     uniform int usesPerspective;
 
-    uniform mat4 modelMatrix;
     uniform mat4 viewMatrix;
     uniform mat4 perspectiveProjectionMatrix;
     uniform mat4 orthoProjectionMatrix;
@@ -52,7 +52,7 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
         //  Determine the vertex's clip-space position
         if(usesPerspective != 0)
         {
-           gl_Position = perspectiveProjectionMatrix * viewMatrix * worldPosition;   
+            gl_Position = perspectiveProjectionMatrix * viewMatrix * worldPosition;   
         }
         else
         {

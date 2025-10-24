@@ -91,7 +91,7 @@ class MeshManager
             glm::vec3 direction;
             glm::vec3 scale;
 
-            glm::mat4 *modelMatrix;
+            std::map<uint32_t, glm::mat4> matrices;
 
             bool isClickable;
         };
@@ -127,7 +127,7 @@ class MeshManager
         
 		MeshManager(GLuint shader, TextureLoader::StorageType textureType = TextureLoader::StorageType::ARRAY);
 		
-        lazarus_result create3DAsset(std::vector<Mesh> &out, AssetConfig options);
+        lazarus_result create3DAsset(Mesh &out, AssetConfig options);
         lazarus_result createQuad(Mesh &out, QuadConfig options);
         lazarus_result createCube(Mesh &out, CubeConfig options);
 
@@ -163,7 +163,7 @@ class MeshManager
             std::vector<FileLoader::Image> images;
             std::vector<uint32_t> indexes;
             std::vector<glm::vec3> attributes;
-            std::map<uint32_t, glm::mat4> instanceMatrices;
+
         };
 
         lazarus_result setMaterialProperties(std::vector<glm::vec3> diffuse, std::vector<FileLoader::Image> images);
@@ -181,7 +181,6 @@ class MeshManager
         uint32_t maxTexHeight;
 
 		GLuint shaderProgram;
-        // GLint modelMatrixUniformLocation;
         GLint meshVariantLocation;
         GLint discardFragsLocation;
 
