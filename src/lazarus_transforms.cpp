@@ -41,7 +41,9 @@ Transform::Transform()
 
 lazarus_result Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, uint32_t matrixId)
 {
-	glm::mat4 &instanceMatrix = mesh.matrices.at(matrixId);
+	MeshManager::Mesh::Instance &instance = mesh.instances.at(matrixId);
+	glm::mat4 &instanceMatrix = instance.modelMatrix;
+
 	this->localCoordinates = glm::vec3(x, y, z);
 
     instanceMatrix = glm::translate(instanceMatrix, this->localCoordinates);
@@ -55,9 +57,9 @@ lazarus_result Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, f
 	
 	this->worldCoordinates = instanceMatrix * glm::vec4(this->localCoordinates, 1.0);
 
-    mesh.position.x = this->worldCoordinates.x;
-    mesh.position.y = this->worldCoordinates.y;
-    mesh.position.z = this->worldCoordinates.z;
+    instance.position.x = this->worldCoordinates.x;
+    instance.position.y = this->worldCoordinates.y;
+    instance.position.z = this->worldCoordinates.z;
 
 	return lazarus_result::LAZARUS_OK;
 };
@@ -70,8 +72,10 @@ lazarus_result Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, 
 		element. This can be treated as the mesh asset's 
 		forward / direction vector.
 	====================================================== */
-	glm::mat4 &instanceMatrix = mesh.matrices.at(matrixId);
-	mesh.direction = instanceMatrix * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f); 
+	MeshManager::Mesh::Instance &instance = mesh.instances.at(matrixId);
+	glm::mat4 &instanceMatrix = instance.modelMatrix;
+
+	instance.direction = instanceMatrix * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f); 
 
     instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
     instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -93,10 +97,12 @@ lazarus_result Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float
 	}
 	else
 	{
-		glm::mat4 &instanceMatrix = mesh.matrices.at(matrixId);
-		mesh.scale = glm::vec3(x, y, z);
+		MeshManager::Mesh::Instance &instance = mesh.instances.at(matrixId);
+		glm::mat4 &instanceMatrix = instance.modelMatrix;
 
-		instanceMatrix = glm::scale(instanceMatrix, mesh.scale);
+		instance.scale = glm::vec3(x, y, z);
+
+		instanceMatrix = glm::scale(instanceMatrix, instance.scale);
 
 		return lazarus_result::LAZARUS_OK;
 	};

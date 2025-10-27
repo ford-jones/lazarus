@@ -75,6 +75,22 @@ class MeshManager
         };
         struct Mesh
         {
+            struct Instance
+            {
+                //  TODO:
+                //  Add a visibility flag that can be used to 
+                //  toggle whether frags should be discarded or not
+
+                uint32_t id;
+                glm::vec3 position;
+                glm::vec3 direction;
+                glm::vec3 scale;
+
+                glm::mat4 modelMatrix;
+
+                bool isClickable;
+            };
+
             uint32_t id;
             std::string name;
 
@@ -87,13 +103,7 @@ class MeshManager
             std::string meshFilepath;
             std::string materialFilepath;
 
-            glm::vec3 position;
-            glm::vec3 direction;
-            glm::vec3 scale;
-
-            std::map<uint32_t, glm::mat4> matrices;
-
-            bool isClickable;
+            std::map<uint32_t, Instance> instances;
         };
         struct AssetConfig
         {
@@ -149,8 +159,8 @@ class MeshManager
         struct MeshData
         {
             uint32_t id;
-            int32_t stencilBufferId;
             uint32_t instanceCount;
+            uint8_t stencilBufferId;
 
             GLuint VAO;
             GLuint VBO;
@@ -163,17 +173,20 @@ class MeshManager
             std::vector<FileLoader::Image> images;
             std::vector<uint32_t> indexes;
             std::vector<glm::vec3> attributes;
-
         };
 
         lazarus_result setMaterialProperties(std::vector<glm::vec3> diffuse, std::vector<FileLoader::Image> images);
+        lazarus_result checkErrors(const char *file, uint32_t line);
+        lazarus_result makeSelectable(bool selectable);
         lazarus_result initialiseMesh();
         lazarus_result prepareTextures();
-        void makeSelectable(bool selectable);
+
+        void instantiateMesh(bool selectable);
         void setSharedProperties();
-        
-        lazarus_result checkErrors(const char *file, uint32_t line);
         void clearErrors();
+        
+
+        uint32_t childCount;
 
         int32_t errorCode;
 
