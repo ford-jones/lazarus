@@ -420,8 +420,9 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
         coordinates from within the glyph atlas.
     ============================================= */
 
-    for(size_t i = 0; i < textIn.config.targetString.size(); i++)
+    for(size_t i = 0; i < settings.targetString.size(); i++)
     {   
+        this->quad = {};
         this->setActiveGlyph(settings.targetString[i], settings.fontIndex, settings.letterSpacing);
 
         MeshManager::QuadConfig quadSettings = {};
@@ -453,7 +454,6 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
         {
             return status;
         };
-
         this->translationStride += (this->glyph.width + settings.letterSpacing);
 
         this->word.push_back(quad);
@@ -461,7 +461,7 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
 
     /* ============================================
         Cleanup the layout at the locaiton of an
-        entry and assume it's position with the new
+        entry and assume its position with the new
         set of tiles.
     =============================================== */
 
