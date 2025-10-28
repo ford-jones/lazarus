@@ -38,8 +38,6 @@ extern uint32_t                  LAZARUS_PRIMARY_DISPLAY_WIDTH;
 extern uint32_t                  LAZARUS_PRIMARY_DISPLAY_HEIGHT;
 extern uint32_t                  LAZARUS_LIGHT_COUNT;
 extern std::vector<uint32_t>     LAZARUS_SELECTABLE_ENTITIES;
-extern const uint32_t            LAZARUS_MAX_LIGHTS;
-extern const uint32_t            LAZARUS_MAX_SELECTABLE_ENTITIES;
 
 /* User Settings */
 
@@ -118,6 +116,7 @@ typedef enum lazarus_result
     //  assets
 
     LAZARUS_ASSET_LOAD_ERROR               = 601,
+    LAZARUS_LIMIT_REACHED                  = 602,
 
     //  text
     
@@ -151,8 +150,8 @@ class GlobalsManager
         static void setVsyncDisabled(bool shouldDisable);
         static bool getVsyncDisabled();
 
-        static void setNumberOfActiveLights(uint32_t count);
-        static uint32_t getNumberOfActiveLights();
+        static void setNumberOfActiveLights(uint8_t count);
+        static uint8_t getNumberOfActiveLights();
 
         static void setDisplaySize(uint32_t width, uint32_t height);
         static uint32_t getDisplayWidth();

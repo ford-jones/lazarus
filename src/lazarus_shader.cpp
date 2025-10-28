@@ -105,7 +105,7 @@ const char *LAZARUS_DEFAULT_VERT_SHADER =  R"(
 const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     #version 410 core
 
-    #define MAX_LIGHTS 150
+    #define MAX_LIGHTS 255
     
     //  Texture storage types
 	const int CUBEMAP = 1;
