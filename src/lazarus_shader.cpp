@@ -21,14 +21,18 @@
 const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
     #version 410 core
 
+    //  VBO 1
     layout(location = 0) in vec3 inVertex;
     layout(location = 1) in vec3 inDiffuse;
     layout(location = 2) in vec3 inNormal;
     layout(location = 3) in vec3 inTexCoord;
 
+    //  VBO 2 (MBO)
+    //  Occupies 4, 5, 6 and 7 (4 * vec4), dilineated by glVertexAttribDivisor
+    layout(location = 4) in mat4 instanceModelMatrix;
+
     uniform int usesPerspective;
 
-    uniform mat4 modelMatrix;
     uniform mat4 viewMatrix;
     uniform mat4 perspectiveProjectionMatrix;
     uniform mat4 orthoProjectionMatrix;
@@ -43,12 +47,12 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
 
     vec3 _lazarusComputeWorldPosition()
     {
-        vec4 worldPosition = modelMatrix * vec4(inVertex, 1.0);
+        vec4 worldPosition = instanceModelMatrix * vec4(inVertex, 1.0);
    
         //  Determine the vertex's clip-space position
         if(usesPerspective != 0)
         {
-           gl_Position = perspectiveProjectionMatrix * viewMatrix * worldPosition;   
+            gl_Position = perspectiveProjectionMatrix * viewMatrix * worldPosition;   
         }
         else
         {
@@ -72,7 +76,7 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
         //  perpendicular to the surface and would otherwise fail to when the 
         //  scale of the surface is non uniform.
         //  http://www.lighthouse3d.com/tutorials/glsl-12-tutorial/the-normal-matrix/
-        mat4 inverseTranspose = transpose(inverse(modelMatrix));
+        mat4 inverseTranspose = transpose(inverse(instanceModelMatrix));
 
         //  Truncate bottom row of matrix for clean multiplication against vec3
         vec3 result = mat3(inverseTranspose) * inNormal;
@@ -101,7 +105,7 @@ const char *LAZARUS_DEFAULT_VERT_SHADER =  R"(
 const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     #version 410 core
 
-    #define MAX_LIGHTS 150
+    #define MAX_LIGHTS 255
     
     //  Texture storage types
 	const int CUBEMAP = 1;
@@ -216,8 +220,7 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
                 vec3 direction = lightDirections[i];
                 vec3 color = lightColors[i] * lightBrightness[i];
 
-                result = colorData;
-                result += color * (max(0.0, dot(normalCoordinate, direction)));
+                result += (colorData + color) * (max(0.0, dot(normalCoordinate, direction)));
             }
             else if(lightTypes[i] == POINT_LIGHT)
             {

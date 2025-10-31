@@ -39,10 +39,14 @@ Transform::Transform()
 	this->rotation = vec3(0.0, 0.0, 0.0);
 };
 
-lazarus_result Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
+lazarus_result Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, uint32_t matrixId)
 {
+	MeshManager::Mesh::Instance &instance = mesh.instances.at(matrixId);
+	glm::mat4 &instanceMatrix = instance.modelMatrix;
+
 	this->localCoordinates = glm::vec3(x, y, z);
-    mesh.modelMatrix = glm::translate(mesh.modelMatrix, this->localCoordinates);
+
+    instanceMatrix = glm::translate(instanceMatrix, this->localCoordinates);
 
 	/* ===========================================================================
 		Find worldspace coordinates by multiplying object-space coordinates by the 
@@ -51,16 +55,16 @@ lazarus_result Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, f
 		See: https://learnopengl.com/img/getting-started/coordinate_systems.png
 	=============================================================================== */
 	
-	this->worldCoordinates = mesh.modelMatrix * glm::vec4(this->localCoordinates, 1.0);
+	this->worldCoordinates = instanceMatrix * glm::vec4(this->localCoordinates, 1.0);
 
-    mesh.position.x = this->worldCoordinates.x;
-    mesh.position.y = this->worldCoordinates.y;
-    mesh.position.z = this->worldCoordinates.z;
+    instance.position.x = this->worldCoordinates.x;
+    instance.position.y = this->worldCoordinates.y;
+    instance.position.z = this->worldCoordinates.z;
 
 	return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, float yaw, float roll)
+lazarus_result Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, float yaw, float roll, uint32_t matrixId)
 {
 	/* ===================================================
 		Extract the current z axis rotation values from
@@ -68,17 +72,19 @@ lazarus_result Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, 
 		element. This can be treated as the mesh asset's 
 		forward / direction vector.
 	====================================================== */
+	MeshManager::Mesh::Instance &instance = mesh.instances.at(matrixId);
+	glm::mat4 &instanceMatrix = instance.modelMatrix;
 
-	mesh.direction = mesh.modelMatrix * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f); 
+	instance.direction = instanceMatrix * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f); 
 
-    mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
-    mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
-	mesh.modelMatrix = glm::rotate(mesh.modelMatrix, this->degreesToRadians(roll), glm::vec3(0.0f, 0.0f, 1.0f));
+    instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
+    instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
+	instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(roll), glm::vec3(0.0f, 0.0f, 1.0f));
 	
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
+lazarus_result Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, uint32_t matrixId)
 {
 	float sum = (x + y + z);
 	float max = std::max(0.0f, sum);
@@ -91,8 +97,12 @@ lazarus_result Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float
 	}
 	else
 	{
-		mesh.scale = glm::vec3(x, y, z);
-		mesh.modelMatrix = glm::scale(mesh.modelMatrix, mesh.scale);
+		MeshManager::Mesh::Instance &instance = mesh.instances.at(matrixId);
+		glm::mat4 &instanceMatrix = instance.modelMatrix;
+
+		instance.scale = glm::vec3(x, y, z);
+
+		instanceMatrix = glm::scale(instanceMatrix, instance.scale);
 
 		return lazarus_result::LAZARUS_OK;
 	};

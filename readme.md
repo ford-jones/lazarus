@@ -852,7 +852,7 @@ Params:
 A class built to handle transformations of different world assets such as mesh, cameras and lights.
 
 ### Functions:
-#### translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
+#### translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, int matrixId)
 Applies a translation transformation (movement) to a mesh asset along the x, y and z axis from an offset of 0.0. \
 Updates the `locationX`, `locationY` and `locationZ` properties of a `MeshManager::Mesh` object in real time. 
 
@@ -860,9 +860,10 @@ Params:
 > **mesh:** *The mesh asset to be acted upon.* \
 > **x:** *A floating point number used to increment / decrement the x-axis locative value of the mesh.* \
 > **y:** *A floating point number used to increment / decrement the y-axis locative value of the mesh.* \
-> **z:** *A floating point number used to increment / decrement the z-axis locative value of the mesh.*
+> **z:** *A floating point number used to increment / decrement the z-axis locative value of the mesh.* \
+> **matrixId:** *The index position / map key of the `MeshManager::Mesh::Instance` to be acted upon. (default: `0`)*
 
-#### rotateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
+#### rotateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, int matrixId)
 Applies a rotation transformation to a mesh asset on it's x, y and z axis from an offset of 0.0. \
 This rotation affects the yaw, pitch and roll of the mesh. Not to be confused with an orbital rotation. 
 
@@ -870,11 +871,19 @@ Params:
 > **mesh:** *The mesh asset to be acted upon.* \
 > **x:** *A floating point number used to increment / decrement the x-axis (yaw) rotational value of the mesh.* \
 > **y:** *A floating point number used to increment / decrement the y-axis (pitch) rotational value of the mesh.* \
-> **z:** *A floating point number used to increment / decrement the z-axis (roll) rotational value of the mesh.*
+> **z:** *A floating point number used to increment / decrement the z-axis (roll) rotational value of the mesh.* \
+> **matrixId:** *The index position / map key of the `MeshManager::Mesh::Instance` to be acted upon. (default: `0`)*
 
-#### scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
+#### scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, int matrixId)
 Applies a scaling transformation to a mesh asset on it's x, y, and z axis from and offset of 1.0. \
 Will update the value returned by `GlobalsManager::getExecutionStatus()` to `LAZARUS_INVALID_DIMENSIONS` if any of the values recieved are below `0.0`.
+
+Params:
+> **mesh:** *The mesh asset to be acted upon.* \
+> **x:** *A floating point number used to increment / decrement the x-axis size value of the mesh.* \
+> **y:** *A floating point number used to increment / decrement the y-axis size value of the mesh.* \
+> **z:** *A floating point number used to increment / decrement the z-axis size value of the mesh. \
+> **matrixId:** *The index position / map key of the `MeshManager::Mesh::Instance` to be acted upon. (default: `0`)*
 
 #### translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity)
 Applies a translation transformation (movement) to a camera asset along the x, y and z axis from an offset of 0.0. \
@@ -983,10 +992,13 @@ Toggle for removing the areas of a face prior to rendering where the meshes text
 >	- **numOfVertices:** *The number of vertices that make up the mesh. (type: `int`)* 
 >	- **meshFilepath:** *The absolute path (from system root) to the wavefront file containing this mesh's vertex data. (type: `std::string`)*
 >	- **materialFilepath:** *The absolute path (from system root) to the wavefront file containing this mesh's material data. (type: `std::string*`)*
->	- **position:** *Where the mesh is position in world space. (type: `glm::vec3`)*
->	- **direction:** *The mesh's forward-vector. Where the mesh's local coordinate system's z+ is in relation to world space. (type: `glm::vec3`)*
->	- **scale:** *The size of the mesh. (type: `glm::vec3`)*
->   - **modelMatrix:** *A 4x4 matrice used to perform transformations on the mesh. You will need this if you're intending you write your own transformations instead of using the `Transform` class. (type: `glm::mat4`)*
+>   - **instances:** *A map containing information used for applying transformations to a mesh copy. (type: `std::map<int, MeshManager::Mesh::Instance>`)*
+
+> **Mesh::Instance** *A collection of properties which make up a GPU copy of a mesh entity. (type: `struct`)*
+>	- **position:** *Where the instance is positioned in world space. (type: `glm::vec3`)*
+>	- **direction:** *The instance's forward-vector. Where the instance's local coordinate system's z+ is in relation to world space. (type: `glm::vec3`)*
+>	- **scale:** *The size of the instance. (type: `glm::vec3`)*
+>   - **modelMatrix:** *A 4x4 matrice used to perform transformations on the instance. You will need this if you're intending you write your own transformations instead of using the `Transform` class. (type: `glm::mat4`)*
 >   - **isClickable** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (type: `bool`)*
 
 > **MeshType:** *Different varieties of meshes (type: `enum`)*
@@ -1000,6 +1012,7 @@ Toggle for removing the areas of a face prior to rendering where the meshes text
 >   - **meshPath:** *The relative path to the `.obj` or `.glb` asset to be loaded. (type: `std::string`)*
 >   - **materialPath:** *The relative path to the asset's material-file (`.mtl`) if `meshPath` is directed toward an `.obj` file. Leave blank otherwise. (type: `std::string`)*
 >   - **selectable:** *Whether to assign a stencil ID to this asset for cursor-picking while visible in-frame. (type: `bool`)*
+>   - **instanceCount:** *The number of copies of this mesh to be produced. (type: `int`, default: `1`)*
 
 > **QuadConfig:** *Creation function input-settings. (type: `struct`)*
 >   - **name:** *What to call this asset. (type: `std::string`, default: `"QUAD_" + n`)*
@@ -1011,12 +1024,14 @@ Toggle for removing the areas of a face prior to rendering where the meshes text
 >   - **uvXR:** *The right-most extremity of the x-axis UV / ST coordinates. (type: `float`, optional)*
 >   - **uvYU:** *The upper-most extremity of the y-axis UV / ST coordinates. (type: `float`, optional)*
 >   - **uvYD:** *The lower-most extremity of the y-axis UV / ST coordinates. (type: `float`, optional)*
+>   - **instanceCount:** *The number of copies of this mesh to be produced. (type: `int`, default: `1`)*
 
 > **CubeConfig:** *Creation function input-settings. (type: `struct`)*
 >   - **name:** *What to call this asset. (type: `std::string`, default: `"CUBE_" + n`)*
 >   - **texturePath:** *The relative path to a texture image used to render to the quad's surface. (type: `std::string`)*
 >   - **selectable:** *Whether to assign a stencil ID to this asset for cursor-picking while visible in-frame. (type: `bool`)*
 >   - **scale:** *The multiplier by which to increase the size of the cube by. (type: `float`, default: `1.0f`)*
+>   - **instanceCount:** *The number of copies of this mesh to be produced. (type: `int`, default: `1`)*
 
 > **Material:** *The properties which constitute the material that is rendered to a surface. (type: `struct`)*
 >   - **id:** *A serialised ID unique to the material's parent `MeshManager::Mesh`. (type: `int`)*

@@ -63,8 +63,15 @@ lazarus_result LightManager::createLightSource(LightManager::Light &out, LightMa
     };
 
     lightStore.insert(std::pair<uint32_t, LightManager::LightData>(lightOut.id, lightData));
-    GlobalsManager::setNumberOfActiveLights(this->lightCount);
-
+    if(GlobalsManager::getNumberOfActiveLights() < UINT8_MAX)
+    {
+        GlobalsManager::setNumberOfActiveLights(this->lightCount);
+    }
+    else
+    {
+        return lazarus_result::LAZARUS_LIMIT_REACHED;
+    };
+    
     out = lightOut;
     return lazarus_result::LAZARUS_OK;
 };

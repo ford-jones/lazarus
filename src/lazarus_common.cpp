@@ -172,17 +172,14 @@ bool GlobalsManager::getVsyncDisabled()
     return LAZARUS_DISABLE_VSYNC;
 };
 
-void GlobalsManager::setNumberOfActiveLights(uint32_t count)
+void GlobalsManager::setNumberOfActiveLights(uint8_t count)
 {
-    if(count < LAZARUS_MAX_LIGHTS)
-    {
-        LAZARUS_LIGHT_COUNT = count;
-    };
+    LAZARUS_LIGHT_COUNT = count;
 
     return;
 };
 
-uint32_t GlobalsManager::getNumberOfActiveLights()
+uint8_t GlobalsManager::getNumberOfActiveLights()
 {
     return LAZARUS_LIGHT_COUNT;
 };
@@ -206,10 +203,7 @@ uint32_t GlobalsManager::getNumberOfPickableEntities()
 
 void GlobalsManager::setPickableEntity(uint32_t entityId)
 {
-    if(LAZARUS_SELECTABLE_ENTITIES.size() < LAZARUS_MAX_SELECTABLE_ENTITIES)
-    {
-        LAZARUS_SELECTABLE_ENTITIES.push_back(entityId);
-    };
+    LAZARUS_SELECTABLE_ENTITIES.push_back(entityId);
 
     return;
 };

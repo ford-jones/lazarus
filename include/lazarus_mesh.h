@@ -75,6 +75,22 @@ class MeshManager
         };
         struct Mesh
         {
+            struct Instance
+            {
+                //  TODO:
+                //  Add a visibility flag that can be used to 
+                //  toggle whether frags should be discarded or not
+
+                uint32_t id;
+                glm::vec3 position;
+                glm::vec3 direction;
+                glm::vec3 scale;
+
+                glm::mat4 modelMatrix;
+
+                bool isClickable;
+            };
+
             uint32_t id;
             std::string name;
 
@@ -87,19 +103,14 @@ class MeshManager
             std::string meshFilepath;
             std::string materialFilepath;
 
-            glm::vec3 position;
-            glm::vec3 direction;
-            glm::vec3 scale;
-
-            glm::mat4 modelMatrix;
-
-            bool isClickable;
+            std::map<uint32_t, Instance> instances;
         };
         struct AssetConfig
         {
             std::string meshPath = "";
             std::string materialPath = "";
             std::string name = "";
+            uint32_t instanceCount = 1;
             bool selectable = false;
         };
         struct QuadConfig
@@ -112,6 +123,7 @@ class MeshManager
             float uvXR = 0.0f;
             float uvYU = 0.0f;
             float uvYD = 0.0f;
+            uint32_t instanceCount = 1;
             bool selectable = false;
         };
         struct CubeConfig
@@ -119,6 +131,7 @@ class MeshManager
             std::string name = "CUBE_";
             std::string texturePath = "";
             float scale = 1.0f;
+            uint32_t instanceCount = 1;
             bool selectable = false;
         };
         
@@ -146,11 +159,13 @@ class MeshManager
         struct MeshData
         {
             uint32_t id;
-            int32_t stencilBufferId;
+            uint32_t instanceCount;
+            uint8_t stencilBufferId;
 
             GLuint VAO;
             GLuint VBO;
             GLuint EBO;
+            GLuint MBO;
             
             MeshType type;
             TextureLoader::TextureData texture;
@@ -161,13 +176,17 @@ class MeshManager
         };
 
         lazarus_result setMaterialProperties(std::vector<glm::vec3> diffuse, std::vector<FileLoader::Image> images);
+        lazarus_result checkErrors(const char *file, uint32_t line);
+        lazarus_result makeSelectable(bool selectable);
         lazarus_result initialiseMesh();
         lazarus_result prepareTextures();
-        void makeSelectable(bool selectable);
+
+        void instantiateMesh(bool selectable);
         void setSharedProperties();
-        
-        lazarus_result checkErrors(const char *file, uint32_t line);
         void clearErrors();
+        
+
+        uint32_t childCount;
 
         int32_t errorCode;
 
@@ -175,7 +194,6 @@ class MeshManager
         uint32_t maxTexHeight;
 
 		GLuint shaderProgram;
-        GLint modelMatrixUniformLocation;
         GLint meshVariantLocation;
         GLint discardFragsLocation;
 
