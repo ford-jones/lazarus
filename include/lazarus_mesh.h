@@ -168,7 +168,7 @@ class MeshManager
             GLuint VBO;     //  Vertex Buffer Object (attributes: interleaved)
             GLuint EBO;     //  Element Buffer Object (indices: tightly-packed)
             GLuint MBO;     //  Matrice Buffer Object (per-instance matrix: tightly-packed)
-            GLuint IIBO;    //  Instance-info Buffer Object (per-instance: tightly-packed)
+            GLuint IIBO;    //  Instance-info Buffer Object (per-instance: tightly-packed -> will probably end up interleaved)
             
             MeshType type;
             TextureLoader::TextureData texture;
@@ -188,7 +188,6 @@ class MeshManager
         void setSharedProperties();
         void clearErrors();
         
-
         uint32_t childCount;
 
         int32_t errorCode;
