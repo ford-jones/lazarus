@@ -528,6 +528,32 @@ lazarus_result MeshManager::initialiseMesh()
     glVertexAttribDivisor(6, 1);
     glVertexAttribDivisor(7, 1);
 
+    glGenBuffers(1, &meshData.IIBO);
+    glBindBuffer(GL_ARRAY_BUFFER, meshData.IIBO);
+
+    std::vector<float> visibility;
+    std::transform(
+        this->meshOut.instances.begin(), 
+        this->meshOut.instances.end(), 
+        std::back_inserter(visibility), 
+        [](const std::pair<uint32_t, MeshManager::Mesh::Instance> &pair){
+            uint32_t v = pair.second.isVisible;
+            return static_cast<float>(v);
+        }
+    );
+
+    glBufferData(
+        GL_ARRAY_BUFFER, 
+        this->meshOut.instances.size() * sizeof(float), 
+        &visibility[0],
+        GL_DYNAMIC_DRAW
+    );
+
+    glEnableVertexAttribArray(8);
+    glVertexAttribPointer(8, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
+
+    glVertexAttribDivisor(8, 1);
+
     status = this->checkErrors(__FILE__, __LINE__);
     if(status != lazarus_result::LAZARUS_OK)
     {
@@ -704,6 +730,17 @@ lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
         }
     );
 
+    std::vector<float> visibility;
+    std::transform(
+        meshIn.instances.begin(), 
+        meshIn.instances.end(), 
+        std::back_inserter(visibility), 
+        [](const std::pair<uint32_t, MeshManager::Mesh::Instance> &pair){
+            uint32_t v = pair.second.isVisible;
+            return static_cast<float>(v);
+        }
+    );
+
     /* =========================================================
         glBufferSubData is preferable here over glBufferData as 
         the size has been allocated up front on init and won't 
@@ -722,6 +759,14 @@ lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
         &matrices[0][0]
     );
 
+    glBindBuffer(GL_ARRAY_BUFFER, data.IIBO);
+    glBufferSubData(
+        GL_ARRAY_BUFFER, 
+        0, 
+        meshIn.instances.size() * sizeof(float), 
+        &visibility[0]
+    );
+
     /* ===================================================
         Fill the stencil buffer with 0's. 
         Wherever an entity is occupying screenspace, fill 
@@ -730,20 +775,17 @@ lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
 
     if(GlobalsManager::getManageStencilBuffer())
     {
-        // for(auto stencilBufferId: data.stencilBufferIds)
-        // {
-            this->clearErrors();
-            
-            glStencilMask(0xFF);
-            glClearStencil(0x00);
-            glStencilFunc(GL_ALWAYS, data.stencilBufferId, 0xFF);
-            
-            status = this->checkErrors(__FILE__, __LINE__);
-            if(status != lazarus_result::LAZARUS_OK)
-            {
-                return status;
-            };
-        // };
+        this->clearErrors();
+        
+        glStencilMask(0xFF);
+        glClearStencil(0x00);
+        glStencilFunc(GL_ALWAYS, data.stencilBufferId, 0xFF);
+        
+        status = this->checkErrors(__FILE__, __LINE__);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
     };
 
     this->clearErrors();
@@ -920,6 +962,26 @@ void MeshManager::clearErrors()
     return;
 };
 
+void MeshManager::copyMesh(MeshManager::Mesh &dest, MeshManager::Mesh src)
+{
+    this->meshOut = src;
+    this->meshData = dataStore.at(this->meshOut.id);
+    bool selectable = this->meshOut.instances.at(0).isClickable;
+
+    this->meshOut.instances.clear();
+    this->instantiateMesh(selectable);
+
+    this->meshOut.id = this->meshOut.instances.at(0).id;
+    this->meshData.id = this->meshOut.id;
+    this->dataStore.insert(std::pair<uint32_t, MeshManager::MeshData>(this->meshOut.id, this->meshData));
+
+    this->makeSelectable(selectable);
+    
+    dest = this->meshOut;
+
+    return;
+};
+
 void MeshManager::instantiateMesh(bool selectable)
 {    
     for(size_t i = 0; i < meshData.instanceCount; i ++)
@@ -930,6 +992,7 @@ void MeshManager::instantiateMesh(bool selectable)
         instance.id = this->childCount;
         instance.modelMatrix = glm::mat4(1.0f);
         instance.isClickable = selectable;
+        instance.isVisible = true;
         
         /* =========================================
             Instances are created at the origin 
@@ -957,6 +1020,8 @@ MeshManager::~MeshManager()
 
     for(auto i: dataStore)
     {
+        glDeleteBuffers         (1, &i.second.IIBO);
+        glDeleteBuffers         (1, &i.second.MBO);
         glDeleteBuffers         (1, &i.second.VBO);
         glDeleteBuffers         (1, &i.second.EBO);
         glDeleteVertexArrays    (1, &i.second.VAO);

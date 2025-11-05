@@ -89,6 +89,7 @@ class MeshManager
                 glm::mat4 modelMatrix;
 
                 bool isClickable;
+                bool isVisible;
             };
 
             uint32_t id;
@@ -149,6 +150,7 @@ class MeshManager
         //  but ok for now
 
         void setDiscardFragments(Mesh &meshIn, bool shouldDiscard);
+        void copyMesh(Mesh &dest, Mesh src);
 
         virtual ~MeshManager();
     
@@ -162,10 +164,11 @@ class MeshManager
             uint32_t instanceCount;
             uint8_t stencilBufferId;
 
-            GLuint VAO;
-            GLuint VBO;
-            GLuint EBO;
-            GLuint MBO;
+            GLuint VAO;     //  Vertex Array Object
+            GLuint VBO;     //  Vertex Buffer Object (attributes: interleaved)
+            GLuint EBO;     //  Element Buffer Object (indices: tightly-packed)
+            GLuint MBO;     //  Matrice Buffer Object (per-instance matrix: tightly-packed)
+            GLuint IIBO;    //  Instance-info Buffer Object (per-instance: tightly-packed)
             
             MeshType type;
             TextureLoader::TextureData texture;
