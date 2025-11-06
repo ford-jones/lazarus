@@ -449,26 +449,26 @@ lazarus_result MeshManager::initialiseMesh()
     glBindBuffer(GL_ARRAY_BUFFER, meshData.VBO);
     glBufferData(
         GL_ARRAY_BUFFER, 
-        meshData.attributes.size() * sizeof(vec3), 
+        meshData.attributes.size() * sizeof(glm::vec3), 
         &meshData.attributes[0], 
         GL_STATIC_DRAW
     );
 
     //  Vertex Positions
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(glm::vec3)), (void*)0);
 
     //  Diffuse Colors
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)(1 * sizeof(vec3)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(glm::vec3)), (void*)(1 * sizeof(glm::vec3)));
 
     //  Normals
     glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)(2 * sizeof(vec3)));
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(glm::vec3)), (void*)(2 * sizeof(glm::vec3)));
 
     //  UV Coordinates
     glEnableVertexAttribArray(3);
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(vec3)), (void*)(3 * sizeof(vec3)));
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, (4 * sizeof(glm::vec3)), (void*)(3 * sizeof(glm::vec3)));
 
     lazarus_result status = this->checkErrors(__FILE__, __LINE__);
     if(status != lazarus_result::LAZARUS_OK)
@@ -493,9 +493,8 @@ lazarus_result MeshManager::initialiseMesh()
     );
 
     /* ===========================================================
-        Create a secondary VBO used for storing per-instance
-        model-matrix data. This data is changed very frequently, 
-        so use dynamic drawing.
+        Buffer used for storing per-instance model-matrix data. 
+        This data is changed very frequently, so use dynamic draw.
     ============================================================== */
     glGenBuffers(1, &meshData.MBO);
     glBindBuffer(GL_ARRAY_BUFFER, meshData.MBO);
@@ -508,6 +507,8 @@ lazarus_result MeshManager::initialiseMesh()
     );
 
     /* =============================================================
+        Delineate vertex attribute positions within the buffer. 
+
         The largest data type available in GLSL is a vec4 (16 bytes)
         1 / 4 of the size required to store a matrice.
         Use attribute divisors to delineate matrice columns down to 
@@ -523,10 +524,57 @@ lazarus_result MeshManager::initialiseMesh()
     glEnableVertexAttribArray(7);
     glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, (4 * sizeof(glm::vec4)), (void*)(3 * sizeof(glm::vec4)));
 
+    /* ================================================
+        Layout positons 4-7 are evaluated for every
+        instance. I.e. per iteration of gl_InstanceID
+        in the fragment shader.
+    =================================================== */
     glVertexAttribDivisor(4, 1);
     glVertexAttribDivisor(5, 1);
     glVertexAttribDivisor(6, 1);
     glVertexAttribDivisor(7, 1);
+
+    /* ===============================================
+        Additional buffer for storing per-instance 
+        information / settings. Matrices are treated
+        seperately to preserve alignment, to have them
+        mixed up would be very slow.
+    ================================================== */
+    glGenBuffers(1, &meshData.IIBO);
+    glBindBuffer(GL_ARRAY_BUFFER, meshData.IIBO);
+
+    /* ==============================================
+        The GPU is optimised for floating point with 
+        less overhead in a large number of cases so
+        promote the boolean.
+    ================================================= */
+    std::vector<float> visibility;
+    std::transform(
+        this->meshOut.instances.begin(), 
+        this->meshOut.instances.end(), 
+        std::back_inserter(visibility), 
+        [](const std::pair<uint32_t, MeshManager::Mesh::Instance> &pair){
+            uint32_t v = pair.second.isVisible;
+            return static_cast<float>(v);
+        }
+    );
+
+    //  This could possibly be changed to GL_STREAM_DRAW, as the contents *currently* will
+    //  be updated but not often. Only hesitance is due to the fact that this buffer may 
+    //  be used to store all sorts of other per-instance data and culmilatively this could 
+    //  end up requiring updates every frame in some cases so use GL_DYNAMIC_DRAW.
+
+    glBufferData(
+        GL_ARRAY_BUFFER, 
+        this->meshOut.instances.size() * sizeof(float), 
+        &visibility[0],
+        GL_DYNAMIC_DRAW
+    );
+
+    glEnableVertexAttribArray(8);
+    glVertexAttribPointer(8, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
+
+    glVertexAttribDivisor(8, 1);
 
     status = this->checkErrors(__FILE__, __LINE__);
     if(status != lazarus_result::LAZARUS_OK)
@@ -704,13 +752,30 @@ lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
         }
     );
 
+    std::vector<float> visibility;
+    std::transform(
+        meshIn.instances.begin(), 
+        meshIn.instances.end(), 
+        std::back_inserter(visibility), 
+        [](const std::pair<uint32_t, MeshManager::Mesh::Instance> &pair){
+            uint32_t v = pair.second.isVisible;
+            return static_cast<float>(v);
+        }
+    );
+
     /* =========================================================
         glBufferSubData is preferable here over glBufferData as 
         the size has been allocated up front on init and won't 
         change. This allows the data to be updated in-place 
         without performing a realloc. This per-frame upload is
-        fine as the model matrix VBO was init'd with 
+        fine as per-instance MBO and IIBO were init'd with 
         GL_DYNAMIC_DRAW.
+
+        TODO:
+        Update a portion of the buffer in-place
+        rather than the full buffer as is done here. This would 
+        need to happen for every instance that has had any 
+        change.
     ============================================================ */
 
     glBindVertexArray(data.VAO);
@@ -722,6 +787,14 @@ lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
         &matrices[0][0]
     );
 
+    glBindBuffer(GL_ARRAY_BUFFER, data.IIBO);
+    glBufferSubData(
+        GL_ARRAY_BUFFER, 
+        0, 
+        meshIn.instances.size() * sizeof(float), 
+        &visibility[0]
+    );
+
     /* ===================================================
         Fill the stencil buffer with 0's. 
         Wherever an entity is occupying screenspace, fill 
@@ -730,20 +803,17 @@ lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
 
     if(GlobalsManager::getManageStencilBuffer())
     {
-        // for(auto stencilBufferId: data.stencilBufferIds)
-        // {
-            this->clearErrors();
-            
-            glStencilMask(0xFF);
-            glClearStencil(0x00);
-            glStencilFunc(GL_ALWAYS, data.stencilBufferId, 0xFF);
-            
-            status = this->checkErrors(__FILE__, __LINE__);
-            if(status != lazarus_result::LAZARUS_OK)
-            {
-                return status;
-            };
-        // };
+        this->clearErrors();
+        
+        glStencilMask(0xFF);
+        glClearStencil(0x00);
+        glStencilFunc(GL_ALWAYS, data.stencilBufferId, 0xFF);
+        
+        status = this->checkErrors(__FILE__, __LINE__);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
     };
 
     this->clearErrors();
@@ -920,6 +990,26 @@ void MeshManager::clearErrors()
     return;
 };
 
+void MeshManager::copyMesh(MeshManager::Mesh &dest, MeshManager::Mesh src)
+{
+    this->meshOut = src;
+    this->meshData = dataStore.at(this->meshOut.id);
+    bool selectable = this->meshOut.instances.at(0).isClickable;
+
+    this->meshOut.instances.clear();
+    this->instantiateMesh(selectable);
+
+    this->meshOut.id = this->meshOut.instances.at(0).id;
+    this->meshData.id = this->meshOut.id;
+    this->dataStore.insert(std::pair<uint32_t, MeshManager::MeshData>(this->meshOut.id, this->meshData));
+
+    this->makeSelectable(selectable);
+    
+    dest = this->meshOut;
+
+    return;
+};
+
 void MeshManager::instantiateMesh(bool selectable)
 {    
     for(size_t i = 0; i < meshData.instanceCount; i ++)
@@ -930,6 +1020,7 @@ void MeshManager::instantiateMesh(bool selectable)
         instance.id = this->childCount;
         instance.modelMatrix = glm::mat4(1.0f);
         instance.isClickable = selectable;
+        instance.isVisible = true;
         
         /* =========================================
             Instances are created at the origin 
@@ -957,6 +1048,8 @@ MeshManager::~MeshManager()
 
     for(auto i: dataStore)
     {
+        glDeleteBuffers         (1, &i.second.IIBO);
+        glDeleteBuffers         (1, &i.second.MBO);
         glDeleteBuffers         (1, &i.second.VBO);
         glDeleteBuffers         (1, &i.second.EBO);
         glDeleteVertexArrays    (1, &i.second.VAO);

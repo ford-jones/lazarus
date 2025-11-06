@@ -30,6 +30,7 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
     //  VBO 2 (MBO)
     //  Occupies 4, 5, 6 and 7 (4 * vec4), dilineated by glVertexAttribDivisor
     layout(location = 4) in mat4 instanceModelMatrix;
+    layout(location = 8) in float visible;
 
     uniform int usesPerspective;
 
@@ -41,6 +42,7 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
     out vec3 diffuseColor;
     out vec3 normalCoordinate;
     out vec3 textureCoordinate;
+    out float keepFragment;
     out vec3 skyBoxTextureCoordinate;
 
     flat out int isUnderPerspective;
@@ -96,6 +98,8 @@ const char *LAZARUS_DEFAULT_VERT_SHADER =  R"(
        normalCoordinate = normalDirection;
        textureCoordinate = inTexCoord;
 
+       keepFragment = visible;
+
        skyBoxTextureCoordinate = -inVertex;
 
        return;
@@ -121,6 +125,8 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     in vec3 normalCoordinate;
     in vec3 textureCoordinate;
     in vec3 skyBoxTextureCoordinate;
+
+    in float keepFragment;
 
     flat in int isUnderPerspective;
 
@@ -269,6 +275,8 @@ const char *LAZARUS_DEFAULT_FRAG_SHADER = R"(
     void main ()
     {
         vec4 fragColor = _lazarusComputeColor();
+
+        if(keepFragment < 1.0) discard;
 
         //  When the fragment is part of a skybox or is observed by an orthographic camera, use color as-is.
         if(samplerType == CUBEMAP || isUnderPerspective == 0)
