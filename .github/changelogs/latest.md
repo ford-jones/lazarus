@@ -1,5 +1,6 @@
-# Version: 2025.11.06002851
+# Version: 2025.11.06003026
 
+* [1a85085](https://github.com/ford-jones/lazarus/commit/1a8508589800bafa152de29e4bd23661e5f2f622): [Changelog CI] Add Changelog for Version 2025.11.06002851
 * [5a6f35b](https://github.com/ford-jones/lazarus/commit/5a6f35b639ca427899d9118973f37de810cd537d): Docs: Updated instance options
 * [927f8b5](https://github.com/ford-jones/lazarus/commit/927f8b52e23134ce1fff7229c93c82b255d050a7): Docs: Improved comments
 * [63abb12](https://github.com/ford-jones/lazarus/commit/63abb12e5c0646039a0698706b6096c0e0f05390): Feat: Per-instance visibility toggling (optional discard)
