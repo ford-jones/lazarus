@@ -768,8 +768,14 @@ lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
         the size has been allocated up front on init and won't 
         change. This allows the data to be updated in-place 
         without performing a realloc. This per-frame upload is
-        fine as the model matrix VBO was init'd with 
+        fine as per-instance MBO and IIBO were init'd with 
         GL_DYNAMIC_DRAW.
+
+        TODO:
+        Update a portion of the buffer in-place
+        rather than the full buffer as is done here. This would 
+        need to happen for every instance that has had any 
+        change.
     ============================================================ */
 
     glBindVertexArray(data.VAO);

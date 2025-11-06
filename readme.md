@@ -973,15 +973,22 @@ Params:
 Draws the mesh object contents of the shader program's uniforms onto the render loops back buffer (see: `WindowManager::presetNextFrame()`). \
 Be sure to bring the back buffer forward to see the draw result.
 
-> Params:
+> Params: \
 > **meshIn:** *The mesh object you wish to draw.*
+
+#### copyMesh(MeshManager::Mesh &dest, MeshManager::Mesh src)
+Creates a duplicate of `src` at the location of `dest` with updated unique ID for the asset and all its child instances.
+
+> Params: \
+> **dest:** *The pre-allocated destination where the copy should be stored.* \
+> **src:** *The asset to be copied.*
 
 #### setDiscardFragments(MeshManager::Mesh &meshIn, bool shouldDiscard)
 Toggle for removing the areas of a face prior to rendering where the meshes texture's alpha value is zero. Used for rendering sprites.
 
 > Params: \
 > **meshIn:** *The mesh object you wish to draw.* \
-> **shouldDiscard:** *The desired value for the option (T/F).*
+> **shouldDiscard:** *The desired value for the option (T/F).* 
 
 ### Members:
 > **Mesh:** *A collection of properties which make up a mesh entity. (type: `struct`)* 
@@ -999,7 +1006,8 @@ Toggle for removing the areas of a face prior to rendering where the meshes text
 >	- **direction:** *The instance's forward-vector. Where the instance's local coordinate system's z+ is in relation to world space. (type: `glm::vec3`)*
 >	- **scale:** *The size of the instance. (type: `glm::vec3`)*
 >   - **modelMatrix:** *A 4x4 matrice used to perform transformations on the instance. You will need this if you're intending you write your own transformations instead of using the `Transform` class. (type: `glm::mat4`)*
->   - **isClickable** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (type: `bool`)*
+>   - **isClickable:** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (type: `bool`)*
+>   - **isVisible:** *Whether or not this instance should be rendered to the screen during fragment processing or discarded. (type: `bool`)*
 
 > **MeshType:** *Different varieties of meshes (type: `enum`)*
 >   - **LOADED_GLB:** *A mesh which has been loaded from a glb file.*
