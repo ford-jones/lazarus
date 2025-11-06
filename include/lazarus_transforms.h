@@ -46,9 +46,9 @@ class Transform
 {	
     public:
 		Transform();
-		lazarus_result translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z);
-    	lazarus_result rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, float yaw, float roll);
-		lazarus_result scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z);
+		lazarus_result translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, uint32_t matrixId = 0);
+    	lazarus_result rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, float yaw, float roll, uint32_t matrixId = 0);
+		lazarus_result scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, uint32_t matrixId = 0);
 
 		lazarus_result translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity = 1.0);
 		lazarus_result rotateCameraAsset(CameraManager::Camera &camera, float pitch, float yaw, float roll);

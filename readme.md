@@ -1,5 +1,5 @@
 # Lazarus Engine
-#### *Version: 0.12.6*
+#### *Version: 0.14.0*
 ## Table of contents:
 
 - [Getting Started](#getting-started)
@@ -488,9 +488,14 @@ Anything not used from here will be optimised-out when compiled.
 ```c
     #define MAX_LIGHTS 150                          
 
-    const int CUBEMAP   = 1;                                //  Storage variants used for comparison with samplerType
+    //  Texture storage types for comparisson with samplerType
+    const int CUBEMAP   = 1;
     const int ATLAS     = 2;
     const int ARRAY     = 3;
+
+    //  Light variants
+    const int DIRECTIONAL_LIGHT = 1;
+    const int POINT_LIGHT       = 2;
 
     in vec3 fragPosition;                                   //  Input 3D fragment position
     in vec3 diffuseColor;                                   //  Input fragment color
@@ -501,7 +506,9 @@ Anything not used from here will be optimised-out when compiled.
     flat in int isUnderPerspective;                         //  1 if a perspective camera is being used to observe this fragment, otherwise 0
 
     uniform int lightCount;                                 //  The number of lights currently bound to lazarus
-    uniform vec3 lightPositions[MAX_LIGHTS];                //  A container of 3D light positions in-order
+    uniform int lightTypes[MAX_LIGHTS];                     //  Contains the active light type (point-light/directional) located at [i]
+    uniform vec3 lightDirections[MAX_LIGHTS];               //  A container of direction-vectors pertaining to lights of the DIRECTIONAL_LIGHT type
+    uniform vec3 lightPositions[MAX_LIGHTS];                //  A container of 3D light positions pertaining to lights of type POINT_LIGHT in-order
     uniform vec3 lightColors[MAX_LIGHTS];                   //  A container of light color values in-order
     uniform float lightBrightness[MAX_LIGHTS];              //  A container of light brightness variables in-order
 
@@ -845,7 +852,7 @@ Params:
 A class built to handle transformations of different world assets such as mesh, cameras and lights.
 
 ### Functions:
-#### translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
+#### translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, int matrixId)
 Applies a translation transformation (movement) to a mesh asset along the x, y and z axis from an offset of 0.0. \
 Updates the `locationX`, `locationY` and `locationZ` properties of a `MeshManager::Mesh` object in real time. 
 
@@ -853,9 +860,10 @@ Params:
 > **mesh:** *The mesh asset to be acted upon.* \
 > **x:** *A floating point number used to increment / decrement the x-axis locative value of the mesh.* \
 > **y:** *A floating point number used to increment / decrement the y-axis locative value of the mesh.* \
-> **z:** *A floating point number used to increment / decrement the z-axis locative value of the mesh.*
+> **z:** *A floating point number used to increment / decrement the z-axis locative value of the mesh.* \
+> **matrixId:** *The index position / map key of the `MeshManager::Mesh::Instance` to be acted upon. (default: `0`)*
 
-#### rotateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
+#### rotateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, int matrixId)
 Applies a rotation transformation to a mesh asset on it's x, y and z axis from an offset of 0.0. \
 This rotation affects the yaw, pitch and roll of the mesh. Not to be confused with an orbital rotation. 
 
@@ -863,11 +871,19 @@ Params:
 > **mesh:** *The mesh asset to be acted upon.* \
 > **x:** *A floating point number used to increment / decrement the x-axis (yaw) rotational value of the mesh.* \
 > **y:** *A floating point number used to increment / decrement the y-axis (pitch) rotational value of the mesh.* \
-> **z:** *A floating point number used to increment / decrement the z-axis (roll) rotational value of the mesh.*
+> **z:** *A floating point number used to increment / decrement the z-axis (roll) rotational value of the mesh.* \
+> **matrixId:** *The index position / map key of the `MeshManager::Mesh::Instance` to be acted upon. (default: `0`)*
 
-#### scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z)
+#### scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, int matrixId)
 Applies a scaling transformation to a mesh asset on it's x, y, and z axis from and offset of 1.0. \
 Will update the value returned by `GlobalsManager::getExecutionStatus()` to `LAZARUS_INVALID_DIMENSIONS` if any of the values recieved are below `0.0`.
+
+Params:
+> **mesh:** *The mesh asset to be acted upon.* \
+> **x:** *A floating point number used to increment / decrement the x-axis size value of the mesh.* \
+> **y:** *A floating point number used to increment / decrement the y-axis size value of the mesh.* \
+> **z:** *A floating point number used to increment / decrement the z-axis size value of the mesh. \
+> **matrixId:** *The index position / map key of the `MeshManager::Mesh::Instance` to be acted upon. (default: `0`)*
 
 #### translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity)
 Applies a translation transformation (movement) to a camera asset along the x, y and z axis from an offset of 0.0. \
@@ -957,15 +973,22 @@ Params:
 Draws the mesh object contents of the shader program's uniforms onto the render loops back buffer (see: `WindowManager::presetNextFrame()`). \
 Be sure to bring the back buffer forward to see the draw result.
 
-> Params:
+> Params: \
 > **meshIn:** *The mesh object you wish to draw.*
+
+#### copyMesh(MeshManager::Mesh &dest, MeshManager::Mesh src)
+Creates a duplicate of `src` at the location of `dest` with updated unique ID for the asset and all its child instances.
+
+> Params: \
+> **dest:** *The pre-allocated destination where the copy should be stored.* \
+> **src:** *The asset to be copied.*
 
 #### setDiscardFragments(MeshManager::Mesh &meshIn, bool shouldDiscard)
 Toggle for removing the areas of a face prior to rendering where the meshes texture's alpha value is zero. Used for rendering sprites.
 
 > Params: \
 > **meshIn:** *The mesh object you wish to draw.* \
-> **shouldDiscard:** *The desired value for the option (T/F).*
+> **shouldDiscard:** *The desired value for the option (T/F).* 
 
 ### Members:
 > **Mesh:** *A collection of properties which make up a mesh entity. (type: `struct`)* 
@@ -976,11 +999,15 @@ Toggle for removing the areas of a face prior to rendering where the meshes text
 >	- **numOfVertices:** *The number of vertices that make up the mesh. (type: `int`)* 
 >	- **meshFilepath:** *The absolute path (from system root) to the wavefront file containing this mesh's vertex data. (type: `std::string`)*
 >	- **materialFilepath:** *The absolute path (from system root) to the wavefront file containing this mesh's material data. (type: `std::string*`)*
->	- **position:** *Where the mesh is position in world space. (type: `glm::vec3`)*
->	- **direction:** *The mesh's forward-vector. Where the mesh's local coordinate system's z+ is in relation to world space. (type: `glm::vec3`)*
->	- **scale:** *The size of the mesh. (type: `glm::vec3`)*
->   - **modelMatrix:** *A 4x4 matrice used to perform transformations on the mesh. You will need this if you're intending you write your own transformations instead of using the `Transform` class. (type: `glm::mat4`)*
->   - **isClickable** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (type: `bool`)*
+>   - **instances:** *A map containing information used for applying transformations to a mesh copy. (type: `std::map<int, MeshManager::Mesh::Instance>`)*
+
+> **Mesh::Instance** *A collection of properties which make up a GPU copy of a mesh entity. (type: `struct`)*
+>	- **position:** *Where the instance is positioned in world space. (type: `glm::vec3`)*
+>	- **direction:** *The instance's forward-vector. Where the instance's local coordinate system's z+ is in relation to world space. (type: `glm::vec3`)*
+>	- **scale:** *The size of the instance. (type: `glm::vec3`)*
+>   - **modelMatrix:** *A 4x4 matrice used to perform transformations on the instance. You will need this if you're intending you write your own transformations instead of using the `Transform` class. (type: `glm::mat4`)*
+>   - **isClickable:** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (type: `bool`)*
+>   - **isVisible:** *Whether or not this instance should be rendered to the screen during fragment processing or discarded. (type: `bool`)*
 
 > **MeshType:** *Different varieties of meshes (type: `enum`)*
 >   - **LOADED_GLB:** *A mesh which has been loaded from a glb file.*
@@ -993,6 +1020,7 @@ Toggle for removing the areas of a face prior to rendering where the meshes text
 >   - **meshPath:** *The relative path to the `.obj` or `.glb` asset to be loaded. (type: `std::string`)*
 >   - **materialPath:** *The relative path to the asset's material-file (`.mtl`) if `meshPath` is directed toward an `.obj` file. Leave blank otherwise. (type: `std::string`)*
 >   - **selectable:** *Whether to assign a stencil ID to this asset for cursor-picking while visible in-frame. (type: `bool`)*
+>   - **instanceCount:** *The number of copies of this mesh to be produced. (type: `int`, default: `1`)*
 
 > **QuadConfig:** *Creation function input-settings. (type: `struct`)*
 >   - **name:** *What to call this asset. (type: `std::string`, default: `"QUAD_" + n`)*
@@ -1004,12 +1032,14 @@ Toggle for removing the areas of a face prior to rendering where the meshes text
 >   - **uvXR:** *The right-most extremity of the x-axis UV / ST coordinates. (type: `float`, optional)*
 >   - **uvYU:** *The upper-most extremity of the y-axis UV / ST coordinates. (type: `float`, optional)*
 >   - **uvYD:** *The lower-most extremity of the y-axis UV / ST coordinates. (type: `float`, optional)*
+>   - **instanceCount:** *The number of copies of this mesh to be produced. (type: `int`, default: `1`)*
 
 > **CubeConfig:** *Creation function input-settings. (type: `struct`)*
 >   - **name:** *What to call this asset. (type: `std::string`, default: `"CUBE_" + n`)*
 >   - **texturePath:** *The relative path to a texture image used to render to the quad's surface. (type: `std::string`)*
 >   - **selectable:** *Whether to assign a stencil ID to this asset for cursor-picking while visible in-frame. (type: `bool`)*
 >   - **scale:** *The multiplier by which to increase the size of the cube by. (type: `float`, default: `1.0f`)*
+>   - **instanceCount:** *The number of copies of this mesh to be produced. (type: `int`, default: `1`)*
 
 > **Material:** *The properties which constitute the material that is rendered to a surface. (type: `struct`)*
 >   - **id:** *A serialised ID unique to the material's parent `MeshManager::Mesh`. (type: `int`)*
@@ -1104,11 +1134,17 @@ Params:
 >	- **id:** *This light's unique id. (type: `int`)*
 >   - **config:** *Object settings. (type: `LightManager::LightConfig`)*
 
+> **LightType:** *Diffrent varieties of lights. (type: `enum`)*
+>   - **DIRECTIONAL:** *Luminence from a far away point such as the sun. Is treated as constant accross the surface of an object.*
+>   - **POINT:** *Light which shines at all angles from a point in space with range-based attenuation, like a lightbulb.*
+
 > **LightConfig:** *Creation function input-settings. (type: `struct`)*
 >   - **name:** *What to call this asset. (type: `std::string`, default: `"LIGHT_" + n`)*
->   - **position:** *The x, y, z location of the light. (type: `glm::vec3`, default: `(0.0, 0.0, 0.0)`)*
+>   - **direction:** *The x, y, z direction of the light. Ignored when `type` is set to ``LightType::POINT`. (type: `glm::vec3`, default: `(1.0, 0.0, 0.0)`)*
+>   - **position:** *The x, y, z location of the light. Ignored when `type` is set to ``LightType::DIRECTIONAL`. (type: `glm::vec3`, default: `(0.0, 0.0, 0.0)`)*
 >   - **color:** *The light's shade of RGB color. (type: `glm::vec3`, default: `(1.0, 1.0, 1.0)`)*
 >   - **brightness:** *The light's luminescent intensity. (type: `float`, default: `1.0f`)*
+>   - **type:** *Which variant of light this is. (type: `LightType`, default: `LightType::DIRECTIONAL`)*
 
 ## AudioManager:
 A management class using an `FMOD` backend for loading audio, as well as handling audio locations and listeners. 

@@ -21,14 +21,19 @@
 const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
     #version 410 core
 
+    //  VBO 1
     layout(location = 0) in vec3 inVertex;
     layout(location = 1) in vec3 inDiffuse;
     layout(location = 2) in vec3 inNormal;
     layout(location = 3) in vec3 inTexCoord;
 
+    //  VBO 2 (MBO)
+    //  Occupies 4, 5, 6 and 7 (4 * vec4), dilineated by glVertexAttribDivisor
+    layout(location = 4) in mat4 instanceModelMatrix;
+    layout(location = 8) in float visible;
+
     uniform int usesPerspective;
 
-    uniform mat4 modelMatrix;
     uniform mat4 viewMatrix;
     uniform mat4 perspectiveProjectionMatrix;
     uniform mat4 orthoProjectionMatrix;
@@ -37,18 +42,19 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
     out vec3 diffuseColor;
     out vec3 normalCoordinate;
     out vec3 textureCoordinate;
+    out float keepFragment;
     out vec3 skyBoxTextureCoordinate;
 
     flat out int isUnderPerspective;
 
     vec3 _lazarusComputeWorldPosition()
     {
-        vec4 worldPosition = modelMatrix * vec4(inVertex, 1.0);
+        vec4 worldPosition = instanceModelMatrix * vec4(inVertex, 1.0);
    
         //  Determine the vertex's clip-space position
         if(usesPerspective != 0)
         {
-           gl_Position = perspectiveProjectionMatrix * viewMatrix * worldPosition;   
+            gl_Position = perspectiveProjectionMatrix * viewMatrix * worldPosition;   
         }
         else
         {
@@ -72,7 +78,7 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
         //  perpendicular to the surface and would otherwise fail to when the 
         //  scale of the surface is non uniform.
         //  http://www.lighthouse3d.com/tutorials/glsl-12-tutorial/the-normal-matrix/
-        mat4 inverseTranspose = transpose(inverse(modelMatrix));
+        mat4 inverseTranspose = transpose(inverse(instanceModelMatrix));
 
         //  Truncate bottom row of matrix for clean multiplication against vec3
         vec3 result = mat3(inverseTranspose) * inNormal;
@@ -92,6 +98,8 @@ const char *LAZARUS_DEFAULT_VERT_SHADER =  R"(
        normalCoordinate = normalDirection;
        textureCoordinate = inTexCoord;
 
+       keepFragment = visible;
+
        skyBoxTextureCoordinate = -inVertex;
 
        return;
@@ -101,11 +109,16 @@ const char *LAZARUS_DEFAULT_VERT_SHADER =  R"(
 const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     #version 410 core
 
-    #define MAX_LIGHTS 150
-
+    #define MAX_LIGHTS 255
+    
+    //  Texture storage types
 	const int CUBEMAP = 1;
 	const int ATLAS = 2;
 	const int ARRAY = 3;
+
+    //  Light variants
+    const int DIRECTIONAL_LIGHT = 1;
+    const int POINT_LIGHT = 2;
 
     in vec3 fragPosition;
     in vec3 diffuseColor;
@@ -113,10 +126,14 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     in vec3 textureCoordinate;
     in vec3 skyBoxTextureCoordinate;
 
+    in float keepFragment;
+
     flat in int isUnderPerspective;
 
     uniform int lightCount;
+    uniform int lightTypes[MAX_LIGHTS];
     uniform vec3 lightPositions[MAX_LIGHTS];
+    uniform vec3 lightDirections[MAX_LIGHTS];
     uniform vec3 lightColors[MAX_LIGHTS];
     uniform float lightBrightness[MAX_LIGHTS];
 
@@ -204,18 +221,30 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
         //  Calculate the fragment's diffuse lighting for each light in the scene.
         for(int i = 0; i < lightCount; i++)
         {
-            vec3 displacement = lightPositions[i] - fragPosition;
-            vec3 direction = normalize(displacement);
-            float diffusion = max(dot(normalCoordinate, direction), 0.0);
-            vec3 color = vec3(colorData.r, colorData.g, colorData.b);
-            vec3 illuminatedFrag = (color * lightColors[i] * diffusion);
+            if(lightTypes[i] == DIRECTIONAL_LIGHT)
+            {
+                vec3 direction = lightDirections[i];
+                vec3 color = lightColors[i] * lightBrightness[i];
 
-            //  Apply inverse square law to illumination result
-            //  Note: Don't apply for directional lights when they are added
-            //  This is better maybe: return illuminatedFrag * min(1.0 / pow(dot(displacement, displacement), 0.5), 1.0);
-            vec3 reflection = illuminatedFrag / (dot(displacement, displacement));
+                result += (colorData + color) * (max(0.0, dot(normalCoordinate, direction)));
+            }
+            else if(lightTypes[i] == POINT_LIGHT)
+            {
+                vec3 color = vec3(colorData.r, colorData.g, colorData.b);
+                vec3 displacement = lightPositions[i] - fragPosition;
 
-            result += (reflection * lightBrightness[i]);
+                vec3 direction = normalize(displacement);
+                float diffusion = max(dot(normalCoordinate, direction), 0.0);
+
+                vec3 illuminatedFrag = (color * lightColors[i] * diffusion);
+
+                //  Apply inverse square law to illumination result
+                //  Note: Don't apply for directional lights when they are added
+                //  This is better maybe: return illuminatedFrag * min(1.0 / pow(dot(displacement, displacement), 0.5), 1.0);
+                vec3 reflection = illuminatedFrag / (dot(displacement, displacement));
+
+                result += (reflection * lightBrightness[i]);
+            };
         };
 
         return result;
@@ -246,6 +275,8 @@ const char *LAZARUS_DEFAULT_FRAG_SHADER = R"(
     void main ()
     {
         vec4 fragColor = _lazarusComputeColor();
+
+        if(keepFragment < 1.0) discard;
 
         //  When the fragment is part of a skybox or is observed by an orthographic camera, use color as-is.
         if(samplerType == CUBEMAP || isUnderPerspective == 0)
@@ -380,8 +411,13 @@ lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentSha
 
 lazarus_result Shader::setActiveShader(uint32_t program)
 {
+    lazarus_result status = this->verifyProgram(program);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+    
     this->clearErrors();
-    this->verifyProgram(program);
     glUseProgram(this->shaderProgram);
     
     //  TODO:

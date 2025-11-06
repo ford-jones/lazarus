@@ -50,9 +50,11 @@ lazarus_result LightManager::createLightSource(LightManager::Light &out, LightMa
     
     this->lightCount += 1;
     lightData.uniformIndex                   =   (this->lightCount - 1);
+    lightData.lightTypeUniformLocation       =   glGetUniformLocation(this->shaderProgram, (std::string("lightTypes[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
     lightData.lightPositionUniformLocation   =   glGetUniformLocation(this->shaderProgram, (std::string("lightPositions[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
     lightData.lightColorUniformLocation      =   glGetUniformLocation(this->shaderProgram, (std::string("lightColors[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
     lightData.brightnessUniformLocation      =   glGetUniformLocation(this->shaderProgram, (std::string("lightBrightness[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+    lightData.lightDirectionUniformLocation  =   glGetUniformLocation(this->shaderProgram, (std::string("lightDirections[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
 
     lazarus_result status = this->checkErrors(__FILE__, __LINE__);
     if(status != lazarus_result::LAZARUS_OK)
@@ -61,8 +63,15 @@ lazarus_result LightManager::createLightSource(LightManager::Light &out, LightMa
     };
 
     lightStore.insert(std::pair<uint32_t, LightManager::LightData>(lightOut.id, lightData));
-    GlobalsManager::setNumberOfActiveLights(this->lightCount);
-
+    if(GlobalsManager::getNumberOfActiveLights() < UINT8_MAX)
+    {
+        GlobalsManager::setNumberOfActiveLights(this->lightCount);
+    }
+    else
+    {
+        return lazarus_result::LAZARUS_LIMIT_REACHED;
+    };
+    
     out = lightOut;
     return lazarus_result::LAZARUS_OK;
 };
@@ -83,15 +92,18 @@ lazarus_result LightManager::loadLightSource(LightManager::Light &lightIn, int32
         if(
             lightData.brightnessUniformLocation     >= 0 &&
             lightData.lightColorUniformLocation     >= 0 &&
-            lightData.lightPositionUniformLocation  >= 0 
+            lightData.lightPositionUniformLocation  >= 0 &&
+            lightData.lightDirectionUniformLocation >= 0
         )
         {
             this->clearErrors();
     
             glUniform1i         (this->lightCountLocation, this->lightCount);
+            glUniform1i         (lightData.lightTypeUniformLocation, lightIn.config.type);
             glUniform1f         (lightData.brightnessUniformLocation, lightIn.config.brightness);
             glUniform3fv        (lightData.lightPositionUniformLocation, 1, &lightIn.config.position[0]);
             glUniform3fv        (lightData.lightColorUniformLocation, 1, &lightIn.config.color[0]);
+            glUniform3fv        (lightData.lightDirectionUniformLocation, 1, &lightIn.config.direction[0]);
     
             return this->checkErrors(__FILE__, __LINE__);
         }
@@ -119,14 +131,18 @@ lazarus_result LightManager::loadLightSource(LightManager::Light &lightIn, int32
         this->clearErrors();
 
         GLuint countLocation        = glGetUniformLocation(shader, "lightCount");
+        GLuint typeLocation         = glGetUniformLocation(shader, (std::string("lightTypes[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
         GLuint positionLocation     = glGetUniformLocation(shader, (std::string("lightPositions[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
         GLuint colorLocation        = glGetUniformLocation(shader, (std::string("lightColors[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
         GLuint brightnessLocation   = glGetUniformLocation(shader, (std::string("lightBrightness[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+        GLuint directionLocation    = glGetUniformLocation(shader, (std::string("lightDirections[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
 
         glUniform1i         (countLocation, this->lightCount);
+        glUniform1i         (typeLocation, lightIn.config.type);
         glUniform1f         (brightnessLocation, lightIn.config.brightness);
         glUniform3fv        (positionLocation, 1, &lightIn.config.position[0]);
         glUniform3fv        (colorLocation, 1, &lightIn.config.color[0]);
+        glUniform3fv        (directionLocation, 1, &lightIn.config.direction[0]);
     
         return this->checkErrors(__FILE__, __LINE__);
     };
