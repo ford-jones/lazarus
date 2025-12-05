@@ -237,6 +237,7 @@ lazarus_result TextureLoader::storeBitmapTexture(uint32_t maxWidth, uint32_t max
 		on the GPU side. The swizzle can and probably should be done here to make it clearer.
 	=========================================================================================== */
 
+	std::vector<GLubyte> zeroedBuffer(maxWidth * maxHeight, 0);
 	glTexImage2D(
 		GL_TEXTURE_2D, 
 		0, 
@@ -246,7 +247,7 @@ lazarus_result TextureLoader::storeBitmapTexture(uint32_t maxWidth, uint32_t max
 		0, 
 		GL_RED, 
 		GL_UNSIGNED_BYTE, 
-		0
+		&zeroedBuffer[0]
 	);
 
 	return this->checkErrors(__FILE__, __LINE__);

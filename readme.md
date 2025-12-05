@@ -1413,3 +1413,4 @@ Free cubemaps: https://www.humus.name/index.php?page=Textures
 6. The maximum number of lights permitted in any one scene while using the `LAZARUS_DEFAULT_VERT_SHADER` and/or `LAZARUS_DEFAULT_FRAG_SHADER` is limitted to a maximum size of 150.
 7. The maximum number of entities in any one scene who can be picked or looked up using a pixel with `CameraManager::getPixelOccupant` is limmited to a maximum size of 255.
 8. The gdb loader does not yet support animation.
+9. For linux systems using wayland graphical sessions, running in windowed mode will throw an error due to window repositioning (the window is centered so it doesn't just appear in a random place). Run the application in fullscreen with `GlobalsManager::setLaunchInFullscreen(true)`.
