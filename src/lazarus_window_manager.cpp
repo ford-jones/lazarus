@@ -328,7 +328,10 @@ void Events::updateKeyboardState()
 			this->keyName = glfwGetKeyName(keyCode, scanCode);
 			break;
 		default :
-			this->keyName = static_cast<char>(keyCode);
+			keyCode != 0
+			? this->keyName = static_cast<char>(keyCode)
+			: "";
+			
 			break;
 	};
 
