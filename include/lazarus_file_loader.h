@@ -51,7 +51,7 @@ class FileLoader
         };
 
 		lazarus_result relativePathToAbsolute(std::string filepath, std::string &out);
-        lazarus_result loadImage(Image &out, const char *filepath = NULL, const unsigned char *raw = NULL, uint32_t size = 0);
+        lazarus_result loadImage(Image &out, const char *filepath = NULL, const unsigned char *raw = NULL, uint32_t size = 0, bool flipVert = true);
         lazarus_result loadText(std::string filepath, std::string &out);
         
         virtual ~FileLoader();

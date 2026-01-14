@@ -687,7 +687,7 @@ lazarus_result WindowManager::createCursor(uint32_t sizeX, uint32_t sizeY, uint3
 {		
     fileReader = std::make_unique<FileLoader>();
 	
-    lazarus_result status = fileReader->loadImage(this->image, filepath.c_str());
+    lazarus_result status = fileReader->loadImage(this->image, filepath.c_str(), NULL, 0, false);
 	if(status != lazarus_result::LAZARUS_OK)
 	{
 		return status;
