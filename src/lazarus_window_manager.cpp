@@ -86,15 +86,16 @@ Time::~Time()
 	LOG_DEBUG("Destroying Lazarus::WindowManager::Time");
 };
 
-Events::Events()
+EventManager::EventManager()
 {
 	LOG_DEBUG("Constructing Lazarus::WindowManager::Events");
 
+	latestEvent			= {};
 	keyName	    		= "";
 	keyCode 	    	= 0;
 	scanCode 			= 0;
 
-	clickState 			= LAZARUS_MOUSE_NOCLICK;
+	clickState 			= 0;
 	mousePositionX 		= 0;
 	mousePositionY 		= 0;
 	scrollState 		= 0;
@@ -104,7 +105,7 @@ Events::Events()
 	win 		        = NULL;
 };
 
-lazarus_result Events::eventsInit()
+lazarus_result EventManager::eventsInit()
 {
 	win = glfwGetCurrentContext();
 
@@ -130,32 +131,48 @@ lazarus_result Events::eventsInit()
 				default:
 					break;
 			};
+			WindowManager *window = (WindowManager *) glfwGetWindowUserPointer(win);
+			window->updateKeyboardState();
+
 			return;
 		});
 
 		glfwSetCursorPosCallback(win, [](GLFWwindow *win, double xpos, double ypos){
 			LAZARUS_LISTENER_MOUSEX = xpos;
 			LAZARUS_LISTENER_MOUSEY = ypos;
+
+			WindowManager *window = (WindowManager *) glfwGetWindowUserPointer(win);
+			window->updateMouseState();
+
 			return;
 		});
 
 		glfwSetMouseButtonCallback(win, [](GLFWwindow *win, int button, int action, int mods){
 			switch(action)
 			{
+				//	Button is zero-indexed, but here zero is reserved for release
 				case GLFW_PRESS :
-					LAZARUS_LISTENER_MOUSECODE = button;
+					LAZARUS_LISTENER_MOUSECODE = button + 1;
 					break;
 				case GLFW_RELEASE :
-					LAZARUS_LISTENER_MOUSECODE = LAZARUS_MOUSE_NOCLICK;
+					LAZARUS_LISTENER_MOUSECODE = 0;
 					break;
 				default :
 					break;
 			};
+
+			WindowManager *window = (WindowManager *) glfwGetWindowUserPointer(win);
+			window->updateMouseState();
+
 			return;
 		});
 
 		glfwSetScrollCallback(win, [](GLFWwindow *win, double xoffset, double yoffset){
 			LAZARUS_LISTENER_SCROLLCODE = yoffset;	
+
+			WindowManager *window = (WindowManager *) glfwGetWindowUserPointer(win);
+			window->updateMouseState();
+
 			return;
 		});
 
@@ -169,8 +186,15 @@ lazarus_result Events::eventsInit()
 	};
 };
 
-lazarus_result Events::monitorEvents()
+lazarus_result EventManager::monitorEvents()
 {	
+	/* ============================================
+		Release all events that were in the queue 
+		at the time of the previous call to poll and 
+		replace them with any events processed via
+		callbacks inbetween.
+	=============================================== */
+	this->eventQueue.clear();
 	/* ========================================================
 		The glfw scroll state when monitored can only be on or
 		off - there is no scroll "neutral" state, so one is 
@@ -179,20 +203,27 @@ lazarus_result Events::monitorEvents()
 		reset here appropriately.
 	=========================================================== */
 	LAZARUS_LISTENER_SCROLLCODE = 0;
+	this->scrollState = 0;
 
     glfwPollEvents();
-
-    this->updateKeyboardState();
-    this->updateMouseState();
 
 	return this->checkErrors(__FILE__, __LINE__);
 };
 
-void Events::updateKeyboardState()
+void EventManager::updateKeyboardState()
 {	
+	if(keyCode != LAZARUS_LISTENER_KEYCODE)
+	{
+
+		latestEvent = {};
+		latestEvent.type = EventManager::EventType::KEY_PRESS;
+		latestEvent.state.primary = LAZARUS_LISTENER_KEYCODE;
+		latestEvent.state.secondary = LAZARUS_LISTENER_SCANCODE;
+	
+		this->eventQueue.push_back(latestEvent);
+	};
+
 	this->keyName = "";
-	this->keyCode = 0;
-	this->scanCode = 0;
 	
 	this->keyCode = LAZARUS_LISTENER_KEYCODE;
 	this->scanCode = LAZARUS_LISTENER_SCANCODE;
@@ -338,27 +369,52 @@ void Events::updateKeyboardState()
 	return;
 };
 
-void Events::updateMouseState()
+void EventManager::updateMouseState()
 {
-	this->clickState 	 = LAZARUS_MOUSE_NOCLICK;
-	this->mousePositionX = 0.0f;
-	this->mousePositionY = 0.0f;
+	if(clickState != LAZARUS_LISTENER_MOUSECODE)
+	{
+		latestEvent = {};
+		latestEvent.type = EventManager::EventType::CLICK;
+		latestEvent.state.primary = LAZARUS_LISTENER_MOUSECODE;
+		latestEvent.state.secondary = 0;
 	
-	this->clickState 	 = LAZARUS_LISTENER_MOUSECODE;
+		this->eventQueue.push_back(latestEvent);
+	};
+	this->clickState = LAZARUS_LISTENER_MOUSECODE;
+
+
+	if( (this->mousePositionX != LAZARUS_LISTENER_MOUSEX) || 
+		(this->mousePositionY != LAZARUS_LISTENER_MOUSEY) )
+	{
+		latestEvent = {};
+		latestEvent.type = EventManager::EventType::MOUSE_MOVE;
+		/* =======================================
+			Ensure result is rounded up, not down.
+			(ceil).
+		========================================== */
+		latestEvent.state.primary = static_cast<int32_t>(LAZARUS_LISTENER_MOUSEX + 0.5f);
+		latestEvent.state.secondary = static_cast<int32_t>(LAZARUS_LISTENER_MOUSEY + 0.5f);
 	
-	/* ===================
-		Ceil / round up
-	====================== */
+		this->eventQueue.push_back(latestEvent);
+	};
+	this->mousePositionX = LAZARUS_LISTENER_MOUSEX;
+	this->mousePositionY = LAZARUS_LISTENER_MOUSEY;		
 
-	this->mousePositionX = static_cast<int>(LAZARUS_LISTENER_MOUSEX + 0.5f);
-	this->mousePositionY = static_cast<int>(LAZARUS_LISTENER_MOUSEY + 0.5f);		
-
+	if(this->scrollState != LAZARUS_LISTENER_SCROLLCODE)
+	{
+		latestEvent = {};
+		latestEvent.type = EventManager::EventType::SCROLL;
+		latestEvent.state.primary = static_cast<int32_t>(LAZARUS_LISTENER_SCROLLCODE);
+		latestEvent.state.secondary = 0;
+	
+		this->eventQueue.push_back(latestEvent);
+	};
 	this->scrollState = LAZARUS_LISTENER_SCROLLCODE;	
 
 	return;
 };
 
-lazarus_result Events::checkErrors(const char *file, int line)
+lazarus_result EventManager::checkErrors(const char *file, int line)
 {
     errorCode = glfwGetError(&errorMessage); 
     if(errorCode != GLFW_NO_ERROR)
@@ -374,13 +430,13 @@ lazarus_result Events::checkErrors(const char *file, int line)
     };
 };
 
-Events::~Events()
+EventManager::~EventManager()
 {
 	LOG_DEBUG("Destroying Lazarus::WindowManager::Events");
 };
 
 WindowManager::WindowManager(const char *title, uint32_t width, uint32_t height)
-	: WindowManager::Events(),
+	: WindowManager::EventManager(),
 	  WindowManager::Time()
 {
 	LOG_DEBUG("Constructing Lazarus::WindowManager");
@@ -527,7 +583,7 @@ lazarus_result WindowManager::createWindow()
 
 	this->initialiseGLEW();
     
-    return this->checkErrors(__FILE__, __LINE__);;
+    return this->checkErrors(__FILE__, __LINE__);
 };
 
 lazarus_result WindowManager::setBackgroundColor(float r, float g, float b)
@@ -536,7 +592,7 @@ lazarus_result WindowManager::setBackgroundColor(float r, float g, float b)
 
 	this->frame.backgroundColor = glm::vec3(r, g, b);
 
-	return this->checkErrors(__FILE__, __LINE__);;
+	return this->checkErrors(__FILE__, __LINE__);
 };
 
 lazarus_result WindowManager::loadConfig()
@@ -672,7 +728,7 @@ lazarus_result WindowManager::open()
     glfwSetWindowShouldClose(this->window, GLFW_FALSE);
     this->isOpen = true;
 
-    return this->checkErrors(__FILE__, __LINE__);;
+    return this->checkErrors(__FILE__, __LINE__);
 }
 
 lazarus_result WindowManager::close()
@@ -680,7 +736,7 @@ lazarus_result WindowManager::close()
     glfwSetWindowShouldClose(this->window, GLFW_TRUE);
     this->isOpen = false;
 
-    return this->checkErrors(__FILE__, __LINE__);;
+    return this->checkErrors(__FILE__, __LINE__);
 }
 
 lazarus_result WindowManager::createCursor(uint32_t sizeX, uint32_t sizeY, uint32_t targetX, uint32_t targetY, std::string filepath)

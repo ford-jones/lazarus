@@ -53,52 +53,64 @@ class Time
 		float frameCount;		
 };
 
-class Events
+class EventManager
 {
     public:
         enum EventType
         {
-            KEY_PRESS = 1,
-            CLICK = 2,
-            MOUSE_MOVE = 3,
-            SCROLL = 4
+            KEY_PRESS,
+            CLICK,
+            MOUSE_MOVE,
+            SCROLL
+        };
+
+        struct EventState
+        {
+            int32_t primary;
+            int32_t secondary;
         };
 
         struct Event
         {
             EventType type;
-            uint32_t code;
+            EventState state;
         };
 
-        Events();
+        EventManager();
 
     	lazarus_result eventsInit();
         lazarus_result monitorEvents();
 
+        std::vector<Event> eventQueue;
+        
         std::string keyName;
-        uint32_t keyCode;
-		uint32_t scanCode;
-
-		uint32_t clickState;
-		uint32_t mousePositionX;
-		uint32_t mousePositionY;
+        int32_t keyCode;
+		int32_t scanCode;
+        
+		int32_t clickState;
+		int32_t mousePositionX;
+		int32_t mousePositionY;
 		
 		float scrollState;
-
-        virtual ~Events();
+        
+        virtual ~EventManager();
 		
-    private:
-        lazarus_result checkErrors(const char *file, int line);
+    protected:
         void updateKeyboardState();
         void updateMouseState();
 
+    private:
+        Event latestEvent;
+
+        lazarus_result checkErrors(const char *file, int line);
+
         int32_t errorCode;
         const char* errorMessage;
-
+        
         GLFWwindow *win;
-};
+    };
 
-class WindowManager : public Events, public Time
+class WindowManager : public EventManager, public Time
 {
     public:
         WindowManager(const char *title, uint32_t width = 800, uint32_t height = 600);
