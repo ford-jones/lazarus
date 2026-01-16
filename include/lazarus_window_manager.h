@@ -64,43 +64,47 @@ class EventManager
             SCROLL
         };
 
-        struct EventState
-        {
-            int32_t primary;
-            int32_t secondary;
-        };
-
         struct Event
         {
             EventType type;
-            EventState state;
+            
+            int32_t key             = 0;
+		    int32_t keyVariant      = 0;
+		    int32_t click           = 0;
+		    int32_t scroll          = 0;
+		    int32_t mousePositionX  = 0;
+		    int32_t mousePositionY  = 0;
         };
 
         EventManager();
 
     	lazarus_result eventsInit();
         lazarus_result monitorEvents();
+        lazarus_result convertKeyName(int32_t key, int32_t scan, std::string &out);
 
+        void getLatestKey(int32_t &outCode, int32_t &outScan);
+        void getLatestMouseMove(int32_t &outX, int32_t &outY);
+        void getLatestClick(int32_t &out);
+        void getLatestScroll(int32_t &out);
+        
         std::vector<Event> eventQueue;
-        
-        std::string keyName;
-        int32_t keyCode;
-		int32_t scanCode;
-        
-		int32_t clickState;
-		int32_t mousePositionX;
-		int32_t mousePositionY;
-		
-		float scrollState;
-        
+            
         virtual ~EventManager();
 		
     protected:
-        void updateKeyboardState();
-        void updateMouseState();
-
+        void dispatchEvent(EventType variant, int32_t aValue, int32_t bValue);
+        
     private:
-        Event latestEvent;
+        Event event;
+
+        int32_t latestKeyState;
+		int32_t latestScanState;
+		int32_t latestClickState;
+		int32_t latestMouseXState;
+		int32_t latestMouseYState;
+        int32_t latestScrollState;
+        
+        std::string keyName;
 
         lazarus_result checkErrors(const char *file, int line);
 

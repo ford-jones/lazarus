@@ -90,19 +90,20 @@ EventManager::EventManager()
 {
 	LOG_DEBUG("Constructing Lazarus::WindowManager::Events");
 
-	latestEvent			= {};
-	keyName	    		= "";
-	keyCode 	    	= 0;
-	scanCode 			= 0;
+	event					= {};
+	keyName	    			= "";
 
-	clickState 			= 0;
-	mousePositionX 		= 0;
-	mousePositionY 		= 0;
-	scrollState 		= 0;
+	latestKeyState 	    	= 0;
+	latestScanState			= 0;
 
-	errorCode 			= 0;
-	errorMessage 		= NULL;
-	win 		        = NULL;
+	latestClickState 		= 0;
+	latestMouseXState 		= 0;
+	latestMouseYState 		= 0;
+	latestScrollState 		= 0;
+
+	errorCode 				= 0;
+	errorMessage 			= NULL;
+	win 		        	= NULL;
 };
 
 lazarus_result EventManager::eventsInit()
@@ -117,61 +118,56 @@ lazarus_result EventManager::eventsInit()
 	
 	if(win != NULL)
 	{
-		glfwSetKeyCallback(win, [](GLFWwindow *win, int key, int scancode, int action, int mods){
-			switch(action)
+		glfwSetKeyCallback(win, [](GLFWwindow *win, int key, int scancode, int action, int mods){ 
+			int32_t code = 0;
+			int32_t scan = 0;
+			
+			if(action != GLFW_RELEASE)
 			{
-				case GLFW_PRESS :
-					LAZARUS_LISTENER_KEYCODE = key;
-					LAZARUS_LISTENER_SCANCODE = scancode;
-					break;
-				case GLFW_RELEASE :
-					LAZARUS_LISTENER_KEYCODE = 0;
-					LAZARUS_LISTENER_SCANCODE = 0;
-					break;
-				default:
-					break;
+				code = key;
+				scan = scancode;
 			};
+			
 			WindowManager *window = (WindowManager *) glfwGetWindowUserPointer(win);
-			window->updateKeyboardState();
+			window->dispatchEvent(EventType::KEY_PRESS, code, scan);
 
 			return;
 		});
 
 		glfwSetCursorPosCallback(win, [](GLFWwindow *win, double xpos, double ypos){
-			LAZARUS_LISTENER_MOUSEX = xpos;
-			LAZARUS_LISTENER_MOUSEY = ypos;
+			int32_t x = xpos + 0.5f;
+			int32_t y = ypos + 0.5f;
 
 			WindowManager *window = (WindowManager *) glfwGetWindowUserPointer(win);
-			window->updateMouseState();
+			window->dispatchEvent(EventType::MOUSE_MOVE, x, y);
 
 			return;
 		});
 
-		glfwSetMouseButtonCallback(win, [](GLFWwindow *win, int button, int action, int mods){
-			switch(action)
+		glfwSetMouseButtonCallback(win, [](GLFWwindow *win, int button, int action, int mods){			
+			/* ==========================================
+				Buttons are zero-indexed, i.e. left click
+				is 0. Instead; here zero is reserved for 
+				displaying release state.
+			============================================= */
+			int32_t mouseButton = 0;
+
+			if(action != GLFW_RELEASE)
 			{
-				//	Button is zero-indexed, but here zero is reserved for release
-				case GLFW_PRESS :
-					LAZARUS_LISTENER_MOUSECODE = button + 1;
-					break;
-				case GLFW_RELEASE :
-					LAZARUS_LISTENER_MOUSECODE = 0;
-					break;
-				default :
-					break;
+				mouseButton = button + 1;
 			};
 
 			WindowManager *window = (WindowManager *) glfwGetWindowUserPointer(win);
-			window->updateMouseState();
+			window->dispatchEvent(EventType::CLICK, mouseButton, 0);
 
 			return;
 		});
 
 		glfwSetScrollCallback(win, [](GLFWwindow *win, double xoffset, double yoffset){
-			LAZARUS_LISTENER_SCROLLCODE = yoffset;	
+			int32_t scroll = static_cast<int32_t>(yoffset);	
 
 			WindowManager *window = (WindowManager *) glfwGetWindowUserPointer(win);
-			window->updateMouseState();
+			window->dispatchEvent(EventType::SCROLL, scroll, 0);
 
 			return;
 		});
@@ -202,72 +198,54 @@ lazarus_result EventManager::monitorEvents()
 		is fired and the result is polled. it will then be 
 		reset here appropriately.
 	=========================================================== */
-	LAZARUS_LISTENER_SCROLLCODE = 0;
-	this->scrollState = 0;
-
+	this->latestScrollState = 0;
     glfwPollEvents();
 
 	return this->checkErrors(__FILE__, __LINE__);
 };
 
-void EventManager::updateKeyboardState()
+lazarus_result EventManager::convertKeyName(int32_t key, int32_t scan, std::string &out)
 {	
-	if(keyCode != LAZARUS_LISTENER_KEYCODE)
-	{
-
-		latestEvent = {};
-		latestEvent.type = EventManager::EventType::KEY_PRESS;
-		latestEvent.state.primary = LAZARUS_LISTENER_KEYCODE;
-		latestEvent.state.secondary = LAZARUS_LISTENER_SCANCODE;
-	
-		this->eventQueue.push_back(latestEvent);
-	};
-
-	this->keyName = "";
-	
-	this->keyCode = LAZARUS_LISTENER_KEYCODE;
-	this->scanCode = LAZARUS_LISTENER_SCANCODE;
-
 	/* =========================================
 		Check the static global value as it 
 		accounts for signedness, which is needed
 		to check the name of GLFW_KEY_UNKNOWN
 		with the scancode
 	============================================ */
-	switch(LAZARUS_LISTENER_KEYCODE)
+	switch(key)
 	{
 		case GLFW_KEY_UP :
-			this->keyName = "up";
+			out = "up";
 			break;
 		case GLFW_KEY_DOWN :
-			this->keyName = "down";
+			out = "down";
 			break;
 		case GLFW_KEY_LEFT :
-			this->keyName = "left";
+			out = "left";
 			break;
 		case GLFW_KEY_RIGHT :
-			this->keyName = "right";
+			out = "right";
 			break;
 		case GLFW_KEY_ENTER :
-			this->keyName = "enter";
+			out = "enter";
 			break;
 		case GLFW_KEY_SPACE :
-			this->keyName = "space";
+			out = "space";
 			break;
 		case GLFW_KEY_TAB :
-			this->keyName = "tab";
+			out = "tab";
 			break;
 		case GLFW_KEY_LEFT_SHIFT :
-			this->keyName = "shift-l";
+			out = "shift-l";
 			break;
 		case GLFW_KEY_RIGHT_SHIFT :
-			this->keyName = "shift-r";
+			out = "shift-r";
 			break;
 		case GLFW_KEY_LEFT_CONTROL :
-			this->keyName = "ctrl-l";
+			out = "ctrl-l";
 			break;
 		case GLFW_KEY_RIGHT_CONTROL :
-			this->keyName = "ctrl-r";
+			out = "ctrl-r";
 			break;
 		/* ==================================
 			TODO: 
@@ -276,79 +254,79 @@ void EventManager::updateKeyboardState()
 		===================================== */
 		
 		case GLFW_KEY_LEFT_ALT :
-			this->keyName = "alt-l";
+			out = "alt-l";
 			break;
 		case GLFW_KEY_RIGHT_ALT :
-			this->keyName = "alt-r";
+			out = "alt-r";
 			break;
 		case GLFW_KEY_LEFT_SUPER :
-			this->keyName = "fn-l";
+			out = "fn-l";
 			break;
 		case GLFW_KEY_RIGHT_SUPER :
-			this->keyName = "fn-r";
+			out = "fn-r";
 			break;
 		case GLFW_KEY_BACKSPACE :
-			this->keyName = "backspace";
+			out = "backspace";
 			break;
 		case GLFW_KEY_CAPS_LOCK :
-			this->keyName = "capslock";
+			out = "capslock";
 			break;
 		case GLFW_KEY_ESCAPE :
-			this->keyName = "esc";
+			out = "esc";
 			break;
 		case GLFW_KEY_F1 :
-			this->keyName = "f1";
+			out = "f1";
 			break;
 		case GLFW_KEY_F2 :
-			this->keyName = "f2";
+			out = "f2";
 			break;
 		case GLFW_KEY_F3 :
-			this->keyName = "f3";
+			out = "f3";
 			break;
 		case GLFW_KEY_F4 :
-			this->keyName = "f4";
+			out = "f4";
 			break;
 		case GLFW_KEY_F5 :
-			this->keyName = "f5";
+			out = "f5";
 			break;
 		case GLFW_KEY_F6 :
-			this->keyName = "f6";
+			out = "f6";
 			break;
 		case GLFW_KEY_F7 :
-			this->keyName = "f7";
+			out = "f7";
 			break;
 		case GLFW_KEY_F8 :
-			this->keyName = "f8";
+			out = "f8";
 			break;
 		case GLFW_KEY_F9 :
-			this->keyName = "f9";
+			out = "f9";
 			break;
 		case GLFW_KEY_F10 :
-			this->keyName = "f10";
+			out = "f10";
 			break;
 		case GLFW_KEY_F11 :
-			this->keyName = "f11";
+			out = "f11";
 			break;
 		case GLFW_KEY_F12 :
-			this->keyName = "f12";
+			out = "f12";
 			break;
 		case GLFW_KEY_DELETE :
-			this->keyName = "delete";
+			out = "delete";
 			break;
 		case GLFW_KEY_HOME :
-			this->keyName = "home";
+			out = "home";
 			break;
 		case GLFW_KEY_INSERT :
-			this->keyName = "insert";
+			out = "insert";
 			break;
 		case GLFW_KEY_END :
-			this->keyName = "end";
+			out = "end";
 			break;
 		case GLFW_KEY_PAGE_UP :
-			this->keyName = "pgup";
+			out = "pgup";
 			break;
 		case GLFW_KEY_PAGE_DOWN :
-			this->keyName = "pgdn";
+			out = "pgdn";
 			break;
 		case GLFW_KEY_UNKNOWN :
 			/* ============================================
@@ -356,62 +334,111 @@ void EventManager::updateKeyboardState()
 				specific to the hardware as opposed to the 
 				ascii code).
 			=============================================== */
-			this->keyName = glfwGetKeyName(keyCode, scanCode);
+			out = glfwGetKeyName(key, scan);
 			break;
 		default :
-			keyCode != 0
-			? this->keyName = static_cast<char>(keyCode)
+			key != 0
+			? out = static_cast<char>(key)
 			: "";
 			
 			break;
 	};
 
+	return this->checkErrors(__FILE__, __LINE__);
+};
+
+void EventManager::getLatestKey(int32_t &outCode, int32_t &outScan)
+{
+	outCode = this->latestKeyState;
+	outScan = this->latestScanState;
 	return;
 };
 
-void EventManager::updateMouseState()
+void EventManager::getLatestClick(int32_t &out)
 {
-	if(clickState != LAZARUS_LISTENER_MOUSECODE)
-	{
-		latestEvent = {};
-		latestEvent.type = EventManager::EventType::CLICK;
-		latestEvent.state.primary = LAZARUS_LISTENER_MOUSECODE;
-		latestEvent.state.secondary = 0;
-	
-		this->eventQueue.push_back(latestEvent);
-	};
-	this->clickState = LAZARUS_LISTENER_MOUSECODE;
-
-
-	if( (this->mousePositionX != LAZARUS_LISTENER_MOUSEX) || 
-		(this->mousePositionY != LAZARUS_LISTENER_MOUSEY) )
-	{
-		latestEvent = {};
-		latestEvent.type = EventManager::EventType::MOUSE_MOVE;
-		/* =======================================
-			Ensure result is rounded up, not down.
-			(ceil).
-		========================================== */
-		latestEvent.state.primary = static_cast<int32_t>(LAZARUS_LISTENER_MOUSEX + 0.5f);
-		latestEvent.state.secondary = static_cast<int32_t>(LAZARUS_LISTENER_MOUSEY + 0.5f);
-	
-		this->eventQueue.push_back(latestEvent);
-	};
-	this->mousePositionX = LAZARUS_LISTENER_MOUSEX;
-	this->mousePositionY = LAZARUS_LISTENER_MOUSEY;		
-
-	if(this->scrollState != LAZARUS_LISTENER_SCROLLCODE)
-	{
-		latestEvent = {};
-		latestEvent.type = EventManager::EventType::SCROLL;
-		latestEvent.state.primary = static_cast<int32_t>(LAZARUS_LISTENER_SCROLLCODE);
-		latestEvent.state.secondary = 0;
-	
-		this->eventQueue.push_back(latestEvent);
-	};
-	this->scrollState = LAZARUS_LISTENER_SCROLLCODE;	
-
+	out = this->latestClickState;
 	return;
+};
+
+void EventManager::getLatestScroll(int32_t &out)
+{
+	out = this->latestScrollState;
+	return;
+};
+
+void EventManager::getLatestMouseMove(int32_t &outX, int32_t &outY)
+{
+	outX = this->latestMouseXState;
+	outY = this->latestMouseYState;
+	return;
+};
+
+void EventManager::dispatchEvent(EventManager::EventType variant, int32_t aValue, int32_t bValue)
+{
+	event = {};
+	event.type = variant;
+
+	/* ================================================
+		Identify whether input states returned by glfw
+		are any different to what they were when the
+		last event of that type was checked-in.
+
+		Dispatch those that pass this check to the 
+		queue and checkin the new input to the relevant
+		state variable.
+	=================================================== */
+	switch (event.type)
+	{
+		case EventType::KEY_PRESS:
+			if(this->latestKeyState != aValue)
+			{
+				event.key = aValue;
+				event.keyVariant = bValue;
+
+				this->latestKeyState = aValue;
+				this->latestScanState = bValue;
+
+				this->eventQueue.push_back(event);
+			};
+			break;
+
+		case EventType::CLICK:
+			if(this->latestClickState != aValue)
+			{
+				event.click = aValue;
+				this->latestClickState = aValue;
+
+				this->eventQueue.push_back(event);
+			};
+			break;
+
+		case EventType::MOUSE_MOVE:
+			if( (this->latestMouseXState != aValue) || 
+				(this->latestMouseYState != bValue) )
+			{
+				event.mousePositionX = aValue;
+				event.mousePositionY = bValue;
+
+				this->latestMouseXState = aValue;
+				this->latestMouseYState = bValue;
+
+				this->eventQueue.push_back(event);
+			};
+			break;
+
+		case EventType::SCROLL:
+			if(this->latestScrollState != aValue)
+			{
+				event.scroll = aValue;
+				this->latestScrollState = aValue;
+
+				this->eventQueue.push_back(event);
+			};
+			break;
+		
+		default:
+			break;
+	}
 };
 
 lazarus_result EventManager::checkErrors(const char *file, int line)
