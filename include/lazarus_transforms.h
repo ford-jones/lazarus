@@ -65,6 +65,10 @@ class Transform
 		double pi;
 		float outRadians;
 		float up;
+
+		float accumulatePitch;
+		float accumulateYaw;
+		float accumulateRoll;
 		
 		glm::vec3 rotation;
 

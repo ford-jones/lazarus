@@ -30,7 +30,9 @@ Transform::Transform()
 	============================================== */
 
 	this->pi = 3.1419;
-
+	this->accumulatePitch = 0.0f;
+	this->accumulateRoll = 0.0f;
+	this->accumulateYaw = 0.0f;
 	this->outRadians = 0.0;
 	this->up = 0.0f;
 	this->localCoordinates = glm::vec3(0.0, 0.0, 0.0);
@@ -145,6 +147,14 @@ lazarus_result Transform::translateCameraAsset(CameraManager::Camera &camera, fl
 
 lazarus_result Transform::rotateCameraAsset(CameraManager::Camera &camera, float pitch, float yaw, float roll)
 {	
+	/* ============================================
+		Ensures consistent behaviour between
+		camera rotation vs translation, as the cam
+		translation naturally accumulates.
+	=============================================== */
+	this->accumulatePitch += pitch;
+	this->accumulateYaw += yaw;
+	this->accumulateRoll += roll;
 	
 	if((pitch > 360.0f) || (pitch < -360.0f))
 	{
@@ -159,8 +169,8 @@ lazarus_result Transform::rotateCameraAsset(CameraManager::Camera &camera, float
 		this->up = this->determineUpVector(pitch);
 		camera.upVector = glm::vec3(0.0f, this->up, 0.0f);
 
-		float p = this->degreesToRadians(pitch);
-		float y = this->degreesToRadians(yaw, false);
+		float p = this->degreesToRadians(accumulatePitch);
+		float y = this->degreesToRadians(accumulateYaw, false);
 
 		this->rotation.x = cos(y) * cos(p);
 		this->rotation.y = sin(-p);
