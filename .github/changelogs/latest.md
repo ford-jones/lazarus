@@ -1,5 +1,6 @@
-# Version: 2026.01.17010532
+# Version: 2026.01.17010624
 
+* [adea47e](https://github.com/ford-jones/lazarus/commit/adea47ebd01bd3e2e30a0a928bc9e654956dc00e): [Changelog CI] Add Changelog for Version 2026.01.17010532
 * [eb3f3c7](https://github.com/ford-jones/lazarus/commit/eb3f3c7a855df92e640e3c317006a139f65f76ca): Update: Removal of static state variables in favour of event pushes
 * [f6f4adc](https://github.com/ford-jones/lazarus/commit/f6f4adc520680dee5e8cda1f17d06149c5dbbace): Fix: Ensures behavioural consistency between camera rotations and translations
 * [cbeead6](https://github.com/ford-jones/lazarus/commit/cbeead6e8454a61face9e840cfbfcb43a20b79f4): Fix: Uses an event queue to capture window listener outputs in-sequence
