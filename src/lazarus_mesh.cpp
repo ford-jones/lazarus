@@ -1033,7 +1033,7 @@ void MeshManager::instantiateMesh(bool selectable)
         instance.direction = glm::vec3(0.0f, 0.0f, 1.0f);
         instance.scale = glm::vec3(1.0f, 1.0f, 1.0f);
         
-        std::pair<uint32_t, MeshManager::Mesh::Instance> pair(i, instance);
+        std::pair<uint32_t, MeshManager::Mesh::Instance> pair(static_cast<uint32_t>(i), instance);
         this->meshOut.instances.insert(pair);
     };
     
