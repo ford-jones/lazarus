@@ -270,8 +270,12 @@ while(window.isOpen)
     window.monitorEvents();
     
     //  Retrieve and use window state
-    float red = static_cast<window.mousePositionX> / 100.0;
-    float blue = static_cast<window.mousePositionY> / 100.0;
+    int mouseX = 0;
+    int mouseY = 0;
+    window->getLatestMouseMove(mouseX, mouseY);
+
+    float red = static_cast<float>(mouseX) / 100.0;
+    float blue = static_cast<float>(mouseY) / 100.0;
 
     window.setBackgroundColor(red, 0.0, blue);
 
@@ -298,11 +302,17 @@ while(window.isOpen)
     window.monitorEvents();
     
     //  Retrieve and use window's cursor location
-    float red = static_cast<window.mousePositionX> / 100.0;
-    float blue = static_cast<window.mousePositionY> / 100.0;
+    int mouseX = 0;
+    int mouseY = 0;
+    int keyCode = 0;
+    window->getLatestMouseMove(mouseX, mouseY);
+    window->getLatestClick(keyCode);
 
-    //  Check the window's keypress state
-    if(window.keyEventCode > 0) gameOver = true;
+    float red = static_cast<float>(mouseX) / 100.0;
+    float blue = static_cast<float>(mouseY) / 100.0;
+
+    //  Check the window's keypress state, press any key to end the program
+    if(keyCode > 0) gameOver = true;
 
     window.setBackgroundColor(red, 0.0, blue);
 
