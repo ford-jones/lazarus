@@ -1,5 +1,5 @@
 # Lazarus Engine
-#### *Version: 0.14.1*
+#### *Version: 0.14.2*
 ## Table of contents:
 
 - [Getting Started](#getting-started)
@@ -736,7 +736,7 @@ Enables picking of the window's pixels for objects which have been rendered to t
 ### Members:
 > **isOpen:** *Whether or not the active window is open. See also: `GlobalsManager::getContextWindowOpen()`. (type: `bool`, default: `false`)* \
 
-## WindowManager::Events
+## WindowManager::EventManager
 A class for tracking, storing and managing window events as well as their values.
 
 ### Functions:
@@ -750,14 +750,47 @@ Locates the programs active window and loads the following event-handler callbac
 #### monitorEvents()
 Polls GLFW for the head of the active window's event queue and then updates the values of the event managers members.
 
+#### getLatestKey(int &outCode, int &outScan)
+Retrieves the most recently recorded key change, inclusive of key-release which holds a value of `0`.
+
+params:
+> **outCode:** *A code number which represents the most recently pressed key.* \
+> **outScan:** *Similar to the `outCode`, but may be system specific. Should contain a value in the event that `outCode` does not.*
+
+#### getLatestMouseMove(int &outX, int &outY)
+Retrieves the most recently recorded change in mouse / cursor position.
+
+params:
+> **outX:** *The x-axis position of the cursor.* \
+> **outY:** *The y-axis position of the cursor.*
+
+#### getLatestClick(int &out)
+Retrieves the most recently recorded change in the mouse button state, inclusive of button-release which holds a value of `0`.
+
+params:
+> **out:** *The most recent click behaviour.*
+
+#### getLatestScroll(int &out)
+Retrieves the most recently recorded change in the scrollwheel state.
+
+params:
+> **out:** *The most recent scroll behaviour.*
+
 ### Members:
-> **keyEventString:** *The key currently being pressed, expressed as a string. (type: `std::string`)* \
-> **keyEventCode:** *The openGL code of the string currently being pressed. (type: `int`)* \
-> **keyEventOsCode:** *The operating-system specific "scancode" of the key currently being pressed. (type `int`)* \
-> **mouseEventCode:** *An integer in the range of 0 to 8 expressing which mouse button is currently being clicked / pressed. (type: `int`)* \
-> **mousePositionX:** *The current x-axis coordinate of the cursor. (type: `int`)* \
-> **mousePositionY:** *The current y-axis coordinate of the cursor. (type: `int`)* \
-> **scrollEventCode:** *An integer in the range of -1 to 1 expressing the scrollwheel's y-offset.* 
+> **eventQueue:** *All meaningful changes that occured in event state since the last call to `monitorEvents()`. (type: `std::vector<WindowManager::EventManager::Event>`)* \
+> **EventType:** *Different event varieties. (type: `enum`)* 
+>	- **KEY_PRESS:** *A keyboard button, pressed or released.* 
+>	- **CLICK:** *A mouse button, pressed or released.* 
+>	- **MOUSE_MOVE:** *The cursor position on either the x or y axis (or both).*  
+>   - **SCROLL:** *The scroll / mouse wheel, up, down or neutral.*
+> **Event:** *Properties used to quantify and measure event statuses (type: `struct`)* 
+>   - **type:** *What event variant this struct represents (type: `EventType`)*
+>   - **key:** *Holds the keyboard state.* (type: `int`)
+>   - **keyVariant:** *Holds the alternate keyboard state which may be system specific.* (type: `int`)
+>   - **click:** *Holds the mousebutton state.* (type: `int`)
+>   - **scroll:** *Holds the scrollwheel state.* (type: `int`)
+>   - **mousePositionX:** *Holds the cursor x-axis position.* (type: `int`)
+>   - **mousePositionY:** *Holds the cursor x-axis position.* (type: `int`)
 
 ## WindowManager::Time
 Interface for managing and monitoring internal engine time.
@@ -989,6 +1022,9 @@ Toggle for removing the areas of a face prior to rendering where the meshes text
 > Params: \
 > **meshIn:** *The mesh object you wish to draw.* \
 > **shouldDiscard:** *The desired value for the option (T/F).* 
+
+### clearMeshStorage()
+Flushes out the internal state(s) of the manager, including it's list of children; freeing ID's of assets and textures for future use and invalidating any asset handles created prior to calling this function.
 
 ### Members:
 > **Mesh:** *A collection of properties which make up a mesh entity. (type: `struct`)* 
