@@ -156,8 +156,10 @@ lazarus_result Transform::rotateCameraAsset(CameraManager::Camera &camera, float
 	this->accumulateYaw += yaw;
 	this->accumulateRoll += roll;
 	
-	if((pitch > 360.0f) || (pitch < -360.0f))
+	if(	((pitch > 360.0f) || (pitch < -360.0f)) 					|| 
+		((accumulatePitch > 360.0f) || (accumulatePitch < -360.0f))	)
 	{
+		this->accumulatePitch = 0;
         LOG_ERROR("Transform Error", __FILE__, __LINE__);
 		
 		return lazarus_result::LAZARUS_INVALID_RADIANS;
@@ -166,7 +168,7 @@ lazarus_result Transform::rotateCameraAsset(CameraManager::Camera &camera, float
 	{
 		this->rotation = vec3(0.0, 0.0, 0.0);
 		
-		this->up = this->determineUpVector(pitch);
+		this->up = this->determineUpVector(accumulatePitch);
 		camera.upVector = glm::vec3(0.0f, this->up, 0.0f);
 
 		float p = this->degreesToRadians(accumulatePitch);
