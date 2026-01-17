@@ -257,10 +257,15 @@ At this point your application may start recieving messages from the OS such as 
 ![Error](https://drive.google.com/thumbnail?id=120qmRnMSWGpAxI9UAYFf1wxnL_DpFvTK&sz=w800)
 
 ### Managing events:
-Events in Lazarus are intrinsically tied to the window context in which they were created and dispatched. The window object in question will inherit an `EventManager` interface, which uses callbacks to retrieve information from the programs event loop asynchronously without blocking the application's control flow. 
+Events in Lazarus are intrinsically tied to the window context in which they were created and dispatched. The window object in question will inherit an `EventManager` interface, which leverages glfw callbacks to retrieve information about the windows event state(s) asynchronously \
+without blocking the application's control flow, dispatching each new input to the `WindowManager::EventManager::eventQueue`. 
 
-The lazarus callback functions are abstracted in userspace, taking the form of event-listeners such as the one below.
+The `eventQueue` contains all meaningful changes to event state in the order that they occured between two instances of calls to `WindowManager::EventManager::monitorEvents()`. While this is useful in many games for processing multiple inputs, it's a little more than we need here. For each \
+different `EventType` there is an associated `get*` function for retrieving the latest event state. These are; `getLatestClick()`, `getLatestMouseMove()`, `getLatestScroll()` and `getLatestKey()`. Let's try one here.
 ```cpp
+int mouseX = 0;
+int mouseY = 0;
+
 //  Initialise the window's event manager
 window.eventsInit();
 
@@ -269,14 +274,12 @@ while(window.isOpen)
     //  Listen for events
     window.monitorEvents();
     
-    //  Retrieve and use window state
-    int mouseX = 0;
-    int mouseY = 0;
-    window->getLatestMouseMove(mouseX, mouseY);
+    //  Retrieve latest cursor position
+    window.getLatestMouseMove(mouseX, mouseY);
 
+    //  Set the color of the window
     float red = static_cast<float>(mouseX) / 100.0;
     float blue = static_cast<float>(mouseY) / 100.0;
-
     window.setBackgroundColor(red, 0.0, blue);
 
     if(gameOver)
@@ -296,25 +299,31 @@ Our problem from the window creation section should now be resolved, as our appl
 
 Next let's try listen for a key event and use it to close our window. We can do so by fulfilling our `gameOver` condition.
 ```cpp
+int mouseX = 0;
+int mouseY = 0;
+int keyCode = 0;
+
+//  Initialise the window's event manager
+window.eventsInit();
+
 while(window.isOpen)
 {
     //  Listen for events
     window.monitorEvents();
     
-    //  Retrieve and use window's cursor location
-    int mouseX = 0;
-    int mouseY = 0;
-    int keyCode = 0;
-    window->getLatestMouseMove(mouseX, mouseY);
-    window->getLatestClick(keyCode);
+    //  Retrieve latest cursor position
+    window.getLatestMouseMove(mouseX, mouseY);
 
+    //  Set the color of the window
     float red = static_cast<float>(mouseX) / 100.0;
     float blue = static_cast<float>(mouseY) / 100.0;
-
-    //  Check the window's keypress state, press any key to end the program
-    if(keyCode > 0) gameOver = true;
-
     window.setBackgroundColor(red, 0.0, blue);
+
+    //  Retrieve latest key state 
+    window.getLatestKey(keyCode);
+
+    //  Press [enter] to exit the program
+    if(keyCode == 257) gameOver = true;
 
     if(gameOver)
     {
@@ -785,6 +794,14 @@ Retrieves the most recently recorded change in the scrollwheel state.
 
 params:
 > **out:** *The most recent scroll behaviour.*
+
+#### convertKeyName(int key, int scan, std::string &out)
+Returns the name of a key character expressed as a string. For control keys this is the full name, e.g. `"Enter"`, `"Alt-R"`.
+
+Params:
+> **key:** *The ansi keycode of the keyboard key.* \
+> **scan:** *The system specific code of the keyboard key, used if `key` lookup fails.* \
+> **out:** *The location the result will be stored in.*
 
 ### Members:
 > **eventQueue:** *All meaningful changes that occured in event state since the last call to `monitorEvents()`. (type: `std::vector<WindowManager::EventManager::Event>`)* \
