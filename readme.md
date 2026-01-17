@@ -1,5 +1,5 @@
 # Lazarus Engine
-#### *Version: 0.14.2*
+#### *Version: 0.14.3*
 ## Table of contents:
 
 - [Getting Started](#getting-started)
