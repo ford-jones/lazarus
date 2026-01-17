@@ -1,5 +1,6 @@
-# Version: 2026.01.17234024
+# Version: 2026.01.17234128
 
+* [8694b59](https://github.com/ford-jones/lazarus/commit/8694b5945ef865bc71f3b849e13d6c9eab162d54): [Changelog CI] Add Changelog for Version 2026.01.17234024
 * [7e2c660](https://github.com/ford-jones/lazarus/commit/7e2c6606c1e2c9b9198c7d0293fbdd5f5f5972d6): Fix: Ensures camera up-vector polarity is flips correctly
 * [a0fa507](https://github.com/ford-jones/lazarus/commit/a0fa5070d8d0919a0859a257e09883a86d6fa293): Docs: Amend errors in examples documentation.
 * [c166556](https://github.com/ford-jones/lazarus/commit/c1665569a76ac4e080d146db4f6c150e0cd84062): Docs: Updated header
