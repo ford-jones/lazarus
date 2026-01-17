@@ -51,19 +51,6 @@ extern bool                      LAZARUS_DO_STENCIL_BUFFER;
 extern uint32_t                  LAZARUS_MAX_IMAGE_WIDTH;
 extern uint32_t                  LAZARUS_MAX_IMAGE_HEIGHT;
 
-/* Events */
-
-extern int32_t                  LAZARUS_LISTENER_KEYCODE;
-extern int32_t                  LAZARUS_LISTENER_SCANCODE;
-extern int32_t                  LAZARUS_LISTENER_MOUSECODE;
-extern float                     LAZARUS_LISTENER_MOUSEX;
-extern float                     LAZARUS_LISTENER_MOUSEY;
-extern float                     LAZARUS_LISTENER_SCROLLCODE;
-
-
-/* Placeholders */
-
-extern const uint32_t            LAZARUS_MOUSE_NOCLICK;
 
 typedef enum lazarus_result
 {

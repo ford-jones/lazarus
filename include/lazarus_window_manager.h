@@ -53,52 +53,68 @@ class Time
 		float frameCount;		
 };
 
-class Events
+class EventManager
 {
     public:
         enum EventType
         {
-            KEY_PRESS = 1,
-            CLICK = 2,
-            MOUSE_MOVE = 3,
-            SCROLL = 4
+            KEY_PRESS,
+            CLICK,
+            MOUSE_MOVE,
+            SCROLL
         };
 
         struct Event
         {
             EventType type;
-            uint32_t code;
+            
+            int32_t key             = 0;
+		    int32_t keyVariant      = 0;
+		    int32_t click           = 0;
+		    int32_t scroll          = 0;
+		    int32_t mousePositionX  = 0;
+		    int32_t mousePositionY  = 0;
         };
 
-        Events();
+        EventManager();
 
     	lazarus_result eventsInit();
         lazarus_result monitorEvents();
+        lazarus_result convertKeyName(int32_t key, int32_t scan, std::string &out);
 
-        std::string keyName;
-        uint32_t keyCode;
-		uint32_t scanCode;
-
-		uint32_t clickState;
-		uint32_t mousePositionX;
-		uint32_t mousePositionY;
+        void getLatestKey(int32_t &outCode, int32_t &outScan);
+        void getLatestMouseMove(int32_t &outX, int32_t &outY);
+        void getLatestClick(int32_t &out);
+        void getLatestScroll(int32_t &out);
+        
+        std::vector<Event> eventQueue;
+            
+        virtual ~EventManager();
 		
-		float scrollState;
-
-        virtual ~Events();
-		
+    protected:
+        void dispatchEvent(EventType variant, int32_t aValue, int32_t bValue);
+        
     private:
+        Event event;
+
+        int32_t latestKeyState;
+		int32_t latestScanState;
+		int32_t latestClickState;
+		int32_t latestMouseXState;
+		int32_t latestMouseYState;
+        int32_t latestScrollState;
+        
+        std::string keyName;
+
         lazarus_result checkErrors(const char *file, int line);
-        void updateKeyboardState();
-        void updateMouseState();
 
         int32_t errorCode;
         const char* errorMessage;
-
+        
         GLFWwindow *win;
-};
+    };
 
-class WindowManager : public Events, public Time
+class WindowManager : public EventManager, public Time
 {
     public:
         WindowManager(const char *title, uint32_t width = 800, uint32_t height = 600);

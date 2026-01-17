@@ -681,7 +681,7 @@ lazarus_result AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<ui
             std::memcpy(buffer, &this->binaryData[bufferView.byteOffset], sizeof(unsigned char) * bufferView.byteLength);
 
             FileLoader::Image loadResult = {};
-            status = fileLoader->loadImage(loadResult, nullptr, buffer, bufferView.byteLength);
+            status = fileLoader->loadImage(loadResult, NULL, buffer, bufferView.byteLength, false);
             if(status != lazarus_result::LAZARUS_OK)
             {
                 return status;

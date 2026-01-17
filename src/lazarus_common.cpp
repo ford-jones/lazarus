@@ -45,7 +45,6 @@ uint32_t                 LAZARUS_LIGHT_COUNT                    = 0;
 std::vector<uint32_t>    LAZARUS_SELECTABLE_ENTITIES            = {};
 const uint32_t           LAZARUS_MAX_LIGHTS                     = 150;
 const uint32_t           LAZARUS_MAX_SELECTABLE_ENTITIES        = 254;
-const uint32_t           LAZARUS_MOUSE_NOCLICK                  = 999;
 
 uint32_t                 LAZARUS_MAX_IMAGE_WIDTH                = 0;
 uint32_t                 LAZARUS_MAX_IMAGE_HEIGHT               = 0;
@@ -56,13 +55,6 @@ bool                     LAZARUS_DISABLE_VSYNC                  = false;
 bool                     LAZARUS_DO_STENCIL_BUFFER              = false;
 bool                     LAZARUS_CULL_BACK_FACES                = true;
 bool                     LAZARUS_DEPTH_TEST_FRAGS               = true;
-
-int32_t                  LAZARUS_LISTENER_KEYCODE               = 0;
-int32_t                  LAZARUS_LISTENER_SCANCODE              = 0;
-int32_t                  LAZARUS_LISTENER_MOUSECODE             = LAZARUS_MOUSE_NOCLICK;
-float                    LAZARUS_LISTENER_MOUSEX                = 0;
-float                    LAZARUS_LISTENER_MOUSEY                = 0;
-float                    LAZARUS_LISTENER_SCROLLCODE            = 0;
 
 void GlobalsManager::setEnforceImageSanity(bool shouldEnforce)
 {

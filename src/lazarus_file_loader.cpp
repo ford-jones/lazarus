@@ -106,12 +106,12 @@ lazarus_result FileLoader::loadText(std::string filepath, std::string &out)
     };
 };
 
-lazarus_result FileLoader::loadImage(FileLoader::Image &out, const char *filename, const unsigned char *raw, uint32_t size)
+lazarus_result FileLoader::loadImage(FileLoader::Image &out, const char *filename, const unsigned char *raw, uint32_t size, bool flipVert)
 {
     this->imageData = {};
     this->outResize = {};
     
-    if(raw == NULL)
+    if(raw == NULL && filename)
     {   
         /* ====================================================
             Images should be flipped on load due to the fact that 
@@ -123,12 +123,12 @@ lazarus_result FileLoader::loadImage(FileLoader::Image &out, const char *filenam
             It seems the exception to this rule are glb files
             (i.e. load_from_memory).
         ======================================================= */
-        stbi_set_flip_vertically_on_load(true);
+        stbi_set_flip_vertically_on_load(flipVert);
         this->imageData = stbi_load(filename, &imageWidth, &imageHeight, &channelCount, 0);
     }
     else
     {
-        stbi_set_flip_vertically_on_load(false);
+        stbi_set_flip_vertically_on_load(flipVert);
         /* =============================================================
             If the file has already been opened and read elsewhere in 
             the program, but has not yet been decoded.

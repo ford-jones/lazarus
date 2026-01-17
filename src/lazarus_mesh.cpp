@@ -202,7 +202,7 @@ lazarus_result MeshManager::createQuad(MeshManager::Mesh &out, MeshManager::Quad
         AssetLoader::layerCount += 1;
     };
 
-    float layer = static_cast<float>(AssetLoader::layerCount);
+    float layer = static_cast<float>(AssetLoader::layerCount - 1);
 
     /* ======================================================
         Ensure that the origin is centered.

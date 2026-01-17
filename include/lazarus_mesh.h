@@ -154,7 +154,7 @@ class MeshManager
 
         virtual ~MeshManager();
     
-    protected:
+    // protected:
         lazarus_result clearMeshStorage();
 
     private:
