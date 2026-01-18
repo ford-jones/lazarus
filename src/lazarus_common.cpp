@@ -26,8 +26,7 @@ void LOG_DEBUG(const char *DEBUG_MESSAGE)
         std::chrono::time_point getTime = std::chrono::system_clock::now();
         const std::time_t time = std::chrono::system_clock::to_time_t(getTime);
         
-        std::cout << DEBUG_MESSAGE << std::endl;
-        std::cout << BLUE_TEXT << "At: "<< std::ctime(&time) << RESET_TEXT << std::endl;
+        std::cout << BLUE_TEXT << "["<< time << "] " << RESET_TEXT << DEBUG_MESSAGE << std::endl;
     #endif
 
     return;
