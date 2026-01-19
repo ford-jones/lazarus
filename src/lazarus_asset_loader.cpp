@@ -347,28 +347,35 @@ lazarus_result AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<ui
     this->resetMembers();
     lazarus_result status = lazarus_result::LAZARUS_OK;
 
+    //  Top level: mesh properties (note the square-bracket)
+    std::string NODES = "\"nodes\":[{";
+    std::string MESHES = "\"meshes\":[";
+    std::string SKINS = "\"skins:\"[";
     std::string PRIMITIVES = "\"primitives\":[";
     std::string MATERIALS = "\"materials\":[";
-    std::string MATERIALID = "\"material\":";
     std::string TEXTURES = "\"textures\":[";
+    std::string ACCESSORS = "\"accessors\":[";
+    std::string IMAGES = "\"images\":[";
+    std::string BUFFERVIEWS = "\"bufferViews\":[";
+    std::string BUFFERS = "\"buffers\":[{";
+
+    //  Subsequent levels: property attributes
+    std::string MATERIALID = "\"material\":";
     std::string TEXTUREID = "\"baseColorTexture\":";
     std::string DIFFUSE = "\"baseColorFactor\":";
     std::string INDEX = "\"index\":";
-    std::string ACCESSORS = "\"accessors\":[";
     std::string ATTRIBUTES = "\"attributes\":";
     std::string INDICES = "\"indices\":";
     std::string SAMPLERID = "\"sampler\":";
-    std::string IMAGES = "\"images\":[";
     std::string IMAGEID = "\"source\":";
-    std::string BUFFERVIEW = "\"bufferViews\":[";
     std::string BUFFERVIEWID = "\"bufferView\":";
-    std::string BUFFERS = "\"buffers\":[{";
     std::string BUFFERID = "\"buffer\":";
     std::string COUNT = "\"count\":";
     std::string COMPONENTTYPE = "\"componentType\":";
     std::string BYTEOFFSET = "\"byteOffset\":";
     std::string BYTELENGTH = "\"byteLength\":";
     std::string BYTESTRIDE = "\"byteStride\":";
+    std::string NAME = "\"name\":";
     
     std::string path = "";
     status = fileLoader->relativePathToAbsolute(meshPath, path);
@@ -383,7 +390,17 @@ lazarus_result AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<ui
         return status;
     };
 
-    std::vector<std::string> propertyIdentifiers = {ACCESSORS,PRIMITIVES,MATERIALS,TEXTURES,IMAGES,BUFFERVIEW,BUFFERS};
+    std::vector<std::string> propertyIdentifiers = {
+        MESHES,
+        NODES,
+        SKINS,
+        ACCESSORS,
+        MATERIALS,
+        TEXTURES,
+        IMAGES,
+        BUFFERVIEWS,
+        BUFFERS
+    };
     std::vector<std::string> propertyStrings = {};
     std::vector<uint32_t> propertyIndexes = {};
 
@@ -478,10 +495,27 @@ lazarus_result AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<ui
                 return lazarus_result::LAZARUS_FILE_UNREADABLE;
             };
         }
-        else if(json.find(PRIMITIVES) == 0)
+        else if(json.find(NODES) == 0)
         {
             std::string meshData = json;
-            std::vector<std::string> attributes = extractContainedContents(meshData, ATTRIBUTES.append("{"), "}");
+            LOG_DEBUG(meshData.c_str());
+        }
+        else if(json.find(MESHES) == 0)
+        {
+            std::string meshData = json;
+            /* ============================================
+                Extract mesh name in the event that user 
+                didn't configure one.
+            =============================================== */
+            uint32_t nameStart = meshData.find(NAME);
+            std::string nameBuff = *this->extractContainedContents(meshData.substr(nameStart + NAME.size()), "\"", "\"").data();
+            std::string name = nameBuff.erase(nameBuff.size() - 1);
+            LOG_DEBUG(std::string("Loading asset: [").append(name + "]").c_str());
+            
+            uint32_t primitivesLoc = meshData.find(PRIMITIVES);
+            std::string primitives = meshData.substr(primitivesLoc);
+        
+            std::vector<std::string> attributes = extractContainedContents(primitives, ATTRIBUTES.append("{"), "}");
             for(size_t i = 0; i < attributes.size(); i++)
             {           
                 glbMeshData mesh = {};
@@ -523,14 +557,19 @@ lazarus_result AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<ui
                     };
                 };
 
-                mesh.indicesAccessor = this->extractAttributeIndex(meshData, INDICES);
-                mesh.materialIndex = this->extractAttributeIndex(meshData, MATERIALID);
+                mesh.indicesAccessor = this->extractAttributeIndex(primitives, INDICES);
+                mesh.materialIndex = this->extractAttributeIndex(primitives, MATERIALID);
                 meshes.push_back(mesh);
 
                 std::string nextObject = "},{";
-                int32_t location = meshData.find(nextObject);
-                meshData = meshData.substr(location + nextObject.size());
+                int32_t location = primitives.find(nextObject);
+                primitives = primitives.substr(location + nextObject.size());
             }
+        }
+        else if(json.find(SKINS) == 0)
+        {
+            std::string meshData = json;
+            LOG_DEBUG(meshData.c_str());
         }
         else if(json.find(TEXTURES) == 0)
         {
@@ -576,7 +615,7 @@ lazarus_result AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<ui
             };
 
         }
-        else if(json.find(BUFFERVIEW) == 0)
+        else if(json.find(BUFFERVIEWS) == 0)
         {
             /* ============================================================================
                 Note that the bufferView's 'target' property (responsible for describing 
