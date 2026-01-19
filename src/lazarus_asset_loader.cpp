@@ -38,6 +38,7 @@ AssetLoader::AssetLoader()
 
 lazarus_result AssetLoader::parseWavefrontObj(std::vector<glm::vec3> &outAttributes, std::vector<uint32_t> &outIndexes, std::vector<glm::vec3> &outDiffuse, std::vector<FileLoader::Image> &outImages, const char *meshPath, const char *materialPath) 
 {
+    LOG_DEBUG("Parsing wavefront obj asset.");
     this->resetMembers();
     lazarus_result status = lazarus_result::LAZARUS_OK;
 
@@ -339,6 +340,7 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath, vector<v
     
 lazarus_result AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> &outDiffuse, std::vector<FileLoader::Image> &outImages, const char* meshPath)
 {
+    LOG_DEBUG("Parsing glb binary asset.");
     //  TODO:
     //  Consider a threading implentation to speed up loads and not block the main-thread/renderer
     //  Get the size of this function down, too many lines... (-_-*)
@@ -360,6 +362,7 @@ lazarus_result AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<ui
     std::string BUFFERS = "\"buffers\":[{";
 
     //  Subsequent levels: property attributes
+    std::string MESH = "\"mesh\":";
     std::string MATERIALID = "\"material\":";
     std::string TEXTUREID = "\"baseColorTexture\":";
     std::string DIFFUSE = "\"baseColorFactor\":";
@@ -498,73 +501,92 @@ lazarus_result AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<ui
         else if(json.find(NODES) == 0)
         {
             std::string meshData = json;
-            LOG_DEBUG(meshData.c_str());
+
+            std::vector<std::string> nodeBuff = this->extractContainedContents(meshData, "{", "}");
+            for(auto &nodeData : nodeBuff)
+            {
+                glbNodeData node = {};
+                /* ============================================
+                    Extract mesh name in the event that user 
+                    didn't configure one.
+                =============================================== */
+                uint32_t nameStart = nodeData.find(NAME);
+                std::string nameBuff = *this->extractContainedContents(nodeData.substr(nameStart + NAME.size()), "\"", "\"").data();
+
+                node.name = nameBuff.erase(nameBuff.size() - 1);
+                node.meshIndex = this->extractAttributeIndex(nodeData, MESH);
+                node.skinIndex = -1;
+
+                LOG_DEBUG(std::string("Loading asset: [").append(node.name + "]").c_str());
+                LOG_DEBUG(std::string("Mesh Index: ").append(std::to_string(node.meshIndex)).c_str());
+
+                nodes.push_back(node);
+            };
         }
         else if(json.find(MESHES) == 0)
         {
             std::string meshData = json;
-            /* ============================================
-                Extract mesh name in the event that user 
-                didn't configure one.
-            =============================================== */
-            uint32_t nameStart = meshData.find(NAME);
-            std::string nameBuff = *this->extractContainedContents(meshData.substr(nameStart + NAME.size()), "\"", "\"").data();
-            std::string name = nameBuff.erase(nameBuff.size() - 1);
-            LOG_DEBUG(std::string("Loading asset: [").append(name + "]").c_str());
+
+            std::vector<std::string> primitives = extractContainedContents(meshData, PRIMITIVES, "]");
+            meshes = {};
             
-            uint32_t primitivesLoc = meshData.find(PRIMITIVES);
-            std::string primitives = meshData.substr(primitivesLoc);
-        
-            std::vector<std::string> attributes = extractContainedContents(primitives, ATTRIBUTES.append("{"), "}");
-            for(size_t i = 0; i < attributes.size(); i++)
-            {           
-                glbMeshData mesh = {};
-                std::vector<std::string> attributeProperties = splitTokensFromLine(attributes[i].c_str(), ',');
-                /* ========================================================
-                    Mark uvAccessor as not-present by default.
-                =========================================================== */
-                mesh.uvAccessor = -1;
-                for(size_t j = 0; j < attributeProperties.size(); j++)
-                {
-                    std::string property = attributeProperties[j];
-                    int32_t index = property.find(":");
-                    if(index < 0)
+            for(size_t a = 0; a < primitives.size(); a++)
+            {
+                std::string &primitiveData = primitives[a];
+                std::vector<std::string> attributes = extractContainedContents(primitiveData, ATTRIBUTES.append("{"), "}");
+                meshAttributes.clear();
+                for(size_t i = 0; i < attributes.size(); i++)
+                {           
+                    glbMeshData properties = {};
+                    std::vector<std::string> attributeProperties = splitTokensFromLine(attributes[i].c_str(), ',');
+                    /* ========================================================
+                        Mark uvAccessor as not-present by default.
+                    =========================================================== */
+                    properties.uvAccessor = -1;
+                    for(size_t j = 0; j < attributeProperties.size(); j++)
                     {
-                        LOG_ERROR("Asset Error:", __FILE__, __LINE__);
-                        
-                        return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
+                        std::string property = attributeProperties[j];
+                        int32_t index = property.find(":");
+                        if(index < 0)
+                        {
+                            LOG_ERROR("Asset Error:", __FILE__, __LINE__);
+                            
+                            return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
+                        };
+    
+    
+                        int32_t value = std::stoi(property.substr(index + 1));
+                        switch (property[1])
+                        {
+                            //  POSITION
+                            case 'P':
+                                properties.positionAccessor = value;
+                                break;
+                            //  NORMAL
+                            case 'N':
+                                properties.normalsAccessor = value;
+                                break;
+                            //  TEXCOORD
+                            case 'T':
+                                properties.uvAccessor = value;
+                                break;
+    
+                            default:
+                                break;
+                        };
                     };
-
-
-                    int32_t value = std::stoi(property.substr(index + 1));
-                    switch (property[1])
-                    {
-                        //  POSITION
-                        case 'P':
-                            mesh.positionAccessor = value;
-                            break;
-                        //  NORMAL
-                        case 'N':
-                            mesh.normalsAccessor = value;
-                            break;
-                        //  TEXCOORD
-                        case 'T':
-                            mesh.uvAccessor = value;
-                            break;
-
-                        default:
-                            break;
-                    };
+    
+                    properties.indicesAccessor = this->extractAttributeIndex(primitiveData, INDICES);
+                    properties.materialIndex = this->extractAttributeIndex(primitiveData, MATERIALID);
+                    meshAttributes.push_back(properties);
+    
+                    std::string nextObject = "},{";
+                    int32_t location = primitiveData.find(nextObject);
+                    primitiveData = primitiveData.substr(location + nextObject.size());
                 };
 
-                mesh.indicesAccessor = this->extractAttributeIndex(primitives, INDICES);
-                mesh.materialIndex = this->extractAttributeIndex(primitives, MATERIALID);
-                meshes.push_back(mesh);
-
-                std::string nextObject = "},{";
-                int32_t location = primitives.find(nextObject);
-                primitives = primitives.substr(location + nextObject.size());
-            }
+                meshes.push_back(meshAttributes);
+            };
         }
         else if(json.find(SKINS) == 0)
         {
@@ -661,155 +683,162 @@ lazarus_result AssetLoader::parseGlBinary(vector<vec3> &outAttributes, vector<ui
         };
     };
 
-    uint32_t indicesCount = 0;
     /* ===========================================
         Load values from this->binaryData
         ...
     ============================================== */
-    for(size_t i = 0; i < meshes.size(); i++)
+    for(size_t i = 0; i < nodes.size(); i++)
     {
-        std::vector<glm::vec3> vertexPositions;
-        std::vector<glm::vec3> vertexNormals;
-        std::vector<glm::vec3> vertexUvs;
+        uint32_t indicesCount = 0;
+
+        glbNodeData node = nodes[i];
+        std::vector<glbMeshData> meshData = meshes[node.meshIndex];
         
-        glbMeshData mesh = meshes[i];
-
-        /* ==================================================================
-            Load face data / primitives. Unlike wavefront, this format can
-            support n'gons due to it's serialisation of indices per-face.
-            Note Uvs may not be present.
-        ===================================================================== */
-
-        glbAccessorData posiitonAccessor = accessors[mesh.positionAccessor];
-        glbAccessorData normalAccessor = accessors[mesh.normalsAccessor];
-
-        if(mesh.uvAccessor >= 0)
+        for(size_t j = 0; j < meshData.size(); j++)
         {
-            glbAccessorData uvAccessor = accessors[mesh.uvAccessor];
-            this->populateBufferFromAccessor(uvAccessor, vertexUvs);
-        };
-        this->populateBufferFromAccessor(posiitonAccessor, vertexPositions);
-        this->populateBufferFromAccessor(normalAccessor, vertexNormals);
-        
-        /* =========================================================
-            Load materials. Load the image from memory if the mesh
-            uses an image texture. If an image is loaded, the 
-            diffuse portion of the attributes vector is zero'd.
-        ============================================================ */
-
-        glbMaterialData material = materials[mesh.materialIndex];
-        bool usesTextures = false;
-        
-        if(material.textureIndex >= 0)
-        {
-            usesTextures = true;
-
-            glbTextureData texture = textures[material.textureIndex];
-            glbImageData image = images[texture.imageIndex];
-
-            glbBufferViewData bufferView = bufferViews[image.bufferViewIndex];
-
-            /* ==============================================================
-                Allocate the image buffer on the heap. Even when the texture 
-                image is compressed, it's raw size can be in the MBs and in
-                the worst case can cause stack overflows (and has).
-            ================================================================== */
-
-            unsigned char *buffer = new unsigned char[bufferView.byteLength];
-            std::memset(buffer, 0, sizeof(unsigned char) * bufferView.byteLength);
-            std::memcpy(buffer, &this->binaryData[bufferView.byteOffset], sizeof(unsigned char) * bufferView.byteLength);
-
-            FileLoader::Image loadResult = {};
-            status = fileLoader->loadImage(loadResult, NULL, buffer, bufferView.byteLength, false);
-            if(status != lazarus_result::LAZARUS_OK)
-            {
-                return status;
-            };
-
-            outImages.push_back(loadResult);
-            delete[] buffer;
-        };
-        
-        /* =================================================
-            Load indices data and perform lookups.
-        ==================================================== */
-
-        glbAccessorData indicesAccessor = accessors[mesh.indicesAccessor];
-        glbBufferViewData indicesBufferView = bufferViews[indicesAccessor.bufferViewIndex];
-        
-        indicesCount += indicesAccessor.count;
-
-        uint32_t indicesOffset = indicesAccessor.byteOffset != -1 
-        ? indicesBufferView.byteOffset + indicesAccessor.byteOffset
-        : indicesBufferView.byteOffset;
-
-        /* ===============================================================
-            Ensure that the correct size is being used as indices values may 
-            be expressed as either 16 OR 32 bit. 
-        ================================================================== */
-        std::vector<uint16_t> indicesShort(indicesAccessor.count);
-        std::vector<uint32_t> indices(indicesAccessor.count);
-        
-        indicesAccessor.componentType == GL_UNSIGNED_SHORT
-        ? std::memcpy(indicesShort.data(), &this->binaryData[indicesOffset], sizeof(uint16_t) * indicesAccessor.count)
-        : std::memcpy(indices.data(), &this->binaryData[indicesOffset], sizeof(uint32_t) * indicesAccessor.count);
-        
-        /* ========================================================================================
-            The indices / SCALAR buffer-values contained inside  of the glb file don't actually 
-            correspond directly to the indices used to traverse the VBO. Instead; these values 
-            pertain to the indices of the attributes for how a single face / primitive is  
-            constructed. I.e. if the mesh is a cube, EVERY value will be between 0 and 3 laid out in 
-            chunks of 6 at a time (four points shared between two triangles = 1 face).
-
-            To get a picture of this; export a cube as glb from some modeling software and load it. 
-            Print the contents of indices[j] here and compare them with the hardcoded index buffer 
-            contents of the 'MeshManager::createCube' function.
-
-            To get an actual index buffer, the verts must be duplicated one face at a time using 
-            these values, once that's done 'constructIndexBuffer' can be called to deduplicate them 
-            again and do it properly... sigh.
-        ============================================================================================= */
-
-        for(size_t j = 0; j < indicesAccessor.count; j++)
-        {
-            uint32_t index = indicesAccessor.componentType == GL_UNSIGNED_SHORT
-            ? indicesShort[j]
-            : indices[j];
-
-            uint32_t serial = (indicesCount - indicesAccessor.count) + j;
-
-            tempVertexPositions.emplace(serial, vertexPositions[index]);
-            tempNormals.emplace(serial, vertexNormals[index]);
-
-            /* ===================================================================
-                mesh.uvAccessor is optional. I.e. it doesn't nessecarily exist. 
-                In the case that it's not present in the json chunk, the VBO will 
-                still need to be populated so push back zeroes.
-            ====================================================================== */
-
-            mesh.uvAccessor >= 0 
-            ? tempUvs.emplace(serial, vertexUvs[index]) 
-            : tempUvs.emplace(serial, glm::vec3(0.0f, 0.0f, 0.0f));
+            std::vector<glm::vec3> vertexPositions;
+            std::vector<glm::vec3> vertexNormals;
+            std::vector<glm::vec3> vertexUvs;
             
-            vertexIndices.push_back(serial + 1);
-            normalIndices.push_back(serial + 1);
-            uvIndices.push_back(serial + 1);
-
-            tempDiffuse.push_back(material.diffuse);
+            glbMeshData mesh = meshData[j];
+    
+            /* ==================================================================
+                Load face data / primitives. Unlike wavefront, this format can
+                support n'gons due to it's serialisation of indices per-face.
+                Note Uvs may not be present.
+            ===================================================================== */
+    
+            glbAccessorData posiitonAccessor = accessors[mesh.positionAccessor];
+            glbAccessorData normalAccessor = accessors[mesh.normalsAccessor];
+    
+            if(mesh.uvAccessor >= 0)
+            {
+                glbAccessorData uvAccessor = accessors[mesh.uvAccessor];
+                this->populateBufferFromAccessor(uvAccessor, vertexUvs);
+            };
+            this->populateBufferFromAccessor(posiitonAccessor, vertexPositions);
+            this->populateBufferFromAccessor(normalAccessor, vertexNormals);
+            
+            /* =========================================================
+                Load materials. Load the image from memory if the mesh
+                uses an image texture. If an image is loaded, the 
+                diffuse portion of the attributes vector is zero'd.
+            ============================================================ */
+    
+            glbMaterialData material = materials[mesh.materialIndex];
+            bool usesTextures = false;
+            
+            if(material.textureIndex >= 0)
+            {
+                usesTextures = true;
+    
+                glbTextureData texture = textures[material.textureIndex];
+                glbImageData image = images[texture.imageIndex];
+    
+                glbBufferViewData bufferView = bufferViews[image.bufferViewIndex];
+    
+                /* ==============================================================
+                    Allocate the image buffer on the heap. Even when the texture 
+                    image is compressed, it's raw size can be in the MBs and in
+                    the worst case can cause stack overflows (and has).
+                ================================================================== */
+    
+                unsigned char *buffer = new unsigned char[bufferView.byteLength];
+                std::memset(buffer, 0, sizeof(unsigned char) * bufferView.byteLength);
+                std::memcpy(buffer, &this->binaryData[bufferView.byteOffset], sizeof(unsigned char) * bufferView.byteLength);
+    
+                FileLoader::Image loadResult = {};
+                status = fileLoader->loadImage(loadResult, NULL, buffer, bufferView.byteLength, false);
+                if(status != lazarus_result::LAZARUS_OK)
+                {
+                    return status;
+                };
+    
+                outImages.push_back(loadResult);
+                delete[] buffer;
+            };
+            
+            /* =================================================
+                Load indices data and perform lookups.
+            ==================================================== */
+    
+            glbAccessorData indicesAccessor = accessors[mesh.indicesAccessor];
+            glbBufferViewData indicesBufferView = bufferViews[indicesAccessor.bufferViewIndex];
+            
+            indicesCount += indicesAccessor.count;
+    
+            uint32_t indicesOffset = indicesAccessor.byteOffset != -1 
+            ? indicesBufferView.byteOffset + indicesAccessor.byteOffset
+            : indicesBufferView.byteOffset;
+    
+            /* ===============================================================
+                Ensure that the correct size is being used as indices values may 
+                be expressed as either 16 OR 32 bit. 
+            ================================================================== */
+            std::vector<uint16_t> indicesShort(indicesAccessor.count);
+            std::vector<uint32_t> indices(indicesAccessor.count);
+            
+            indicesAccessor.componentType == GL_UNSIGNED_SHORT
+            ? std::memcpy(indicesShort.data(), &this->binaryData[indicesOffset], sizeof(uint16_t) * indicesAccessor.count)
+            : std::memcpy(indices.data(), &this->binaryData[indicesOffset], sizeof(uint32_t) * indicesAccessor.count);
+            
+            /* ========================================================================================
+                The indices / SCALAR buffer-values contained inside  of the glb file don't actually 
+                correspond directly to the indices used to traverse the VBO. Instead; these values 
+                pertain to the indices of the attributes for how a single face / primitive is  
+                constructed. I.e. if the mesh is a cube, EVERY value will be between 0 and 3 laid out in 
+                chunks of 6 at a time (four points shared between two triangles = 1 face).
+    
+                To get a picture of this; export a cube as glb from some modeling software and load it. 
+                Print the contents of indices[j] here and compare them with the hardcoded index buffer 
+                contents of the 'MeshManager::createCube' function.
+    
+                To get an actual index buffer, the verts must be duplicated one face at a time using 
+                these values, once that's done 'constructIndexBuffer' can be called to deduplicate them 
+                again and do it properly... sigh.
+            ============================================================================================= */
+    
+            for(size_t j = 0; j < indicesAccessor.count; j++)
+            {
+                uint32_t index = indicesAccessor.componentType == GL_UNSIGNED_SHORT
+                ? indicesShort[j]
+                : indices[j];
+    
+                uint32_t serial = (indicesCount - indicesAccessor.count) + j;
+    
+                tempVertexPositions.emplace(serial, vertexPositions[index]);
+                tempNormals.emplace(serial, vertexNormals[index]);
+    
+                /* ===================================================================
+                    mesh.uvAccessor is optional. I.e. it doesn't nessecarily exist. 
+                    In the case that it's not present in the json chunk, the VBO will 
+                    still need to be populated so push back zeroes.
+                ====================================================================== */
+    
+                mesh.uvAccessor >= 0 
+                ? tempUvs.emplace(serial, vertexUvs[index]) 
+                : tempUvs.emplace(serial, glm::vec3(0.0f, 0.0f, 0.0f));
+                
+                vertexIndices.push_back(serial + 1);
+                normalIndices.push_back(serial + 1);
+                uvIndices.push_back(serial + 1);
+    
+                tempDiffuse.push_back(material.diffuse);
+                if(usesTextures)
+                {
+                    layers.push_back(layerCount);
+                };
+    
+            };
+            outDiffuse.push_back(material.diffuse);
             if(usesTextures)
             {
-                layers.push_back(layerCount);
+                this->layerCount += 1;
             };
-
         };
-        outDiffuse.push_back(material.diffuse);
-        if(usesTextures)
-        {
-            this->layerCount += 1;
-        };
-    };
-
-    this->constructIndexBuffer(outAttributes, outIndexes, tempDiffuse, tempVertexPositions.size());
+    
+        this->constructIndexBuffer(outAttributes, outIndexes, tempDiffuse, tempVertexPositions.size());
+    }
 
     return lazarus_result::LAZARUS_OK;
 };

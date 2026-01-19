@@ -95,6 +95,12 @@ class AssetLoader
         std::string jsonData;
         std::string binaryData;
         
+        struct glbNodeData
+        {
+            std::string name;
+            int32_t meshIndex;
+            int32_t skinIndex;
+        };
         struct glbMeshData
         {
             uint32_t positionAccessor;
@@ -137,7 +143,9 @@ class AssetLoader
             uint32_t offset;
             uint32_t stride;
         };
-        std::vector<glbMeshData> meshes;
+        std::vector<glbNodeData> nodes;
+        std::vector<std::vector<glbMeshData>> meshes;
+        std::vector<glbMeshData> meshAttributes;
         std::vector<glbMaterialData> materials;
         std::vector<glbTextureData> textures;
         std::vector<glbImageData> images;

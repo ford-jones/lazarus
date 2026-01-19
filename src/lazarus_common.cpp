@@ -23,10 +23,10 @@ void LOG_DEBUG(const char *DEBUG_MESSAGE)
 {
     #ifdef _LAZARUS_DEBUG_BUILD
     
-        std::chrono::time_point getTime = std::chrono::system_clock::now();
-        const std::time_t time = std::chrono::system_clock::to_time_t(getTime);
+        std::chrono::system_clock::duration epoch = std::chrono::system_clock::now().time_since_epoch();
+        uint64_t ms = epoch / std::chrono::milliseconds(1);
         
-        std::cout << BLUE_TEXT << "["<< time << "] " << RESET_TEXT << DEBUG_MESSAGE << std::endl;
+        std::cout << BLUE_TEXT << "["<< ms << "] " << RESET_TEXT << DEBUG_MESSAGE << std::endl;
     #endif
 
     return;
