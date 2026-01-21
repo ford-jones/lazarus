@@ -62,11 +62,16 @@ class AssetLoader
         uint32_t layerCount;
     	AssetLoader();	
     	    
+        struct AssetData
+        {
+            std::vector<glm::vec3> attributes;
+            std::vector<glm::vec3> colors;
+            std::vector<uint32_t> indices;
+            std::vector<FileLoader::Image> textures;
+        };
+
         lazarus_result parseWavefrontObj(
-            std::vector<glm::vec3> &outAttributes,
-            std::vector<uint32_t> &outIndexes,
-            std::vector<glm::vec3> &outDiffuse,
-            std::vector<FileLoader::Image> &outImages,
+            std::vector<AssetData> &out,
             const char *meshPath,
             const char *materialPath
         );
@@ -80,10 +85,7 @@ class AssetLoader
         );
 
         lazarus_result parseGlBinary(
-            std::vector<glm::vec3> &outAttributes,
-            std::vector<uint32_t> &outIndexes,
-            std::vector<glm::vec3> &outDiffuse,
-            std::vector<FileLoader::Image> &outImages,
+            std::vector<AssetData> &out,
             const char *meshPath
         );
         
@@ -100,8 +102,9 @@ class AssetLoader
             std::string name;
             int32_t meshIndex;
             int32_t skinIndex;
+            vector<int32_t> children;
         };
-        struct glbMeshData
+        struct glbAttributeData
         {
             uint32_t positionAccessor;
             uint32_t normalsAccessor;
@@ -143,9 +146,12 @@ class AssetLoader
             uint32_t offset;
             uint32_t stride;
         };
+
+        typedef std::vector<glbAttributeData> glbMeshData;
+        
+        glbMeshData mesh;
         std::vector<glbNodeData> nodes;
-        std::vector<std::vector<glbMeshData>> meshes;
-        std::vector<glbMeshData> meshAttributes;
+        std::vector<glbMeshData> meshes;
         std::vector<glbMaterialData> materials;
         std::vector<glbTextureData> textures;
         std::vector<glbImageData> images;
@@ -212,6 +218,7 @@ class AssetLoader
         std::map<uint32_t, glm::vec3> tempVertexPositions;
         std::map<uint32_t, glm::vec3> tempUvs;
         std::map<uint32_t, glm::vec3> tempNormals;
+        std::vector<FileLoader::Image> tempImages;
         std::vector<glm::vec3> tempDiffuse;
 
         glm::vec3 vertex;

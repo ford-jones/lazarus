@@ -83,33 +83,46 @@ lazarus_result MeshManager::create3DAsset(MeshManager::Mesh &out, MeshManager::A
     std::string suffix = meshOut.meshFilepath.substr(suffixDelimiter + 1);
 
     lazarus_result status = lazarus_result::LAZARUS_OK;
+    std::vector<AssetLoader::AssetData> asset = {};
     if(suffix.compare("obj") == 0)
     {
         status = AssetLoader::parseWavefrontObj(
-            meshData.attributes,
-            meshData.indexes,
-            diffuseColors,
-            images,
+            asset,
             meshOut.meshFilepath.c_str(),
             meshOut.materialFilepath.c_str()
         );
+
         meshOut.type = MeshManager::MeshType::LOADED_WAVEFRONT;
     }
     else if(suffix.compare("glb") == 0)
     {
         status = AssetLoader::parseGlBinary(
-            meshData.attributes, 
-            meshData.indexes, 
-            diffuseColors, 
-            images,
+            asset,
             meshOut.meshFilepath.c_str()
         );
+        
         meshOut.type = MeshManager::MeshType::LOADED_GLB;
     };
     if(status != lazarus_result::LAZARUS_OK)
     {
         return status;
     };
+    //  TODO:
+    //  For every AssetData returned by the parser(s) a meshData will need to be created and pushed.
+    //  These grouped MeshData's will quantify a single model
+    //  meshOut will become modelOut, and will be used to look up the model (mesh group)
+    //  Subsequently, instantiation and cursor-picking behaviours (ids / flags) must be inheritted / shared amongst all child meshes of a model
+    //  Any action taken on a model will thus have to be acted out upon each of it's children (load / draw / transforms etc) and those children's children (instances)
+    //  
+    //  GUESS:
+    //  Each of the meshes will have to be moved to some location relative to one another. Their shared origin will become the starting location of the model / parent.
+    //  These changes may have other implication re: skyboxes / text rendering that I can't currently foresee
+
+    LOG_DEBUG(std::string("loaded [").append(std::to_string(asset.size()) + "] mesh objects.").c_str());
+    meshData.attributes = asset[0].attributes;
+    meshData.indexes = asset[0].indices;
+    diffuseColors = asset[0].colors;
+    images = asset[0].textures;
 
     meshData.instanceCount = options.instanceCount;
     this->instantiateMesh(options.selectable);
