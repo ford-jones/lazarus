@@ -38,7 +38,7 @@ AssetLoader::AssetLoader()
 
 lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData> &out, const char *meshPath, const char *materialPath) 
 {
-    LOG_DEBUG("Parsing wavefront obj asset.");
+    LOG_DEBUG("Parsing wavefront obj asset....");
     this->resetMembers();
     lazarus_result status = lazarus_result::LAZARUS_OK;
 
@@ -348,7 +348,7 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath, vector<v
     
 lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &out, const char* meshPath)
 {
-    LOG_DEBUG("Parsing glb binary asset.");
+    LOG_DEBUG("Parsing glb binary asset....");
     //  TODO:
     //  Consider a threading implentation to speed up loads and not block the main-thread/renderer
     //  Get the size of this function down, too many lines... (-_-*)
@@ -360,7 +360,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
     //  Top level: mesh properties (note the square-bracket)
     std::string NODES = "\"nodes\":[{";
     std::string MESHES = "\"meshes\":[";
-    std::string SKINS = "\"skins:\"[";
+    std::string SKINS = "\"skins\":[";
     std::string PRIMITIVES = "\"primitives\":[";
     std::string MATERIALS = "\"materials\":[";
     std::string TEXTURES = "\"textures\":[";
@@ -449,46 +449,63 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
 
         if(json.find(MATERIALS) == 0)
         {
-            /* ==================================================
-                Check whether the mesh uses an image texture or 
-                is diffuse-colored.
-            ===================================================== */
-            int32_t diffuse = json.find(DIFFUSE);
-            int32_t textureIndex = json.find(TEXTUREID);
-            if(diffuse > 0)
+            LOG_DEBUG("Parsing materials...");
+            uint32_t prev = 0;
+            
+            /* ========================================
+                Split-out and identify materials
+            =========================================== */
+            for(size_t j = 0; j < json.size(); j++)
             {
-                std::vector<std::string> colors = extractContainedContents(json, DIFFUSE.append("["), "]");
-                for(size_t j = 0; j < colors.size(); j++)
+                std::string current = json.substr(j, 3);
+                
+                if(current == "},{" || current == "}],")
                 {
-                    std::vector<std::string> color = this->splitTokensFromLine(colors[j].c_str(), ',');
-                    glbMaterialData colorMaterial = {};
-                    colorMaterial.diffuse = {std::stof(color[0]), std::stof(color[1]), std::stof(color[2])};
-                    colorMaterial.textureIndex = -1;
-                    materials.push_back(colorMaterial);
+                    std::string material = json.substr(prev, j - prev);
+                    prev = j + 2;
 
+                    /* ==================================================
+                        Check whether the mesh uses an image texture or 
+                        is diffuse-colored.
+                    ===================================================== */
+                    
+                    if(material.find(DIFFUSE) != std::string::npos)
+                    {
+                        LOG_DEBUG("Inspecting diffuse colors");
+                        std::vector<std::string> colors = extractContainedContents(material, DIFFUSE + "[", "]");
+                        for(size_t j = 0; j < colors.size(); j++)
+                        {
+                            std::vector<std::string> color = this->splitTokensFromLine(colors[j].c_str(), ',');
+                            glbMaterialData colorMaterial = {};
+                            colorMaterial.diffuse = {std::stof(color[0]), std::stof(color[1]), std::stof(color[2])};
+                            colorMaterial.textureIndex = -1;
+                            materials.push_back(colorMaterial);
+                        };
+                    }
+                    else if(material.find(TEXTUREID) != std::string::npos)
+                    {
+                        LOG_DEBUG("Inspecting texture info");
+                        /* =============================================
+                            Identify texture index.
+                        ================================================ */
+                        std::vector<std::string> imageTextures = extractContainedContents(material, TEXTUREID + "{", "}");
+                        for(size_t j = 0; j < imageTextures.size(); j++)
+                        {            
+                            int32_t index = this->extractAttributeIndex(imageTextures[j], INDEX);
+        
+                            glbMaterialData texturedMaterial = {};
+                            texturedMaterial.diffuse = glm::vec3(-0.1f, -0.1f, -0.1f);
+                            texturedMaterial.textureIndex = index;
+                            materials.push_back(texturedMaterial);
+                        };
+                    }
+                    else
+                    {
+                        LOG_ERROR("Asset Error:", __FILE__, __LINE__);
+        
+                        return lazarus_result::LAZARUS_FILE_UNREADABLE;
+                    };
                 };
-            }
-            else if(textureIndex > 0)
-            {
-                /* =============================================
-                    Identify texture index.
-                ================================================ */
-                std::vector<std::string> imageTextures = extractContainedContents(json, TEXTUREID.append("{"), "}");
-                for(size_t j = 0; j < imageTextures.size(); j++)
-                {            
-                    int32_t index = this->extractAttributeIndex(imageTextures[j], INDEX);
-
-                    glbMaterialData texturedMaterial = {};
-                    texturedMaterial.diffuse = glm::vec3(-0.1f, -0.1f, -0.1f);
-                    texturedMaterial.textureIndex = index;
-                    materials.push_back(texturedMaterial);
-                };
-            }
-            else
-            {
-                LOG_ERROR("Asset Error:", __FILE__, __LINE__);
-
-                return lazarus_result::LAZARUS_FILE_UNREADABLE;
             };
         }
         else if(json.find(NODES) == 0)
@@ -500,6 +517,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
             //
             //  Load skins
             //  Store children
+            LOG_DEBUG("Parsing node...");
             std::string meshData = json;
 
             std::vector<std::string> nodeBuff = this->extractContainedContents(meshData, "{", "}");
@@ -523,9 +541,9 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         }
         else if(json.find(MESHES) == 0)
         {
+            LOG_DEBUG("Parsing primitives...");
             std::string meshData = json;
             std::vector<std::string> primitives = extractContainedContents(meshData, PRIMITIVES, "]");
-            LOG_DEBUG(std::string("Number of primitives: ").append(std::to_string(primitives.size())).c_str());
             
             meshes = {};
             
@@ -533,13 +551,11 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
             {
                 std::string &primitiveData = primitives[a];
                 std::vector<std::string> attributes = extractContainedContents(primitiveData, ATTRIBUTES, "}");
-                LOG_DEBUG(std::string("Primitive: ").append(primitiveData).c_str());
-                LOG_DEBUG(std::string("Number of attributes: ").append(std::to_string(attributes.size())).c_str());
+                LOG_DEBUG("Inspecting attributes");
 
                 mesh.clear();
                 for(size_t b = 0; b < attributes.size(); b++)
                 {           
-                    LOG_DEBUG(std::string("Attribute: ").append(attributes[b]).c_str());
                     glbAttributeData properties = {};
                     std::string attributeBuff = attributes[b].substr(1, attributes[b].size() - 2);
                     std::vector<std::string> attributeProperties = splitTokensFromLine(attributeBuff.c_str(), ',');
@@ -550,7 +566,6 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     for(size_t c = 0; c < attributeProperties.size(); c++)
                     {
                         std::string property = attributeProperties[c];
-                        LOG_DEBUG(std::string("Property: ").append(property).c_str());
                         
                         int32_t index = property.find(":");
                         if(index < 0)
@@ -600,6 +615,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         }
         else if(json.find(TEXTURES) == 0)
         {
+            LOG_DEBUG("Parsing texture data...");
             glbTextureData texture = {};
             std::vector<std::string> textureProperties = extractContainedContents(json, "{", "}");
             for(size_t j = 0; j < textureProperties.size(); j++)
@@ -611,6 +627,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         }
         else if(json.find(IMAGES) == 0)
         {
+            LOG_DEBUG("Copying image data...");
             std::vector<std::string> imageProperties = extractContainedContents(json, "{", "}");
             for(size_t j = 0; j < imageProperties.size(); j++)
             {
@@ -621,6 +638,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         }
         else if(json.find(ACCESSORS) == 0)
         {
+            LOG_DEBUG("Parsing accessors...");
             std::vector<std::string> data = this->extractContainedContents(json, "{", "}");
 
             std::vector<std::string> types;
@@ -644,6 +662,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         }
         else if(json.find(BUFFERVIEWS) == 0)
         {
+            LOG_DEBUG("Inspecting bufferviews...");
             /* ============================================================================
                 Note that the bufferView's 'target' property (responsible for describing 
                 what kind of buffer object this data should be written to) is skipped. 
@@ -672,6 +691,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         }
         else if(json.find(BUFFERS) == 0)
         {
+            LOG_DEBUG("Copying buffer data...");
             std::vector<std::string> data = this->extractContainedContents(json, "{", "}");
             uint32_t offset = 0;
             for(size_t j = 0; j < data.size(); j++)
@@ -726,7 +746,6 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 support n'gons due to it's serialisation of indices per-face.
                 Note Uvs may not be present.
             ===================================================================== */
-    
             glbAccessorData posiitonAccessor = accessors[mesh.positionAccessor];
             glbAccessorData normalAccessor = accessors[mesh.normalsAccessor];
     
@@ -866,6 +885,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 this->layerCount += 1;
             };
         };
+        asset.name = node.name;
         asset.textures = tempImages;
 
         this->constructIndexBuffer(asset.attributes, asset.indices, tempDiffuse, tempVertexPositions.size());

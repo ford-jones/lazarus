@@ -64,6 +64,7 @@ class AssetLoader
     	    
         struct AssetData
         {
+            std::string name;
             std::vector<glm::vec3> attributes;
             std::vector<glm::vec3> colors;
             std::vector<uint32_t> indices;

@@ -144,26 +144,26 @@ class MeshManager
 
         lazarus_result loadMesh(Mesh &meshIn);
         lazarus_result drawMesh(Mesh &meshIn);
-
+        
         //  TODO:
         //  This isn't quite the appropriate place to do this
         //  but ok for now
-
+        
         void setDiscardFragments(Mesh &meshIn, bool shouldDiscard);
         void copyMesh(Mesh &dest, Mesh src);
-
+        
         virtual ~MeshManager();
-    
-    // protected:
+        
+        // protected:
         lazarus_result clearMeshStorage();
-
+        
     private:
         struct MeshData
         {
             uint32_t id;
             uint32_t instanceCount;
             uint8_t stencilBufferId;
-
+            
             GLuint VAO;     //  Vertex Array Object
             GLuint VBO;     //  Vertex Buffer Object (attributes: interleaved)
             GLuint EBO;     //  Element Buffer Object (indices: tightly-packed)
@@ -177,16 +177,18 @@ class MeshManager
             std::vector<uint32_t> indexes;
             std::vector<glm::vec3> attributes;
         };
+        typedef std::vector<MeshData> ModelData;
 
-        lazarus_result setMaterialProperties(std::vector<glm::vec3> diffuse, std::vector<FileLoader::Image> images);
+        lazarus_result setMaterials(AssetLoader::AssetData &assetData);
+        lazarus_result setSelectable(bool selectable);
+        lazarus_result uploadVertexData();
+        lazarus_result uploadTextures();
+        lazarus_result reallocateTextures();
         lazarus_result checkErrors(const char *file, uint32_t line);
-        lazarus_result makeSelectable(bool selectable);
-        lazarus_result initialiseMesh();
-        lazarus_result prepareTextures();
-
+        
+        void clearErrors();
         void instantiateMesh(bool selectable);
         void setSharedProperties();
-        void clearErrors();
         
         uint32_t childCount;
 
@@ -209,7 +211,8 @@ class MeshManager
 
         Mesh meshOut;
         MeshData meshData;
-        std::map<uint32_t, MeshData> dataStore;
+        ModelData modelData;
+        std::map<uint32_t, ModelData> modelStore;
 };
 
 #endif
