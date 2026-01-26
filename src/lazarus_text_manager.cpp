@@ -268,6 +268,7 @@ lazarus_result TextManager::initialise()
 
 lazarus_result TextManager::extendFontStack(uint32_t &fontId, std::string filepath, uint32_t ptSize)
 {
+    LOG_DEBUG("Loading new truetype font");
     fonts.clear();
     alphabetHeights.clear();
     
@@ -370,6 +371,7 @@ lazarus_result TextManager::extendFontStack(uint32_t &fontId, std::string filepa
 
 lazarus_result TextManager::createText(TextManager::Text &out, TextManager::TextConfig options)
 {
+    LOG_DEBUG(std::string("Generating on-screen text [").append(options.targetString + "]").c_str());
     this->layoutIndex += 1;
 
     textOut.layoutIndex = this->layoutIndex;
@@ -390,41 +392,41 @@ lazarus_result TextManager::createText(TextManager::Text &out, TextManager::Text
 
 lazarus_result TextManager::loadText(TextManager::Text textIn)
 {
-    lazarus_result status = lazarus_result::LAZARUS_OK;
-
     TextManager::TextConfig &settings = textIn.config;
+    lazarus_result status = lazarus_result::LAZARUS_OK;
     
     /* =================================================
         Creation of these tiles takes up space in the
         manager's dataStore and will grow indefinitely
         if not flushed out. 
-
+        
         Also helps ensure the location of the tiles at
         the time of draw. I.e. index 0 .. n
     ==================================================== */
     
     MeshManager::clearMeshStorage();
-
+    
     if(word.size() > 0)
     {
         this->word.clear();
     };
-
+    
     this->translationStride = 0;
     
     /* ==========================================
-        Generate new tiles which are used as 
-        texture surfaces for a letter. 
-        
-        Letters are identified by their UV 
-        coordinates from within the glyph atlas.
+    Generate new tiles which are used as 
+    texture surfaces for a letter. 
+    
+    Letters are identified by their UV 
+    coordinates from within the glyph atlas.
     ============================================= */
-
+    
     for(size_t i = 0; i < settings.targetString.size(); i++)
     {   
         this->quad = {};
         this->setActiveGlyph(settings.targetString[i], settings.fontIndex, settings.letterSpacing);
-
+        
+        LOG_DEBUG("Loading glyph tile");
         MeshManager::QuadConfig quadSettings = {};
         quadSettings.width = this->glyph.width;
         quadSettings.height = this->glyph.height;
@@ -479,7 +481,8 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
 };
 
 lazarus_result TextManager::drawText(TextManager::Text textIn)
-{    
+{   
+    LOG_DEBUG("Rendering character tiles");
     this->word = layout.at(textIn.layoutIndex);
 
     //  TODO:

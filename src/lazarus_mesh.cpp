@@ -734,7 +734,6 @@ lazarus_result MeshManager::reallocateTextures()
                     };
                 };
             };
-            std::cout << GREEN_TEXT << "Texture count: " << textureCount << RESET_TEXT << std::endl;
         };
     };
 
@@ -743,6 +742,7 @@ lazarus_result MeshManager::reallocateTextures()
 
 lazarus_result MeshManager::clearMeshStorage()
 {	
+    LOG_DEBUG("Freeing model store contents");
     this->clearErrors();
     for(auto i: modelStore)
     {
@@ -751,6 +751,7 @@ lazarus_result MeshManager::clearMeshStorage()
             glDeleteBuffers         (1, &j.VBO);
             glDeleteBuffers         (1, &j.MBO);
             glDeleteBuffers         (1, &j.EBO);
+            glDeleteBuffers         (1, &j.IIBO);
             glDeleteVertexArrays    (1, &j.VAO);
         };
     };
@@ -814,6 +815,7 @@ lazarus_result MeshManager::setSelectable(bool selectable)
 
 lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
 {
+    LOG_DEBUG("Loading model data");
     MeshManager::ModelData &model = modelStore.at(meshIn.id);
     lazarus_result status = lazarus_result::LAZARUS_OK;
     
@@ -883,6 +885,7 @@ lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
     
         if(GlobalsManager::getManageStencilBuffer())
         {
+            LOG_DEBUG("Loading stencil ID");
             this->clearErrors();
             
             glStencilMask(0xFF);
@@ -915,9 +918,10 @@ lazarus_result MeshManager::drawMesh(MeshManager::Mesh &meshIn)
 {
     MeshManager::ModelData &model = this->modelStore.at(meshIn.id);
     lazarus_result status = lazarus_result::LAZARUS_OK;
-
+    
     for(size_t i = 0; i < model.size(); i++)
     {
+        LOG_DEBUG("Rendering mesh asset");
         MeshManager::MeshData &data = model[i];
 
         this->clearErrors();
@@ -988,6 +992,7 @@ void MeshManager::setDiscardFragments(MeshManager::Mesh &meshIn, bool shouldDisc
 
 lazarus_result MeshManager::setMaterials(AssetLoader::AssetData &assetData)
 {
+    LOG_DEBUG("Allocating materials");
     if(assetData.colors.size() != assetData.textures.size())
     {
         LOG_ERROR("Load Error: Invalid materials", __FILE__, __LINE__);
@@ -1091,6 +1096,7 @@ void MeshManager::clearErrors()
 
 void MeshManager::copyMesh(MeshManager::Mesh &dest, MeshManager::Mesh src)
 {
+    LOG_DEBUG(std::string("Copying model [").append(src.name+ "]").c_str());
     this->meshOut = src;
     this->modelData = this->modelStore.at(meshOut.id);
     bool selectable = this->meshOut.instances.at(0).isClickable;
@@ -1117,7 +1123,8 @@ void MeshManager::copyMesh(MeshManager::Mesh &dest, MeshManager::Mesh src)
 };
 
 void MeshManager::instantiateMesh(bool selectable)
-{    
+{   
+    LOG_DEBUG("Loading mesh instance(s)");
     for(size_t i = 0; i < meshData.instanceCount; i ++)
     {
         LOG_DEBUG("Mapping mesh instance");
