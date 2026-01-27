@@ -69,8 +69,6 @@ class AssetLoader
             std::vector<glm::vec3> colors;
             std::vector<uint32_t> indices;
             std::vector<FileLoader::Image> textures;
-            glm::vec3 translation = glm::vec3(0.0f, 0.0f, 0.0f);
-            glm::vec3 rotation = glm::vec3(0.0f, 0.0f, 0.0f);
         };
 
         lazarus_result parseWavefrontObj(
@@ -140,7 +138,7 @@ class AssetLoader
             int32_t skinIndex;
             std::vector<int32_t> children;
             glm::vec3 translation = glm::vec3(0.0f, 0.0f, 0.0f);
-            glm::vec3 rotation = glm::vec3(0.0f, 0.0f, 0.0f);
+            glm::vec4 rotation = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
         };
         struct glbAttributeData
         {

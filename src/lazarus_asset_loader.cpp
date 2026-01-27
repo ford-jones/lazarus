@@ -509,11 +509,21 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     node.translation.y = std::stof(axis[1]);
                     node.translation.z = std::stof(axis[2]);
                 };
-                // uint32_t rotationStart = nodeData.find(ROTATION);
-                // if(rotationStart != std::string::npos)
-                // {
-                    
-                // };
+                
+                if(nodeData.find(ROTATION) != std::string::npos)
+                {
+                    std::string str = this->extractContainedContents(nodeData, ROTATION, "]")[0];
+                    std::vector<std::string> axis = this->splitTokensFromLine(str.substr(1, str.size() - 2).c_str(), ',');
+
+                    /* ===========================================
+                        glb rotations are supplied as a
+                        quaternion.
+                    ============================================== */
+                    node.rotation.x = std::stof(axis[0]);
+                    node.rotation.y = std::stof(axis[1]);
+                    node.rotation.z = std::stof(axis[2]);
+                    node.rotation.w = std::stof(axis[3]);
+                };
 
                 node.name = nameBuff.erase(nameBuff.size() - 1);
                 node.meshIndex = this->extractAttributeIndex(nodeData, MESH);
@@ -841,11 +851,24 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
     
                 uint32_t serial = (indicesCount - indicesAccessor.count) + j;
     
-                /* ===================================================
-                    Apply localspace transforms specified in the node
-                    to each of the meshes vertices.
-                ====================================================== */
-                tempVertexPositions.emplace(serial, vertexPositions[index] + node.translation);
+                /* ========================================================
+                    Apply localspace transforms specified by the node
+                    data to each of the meshes vertices. This is done here
+                    so that the orientation of each vertex is baked into
+                    the VBO with no modification to the model matrix, which
+                    should remain at the origin.
+
+                    I.e. quaternion rotation + translation
+
+                    Using the formula described here for passive rotation:
+                    https://danceswithcode.net/engineeringnotes/quaternions/quaternions.html#:~:text=(13)-,Quaternion%20Rotation,-We%20can%20rotate
+                =========================================================== */
+
+                glm::quat quaternion = glm::quat(node.rotation);
+                glm::quat conjugate = glm::conjugate(quaternion);
+                glm::vec3 orientation = quaternion * vertexPositions[index] * conjugate;
+
+                tempVertexPositions.emplace(serial, orientation + node.translation);
                 tempNormals.emplace(serial, vertexNormals[index]);
     
                 /* ===================================================================
