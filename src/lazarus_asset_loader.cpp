@@ -356,37 +356,6 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
 
     this->resetMembers();
     lazarus_result status = lazarus_result::LAZARUS_OK;
-
-    //  Top level: mesh properties (note the square-bracket)
-    std::string NODES = "\"nodes\":[{";
-    std::string MESHES = "\"meshes\":[";
-    std::string SKINS = "\"skins\":[";
-    std::string PRIMITIVES = "\"primitives\":[";
-    std::string MATERIALS = "\"materials\":[";
-    std::string TEXTURES = "\"textures\":[";
-    std::string ACCESSORS = "\"accessors\":[";
-    std::string IMAGES = "\"images\":[";
-    std::string BUFFERVIEWS = "\"bufferViews\":[";
-    std::string BUFFERS = "\"buffers\":[{";
-
-    //  Subsequent levels: property attributes
-    std::string MESH = "\"mesh\":";
-    std::string MATERIALID = "\"material\":";
-    std::string TEXTUREID = "\"baseColorTexture\":";
-    std::string DIFFUSE = "\"baseColorFactor\":";
-    std::string INDEX = "\"index\":";
-    std::string ATTRIBUTES = "\"attributes\":";
-    std::string INDICES = "\"indices\":";
-    std::string SAMPLERID = "\"sampler\":";
-    std::string IMAGEID = "\"source\":";
-    std::string BUFFERVIEWID = "\"bufferView\":";
-    std::string BUFFERID = "\"buffer\":";
-    std::string COUNT = "\"count\":";
-    std::string COMPONENTTYPE = "\"componentType\":";
-    std::string BYTEOFFSET = "\"byteOffset\":";
-    std::string BYTELENGTH = "\"byteLength\":";
-    std::string BYTESTRIDE = "\"byteStride\":";
-    std::string NAME = "\"name\":";
     
     std::string path = "";
     status = fileLoader->relativePathToAbsolute(meshPath, path);
@@ -528,8 +497,23 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     Extract mesh name in the event that user 
                     didn't configure one.
                 =============================================== */
-                uint32_t nameStart = nodeData.find(NAME);
+                size_t nameStart = nodeData.find(NAME);
                 std::string nameBuff = *this->extractContainedContents(nodeData.substr(nameStart + NAME.size()), "\"", "\"").data();
+
+                if(nodeData.find(TRANSLATION) != std::string::npos)
+                {
+                    std::string str = this->extractContainedContents(nodeData, TRANSLATION, "]")[0];
+                    std::vector<std::string> axis = this->splitTokensFromLine(str.substr(1, str.size() - 2).c_str(), ',');
+        
+                    node.translation.x = std::stof(axis[0]);
+                    node.translation.y = std::stof(axis[1]);
+                    node.translation.z = std::stof(axis[2]);
+                };
+                // uint32_t rotationStart = nodeData.find(ROTATION);
+                // if(rotationStart != std::string::npos)
+                // {
+                    
+                // };
 
                 node.name = nameBuff.erase(nameBuff.size() - 1);
                 node.meshIndex = this->extractAttributeIndex(nodeData, MESH);
@@ -727,6 +711,10 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         tempNormals.clear();
         tempDiffuse.clear();
         tempImages.clear();
+        vertexIndices.clear();
+        normalIndices.clear();
+        uvIndices.clear();
+        
         /* ==============================================
             A mesh may be constructed from a variety of 
             different attributes. Some parts may be have
@@ -738,7 +726,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
             std::vector<glm::vec3> vertexPositions;
             std::vector<glm::vec3> vertexNormals;
             std::vector<glm::vec3> vertexUvs;
-            
+
             glbAttributeData mesh = meshData[j];
     
             /* ==================================================================
@@ -853,7 +841,11 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
     
                 uint32_t serial = (indicesCount - indicesAccessor.count) + j;
     
-                tempVertexPositions.emplace(serial, vertexPositions[index]);
+                /* ===================================================
+                    Apply localspace transforms specified in the node
+                    to each of the meshes vertices.
+                ====================================================== */
+                tempVertexPositions.emplace(serial, vertexPositions[index] + node.translation);
                 tempNormals.emplace(serial, vertexNormals[index]);
     
                 /* ===================================================================

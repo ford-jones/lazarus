@@ -69,6 +69,8 @@ class AssetLoader
             std::vector<glm::vec3> colors;
             std::vector<uint32_t> indices;
             std::vector<FileLoader::Image> textures;
+            glm::vec3 translation = glm::vec3(0.0f, 0.0f, 0.0f);
+            glm::vec3 rotation = glm::vec3(0.0f, 0.0f, 0.0f);
         };
 
         lazarus_result parseWavefrontObj(
@@ -93,17 +95,52 @@ class AssetLoader
         virtual ~AssetLoader();
 
     private:
-        //  glb
+        //  glb-related members
 
         std::string jsonData;
         std::string binaryData;
-        
+
+        //  Top level: mesh properties (note the square-bracket)
+        const std::string NODES = "\"nodes\":[{";
+        const std::string MESHES = "\"meshes\":[";
+        const std::string SKINS = "\"skins\":[";
+        const std::string PRIMITIVES = "\"primitives\":[";
+        const std::string MATERIALS = "\"materials\":[";
+        const std::string TEXTURES = "\"textures\":[";
+        const std::string ACCESSORS = "\"accessors\":[";
+        const std::string IMAGES = "\"images\":[";
+        const std::string BUFFERVIEWS = "\"bufferViews\":[";
+        const std::string BUFFERS = "\"buffers\":[{";
+
+        //  Subsequent levels: property attributes
+        const std::string MESH = "\"mesh\":";
+        const std::string TRANSLATION = "\"translation\":";
+        const std::string ROTATION = "\"rotation\":";
+        const std::string MATERIALID = "\"material\":";
+        const std::string TEXTUREID = "\"baseColorTexture\":";
+        const std::string DIFFUSE = "\"baseColorFactor\":";
+        const std::string INDEX = "\"index\":";
+        const std::string ATTRIBUTES = "\"attributes\":";
+        const std::string INDICES = "\"indices\":";
+        const std::string SAMPLERID = "\"sampler\":";
+        const std::string IMAGEID = "\"source\":";
+        const std::string BUFFERVIEWID = "\"bufferView\":";
+        const std::string BUFFERID = "\"buffer\":";
+        const std::string COUNT = "\"count\":";
+        const std::string COMPONENTTYPE = "\"componentType\":";
+        const std::string BYTEOFFSET = "\"byteOffset\":";
+        const std::string BYTELENGTH = "\"byteLength\":";
+        const std::string BYTESTRIDE = "\"byteStride\":";
+        const std::string NAME = "\"name\":";
+
         struct glbNodeData
         {
             std::string name;
             int32_t meshIndex;
             int32_t skinIndex;
-            vector<int32_t> children;
+            std::vector<int32_t> children;
+            glm::vec3 translation = glm::vec3(0.0f, 0.0f, 0.0f);
+            glm::vec3 rotation = glm::vec3(0.0f, 0.0f, 0.0f);
         };
         struct glbAttributeData
         {
@@ -175,7 +212,7 @@ class AssetLoader
         //  Retrieve all integers immediately following 'target' that occur within 'bounds'.
         int32_t extractAttributeIndex(std::string bounds, std::string target);
 
-        //  wavefront obj
+        //  wavefront-related members
 
         std::vector<std::string> wavefrontCoordinates;
         
@@ -196,7 +233,7 @@ class AssetLoader
         //  in sets of three's if possible.
         lazarus_result constructTriangle();
 
-        //  Shared
+        //  Shared members
         
         ifstream file;
         std::unique_ptr<FileLoader> fileLoader;
