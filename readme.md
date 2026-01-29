@@ -182,7 +182,7 @@ Welcome to the examples guide. While the following was written in a Linux enviro
 This guide covers the following:
 1. [The application window](#window-context)
 2. [Configuration](#global-settings)
-3. [Loading mesh](#mesh-assets)
+3. [Loading models](#mesh-assets)
 4. [Shader Workflow](#shaders)
 
 ## Application window:
@@ -396,17 +396,17 @@ Now lets create our geometry:
 ```cpp
     //  Instantiate a new mesh manager (this can be stack'd or heap'd, here we use the stack).
     //  The ID of the shader that will be used to render this instance's resources must be provided
-    Lazarus::MeshManager meshManager = Lazarus::MeshManager(shaderID);
+    Lazarus::ModelManager modelManager = Lazarus::ModelManager(shaderID);
 
     //  Configure the mesh asset
     //  Note: when orthographically viewed, sizing corresponds to pixel-width
-    Lazarus::MeshManager::QuadConfig quadSettings = {};
+    Lazarus::ModelManager::QuadConfig quadSettings = {};
     quadSettings.width = 500;
     quadSettings.height = 500;
 
     //  Generate asset
-    Lazarus::MeshManager::Quad quad = {};
-    meshManager.createQuad(quad, quadSettings); //  upon success, quad is given a value
+    Lazarus::ModelManager::Quad quad = {};
+    modelManager.createQuad(quad, quadSettings); //  upon success, quad is given a value
 ```
 
 The active shader has been set and our resources are prepared. From here we can begin our render loop, where per-frame we will load our scene's data onto the GPU and use our shader to render the output upon each draw call. Then we present the next frame to observe the outcome.
@@ -422,10 +422,10 @@ The active shader has been set and our resources are prepared. From here we can 
 
         //  Load resources
         cameraManager.loadCamera(camera);
-        meshManager.loadMesh(quad);
+        modelManager.loadModel(quad);
 
         //  Draw next frame
-        lazarus_result engineStatus = meshManager.drawMesh(quad);
+        lazarus_result engineStatus = modelManager.drawModel(quad);
 
         //  Check errors
         //  Note: a lazarus_result shall be returned by most functions in the api
@@ -449,11 +449,11 @@ You should see something like this: congratulations - you've just drawn your fir
 *But why is it all the way down there?* Because under observation of our orthographic camera, metrics are taken in pixel dimensions from the bottom-left corner of the viewport. Although it may be confusing in this context, it might make sense a little later if you are looking to create UI or HUD components. This is the same coordinate system that is used internally for the layout of text and glyphs. \
 To fix the issue; lets center our quad using a transform.
 ```cpp
-    meshManager.createQuad(quad, quadSettings);
+    modelManager.createQuad(quad, quadSettings);
 
     // After creating the quad, move it to the center of the screen
     Lazarus::Transform transformer = Lazarus::Transform();
-    transformer.translateMeshAsset(
+    transformer.translateModel(
         quad, 
         static_cast<float>(globals.getDisplayWidth()) / 2.0, 
         static_cast<float>(globals.getDisplayHeight()) / 2.0, 
@@ -464,7 +464,7 @@ To fix the issue; lets center our quad using a transform.
 Here it is! You'll also observe that the geometry was partially clipped. With the quad centered we can now see it in full. \
 ![helloQuad2](https://drive.google.com/thumbnail?id=1HNdYXlDgjj1AOdB9BZNAjpgJGqTTICwh&sz=w800)
 
-For more on this; see the [Mesh section of the API Reference](#meshmanager).
+For more on this; see the [Model section of the API Reference](#modelmanager).
 
 ## Shaders:
 ### Getting started with shaders:
@@ -552,7 +552,7 @@ Anything not used from here will be optimised-out when compiled.
     vec3 _lazarusComputeLambertianReflection(vec3 color);   //  Calculate the fragment's diffuse lighting
     float _lazarusComputeFogFactor();                       //  Calculate fog attenuation
 ```
-**It should be noted that `_lazarusComputeColor()` will only return a value for a textured mesh when it is called from the program which the `MeshManager` was instantiated with.**
+**It should be noted that `_lazarusComputeColor()` will only return a value for a textured mesh when it is called from the program which the `ModelManager` was instantiated with.**
 
 ------------------------------------------------------------------
 
@@ -750,7 +750,7 @@ Bring the back buffer to the front (into user view) and moves the front buffer t
 Clears the back buffer's depth and color bits so that they can be given new values for the next draw.
 
 #### monitorPixelOccupants()
-Enables picking of the window's pixels for objects which have been rendered to the screen following a call to `MeshManager::drawMesh(...)`. The ID's of objects with items with `MeshManager::Mesh::isClickable` set to `true` now become searchable at their pixel coordinates via a call to `CameraManager::getPixelOccupant(...)`.
+Enables picking of the window's pixels for objects which have been rendered to the screen following a call to `ModelManager::drawModel(...)`. The ID's of objects with items with `ModelManager::Model::isClickable` set to `true` now become searchable at their pixel coordinates via a call to `CameraManager::getPixelOccupant(...)`.
 
 ### Members:
 > **isOpen:** *Whether or not the active window is open. See also: `GlobalsManager::getContextWindowOpen()`. (type: `bool`, default: `false`)* \
@@ -909,43 +909,43 @@ Params:
 >	- **pixelData:** *The actual image data / texels tightly packed in RGBA order. (type: `unsigned char *`)* 
 
 ## Transform:
-A class built to handle transformations of different world assets such as mesh, cameras and lights.
+A class built to handle transformations of different world assets such as models, cameras and lights.
 
 ### Functions:
-#### translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, int matrixId)
-Applies a translation transformation (movement) to a mesh asset along the x, y and z axis from an offset of 0.0. \
-Updates the `locationX`, `locationY` and `locationZ` properties of a `MeshManager::Mesh` object in real time. 
+#### translateModel(ModelManager::Model &model, float x, float y, float z, int instanceID)
+Applies a translation transformation (movement) to a model asset along the x, y and z axis from an offset of 0.0. \
+Updates the `locationX`, `locationY` and `locationZ` properties of a `ModelManager::Model` object in real time. 
 
 Params:
-> **mesh:** *The mesh asset to be acted upon.* \
-> **x:** *A floating point number used to increment / decrement the x-axis locative value of the mesh.* \
-> **y:** *A floating point number used to increment / decrement the y-axis locative value of the mesh.* \
-> **z:** *A floating point number used to increment / decrement the z-axis locative value of the mesh.* \
-> **matrixId:** *The index position / map key of the `MeshManager::Mesh::Instance` to be acted upon. (default: `0`)*
+> **model:** *The model asset to be acted upon.* \
+> **x:** *A floating point number used to increment / decrement the x-axis locative value of the model.* \
+> **y:** *A floating point number used to increment / decrement the y-axis locative value of the model.* \
+> **z:** *A floating point number used to increment / decrement the z-axis locative value of the model.* \
+> **instanceID:** *The index position / map key of the `ModelManager::Model::Instance` to be acted upon. (default: `0`)*
 
-#### rotateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, int matrixId)
-Applies a rotation transformation to a mesh asset on it's x, y and z axis from an offset of 0.0. \
-This rotation affects the yaw, pitch and roll of the mesh. Not to be confused with an orbital rotation. 
+#### rotateModel(ModelManager::Model &model, float x, float y, float z, int instanceID)
+Applies a rotation transformation to a model asset on it's x, y and z axis from an offset of 0.0. \
+This rotation affects the yaw, pitch and roll of the model. Not to be confused with an orbital rotation. 
 
 Params:
-> **mesh:** *The mesh asset to be acted upon.* \
-> **x:** *A floating point number used to increment / decrement the x-axis (yaw) rotational value of the mesh.* \
-> **y:** *A floating point number used to increment / decrement the y-axis (pitch) rotational value of the mesh.* \
-> **z:** *A floating point number used to increment / decrement the z-axis (roll) rotational value of the mesh.* \
-> **matrixId:** *The index position / map key of the `MeshManager::Mesh::Instance` to be acted upon. (default: `0`)*
+> **model:** *The model asset to be acted upon.* \
+> **x:** *A floating point number used to increment / decrement the x-axis (yaw) rotational value of the model.* \
+> **y:** *A floating point number used to increment / decrement the y-axis (pitch) rotational value of the model.* \
+> **z:** *A floating point number used to increment / decrement the z-axis (roll) rotational value of the model.* \
+> **instanceID:** *The index position / map key of the `ModelManager::Model::Instance` to be acted upon. (default: `0`)*
 
-#### scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, int matrixId)
-Applies a scaling transformation to a mesh asset on it's x, y, and z axis from and offset of 1.0. \
+#### scaleModel(ModelManager::Model &model, float x, float y, float z, int instanceID)
+Applies a scaling transformation to a model asset on it's x, y, and z axis from and offset of 1.0. \
 Will update the value returned by `GlobalsManager::getExecutionStatus()` to `LAZARUS_INVALID_DIMENSIONS` if any of the values recieved are below `0.0`.
 
 Params:
-> **mesh:** *The mesh asset to be acted upon.* \
-> **x:** *A floating point number used to increment / decrement the x-axis size value of the mesh.* \
-> **y:** *A floating point number used to increment / decrement the y-axis size value of the mesh.* \
-> **z:** *A floating point number used to increment / decrement the z-axis size value of the mesh. \
-> **matrixId:** *The index position / map key of the `MeshManager::Mesh::Instance` to be acted upon. (default: `0`)*
+> **model:** *The model asset to be acted upon.* \
+> **x:** *A floating point number used to increment / decrement the x-axis size value of the model.* \
+> **y:** *A floating point number used to increment / decrement the y-axis size value of the model.* \
+> **z:** *A floating point number used to increment / decrement the z-axis size value of the model. \
+> **instanceID:** *The index position / map key of the `ModelManager::Model::Instance` to be acted upon. (default: `0`)*
 
-#### translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity)
+#### translateCamera(CameraManager::Camera &camera, float x, float y, float z, float velocity)
 Applies a translation transformation (movement) to a camera asset along the x, y and z axis from an offset of 0.0. \
 Updates the `locationX`, `locationY` and `locationZ` properties of a `CameraManager::Camera` object in real time. 
 
@@ -956,7 +956,7 @@ Params:
 > **z:** *A floating point number used to increment / decrement the z-axis locative value of the camera.* \
 > **velocity:** *The speed at which the camera should translate through space per update. (default: `0.1`)*
 
-#### rotateCameraAsset(CameraManager::Camera &camera, float x, float y, float z)
+#### rotateCamera(CameraManager::Camera &camera, float x, float y, float z)
 Applies a rotation transformation to a camera asset on it's x, y and z axis from an offset of 0.0. \
 This rotation affects the yaw, pitch and roll of the camera. Not to be confused with an orbital rotation. \
 Will update the value returned by `GlobalsManager::getExecutionStatus()` to `LAZARUS_INVALID_RADIANS` if any of the values recieved are below `-360.0` or above `+360.0`.
@@ -967,7 +967,7 @@ Params:
 > **y:** *A floating point number used to increment / decrement the y-axis locative value of the camera.* \
 > **z:** *A floating point number used to increment / decrement the z-axis locative value of the camera.*
 
-#### orbitCameraAsset(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX, float tarY, float tarZ)
+#### orbitCamera(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX, float tarY, float tarZ)
 Apply arcball / orbital camera transformations to a camera asset; i.e. unit-sphere translation and rotation around a target.
 
 Params:
@@ -979,7 +979,7 @@ Params:
 > **tarY:** *The y-axis worldspace coordinate of the target location. (default: `0.0`)* \
 > **tarZ:** *The z-axis worldspace coordinate of the target location. (default: `0.0`)*
 
-#### translateLightAsset(LightManager::Light &light, float x, float y, float z)
+#### translateLight(LightManager::Light &light, float x, float y, float z)
 Applies a translation transformation (movement) to a light asset along the x, y and z axis from an offset of 0.0. \
 Updates the `locationX`, `locationY` and `locationZ` properties of a `LightManager::Light` object in real time. 
 
@@ -989,18 +989,18 @@ Params:
 > **y:** *A floating point number used to increment / decrement the y-axis locative value of the light.* \
 > **z:** *A floating point number used to increment / decrement the z-axis locative value of the light.*
 
-## MeshManager:
+## ModelManager:
 A management class for mesh assets and their properties.
 
 ### Constructor:
-#### MeshManager(GLuint shader, TextureLoader::StorageType textureType)
+#### ModelManager(GLuint shader, TextureLoader::StorageType textureType)
 
 Params:
 > **shader:** *The id of the shader program used to render this mesh. Acquired from the out-parameter of `Shader::compileShaders()`*
 > **textureType:** *Which variant of sampler storage should mesh texture's loaded by this instance be written to. (default: `TextureLoader::StorageType::ARRAY`)*
 
 ### Functions:
-#### create3DAsset(MeshManager::Mesh &out, MeshManager::AssetConfig options)
+#### create3DAsset(ModelManager::Model &out, ModelManager::AssetConfig options)
 Finds and loads the contents of an `.obj` or `.glb` file located at `options.meshPath`. \
 Initialises a `Mesh`.
 
@@ -1008,7 +1008,7 @@ Params:
 > **out:** *An out parameter where load results are stored.* \
 > **options:** *Load settings indicating how the asset should be loaded.*
 
-#### createQuad(MeshManager::Quad &out, MeshManager::QuadConfig options)
+#### createQuad(ModelManager::Quad &out, ModelManager::QuadConfig options)
 Creates a quad (2D plane) to the size of the specified height and width \
 with a texture as specified by `options.texturePath`
 
@@ -1016,34 +1016,34 @@ Params:
 > **out:** *An out parameter where load results are stored.* \
 > **options:** *Load settings indicating how the asset should be loaded.*
 
-#### createCube(MeshManager::Cube &out, MeshManager::CubeConfig options)
+#### createCube(ModelManager::Cube &out, ModelManager::CubeConfig options)
 Creates a cube (equal height, width and depth) of size `options.scale`. Note that without specification of a relative path to a texture asset, this function will assume the cube is to be used for a skybox which; is likely to cause problems in your program without manually setting the required texture data for the cubemap texture.
 
 Params:
 > **out:** *An out parameter where load results are stored.* \
 > **options:** *Load settings indicating how the asset should be loaded.*
 
-#### loadMesh(MeshManager::Mesh &meshIn)
+#### loadModel(ModelManager::Model &modelIn)
 Loads a mesh object's buffer data into their correct GPU uniform positions located inside the shader program that was referenced in the class constructor.
 
 Params:
 > **meshIn:** *The mesh object who's buffer data you wish to pass into the shader program.*
 
-#### drawMesh(MeshManager::Mesh &meshIn)
+#### drawModel(ModelManager::Model &modelIn)
 Draws the mesh object contents of the shader program's uniforms onto the render loops back buffer (see: `WindowManager::presetNextFrame()`). \
 Be sure to bring the back buffer forward to see the draw result.
 
 > Params: \
 > **meshIn:** *The mesh object you wish to draw.*
 
-#### copyMesh(MeshManager::Mesh &dest, MeshManager::Mesh src)
+#### copyModel(ModelManager::Model &dest, ModelManager::Model src)
 Creates a duplicate of `src` at the location of `dest` with updated unique ID for the asset and all its child instances.
 
 > Params: \
 > **dest:** *The pre-allocated destination where the copy should be stored.* \
 > **src:** *The asset to be copied.*
 
-#### setDiscardFragments(MeshManager::Mesh &meshIn, bool shouldDiscard)
+#### setDiscardFragments(ModelManager::Model &modelIn, bool shouldDiscard)
 Toggle for removing the areas of a face prior to rendering where the meshes texture's alpha value is zero. Used for rendering sprites.
 
 > Params: \
@@ -1056,13 +1056,13 @@ Flushes out the internal state(s) of the manager, including it's list of childre
 ### Members:
 > **Mesh:** *A collection of properties which make up a mesh entity. (type: `struct`)* 
 >   - **id:** *The meshes serialised ID. Unique only to the manager instance which created it. (type: `int`)*
->   - **type:** *Which type of asset this mesh is. (type: `MeshManager::MeshType`)*
->   - **materials:** *The materials used by this mesh. (type: `std::vector<MeshManager::Material>`)*
+>   - **type:** *Which type of asset this mesh is. (type: `ModelManager::ModelType`)*
+>   - **materials:** *The materials used by this mesh. (type: `std::vector<ModelManager::Material>`)*
 >	- **numOfFaces:** *The number of faces that make up the mesh. (type: `int`)* 
 >	- **numOfVertices:** *The number of vertices that make up the mesh. (type: `int`)* 
 >	- **meshFilepath:** *The absolute path (from system root) to the wavefront file containing this mesh's vertex data. (type: `std::string`)*
 >	- **materialFilepath:** *The absolute path (from system root) to the wavefront file containing this mesh's material data. (type: `std::string*`)*
->   - **instances:** *A map containing information used for applying transformations to a mesh copy. (type: `std::map<int, MeshManager::Mesh::Instance>`)*
+>   - **instances:** *A map containing information used for applying transformations to a mesh copy. (type: `std::map<int, ModelManager::Model::Instance>`)*
 
 > **Mesh::Instance** *A collection of properties which make up a GPU copy of a mesh entity. (type: `struct`)*
 >	- **position:** *Where the instance is positioned in world space. (type: `glm::vec3`)*
@@ -1072,9 +1072,9 @@ Flushes out the internal state(s) of the manager, including it's list of childre
 >   - **isClickable:** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (type: `bool`)*
 >   - **isVisible:** *Whether or not this instance should be rendered to the screen during fragment processing or discarded. (type: `bool`)*
 
-> **MeshType:** *Different varieties of meshes (type: `enum`)*
->   - **LOADED_GLB:** *A mesh which has been loaded from a glb file.*
->   - **LOADED_WAVEFRONT:** *A mesh which has been loaded from a wavefront file.*
+> **ModelType:** *Different varieties of meshes (type: `enum`)*
+>   - **GLB:** *A mesh which has been loaded from a glb file.*
+>   - **WAVEFRONT:** *A mesh which has been loaded from a wavefront file.*
 >   - **PLANE:** *A quad, I.e. Two-dimensional, four sides.*
 >   - **CUBE:** *A cuboid / rectangular prism.*
 
@@ -1105,10 +1105,10 @@ Flushes out the internal state(s) of the manager, including it's list of childre
 >   - **instanceCount:** *The number of copies of this mesh to be produced. (type: `int`, default: `1`)*
 
 > **Material:** *The properties which constitute the material that is rendered to a surface. (type: `struct`)*
->   - **id:** *A serialised ID unique to the material's parent `MeshManager::Mesh`. (type: `int`)*
->   - **type:** *Which type of material this is. (type: `MeshManager::MaterialType`)*
->   - **texture:** *If `type` is `MeshManager::MaterialType::IMAGE_TEXTURE`, this struct contains the materials texture data, i.e. width, height and raw bytes. (type: `FileLoader::Image`)*
->   - **diffuse:** *If `type` is `MeshManager::MaterialType::BASE_COLOR`, this struct contains the materials color value.*
+>   - **id:** *A serialised ID unique to the material's parent `ModelManager::Model`. (type: `int`)*
+>   - **type:** *Which type of material this is. (type: `ModelManager::MaterialType`)*
+>   - **texture:** *If `type` is `ModelManager::MaterialType::IMAGE_TEXTURE`, this struct contains the materials texture data, i.e. width, height and raw bytes. (type: `FileLoader::Image`)*
+>   - **diffuse:** *If `type` is `ModelManager::MaterialType::BASE_COLOR`, this struct contains the materials color value.*
 >   - **discardsAlphaZero:** *If the contents of `texture.pixelData` contain an `RGBA` value with an alpha of zero, discard the fragment.*
 
 > **MaterialType:** *Different varieties of materials (type: `enum`)*
@@ -1147,7 +1147,7 @@ Params:
 > **cameraData:** *The camera asset you would like to render.*
 
 #### getPixelOccupant(int positionX, int positionY, int &out)
-Retrieves the ID of a pixel occupant in view which has `MeshManager::Mesh::isClickable` set to `true`.
+Retrieves the ID of a pixel occupant in view which has `ModelManager::Model::isClickable` set to `true`.
 
 > **positionX:** *The x-axis pixel coordinate from the bottom left corner of the display (Not the window).*
 > **positionY:** *The y-axis pixel coordinate from the bottom left corner of the display (Not the window).*
@@ -1384,7 +1384,7 @@ Params:
 > **SkyBox**: *A collection of properties which make up a skybox object. (type: `struct`.)*
 >   - **paths:** *The absolute filepaths to the 6 image textures used to construct the skymap. (type: `std::vector<std::string>`)*
 >   - **cubeMap:** *The image data for each of the cubes 6 faces. (type: `std::vector<FileReader::Image>`)*
->   - **cube:** *The skybox's mesh. (type: `MeshManager::Mesh`)*
+>   - **cube:** *The skybox's mesh. (type: `ModelManager::Model`)*
 > **Fog** *A collection of properties which quanitify world fog and it's visibility. (type: `struct`).* 
 >   - **color:** *The fog's RGB color values. (type: `glm::vec3`).*
 >   - **viewpoint:** *The epicenter of the fog's sphere of visibility in worldspace. Defines where the fog can be seen from. (type: `glm::vec3`).*

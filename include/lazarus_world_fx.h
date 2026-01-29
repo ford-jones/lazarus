@@ -35,7 +35,7 @@
 #ifndef LAZARUS_WORLD_FX_H
 #define LAZARUS_WORLD_FX_H
 
-class WorldFX : private MeshManager
+class WorldFX : private ModelManager
 {
     public:
         WorldFX(GLuint shaderProgram);
@@ -44,7 +44,7 @@ class WorldFX : private MeshManager
             std::vector<string> paths;
             std::vector<FileLoader::Image> cubeMap;
 
-            MeshManager::Mesh cube;
+            ModelManager::Model cube;
         };
 
         struct Fog

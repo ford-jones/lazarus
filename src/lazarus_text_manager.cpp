@@ -206,7 +206,7 @@ FontLoader::~FontLoader()
 
 TextManager::TextManager(GLuint shader) 
     : TextManager::FontLoader(),
-      TextManager::MeshManager(shader, TextureLoader::StorageType::ATLAS)
+      TextManager::ModelManager(shader, TextureLoader::StorageType::ATLAS)
 {
     LOG_DEBUG("Constructing Lazarus::TextManager");
 
@@ -322,7 +322,7 @@ lazarus_result TextManager::extendFontStack(uint32_t &fontId, std::string filepa
         this->atlasHeight += rowHeight;
         alphabetHeights.push_back(this->atlasHeight);
         
-        status = MeshManager::TextureLoader::storeBitmapTexture(atlasWidth, atlasHeight);
+        status = ModelManager::TextureLoader::storeBitmapTexture(atlasWidth, atlasHeight);
         if(status != lazarus_result::LAZARUS_OK)
         {
             return status;
@@ -352,7 +352,7 @@ lazarus_result TextManager::extendFontStack(uint32_t &fontId, std::string filepa
                 return status;
             };
 
-            status = MeshManager::TextureLoader::loadBitmapToTexture(this->glyph, xOffset, yOffset);
+            status = ModelManager::TextureLoader::loadBitmapToTexture(this->glyph, xOffset, yOffset);
             if(status != lazarus_result::LAZARUS_OK)
             {
                 return status;
@@ -377,7 +377,7 @@ lazarus_result TextManager::createText(TextManager::Text &out, TextManager::Text
     textOut.layoutIndex = this->layoutIndex;
     textOut.config = options;
     
-    this->layoutEntry = std::pair<int, std::vector<MeshManager::Mesh>>(this->layoutIndex, {});
+    this->layoutEntry = std::pair<int, std::vector<ModelManager::Model>>(this->layoutIndex, {});
     this->layout.insert(this->layoutEntry);
 
     lazarus_result status = this->loadText(textOut);
@@ -404,7 +404,7 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
         the time of draw. I.e. index 0 .. n
     ==================================================== */
     
-    MeshManager::clearMeshStorage();
+    ModelManager::clearMeshStorage();
     
     if(word.size() > 0)
     {
@@ -427,7 +427,7 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
         this->setActiveGlyph(settings.targetString[i], settings.fontIndex, settings.letterSpacing);
         
         LOG_DEBUG("Loading glyph tile");
-        MeshManager::QuadConfig quadSettings = {};
+        ModelManager::QuadConfig quadSettings = {};
         quadSettings.width = this->glyph.width;
         quadSettings.height = this->glyph.height;
         quadSettings.texturePath = "";
@@ -437,7 +437,7 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
         quadSettings.uvYD = this->uvD;
         quadSettings.instanceCount = 1;
 
-        status = MeshManager::createQuad(this->quad, quadSettings);
+        status = ModelManager::createQuad(this->quad, quadSettings);
         if(status != lazarus_result::LAZARUS_OK)
         {
             return status;
@@ -446,7 +446,7 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
             Translate the tile to it's location within
             the word, relative to the other letters.
         ================================================ */
-        status = transformer.translateMeshAsset(
+        status = transformer.translateModel(
             quad, 
             static_cast<float>((settings.location.x + (this->glyph.width / 2.0f)) + this->translationStride), 
             static_cast<float>((settings.location.y + (this->rowHeight / 2.0f))), 
@@ -493,8 +493,8 @@ lazarus_result TextManager::drawText(TextManager::Text textIn)
         quad = i;
         
         cameraBuilder->loadCamera(camera);
-        MeshManager::loadMesh(quad);
-        MeshManager::drawMesh(quad);
+        ModelManager::loadModel(quad);
+        ModelManager::drawModel(quad);
     };
 
     return lazarus_result::LAZARUS_OK;

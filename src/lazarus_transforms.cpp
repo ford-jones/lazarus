@@ -41,9 +41,9 @@ Transform::Transform()
 	this->rotation = vec3(0.0, 0.0, 0.0);
 };
 
-lazarus_result Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, uint32_t matrixId)
+lazarus_result Transform::translateModel(ModelManager::Model &model, float x, float y, float z, uint32_t instanceID)
 {
-	MeshManager::Mesh::Instance &instance = mesh.instances.at(matrixId);
+	ModelManager::Model::Instance &instance = model.instances.at(instanceID);
 	glm::mat4 &instanceMatrix = instance.modelMatrix;
 
 	this->localCoordinates = glm::vec3(x, y, z);
@@ -66,7 +66,7 @@ lazarus_result Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, f
 	return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, float yaw, float roll, uint32_t matrixId)
+lazarus_result Transform::rotateModel(ModelManager::Model &model, float pitch, float yaw, float roll, uint32_t instanceID)
 {
 	/* ===================================================
 		Extract the current z axis rotation values from
@@ -74,7 +74,7 @@ lazarus_result Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, 
 		element. This can be treated as the mesh asset's 
 		forward / direction vector.
 	====================================================== */
-	MeshManager::Mesh::Instance &instance = mesh.instances.at(matrixId);
+	ModelManager::Model::Instance &instance = model.instances.at(instanceID);
 	glm::mat4 &instanceMatrix = instance.modelMatrix;
 
 	instance.direction = instanceMatrix * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f); 
@@ -86,7 +86,7 @@ lazarus_result Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, 
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, uint32_t matrixId)
+lazarus_result Transform::scaleModel(ModelManager::Model &model, float x, float y, float z, uint32_t instanceID)
 {
 	float sum = (x + y + z);
 	float max = std::max(0.0f, sum);
@@ -99,7 +99,7 @@ lazarus_result Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float
 	}
 	else
 	{
-		MeshManager::Mesh::Instance &instance = mesh.instances.at(matrixId);
+		ModelManager::Model::Instance &instance = model.instances.at(instanceID);
 		glm::mat4 &instanceMatrix = instance.modelMatrix;
 
 		instance.scale = glm::vec3(x, y, z);
@@ -110,7 +110,7 @@ lazarus_result Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float
 	};
 };
 
-lazarus_result Transform::translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity)
+lazarus_result Transform::translateCamera(CameraManager::Camera &camera, float x, float y, float z, float velocity)
 {
 	/* =========================================
 		TODO:
@@ -145,7 +145,7 @@ lazarus_result Transform::translateCameraAsset(CameraManager::Camera &camera, fl
 	return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result Transform::rotateCameraAsset(CameraManager::Camera &camera, float pitch, float yaw, float roll)
+lazarus_result Transform::rotateCamera(CameraManager::Camera &camera, float pitch, float yaw, float roll)
 {	
 	/* ============================================
 		Ensures consistent behaviour between
@@ -186,7 +186,7 @@ lazarus_result Transform::rotateCameraAsset(CameraManager::Camera &camera, float
 	return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result Transform::orbitCameraAsset(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX, float tarY, float tarZ)
+lazarus_result Transform::orbitCamera(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX, float tarY, float tarZ)
 {	
 	this->rotation = vec3(0.0, 0.0, 0.0);
 
@@ -217,7 +217,7 @@ lazarus_result Transform::orbitCameraAsset(CameraManager::Camera &camera, float 
 	}
 };
 
-lazarus_result Transform::translateLightAsset(LightManager::Light &light, float x, float y, float z)
+lazarus_result Transform::translateLight(LightManager::Light &light, float x, float y, float z)
 {
 	light.config.position += vec3(x, y, z);
 	

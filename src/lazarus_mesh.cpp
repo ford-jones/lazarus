@@ -19,11 +19,11 @@
 
 #include "../include/lazarus_mesh.h"
 
-MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
-    : MeshManager::AssetLoader(), 
-      MeshManager::TextureLoader(textureType)
+ModelManager::ModelManager(GLuint shader, TextureLoader::StorageType textureType)
+    : ModelManager::AssetLoader(), 
+      ModelManager::TextureLoader(textureType)
 {
-	LOG_DEBUG("Constructing Lazarus::MeshManager");
+	LOG_DEBUG("Constructing Lazarus::ModelManager");
 
     this->childCount = 0;
 
@@ -50,28 +50,28 @@ MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
     this->textureStorage = textureType;
 };
 
-lazarus_result MeshManager::create3DAsset(MeshManager::Mesh &out, MeshManager::AssetConfig options)
+lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManager::AssetConfig options)
 {
-    this->meshOut = {};
+    this->modelOut = {};
     this->modelData = {};
     
     glActiveTexture(GL_TEXTURE2);
 
-    meshOut.meshFilepath = options.meshPath;
-    meshOut.materialFilepath = options.materialPath;
+    modelOut.meshFilepath = options.meshPath;
+    modelOut.materialFilepath = options.materialPath;
     
     //  TODO:
     //  If not present populate from file contents instead of filename
-    this->meshOut.name = options.name.size()
+    this->modelOut.name = options.name.size()
     ? options.name
-    : meshOut.meshFilepath + "_" + std::to_string(this->modelStore.size());
+    : modelOut.meshFilepath + "_" + std::to_string(this->modelStore.size());
 
     /* ==========================================
         Determine whether the file is wavefront
         or gltf/glb.
     ============================================= */
-    uint32_t suffixDelimiter = meshOut.meshFilepath.find_last_of(".");
-    std::string suffix = meshOut.meshFilepath.substr(suffixDelimiter + 1);
+    uint32_t suffixDelimiter = modelOut.meshFilepath.find_last_of(".");
+    std::string suffix = modelOut.meshFilepath.substr(suffixDelimiter + 1);
 
     lazarus_result status = lazarus_result::LAZARUS_OK;
     std::vector<AssetLoader::AssetData> assets = {};
@@ -80,20 +80,20 @@ lazarus_result MeshManager::create3DAsset(MeshManager::Mesh &out, MeshManager::A
     {
         status = AssetLoader::parseWavefrontObj(
             assets,
-            meshOut.meshFilepath.c_str(),
-            meshOut.materialFilepath.c_str()
+            modelOut.meshFilepath.c_str(),
+            modelOut.materialFilepath.c_str()
         );
 
-        meshOut.type = MeshManager::MeshType::LOADED_WAVEFRONT;
+        modelOut.type = ModelManager::ModelType::WAVEFRONT;
     }
     else if(suffix.compare("glb") == 0)
     {
         status = AssetLoader::parseGlBinary(
             assets,
-            meshOut.meshFilepath.c_str()
+            modelOut.meshFilepath.c_str()
         );
         
-        meshOut.type = MeshManager::MeshType::LOADED_GLB;
+        modelOut.type = ModelManager::ModelType::GLB;
     };
     if(status != lazarus_result::LAZARUS_OK)
     {
@@ -131,16 +131,16 @@ lazarus_result MeshManager::create3DAsset(MeshManager::Mesh &out, MeshManager::A
         this->modelData.push_back(this->meshData);
     };
     
-    out = this->meshOut;
+    out = this->modelOut;
     glBindVertexArray(0);
     
-    this->modelStore.insert(std::pair<uint32_t, MeshManager::ModelData>(this->meshOut.id, this->modelData));
+    this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, this->modelData));
     this->setSelectable(options.selectable);
 
     return this->uploadTextures();
 };
 
-lazarus_result MeshManager::uploadTextures()
+lazarus_result ModelManager::uploadTextures()
 {
     /* ===============================================================
         Reload the entire texture stack / array if the mesh isn't
@@ -156,9 +156,9 @@ lazarus_result MeshManager::uploadTextures()
 
     if(this->textureStorage == TextureLoader::StorageType::ARRAY)
     {
-        for(size_t i = 0; i < meshOut.materials.size(); i++)
+        for(size_t i = 0; i < modelOut.materials.size(); i++)
         {
-            if(meshOut.materials[i].type == MaterialType::IMAGE_TEXTURE)
+            if(modelOut.materials[i].type == MaterialType::IMAGE_TEXTURE)
             {
                 containsTextures = true;
                 break;
@@ -193,7 +193,7 @@ lazarus_result MeshManager::uploadTextures()
     a quad under the hood.
 =========================================================================================== */
 
-lazarus_result MeshManager::createQuad(MeshManager::Mesh &out, MeshManager::QuadConfig options)
+lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::QuadConfig options)
 {
     LOG_DEBUG("Generating quad");
     
@@ -205,17 +205,17 @@ lazarus_result MeshManager::createQuad(MeshManager::Mesh &out, MeshManager::Quad
     };
 
     AssetLoader::AssetData assetData = {};
-    this->meshOut = {};
+    this->modelOut = {};
     this->modelData = {};
 
-    meshOut.type = MeshManager::MeshType::PLANE;
+    modelOut.type = ModelManager::ModelType::PLANE;
 
-    meshOut.meshFilepath = "";
-    meshOut.materialFilepath = "";
+    modelOut.meshFilepath = "";
+    modelOut.materialFilepath = "";
 
-    this->meshOut.name = options.name.size() 
+    this->modelOut.name = options.name.size() 
     ? options.name 
-    : this->meshOut.name.append(std::to_string(this->modelStore.size()));
+    : this->modelOut.name.append(std::to_string(this->modelStore.size()));
     
     int32_t textureUnit = this->textureStorage == TextureLoader::StorageType::ATLAS
     ? GL_TEXTURE1
@@ -330,7 +330,7 @@ lazarus_result MeshManager::createQuad(MeshManager::Mesh &out, MeshManager::Quad
     };
 
     this->modelData.push_back(this->meshData);
-    this->modelStore.insert(std::pair<uint32_t, MeshManager::ModelData>(this->meshOut.id, this->modelData));
+    this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, this->modelData));
 
     status = this->setSelectable(options.selectable);
     if(status != lazarus_result::LAZARUS_OK)
@@ -338,29 +338,29 @@ lazarus_result MeshManager::createQuad(MeshManager::Mesh &out, MeshManager::Quad
         return status;
     };
 
-    out = this->meshOut;
+    out = this->modelOut;
     glBindVertexArray(0);
 
     return this->uploadTextures();
 }
 
-lazarus_result MeshManager::createCube(MeshManager::Mesh &out, MeshManager::CubeConfig options)
+lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::CubeConfig options)
 {
     LOG_DEBUG("Generating cube");
     float vertexPosition = options.scale / 2.0f; 
     
     AssetLoader::AssetData assetData = {};
-    this->meshOut = {};
+    this->modelOut = {};
     this->modelData = {};
 
-    meshOut.type = MeshManager::MeshType::CUBE;
+    modelOut.type = ModelManager::ModelType::CUBE;
 
-    meshOut.meshFilepath = "";
-    meshOut.materialFilepath = "";
+    modelOut.meshFilepath = "";
+    modelOut.materialFilepath = "";
 
-    this->meshOut.name = options.name.size() 
+    this->modelOut.name = options.name.size() 
     ? options.name 
-    : this->meshOut.name.append(std::to_string(this->modelStore.size()));
+    : this->modelOut.name.append(std::to_string(this->modelStore.size()));
     
     int32_t textureUnit = this->textureStorage == TextureLoader::StorageType::CUBEMAP
     ? GL_TEXTURE3
@@ -486,7 +486,7 @@ lazarus_result MeshManager::createCube(MeshManager::Mesh &out, MeshManager::Cube
     };
     
     this->modelData.push_back(this->meshData);
-    this->modelStore.insert(std::pair<uint32_t, MeshManager::ModelData>(this->meshOut.id, this->modelData));
+    this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, this->modelData));
 
     status = this->setSelectable(options.selectable);
     if(status != lazarus_result::LAZARUS_OK)
@@ -494,13 +494,13 @@ lazarus_result MeshManager::createCube(MeshManager::Mesh &out, MeshManager::Cube
         return status;
     };
 
-    out = this->meshOut;
+    out = this->modelOut;
     glBindVertexArray(0);
 
     return this->uploadTextures();
 };
 
-lazarus_result MeshManager::uploadVertexData()
+lazarus_result ModelManager::uploadVertexData()
 {	
     LOG_DEBUG("Allocating vertex array object");
     glGenVertexArrays(1, &meshData.VAO);
@@ -559,10 +559,10 @@ lazarus_result MeshManager::uploadVertexData()
     ==================================================================== */
     std::vector<glm::mat4> matrices;
     std::transform(
-        this->meshOut.instances.begin(), 
-        this->meshOut.instances.end(), 
+        this->modelOut.instances.begin(), 
+        this->modelOut.instances.end(), 
         std::back_inserter(matrices), 
-        [](const std::pair<uint32_t, MeshManager::Mesh::Instance> &pair){
+        [](const std::pair<uint32_t, ModelManager::Model::Instance> &pair){
             return pair.second.modelMatrix;
         }
     );
@@ -576,7 +576,7 @@ lazarus_result MeshManager::uploadVertexData()
 
     glBufferData(
         GL_ARRAY_BUFFER, 
-        this->meshOut.instances.size() * sizeof(glm::mat4), 
+        this->modelOut.instances.size() * sizeof(glm::mat4), 
         &matrices[0][0],
         GL_DYNAMIC_DRAW
     );
@@ -627,10 +627,10 @@ lazarus_result MeshManager::uploadVertexData()
     ================================================= */
     std::vector<float> visibility;
     std::transform(
-        this->meshOut.instances.begin(), 
-        this->meshOut.instances.end(), 
+        this->modelOut.instances.begin(), 
+        this->modelOut.instances.end(), 
         std::back_inserter(visibility), 
-        [](const std::pair<uint32_t, MeshManager::Mesh::Instance> &pair){
+        [](const std::pair<uint32_t, ModelManager::Model::Instance> &pair){
             uint32_t v = pair.second.isVisible;
             return static_cast<float>(v);
         }
@@ -643,7 +643,7 @@ lazarus_result MeshManager::uploadVertexData()
 
     glBufferData(
         GL_ARRAY_BUFFER, 
-        this->meshOut.instances.size() * sizeof(float), 
+        this->modelOut.instances.size() * sizeof(float), 
         &visibility[0],
         GL_DYNAMIC_DRAW
     );
@@ -667,13 +667,13 @@ lazarus_result MeshManager::uploadVertexData()
         instance.
     ====================================================== */
 
-    meshOut.id = meshOut.instances.at(0).id;
+    modelOut.id = modelOut.instances.at(0).id;
     meshData.id = this->modelData.size();
 	
     return LAZARUS_OK;
 };
 
-lazarus_result MeshManager::reallocateTextures()
+lazarus_result ModelManager::reallocateTextures()
 {
     uint32_t width = 0;
     uint32_t height = 0;
@@ -740,7 +740,7 @@ lazarus_result MeshManager::reallocateTextures()
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result MeshManager::clearMeshStorage()
+lazarus_result ModelManager::clearMeshStorage()
 {	
     LOG_DEBUG("Freeing model store contents");
     this->clearErrors();
@@ -756,7 +756,7 @@ lazarus_result MeshManager::clearMeshStorage()
         };
     };
     
-    this->meshOut = {};
+    this->modelOut = {};
     this->meshData = {};
 
     this->modelData.clear();
@@ -771,7 +771,7 @@ lazarus_result MeshManager::clearMeshStorage()
     return this->checkErrors(__FILE__, __LINE__);
 };
 
-lazarus_result MeshManager::setSelectable(bool selectable)
+lazarus_result ModelManager::setSelectable(bool selectable)
 {
     uint32_t numOccupants = GlobalsManager::getNumberOfPickableEntities();
     if(selectable)
@@ -789,8 +789,8 @@ lazarus_result MeshManager::setSelectable(bool selectable)
                 ID which; is then returned to userspace.
             ================================================ */
 
-            GlobalsManager::setPickableEntity(meshOut.id);
-            MeshManager::ModelData &m = modelStore.at(meshOut.id);
+            GlobalsManager::setPickableEntity(modelOut.id);
+            ModelManager::ModelData &m = modelStore.at(modelOut.id);
             for(auto &i: m)
             {
                 i.stencilBufferId = numOccupants + 1;
@@ -803,7 +803,7 @@ lazarus_result MeshManager::setSelectable(bool selectable)
     }
     else
     {
-        MeshManager::ModelData m = modelStore.at(meshOut.id);
+        ModelManager::ModelData m = modelStore.at(modelOut.id);
         for(auto &i: m)
         {
             i.stencilBufferId = 0;
@@ -813,22 +813,22 @@ lazarus_result MeshManager::setSelectable(bool selectable)
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
+lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
 {
     LOG_DEBUG("Loading model data");
-    MeshManager::ModelData &model = modelStore.at(meshIn.id);
+    ModelManager::ModelData &model = modelStore.at(meshIn.id);
     lazarus_result status = lazarus_result::LAZARUS_OK;
     
     for(size_t i = 0; i < model.size(); i++)
     {
-        MeshManager::MeshData &data = model[i];
+        ModelManager::MeshData &data = model[i];
 
         std::vector<glm::mat4> matrices;
         std::transform(
             meshIn.instances.begin(), 
             meshIn.instances.end(), 
             std::back_inserter(matrices), 
-            [](const std::pair<uint32_t, MeshManager::Mesh::Instance> &pair){
+            [](const std::pair<uint32_t, ModelManager::Model::Instance> &pair){
                 return pair.second.modelMatrix; 
             }
         );
@@ -838,7 +838,7 @@ lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
             meshIn.instances.begin(), 
             meshIn.instances.end(), 
             std::back_inserter(visibility), 
-            [](const std::pair<uint32_t, MeshManager::Mesh::Instance> &pair){
+            [](const std::pair<uint32_t, ModelManager::Model::Instance> &pair){
                 uint32_t v = pair.second.isVisible;
                 return static_cast<float>(v);
             }
@@ -914,15 +914,15 @@ lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
     return status;
 };
 
-lazarus_result MeshManager::drawMesh(MeshManager::Mesh &meshIn)
+lazarus_result ModelManager::drawModel(ModelManager::Model &meshIn)
 {
-    MeshManager::ModelData &model = this->modelStore.at(meshIn.id);
+    ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
     lazarus_result status = lazarus_result::LAZARUS_OK;
     
     for(size_t i = 0; i < model.size(); i++)
     {
         LOG_DEBUG("Rendering mesh asset");
-        MeshManager::MeshData &data = model[i];
+        ModelManager::MeshData &data = model[i];
 
         this->clearErrors();
     
@@ -977,20 +977,20 @@ lazarus_result MeshManager::drawMesh(MeshManager::Mesh &meshIn)
     return status;
 };
 
-void MeshManager::setDiscardFragments(MeshManager::Mesh &meshIn, bool shouldDiscard)
+void ModelManager::setDiscardFragments(ModelManager::Model &meshIn, bool shouldDiscard)
 {
-    MeshManager::ModelData &model = this->modelStore.at(meshIn.id);
+    ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
 
     for(size_t i = 0; i < model.size(); i++)
     {
-        MeshManager::MeshData &data = model[i];
+        ModelManager::MeshData &data = model[i];
         data.texture.discardAlphaZero = shouldDiscard;
     };
 
     return;
 };
 
-lazarus_result MeshManager::setMaterials(AssetLoader::AssetData &assetData)
+lazarus_result ModelManager::setMaterials(AssetLoader::AssetData &assetData)
 {
     LOG_DEBUG("Allocating materials");
     if(assetData.colors.size() != assetData.textures.size())
@@ -1029,7 +1029,7 @@ lazarus_result MeshManager::setMaterials(AssetLoader::AssetData &assetData)
             meshData.texture.unitId = GL_TEXTURE2;
         };
 
-        meshOut.materials.push_back(material);
+        modelOut.materials.push_back(material);
 
         /* =============================================================
             In the case that image sanitisation is not enabled, we must
@@ -1043,18 +1043,18 @@ lazarus_result MeshManager::setMaterials(AssetLoader::AssetData &assetData)
     return lazarus_result::LAZARUS_OK;
 };
 
-void MeshManager::setSharedProperties()
+void ModelManager::setSharedProperties()
 {
     meshData.texture.discardAlphaZero = false;
     meshData.texture.samplerId = TextureLoader::textureId;
 
-    meshOut.numOfVertices = meshData.attributes.size() / 4;
-    meshOut.numOfFaces = (meshOut.numOfVertices) / 3;
+    modelOut.numOfVertices = meshData.attributes.size() / 4;
+    modelOut.numOfFaces = (modelOut.numOfVertices) / 3;
 
    return;
 }
 
-lazarus_result MeshManager::checkErrors(const char *file, uint32_t line)
+lazarus_result ModelManager::checkErrors(const char *file, uint32_t line)
 {
     this->errorCode = glGetError();
     
@@ -1069,7 +1069,7 @@ lazarus_result MeshManager::checkErrors(const char *file, uint32_t line)
     return lazarus_result::LAZARUS_OK;
 };
 
-void MeshManager::clearErrors()
+void ModelManager::clearErrors()
 {
     /* ============================================================
         Reset OpenGL's error state by flushing out all of the 
@@ -1094,35 +1094,35 @@ void MeshManager::clearErrors()
     return;
 };
 
-void MeshManager::copyMesh(MeshManager::Mesh &dest, MeshManager::Mesh src)
+void ModelManager::copyModel(ModelManager::Model &dest, ModelManager::Model src)
 {
     LOG_DEBUG(std::string("Copying model [").append(src.name+ "]").c_str());
-    this->meshOut = src;
-    this->modelData = this->modelStore.at(meshOut.id);
-    bool selectable = this->meshOut.instances.at(0).isClickable;
+    this->modelOut = src;
+    this->modelData = this->modelStore.at(modelOut.id);
+    bool selectable = this->modelOut.instances.at(0).isClickable;
     
-    MeshManager::ModelData data = {};
+    ModelManager::ModelData data = {};
     for(size_t i = 0; i < this->modelData.size(); i++)
     {
         this->meshData = this->modelData[i];
     
-        this->meshOut.instances.clear();
+        this->modelOut.instances.clear();
         this->instantiateMesh(selectable);
     
-        this->meshOut.id = this->meshOut.instances.at(0).id;
-        this->meshData.id = this->meshOut.id;
+        this->modelOut.id = this->modelOut.instances.at(0).id;
+        this->meshData.id = this->modelOut.id;
         data.push_back(this->meshData);
     };
     
-    this->modelStore.insert(std::pair<uint32_t, MeshManager::ModelData>(this->meshOut.id, data));
+    this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, data));
     this->setSelectable(selectable);
 
-    dest = this->meshOut;
+    dest = this->modelOut;
 
     return;
 };
 
-void MeshManager::instantiateMesh(bool selectable)
+void ModelManager::instantiateMesh(bool selectable)
 {   
     LOG_DEBUG("Loading mesh instance(s)");
     for(size_t i = 0; i < meshData.instanceCount; i ++)
@@ -1130,7 +1130,7 @@ void MeshManager::instantiateMesh(bool selectable)
         LOG_DEBUG("Mapping mesh instance");
         this->childCount += 1;
 
-        MeshManager::Mesh::Instance instance = {};
+        ModelManager::Model::Instance instance = {};
         instance.id = this->childCount;
         instance.modelMatrix = glm::mat4(1.0f);
         instance.isClickable = selectable;
@@ -1147,16 +1147,16 @@ void MeshManager::instantiateMesh(bool selectable)
         instance.direction = glm::vec3(0.0f, 0.0f, 1.0f);
         instance.scale = glm::vec3(1.0f, 1.0f, 1.0f);
         
-        std::pair<uint32_t, MeshManager::Mesh::Instance> pair(static_cast<uint32_t>(i), instance);
-        this->meshOut.instances.insert(pair);
+        std::pair<uint32_t, ModelManager::Model::Instance> pair(static_cast<uint32_t>(i), instance);
+        this->modelOut.instances.insert(pair);
     };
     
     return;
 };
 
-MeshManager::~MeshManager()
+ModelManager::~ModelManager()
 {
-    LOG_DEBUG("Destroying Lazarus::MeshManager");
+    LOG_DEBUG("Destroying Lazarus::ModelManager");
     
     this->clearErrors();
 

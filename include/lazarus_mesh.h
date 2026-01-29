@@ -47,7 +47,7 @@ using glm::vec2;
 #ifndef LAZARUS_MESH_H
 #define LAZARUS_MESH_H
 
-class MeshManager 
+class ModelManager 
     : private AssetLoader, protected TextureLoader
 {
     public:
@@ -66,14 +66,14 @@ class MeshManager
             
             bool discardsAlphaZero;
         };
-        enum MeshType 
+        enum ModelType 
         {
-            LOADED_GLB = 1,
-            LOADED_WAVEFRONT = 2,
+            GLB = 1,
+            WAVEFRONT = 2,
             PLANE = 3,
             CUBE = 4
         };
-        struct Mesh
+        struct Model
         {
             struct Instance
             {
@@ -95,7 +95,7 @@ class MeshManager
             uint32_t id;
             std::string name;
 
-            MeshType type;
+            ModelType type;
             std::vector<Material> materials;
 
             uint32_t numOfVertices;
@@ -136,23 +136,23 @@ class MeshManager
             bool selectable = false;
         };
         
-		MeshManager(GLuint shader, TextureLoader::StorageType textureType = TextureLoader::StorageType::ARRAY);
+		ModelManager(GLuint shader, TextureLoader::StorageType textureType = TextureLoader::StorageType::ARRAY);
 		
-        lazarus_result create3DAsset(Mesh &out, AssetConfig options);
-        lazarus_result createQuad(Mesh &out, QuadConfig options);
-        lazarus_result createCube(Mesh &out, CubeConfig options);
+        lazarus_result create3DAsset(Model &out, AssetConfig options);
+        lazarus_result createQuad(Model &out, QuadConfig options);
+        lazarus_result createCube(Model &out, CubeConfig options);
 
-        lazarus_result loadMesh(Mesh &meshIn);
-        lazarus_result drawMesh(Mesh &meshIn);
+        lazarus_result loadModel(Model &meshIn);
+        lazarus_result drawModel(Model &meshIn);
         
         //  TODO:
         //  This isn't quite the appropriate place to do this
         //  but ok for now
         
-        void setDiscardFragments(Mesh &meshIn, bool shouldDiscard);
-        void copyMesh(Mesh &dest, Mesh src);
+        void setDiscardFragments(Model &meshIn, bool shouldDiscard);
+        void copyModel(Model &dest, Model src);
         
-        virtual ~MeshManager();
+        virtual ~ModelManager();
         
         // protected:
         lazarus_result clearMeshStorage();
@@ -170,7 +170,7 @@ class MeshManager
             GLuint MBO;     //  Matrice Buffer Object (per-instance matrix: tightly-packed)
             GLuint IIBO;    //  Instance-info Buffer Object (per-instance: tightly-packed -> will probably end up interleaved)
             
-            MeshType type;
+            ModelType type;
             TextureLoader::TextureData texture;
             
             std::vector<FileLoader::Image> images;
@@ -209,7 +209,7 @@ class MeshManager
             instanced rendering is available.
         ======================================= */
 
-        Mesh meshOut;
+        Model modelOut;
         MeshData meshData;
         ModelData modelData;
         std::map<uint32_t, ModelData> modelStore;

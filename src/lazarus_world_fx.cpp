@@ -20,7 +20,7 @@
 #include "../include/lazarus_world_fx.h"
 
 WorldFX::WorldFX(GLuint shaderProgram) 
-    : WorldFX::MeshManager(shaderProgram, TextureLoader::StorageType::CUBEMAP)
+    : WorldFX::ModelManager(shaderProgram, TextureLoader::StorageType::CUBEMAP)
 {
     LOG_DEBUG("Constructing Lazarus::WorldFX");
 
@@ -40,7 +40,7 @@ WorldFX::WorldFX(GLuint shaderProgram)
 lazarus_result WorldFX::createSkyBox(WorldFX::Skybox &out, std::string rightPath, std::string leftPath, std::string downPath, std::string upPath, std::string frontPath, std::string backPath)
 {
     this->skyBoxOut = {};
-    MeshManager::CubeConfig config = {};
+    ModelManager::CubeConfig config = {};
     config.scale = 10.0f;
 
     lazarus_result status = this->createCube(this->skyBoxOut.cube, config);
@@ -96,8 +96,8 @@ lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox skyboxIn, CameraManager::Came
 
     glDepthMask(GL_FALSE);
 
-    MeshManager::loadMesh(skyboxIn.cube);
-    MeshManager::drawMesh(skyboxIn.cube);
+    ModelManager::loadModel(skyboxIn.cube);
+    ModelManager::drawModel(skyboxIn.cube);
     
     glDepthMask(GL_TRUE);
 
@@ -224,18 +224,18 @@ lazarus_result WorldFX::loadSkyMap()
 
     /* =============================================================
         Access the same texture ID values used by the skybox's mesh.
-        Do so by using the MeshManager's TextureManager inherited 
+        Do so by using the ModelManager's TextureManager inherited 
         members to perform texture operations for this skybox.
     ================================================================ */
     
-    status = MeshManager::TextureLoader::storeCubeMap(this->skyBoxOut.cubeMap[0].width, this->skyBoxOut.cubeMap[0].height);
+    status = ModelManager::TextureLoader::storeCubeMap(this->skyBoxOut.cubeMap[0].width, this->skyBoxOut.cubeMap[0].height);
     if(status != lazarus_result::LAZARUS_OK)
     {
         return status;
     }
     else
     {
-        return MeshManager::TextureLoader::loadCubeMap(this->skyBoxOut.cubeMap);
+        return ModelManager::TextureLoader::loadCubeMap(this->skyBoxOut.cubeMap);
     }
 };
 

@@ -45,7 +45,7 @@ namespace Lazarus
     using ::TextManager;
     using ::GlobalsManager;
     using ::WindowManager;
-    using ::MeshManager;
+    using ::ModelManager;
     using ::Transform;
     using ::Shader;
     using ::LightManager;
