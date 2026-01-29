@@ -790,7 +790,7 @@ lazarus_result MeshManager::setSelectable(bool selectable)
             ================================================ */
 
             GlobalsManager::setPickableEntity(meshOut.id);
-            MeshManager::ModelData m = modelStore.at(meshOut.id);
+            MeshManager::ModelData &m = modelStore.at(meshOut.id);
             for(auto &i: m)
             {
                 i.stencilBufferId = numOccupants + 1;
