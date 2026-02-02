@@ -109,6 +109,7 @@ class AssetLoader
         const std::string IMAGES = "\"images\":[";
         const std::string BUFFERVIEWS = "\"bufferViews\":[";
         const std::string BUFFERS = "\"buffers\":[{";
+        const std::string ANIMATIONS = "\"animations\":[{";
 
         //  Subsequent levels: property attributes
         const std::string MESH = "\"mesh\":";
