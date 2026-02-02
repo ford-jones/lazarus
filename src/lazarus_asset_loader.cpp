@@ -724,6 +724,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         vertexIndices.clear();
         normalIndices.clear();
         uvIndices.clear();
+        layers.clear();
         
         /* ==============================================
             A mesh may be constructed from a variety of 
@@ -1080,16 +1081,15 @@ vector<string> AssetLoader::extractContainedContents(std::string bounds, std::st
 
 int32_t AssetLoader::extractAttributeIndex(std::string bounds, std::string target)
 {
-    int32_t out = 0;
-    int32_t attributeNameLocation = bounds.find(target);
-    out = attributeNameLocation;
+    int32_t out = -1;
+    size_t attributeNameLocation = bounds.find(target);
 
     /* ====================================================
         Pick out all occurances of an integer value that 
         appear following the target key / property name.
     ======================================================= */
 
-    if(attributeNameLocation >= 0)
+    if(attributeNameLocation != std::string::npos)
     {
         std::string start = bounds.substr(attributeNameLocation + target.size());
 
