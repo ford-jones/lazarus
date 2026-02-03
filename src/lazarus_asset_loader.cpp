@@ -451,13 +451,13 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                             materials.push_back(colorMaterial);
                         };
                     }
-                    else if(material.find(TEXTUREID) != std::string::npos)
+                    else if(material.find(TEXTURE_ID) != std::string::npos)
                     {
                         LOG_DEBUG("Inspecting texture info");
                         /* =============================================
                             Identify texture index.
                         ================================================ */
-                        std::vector<std::string> imageTextures = extractContainedContents(material, TEXTUREID + "{", "}");
+                        std::vector<std::string> imageTextures = extractContainedContents(material, TEXTURE_ID + "{", "}");
                         for(size_t j = 0; j < imageTextures.size(); j++)
                         {            
                             int32_t index = this->extractAttributeIndex(imageTextures[j], INDEX);
@@ -492,8 +492,8 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
             std::vector<std::string> nodeBuff = this->extractContainedContents(meshData, "{", "}");
             for(auto &nodeData : nodeBuff)
             {
-                std::cout << GREEN_TEXT << "Node: " << RESET_TEXT << nodeData << std::endl;
                 glbNodeData node = {};
+                node.children = {};
                 /* ============================================
                     Extract mesh name in the event that user 
                     didn't configure one.
@@ -536,10 +536,25 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     node.scale.z = std::stof(axis[2]);
                 };
 
+                size_t childrenLocation = nodeData.find(CHILDREN);
+                if(childrenLocation != std::string::npos)
+                {
+                    std::string data = *this->extractContainedContents(nodeData, CHILDREN + "[", "]").data();
+                    std::vector<std::string> children = this->splitTokensFromLine(data.substr(0, data.size() - 1).c_str(), ',');
+
+                    std::transform(
+                        children.begin(), 
+                        children.end(), 
+                        std::back_inserter(node.children), 
+                        [](std::string child) {
+                            return std::stoi(child);
+                        }
+                    );
+                };
+
                 node.name = nameBuff.substr(0, nameBuff.size() - 1);
                 node.meshIndex = this->extractAttributeIndex(nodeData, MESH);
-                node.skinIndex = -1;
-                node.children = {};
+                node.skinIndex = this->extractAttributeIndex(nodeData, SKIN);
 
                 nodes.push_back(node);
             };
@@ -564,10 +579,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     glbAttributeData properties = {};
                     std::string attributeBuff = attributes[b].substr(1, attributes[b].size() - 2);
                     std::vector<std::string> attributeProperties = splitTokensFromLine(attributeBuff.c_str(), ',');
-                    /* ========================================================
-                        Mark uvAccessor as not-present by default.
-                    =========================================================== */
-                    properties.uvAccessor = -1;
+
                     for(size_t c = 0; c < attributeProperties.size(); c++)
                     {
                         std::string property = attributeProperties[c];
@@ -580,6 +592,12 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                             return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
                         };
     
+                        /* ========================================================
+                            Note that UV's, joints and weights are marked as absent
+                            by default. Uv's are only present when image textures
+                            are in use. Joints and weights are only present if the 
+                            primitives are components in an animated skin.
+                        =========================================================== */
                         int32_t value = std::stoi(property.substr(index + 1));
                         switch (property[1])
                         {
@@ -595,14 +613,21 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                             case 'T':
                                 properties.uvAccessor = value;
                                 break;
-    
+                            //  JOINT
+                            case 'J':
+                                properties.jointsAccessor = value;
+                                break;
+                            //  WEIGHT
+                            case 'W':
+                                properties.weightsAccessor = value;
+                                break;
                             default:
                                 break;
                         };
                     };
     
                     properties.indicesAccessor = this->extractAttributeIndex(primitiveData, INDICES);
-                    properties.materialIndex = this->extractAttributeIndex(primitiveData, MATERIALID);
+                    properties.materialIndex = this->extractAttributeIndex(primitiveData, MATERIAL_ID);
                     mesh.push_back(properties);
     
                     std::string nextObject = "},{";
@@ -615,8 +640,26 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         }
         else if(json.find(SKINS) == 0)
         {
-            std::string meshData = json;
-            LOG_DEBUG(meshData.c_str());
+            LOG_DEBUG("Parsing skinning data...");
+            std::vector<std::string> skinData = this->extractContainedContents(json, "{", "}");
+            for(size_t j = 0; j < skinData.size(); j++)
+            {
+                glbSkinData skin = {};
+                std::string jointData = this->extractContainedContents(skinData[j], JOINTS + "[", "]")[0];
+                std::vector<std::string> joints = this->splitTokensFromLine(jointData.substr(0, jointData.size() -1).c_str(), ',');
+
+                skin.inverseBindMatriceAccessor = this->extractAttributeIndex(skinData[j], INVERSE_BIND_MATRICES);
+                std::transform(
+                    joints.begin(), 
+                    joints.end(), 
+                    std::back_inserter(skin.joints),
+                    [](std::string joint) {
+                        return std::stoi(joint);
+                    }
+                );
+
+                skins.push_back(skin);
+            };
         }
         else if(json.find(TEXTURES) == 0)
         {
@@ -625,8 +668,8 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
             std::vector<std::string> textureProperties = extractContainedContents(json, "{", "}");
             for(size_t j = 0; j < textureProperties.size(); j++)
             {
-                texture.samplerIndex = this->extractAttributeIndex(textureProperties[j], SAMPLERID);
-                texture.imageIndex = this->extractAttributeIndex(textureProperties[j], IMAGEID);
+                texture.samplerIndex = this->extractAttributeIndex(textureProperties[j], SAMPLER_ID);
+                texture.imageIndex = this->extractAttributeIndex(textureProperties[j], IMAGE_ID);
                 textures.push_back(texture);
             };
         }
@@ -637,7 +680,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
             for(size_t j = 0; j < imageProperties.size(); j++)
             {
                 glbImageData image = {}; 
-                image.bufferViewIndex = this->extractAttributeIndex(imageProperties[j], BUFFERVIEWID);
+                image.bufferViewIndex = this->extractAttributeIndex(imageProperties[j], BUFFERVIEW_ID);
                 images.push_back(image);
             };
         }
@@ -655,9 +698,9 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 std::string accessorData = data[j];
 
                 glbAccessorData accessor = {};
-                accessor.bufferViewIndex = this->extractAttributeIndex(accessorData, BUFFERVIEWID);
-                accessor.componentType = this->extractAttributeIndex(accessorData, COMPONENTTYPE);
-                accessor.byteOffset = this->extractAttributeIndex(accessorData, BYTEOFFSET);
+                accessor.bufferViewIndex = this->extractAttributeIndex(accessorData, BUFFERVIEW_ID);
+                accessor.componentType = this->extractAttributeIndex(accessorData, COMPONENT_TYPE);
+                accessor.byteOffset = this->extractAttributeIndex(accessorData, BYTE_OFFSET);
                 accessor.count = this->extractAttributeIndex(accessorData, COUNT);
                 accessor.type = type;
 
@@ -686,10 +729,10 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
 
                 glbBufferViewData bufferView = {};
 
-                bufferView.bufferIndex  = this->extractAttributeIndex(bvData, BUFFERID);
-                bufferView.byteOffset   = this->extractAttributeIndex(bvData, BYTEOFFSET);
-                bufferView.byteLength   = this->extractAttributeIndex(bvData, BYTELENGTH);
-                bufferView.byteStride   = this->extractAttributeIndex(bvData, BYTESTRIDE);
+                bufferView.bufferIndex  = this->extractAttributeIndex(bvData, BUFFER_ID);
+                bufferView.byteOffset   = this->extractAttributeIndex(bvData, BYTE_OFFSET);
+                bufferView.byteLength   = this->extractAttributeIndex(bvData, BYTE_LENGTH);
+                bufferView.byteStride   = this->extractAttributeIndex(bvData, BYTE_STRIDE);
 
                 bufferViews.push_back(bufferView);
             };
@@ -705,7 +748,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
 
                 glbBufferData buffer = {};
                 buffer.offset = offset;
-                buffer.stride = this->extractAttributeIndex(bufferData, BYTELENGTH);
+                buffer.stride = this->extractAttributeIndex(bufferData, BYTE_LENGTH);
                 offset += buffer.stride;
 
                 buffers.push_back(buffer);
@@ -722,11 +765,12 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         uint32_t indicesCount = 0;
 
         glbNodeData node = nodes[i];
-        LOG_DEBUG(std::string("Loading asset: [").append(node.name + "]").c_str());
-        LOG_DEBUG(std::string("Mesh Index: ").append(std::to_string(node.meshIndex)).c_str());
-
+        
         if(node.meshIndex >= 0)
         {
+            LOG_DEBUG(std::string("Loading asset: [").append(node.name + "]").c_str());
+            LOG_DEBUG(std::string("Mesh Index: ").append(std::to_string(node.meshIndex)).c_str());
+
             glbMeshData meshData = meshes[node.meshIndex];
             AssetLoader::AssetData asset = {};        
     
@@ -1291,6 +1335,7 @@ void AssetLoader::resetMembers()
     this->nodes.clear();
     this->mesh.clear();
     this->meshes.clear();
+    this->skins.clear();
     this->materials.clear();
     this->textures.clear();
     this->images.clear();

@@ -113,25 +113,29 @@ class AssetLoader
 
         //  Subsequent levels: property attributes
         const std::string MESH = "\"mesh\":";
+        const std::string SKIN = "\"skin\":";
         const std::string TRANSLATION = "\"translation\":";
         const std::string ROTATION = "\"rotation\":";
         const std::string SCALE = "\"scale\":";
-        const std::string MATERIALID = "\"material\":";
-        const std::string TEXTUREID = "\"baseColorTexture\":";
+        const std::string MATERIAL_ID = "\"material\":";
+        const std::string TEXTURE_ID = "\"baseColorTexture\":";
         const std::string DIFFUSE = "\"baseColorFactor\":";
         const std::string INDEX = "\"index\":";
         const std::string ATTRIBUTES = "\"attributes\":";
         const std::string INDICES = "\"indices\":";
-        const std::string SAMPLERID = "\"sampler\":";
-        const std::string IMAGEID = "\"source\":";
-        const std::string BUFFERVIEWID = "\"bufferView\":";
-        const std::string BUFFERID = "\"buffer\":";
+        const std::string SAMPLER_ID = "\"sampler\":";
+        const std::string IMAGE_ID = "\"source\":";
+        const std::string BUFFERVIEW_ID = "\"bufferView\":";
+        const std::string BUFFER_ID = "\"buffer\":";
         const std::string COUNT = "\"count\":";
-        const std::string COMPONENTTYPE = "\"componentType\":";
-        const std::string BYTEOFFSET = "\"byteOffset\":";
-        const std::string BYTELENGTH = "\"byteLength\":";
-        const std::string BYTESTRIDE = "\"byteStride\":";
+        const std::string COMPONENT_TYPE = "\"componentType\":";
+        const std::string BYTE_OFFSET = "\"byteOffset\":";
+        const std::string BYTE_LENGTH = "\"byteLength\":";
+        const std::string BYTE_STRIDE = "\"byteStride\":";
         const std::string NAME = "\"name\":";
+        const std::string CHILDREN = "\"children\":";
+        const std::string INVERSE_BIND_MATRICES = "\"inverseBindMatrices\":";
+        const std::string JOINTS = "\"joints\":";
 
         struct glbNodeData
         {
@@ -143,12 +147,19 @@ class AssetLoader
             glm::vec3 scale = glm::vec3(1.0f, 1.0f, 1.0f);
             glm::vec4 rotation = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
         };
+        struct glbSkinData
+        {
+            uint32_t inverseBindMatriceAccessor;
+            std::vector<uint32_t> joints;
+        };
         struct glbAttributeData
         {
             uint32_t positionAccessor;
             uint32_t normalsAccessor;
             uint32_t indicesAccessor;
-            int32_t uvAccessor;
+            int32_t jointsAccessor = -1;
+            int32_t weightsAccessor = -1;
+            int32_t uvAccessor = -1;
             uint32_t materialIndex;
         };
         struct glbMaterialData
@@ -191,6 +202,7 @@ class AssetLoader
         glbMeshData mesh;
         std::vector<glbNodeData> nodes;
         std::vector<glbMeshData> meshes;
+        std::vector<glbSkinData> skins;
         std::vector<glbMaterialData> materials;
         std::vector<glbTextureData> textures;
         std::vector<glbImageData> images;
