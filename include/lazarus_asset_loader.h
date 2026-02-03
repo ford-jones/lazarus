@@ -115,6 +115,7 @@ class AssetLoader
         const std::string MESH = "\"mesh\":";
         const std::string TRANSLATION = "\"translation\":";
         const std::string ROTATION = "\"rotation\":";
+        const std::string SCALE = "\"scale\":";
         const std::string MATERIALID = "\"material\":";
         const std::string TEXTUREID = "\"baseColorTexture\":";
         const std::string DIFFUSE = "\"baseColorFactor\":";
@@ -139,6 +140,7 @@ class AssetLoader
             int32_t skinIndex;
             std::vector<int32_t> children;
             glm::vec3 translation = glm::vec3(0.0f, 0.0f, 0.0f);
+            glm::vec3 scale = glm::vec3(1.0f, 1.0f, 1.0f);
             glm::vec4 rotation = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
         };
         struct glbAttributeData

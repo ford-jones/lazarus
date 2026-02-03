@@ -526,6 +526,16 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     node.rotation.w = std::stof(axis[3]);
                 };
 
+                if(nodeData.find(SCALE) != std::string::npos)
+                {
+                    std::string str = this->extractContainedContents(nodeData, SCALE, "]")[0];
+                    std::vector<std::string> axis = this->splitTokensFromLine(str.substr(1, str.size() - 2).c_str(), ',');
+
+                    node.scale.x = std::stof(axis[0]);
+                    node.scale.y = std::stof(axis[1]);
+                    node.scale.z = std::stof(axis[2]);
+                };
+
                 node.name = nameBuff.substr(0, nameBuff.size() - 1);
                 node.meshIndex = this->extractAttributeIndex(nodeData, MESH);
                 node.skinIndex = -1;
@@ -862,9 +872,10 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                         the VBO with no modification to the model matrix, which
                         should remain at the origin.
     
-                        I.e. quaternion rotation + translation
+                        I.e. (rotation + translation) * scale
     
-                        Using the formula described here for passive rotation:
+                        Using the formula described here for passive 
+                        quaternion rotation:
                         https://danceswithcode.net/engineeringnotes/quaternions/quaternions.html#:~:text=(13)-,Quaternion%20Rotation,-We%20can%20rotate
                     =========================================================== */
     
@@ -872,7 +883,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     glm::quat conjugate = glm::conjugate(quaternion);
                     glm::vec3 orientation = quaternion * vertexPositions[index] * conjugate;
     
-                    tempVertexPositions.emplace(serial, orientation + node.translation);
+                    tempVertexPositions.emplace(serial, (orientation + node.translation) * node.scale);
                     tempNormals.emplace(serial, vertexNormals[index]);
         
                     /* ===================================================================
