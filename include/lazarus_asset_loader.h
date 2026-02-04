@@ -64,11 +64,43 @@ class AssetLoader
     	    
         struct AssetData
         {
+            struct JointMotion
+            {
+                enum TransformType
+                {
+                    TRANSLATION,
+                    ROTATION,
+                    SCALE
+                };
+                enum InterpolationType
+                {
+                    LINEAR,
+                    STEP,
+                    CUBICSPLINE
+                };
+                std::vector<float> timesteps;
+                std::vector<glm::vec3> pointsInTime;
+                uint32_t targetJoint;
+                //  TODO:
+                //  Find a better way to express these
+                InterpolationType lerp;
+                TransformType transform;
+            };
+            struct Joint
+            {
+                glm::mat4 inverseBindMatrice;
+                glm::vec3 location;
+                std::vector<uint32_t> children;
+            };
+            typedef std::vector<JointMotion> Animation;
+            
             std::string name;
             std::vector<glm::vec3> attributes;
             std::vector<glm::vec3> colors;
             std::vector<uint32_t> indices;
             std::vector<FileLoader::Image> textures;
+            std::vector<Animation> animations;
+            std::map<uint32_t, Joint> armature;
         };
 
         lazarus_result parseWavefrontObj(
@@ -113,7 +145,6 @@ class AssetLoader
 
         //  Subsequent levels: property attributes
         const std::string MESH = "\"mesh\":";
-        const std::string SKIN = "\"skin\":";
         const std::string TRANSLATION = "\"translation\":";
         const std::string ROTATION = "\"rotation\":";
         const std::string SCALE = "\"scale\":";
@@ -133,24 +164,29 @@ class AssetLoader
         const std::string BYTE_LENGTH = "\"byteLength\":";
         const std::string BYTE_STRIDE = "\"byteStride\":";
         const std::string NAME = "\"name\":";
+        const std::string SKIN = "\"skin\":";
         const std::string CHILDREN = "\"children\":";
         const std::string INVERSE_BIND_MATRICES = "\"inverseBindMatrices\":";
         const std::string JOINTS = "\"joints\":";
+        const std::string TARGET = "\"target\":";
+        const std::string NODE_ID = "\"node\":";
+        const std::string PATH = "\"path\":";
+        const std::string CHANNELS = "\"channels\":";
+        const std::string SAMPLERS = "\"samplers\":";
+        const std::string INPUT = "\"input\":";
+        const std::string OUTPUT = "\"output\":";
+        const std::string INTERPOLATION = "\"interpolation\":";
 
         struct glbNodeData
         {
+            uint32_t id;
             std::string name;
             int32_t meshIndex;
             int32_t skinIndex;
-            std::vector<int32_t> children;
+            std::vector<uint32_t> children;
             glm::vec3 translation = glm::vec3(0.0f, 0.0f, 0.0f);
             glm::vec3 scale = glm::vec3(1.0f, 1.0f, 1.0f);
             glm::vec4 rotation = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
-        };
-        struct glbSkinData
-        {
-            uint32_t inverseBindMatriceAccessor;
-            std::vector<uint32_t> joints;
         };
         struct glbAttributeData
         {
@@ -161,6 +197,28 @@ class AssetLoader
             int32_t weightsAccessor = -1;
             int32_t uvAccessor = -1;
             uint32_t materialIndex;
+        };
+        struct glbSkinData
+        {
+            uint32_t inverseBindMatriceAccessor;
+            std::vector<uint32_t> joints;
+        };
+        struct glbAnimationChannel
+        {
+            AssetData::JointMotion::TransformType transformType;
+            uint32_t samplerIndex;
+            uint32_t nodeIndex;
+        };
+        struct glbAnimationSampler
+        {
+            AssetData::JointMotion::InterpolationType lerpType;
+            uint32_t timestepAccessor;
+            uint32_t keyframeContentsAccessor;
+        };
+        struct glbAnimationData
+        {
+            std::vector<glbAnimationChannel> channels;
+            std::vector<glbAnimationSampler> samplers;
         };
         struct glbMaterialData
         {
@@ -203,6 +261,7 @@ class AssetLoader
         std::vector<glbNodeData> nodes;
         std::vector<glbMeshData> meshes;
         std::vector<glbSkinData> skins;
+        std::vector<glbAnimationData> animations;
         std::vector<glbMaterialData> materials;
         std::vector<glbTextureData> textures;
         std::vector<glbImageData> images;
