@@ -72,7 +72,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 ================================================ */
                 if ( currentLine[1] == ' ' )
                 {
-                    wavefrontCoordinates = splitTokensFromLine(currentLine, ' ');
+                    wavefrontCoordinates = fileLoader->splitTokensFromLine(currentLine, ' ');
 
                     this->vertex.x = stof(wavefrontCoordinates[1]);
                     this->vertex.y = stof(wavefrontCoordinates[2]);
@@ -86,7 +86,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 ================================================ */
                 else if ( currentLine[1] == 't' )
                 {
-                    wavefrontCoordinates = splitTokensFromLine(currentLine, ' ');
+                    wavefrontCoordinates = fileLoader->splitTokensFromLine(currentLine, ' ');
 
                     /* =========================================
                         uv is extended from its generic xy components
@@ -109,7 +109,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 ================================================= */
                 else if ( currentLine[1] == 'n' )
                 {
-                    wavefrontCoordinates = splitTokensFromLine(currentLine, ' ');
+                    wavefrontCoordinates = fileLoader->splitTokensFromLine(currentLine, ' ');
 
                     this->normal.x = stof(wavefrontCoordinates[1]);
                     this->normal.y = stof(wavefrontCoordinates[2]);
@@ -125,7 +125,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
             case 'f':
                 this->triangleCount += 1;
 
-                wavefrontCoordinates = splitTokensFromLine(currentLine, ' ');
+                wavefrontCoordinates = fileLoader->splitTokensFromLine(currentLine, ' ');
 
                 for(auto i: wavefrontCoordinates) 
                 {
@@ -448,10 +448,10 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     if(material.find(DIFFUSE) != std::string::npos)
                     {
                         LOG_DEBUG("Inspecting diffuse colors");
-                        std::vector<std::string> colors = extractContainedContents(material, DIFFUSE + "[", "]");
+                        std::vector<std::string> colors = fileLoader->extractContainedContents(material, DIFFUSE + "[", "]");
                         for(size_t j = 0; j < colors.size(); j++)
                         {
-                            std::vector<std::string> color = this->splitTokensFromLine(colors[j].c_str(), ',');
+                            std::vector<std::string> color = fileLoader->splitTokensFromLine(colors[j].c_str(), ',');
                             glbMaterialData colorMaterial = {};
                             colorMaterial.diffuse = {std::stof(color[0]), std::stof(color[1]), std::stof(color[2])};
                             colorMaterial.textureIndex = -1;
@@ -464,7 +464,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                         /* =============================================
                             Identify texture index.
                         ================================================ */
-                        std::vector<std::string> imageTextures = extractContainedContents(material, TEXTURE_ID + "{", "}");
+                        std::vector<std::string> imageTextures = fileLoader->extractContainedContents(material, TEXTURE_ID + "{", "}");
                         for(size_t j = 0; j < imageTextures.size(); j++)
                         {            
                             int32_t index = this->extractAttributeIndex(imageTextures[j], INDEX);
@@ -489,7 +489,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
             LOG_DEBUG("Parsing node...");
             std::string meshData = json;
 
-            std::vector<std::string> nodeBuff = this->extractContainedContents(meshData, "{", "}");
+            std::vector<std::string> nodeBuff = fileLoader->extractContainedContents(meshData, "{", "}");
             for(size_t j = 0; j < nodeBuff.size(); j++)
             {
                 std::string &nodeData = nodeBuff[j];
@@ -501,12 +501,12 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     didn't configure one.
                 =============================================== */
                 size_t nameStart = nodeData.find(NAME);
-                std::string nameBuff = *this->extractContainedContents(nodeData.substr(nameStart + NAME.size()), "\"", "\"").data();
+                std::string nameBuff = *fileLoader->extractContainedContents(nodeData.substr(nameStart + NAME.size()), "\"", "\"").data();
 
                 if(nodeData.find(TRANSLATION) != std::string::npos)
                 {
-                    std::string str = this->extractContainedContents(nodeData, TRANSLATION, "]")[0];
-                    std::vector<std::string> axis = this->splitTokensFromLine(str.substr(1, str.size() - 2).c_str(), ',');
+                    std::string str = fileLoader->extractContainedContents(nodeData, TRANSLATION, "]")[0];
+                    std::vector<std::string> axis = fileLoader->splitTokensFromLine(str.substr(1, str.size() - 2).c_str(), ',');
         
                     node.translation.x = std::stof(axis[0]);
                     node.translation.y = std::stof(axis[1]);
@@ -515,8 +515,8 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 
                 if(nodeData.find(ROTATION) != std::string::npos)
                 {
-                    std::string str = this->extractContainedContents(nodeData, ROTATION, "]")[0];
-                    std::vector<std::string> axis = this->splitTokensFromLine(str.substr(1, str.size() - 2).c_str(), ',');
+                    std::string str = fileLoader->extractContainedContents(nodeData, ROTATION, "]")[0];
+                    std::vector<std::string> axis = fileLoader->splitTokensFromLine(str.substr(1, str.size() - 2).c_str(), ',');
 
                     /* ===========================================
                         glb rotations are supplied as a
@@ -530,8 +530,8 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
 
                 if(nodeData.find(SCALE) != std::string::npos)
                 {
-                    std::string str = this->extractContainedContents(nodeData, SCALE, "]")[0];
-                    std::vector<std::string> axis = this->splitTokensFromLine(str.substr(1, str.size() - 2).c_str(), ',');
+                    std::string str = fileLoader->extractContainedContents(nodeData, SCALE, "]")[0];
+                    std::vector<std::string> axis = fileLoader->splitTokensFromLine(str.substr(1, str.size() - 2).c_str(), ',');
 
                     node.scale.x = std::stof(axis[0]);
                     node.scale.y = std::stof(axis[1]);
@@ -541,8 +541,8 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 size_t childrenLocation = nodeData.find(CHILDREN);
                 if(childrenLocation != std::string::npos)
                 {
-                    std::string data = this->extractContainedContents(nodeData, CHILDREN + "[", "]")[0];
-                    std::vector<std::string> children = this->splitTokensFromLine(data.substr(0, data.size() - 1).c_str(), ',');
+                    std::string data = fileLoader->extractContainedContents(nodeData, CHILDREN + "[", "]")[0];
+                    std::vector<std::string> children = fileLoader->splitTokensFromLine(data.substr(0, data.size() - 1).c_str(), ',');
 
                     std::transform(
                         children.begin(), 
@@ -565,14 +565,14 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         {
             LOG_DEBUG("Parsing primitives...");
             std::string meshData = json;
-            std::vector<std::string> primitives = extractContainedContents(meshData, PRIMITIVES, "]");
+            std::vector<std::string> primitives = fileLoader->extractContainedContents(meshData, PRIMITIVES, "]");
             
             meshes = {};
             
             for(size_t a = 0; a < primitives.size(); a++)
             {
                 std::string &primitiveData = primitives[a];
-                std::vector<std::string> attributes = extractContainedContents(primitiveData, ATTRIBUTES, "}");
+                std::vector<std::string> attributes = fileLoader->extractContainedContents(primitiveData, ATTRIBUTES, "}");
                 LOG_DEBUG("Inspecting attributes");
 
                 mesh.clear();
@@ -580,7 +580,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 {           
                     glbAttributeData properties = {};
                     std::string attributeBuff = attributes[b].substr(1, attributes[b].size() - 2);
-                    std::vector<std::string> attributeProperties = splitTokensFromLine(attributeBuff.c_str(), ',');
+                    std::vector<std::string> attributeProperties = fileLoader->splitTokensFromLine(attributeBuff.c_str(), ',');
 
                     for(size_t c = 0; c < attributeProperties.size(); c++)
                     {
@@ -643,12 +643,12 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         else if(json.find(SKINS) == 0)
         {
             LOG_DEBUG("Parsing skinning data...");
-            std::vector<std::string> skinData = this->extractContainedContents(json, "{", "}");
+            std::vector<std::string> skinData = fileLoader->extractContainedContents(json, "{", "}");
             for(size_t j = 0; j < skinData.size(); j++)
             {
                 glbSkinData skin = {};
-                std::string jointData = this->extractContainedContents(skinData[j], JOINTS + "[", "]")[0];
-                std::vector<std::string> joints = this->splitTokensFromLine(jointData.substr(0, jointData.size() -1).c_str(), ',');
+                std::string jointData = fileLoader->extractContainedContents(skinData[j], JOINTS + "[", "]")[0];
+                std::vector<std::string> joints = fileLoader->splitTokensFromLine(jointData.substr(0, jointData.size() -1).c_str(), ',');
 
                 skin.inverseBindMatriceAccessor = this->extractAttributeIndex(skinData[j], INVERSE_BIND_MATRICES);
                 std::transform(
@@ -669,8 +669,8 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
             LOG_DEBUG("Parsing animation data...");
 
             std::string animationData = json;
-            std::string channels = this->extractContainedContents(animationData, CHANNELS + "[", "]")[0];
-            std::string samplers = this->extractContainedContents(animationData, SAMPLERS + "[", "]")[0];
+            std::string channels = fileLoader->extractContainedContents(animationData, CHANNELS + "[", "]")[0];
+            std::string samplers = fileLoader->extractContainedContents(animationData, SAMPLERS + "[", "]")[0];
 
             /* ===================================================
                 Apply the same methodology as is used duriing mesh
@@ -678,14 +678,14 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 these json objects.
             ====================================================== */
 
-            std::vector<std::string> targetInfo = this->extractContainedContents(channels, TARGET, "}");
+            std::vector<std::string> targetInfo = fileLoader->extractContainedContents(channels, TARGET, "}");
             for(size_t j = 0; j < targetInfo.size(); j++)
             {
                 glbAnimationChannel channel = {};
                 std::string info = targetInfo[j];
                 size_t pathStart = info.find(PATH);
 
-                std::string transformType = *this->extractContainedContents(info.substr(pathStart + PATH.size()), "\"", "\"").data();
+                std::string transformType = *fileLoader->extractContainedContents(info.substr(pathStart + PATH.size()), "\"", "\"").data();
                 switch (transformType[0])
                 {
                     //  TRANSLATION
@@ -714,14 +714,14 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 animation.channels.push_back(channel);
             };
 
-            std::vector<std::string> samplerInfo = this->extractContainedContents(samplers, "{", "}");
+            std::vector<std::string> samplerInfo = fileLoader->extractContainedContents(samplers, "{", "}");
             for(size_t j = 0; j < samplerInfo.size(); j++)
             {
                 glbAnimationSampler sampler = {};
                 std::string info = samplerInfo[j];
 
                 size_t lerpStart = info.find(INTERPOLATION);
-                std::string lerpType = *this->extractContainedContents(info.substr(lerpStart + INTERPOLATION.size()), "\"", "\"").data();
+                std::string lerpType = *fileLoader->extractContainedContents(info.substr(lerpStart + INTERPOLATION.size()), "\"", "\"").data();
 
                 switch (lerpType[0])
                 {
@@ -754,7 +754,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         {
             LOG_DEBUG("Parsing texture data...");
             glbTextureData texture = {};
-            std::vector<std::string> textureProperties = extractContainedContents(json, "{", "}");
+            std::vector<std::string> textureProperties = fileLoader->extractContainedContents(json, "{", "}");
             for(size_t j = 0; j < textureProperties.size(); j++)
             {
                 texture.samplerIndex = this->extractAttributeIndex(textureProperties[j], SAMPLER_ID);
@@ -765,7 +765,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         else if(json.find(IMAGES) == 0)
         {
             LOG_DEBUG("Copying image data...");
-            std::vector<std::string> imageProperties = extractContainedContents(json, "{", "}");
+            std::vector<std::string> imageProperties = fileLoader->extractContainedContents(json, "{", "}");
             for(size_t j = 0; j < imageProperties.size(); j++)
             {
                 glbImageData image = {}; 
@@ -776,10 +776,10 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         else if(json.find(ACCESSORS) == 0)
         {
             LOG_DEBUG("Parsing accessors...");
-            std::vector<std::string> data = this->extractContainedContents(json, "{", "}");
+            std::vector<std::string> data = fileLoader->extractContainedContents(json, "{", "}");
 
             std::vector<std::string> types;
-            types = this->extractContainedContents(json, "\"type\":\"", ",");
+            types = fileLoader->extractContainedContents(json, "\"type\":\"", ",");
 
             for(size_t j = 0; j < data.size(); j++)
             {
@@ -810,7 +810,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 componentType 5126 (GL_FLOAT), which will be written to GL_ARRAY_BUFFER. If 
                 it isn't then the mesh is not supported.
             =============================================================================== */
-            std::vector<std::string> data = this->extractContainedContents(json, "{", "}");
+            std::vector<std::string> data = fileLoader->extractContainedContents(json, "{", "}");
             
             for(size_t j = 0; j < data.size(); j++)
             {
@@ -829,7 +829,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         else if(json.find(BUFFERS) == 0)
         {
             LOG_DEBUG("Copying buffer data...");
-            std::vector<std::string> data = this->extractContainedContents(json, "{", "}");
+            std::vector<std::string> data = fileLoader->extractContainedContents(json, "{", "}");
             uint32_t offset = 0;
             for(size_t j = 0; j < data.size(); j++)
             {
@@ -1346,38 +1346,6 @@ lazarus_result AssetLoader::loadGlbChunks(const char *filepath)
     }
 }
 
-vector<string> AssetLoader::extractContainedContents(std::string bounds, std::string containerStart, std::string containerEnd)
-{
-    std::vector<std::string> outContents = {};
-    std::string buffer = bounds;
-    bool moreToUnpack = true;
-    int32_t start = 0;
-    int32_t end = 0;
-
-    /* ==============================================
-        Identify target containers and split-out their
-        contents.
-    ================================================= */
-
-    while(moreToUnpack)
-    {
-        start = buffer.find(containerStart);
-        if(start < 0)
-        {
-            moreToUnpack = false;
-            break;
-        };
-        buffer = buffer.substr(start + 1);
-      
-        end = buffer.find(containerEnd);
-
-        std::string arrayContents = buffer.substr(containerStart.size() - 1, end - (containerStart.size() - 2));
-        outContents.push_back(arrayContents);
-    };
-
-    return outContents;
-}
-
 int32_t AssetLoader::extractAttributeIndex(std::string bounds, std::string target)
 {
     int32_t out = -1;
@@ -1404,22 +1372,6 @@ int32_t AssetLoader::extractAttributeIndex(std::string bounds, std::string targe
     
     return out;
 };
-
-vector<string> AssetLoader::splitTokensFromLine(const char *wavefrontData, char delim)
-{
-    string token;
-    string currentString = wavefrontData;
-    stringstream ss(currentString);
-
-    vector<string> tokenStore;
-
-    while(getline(ss, token, delim)) 
-    {
-        tokenStore.push_back(token);
-    }
-
-    return tokenStore;
-}
 
 void AssetLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> outDiffuse, uint32_t numOfAttributes)
 {

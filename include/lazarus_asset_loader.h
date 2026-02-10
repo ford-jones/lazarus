@@ -278,9 +278,6 @@ class AssetLoader
         //  Perform copies from memory to a glm vector type, regardless of whether the values 
         //  are tightly packed or interleaved.
         template<typename T> void populateVectorFromMemory(glbAccessorData accessor, glbBufferViewData bufferView, std::vector<T> &vertexData);
-        //  Retrieves all information from 'bounds' that occurs between an instance of 'containerStart'
-        //  and 'containerEnd'.
-        std::vector<std::string> extractContainedContents(std::string bounds, std::string containerStart, std::string containerEnd);
         //  Retrieve all integers immediately following 'target' that occur within 'bounds'.
         int32_t extractAttributeIndex(std::string bounds, std::string target);
 
@@ -309,9 +306,6 @@ class AssetLoader
         
         ifstream file;
         std::unique_ptr<FileLoader> fileLoader;
-        //  Identifies and contains the contents from 'wavefrontData' that occur between instances
-        //  of 'delim'.
-        std::vector<std::string> splitTokensFromLine(const char *wavefrontData, char delim);
         //  Deduplicate vertex attributes and construct a serial for those that are unique to be 
         //  passed to the renderers IBO. Interleaves attributes in the order that is expected by
         //  the renderers VBO.

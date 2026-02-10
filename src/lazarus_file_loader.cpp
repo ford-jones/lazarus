@@ -221,6 +221,55 @@ lazarus_result FileLoader::loadImage(FileLoader::Image &out, const char *filenam
 	};
 };
 
+std::vector<std::string> FileLoader::splitTokensFromLine(const char *data, char delim)
+{
+    std::string token;
+    std::string currentString = data;
+    std::stringstream ss(currentString);
+
+    std::vector<std::string> tokenStore;
+
+    while(getline(ss, token, delim)) 
+    {
+        tokenStore.push_back(token);
+    }
+
+    return tokenStore;
+}
+
+
+std::vector<std::string> FileLoader::extractContainedContents(std::string bounds, std::string containerStart, std::string containerEnd)
+{
+    std::vector<std::string> outContents = {};
+    std::string buffer = bounds;
+    bool moreToUnpack = true;
+    int32_t start = 0;
+    int32_t end = 0;
+
+    /* ==============================================
+        Identify target containers and split-out their
+        contents.
+    ================================================= */
+
+    while(moreToUnpack)
+    {
+        start = buffer.find(containerStart);
+        if(start < 0)
+        {
+            moreToUnpack = false;
+            break;
+        };
+        buffer = buffer.substr(start + 1);
+      
+        end = buffer.find(containerEnd);
+
+        std::string arrayContents = buffer.substr(containerStart.size() - 1, end - (containerStart.size() - 2));
+        outContents.push_back(arrayContents);
+    };
+
+    return outContents;
+}
+
 FileLoader::~FileLoader()
 {
     LOG_DEBUG("Destroying Lazarus::FileLoader");
