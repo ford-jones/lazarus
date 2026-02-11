@@ -34,6 +34,10 @@ AssetLoader::AssetLoader()
     this->tempVertexPositions = {};
     this->tempNormals = {};
     this->tempUvs = {};
+    this->tempJoints = {};
+    this->tempWeights = {};
+    this->tempImages = {};
+    this->tempDiffuse ={};
 };
 
 lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData> &out, const char *meshPath, const char *materialPath) 
@@ -73,12 +77,13 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 if ( currentLine[1] == ' ' )
                 {
                     wavefrontCoordinates = fileLoader->splitTokensFromLine(currentLine, ' ');
+                    glm::vec3 vertex = glm::vec3(0.0f, 0.0f, 0.0f);
 
-                    this->vertex.x = stof(wavefrontCoordinates[1]);
-                    this->vertex.y = stof(wavefrontCoordinates[2]);
-                    this->vertex.z = stof(wavefrontCoordinates[3]);
+                    vertex.x = stof(wavefrontCoordinates[1]);
+                    vertex.y = stof(wavefrontCoordinates[2]);
+                    vertex.z = stof(wavefrontCoordinates[3]);
 
-                    this->tempVertexPositions.insert(std::pair(positionCount, this->vertex));
+                    this->tempVertexPositions.insert(std::pair(positionCount, vertex));
                     positionCount += 1;
                 } 
                 /* =============================================
@@ -87,6 +92,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 else if ( currentLine[1] == 't' )
                 {
                     wavefrontCoordinates = fileLoader->splitTokensFromLine(currentLine, ' ');
+                    glm::vec3 uv = glm::vec3(0.0f, 0.0f, 0.0f);
 
                     /* =========================================
                         uv is extended from its generic xy components
@@ -97,11 +103,12 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
 
                         Once in the shaders it is disregarded. 
                     ============================================ */
-                    this->uv.x = stof(wavefrontCoordinates[1]);
-                    this->uv.y = stof(wavefrontCoordinates[2]);
-                    this->uv.z = 0.0f;
 
-                    this->tempUvs.insert(std::pair(uvCount, this->uv));
+                    uv.x = stof(wavefrontCoordinates[1]);
+                    uv.y = stof(wavefrontCoordinates[2]);
+                    uv.z = 0.0f;
+
+                    this->tempUvs.insert(std::pair(uvCount, uv));
                     uvCount += 1;
                 }
                 /* ==============================================
@@ -110,12 +117,13 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 else if ( currentLine[1] == 'n' )
                 {
                     wavefrontCoordinates = fileLoader->splitTokensFromLine(currentLine, ' ');
+                    glm::vec3 normal = glm::vec3(0.0f, 0.0f, 0.0f);
 
-                    this->normal.x = stof(wavefrontCoordinates[1]);
-                    this->normal.y = stof(wavefrontCoordinates[2]);
-                    this->normal.z = stof(wavefrontCoordinates[3]);
+                    normal.x = stof(wavefrontCoordinates[1]);
+                    normal.y = stof(wavefrontCoordinates[2]);
+                    normal.z = stof(wavefrontCoordinates[3]);
 
-                    this->tempNormals.insert(std::pair(normalCount, this->normal));
+                    this->tempNormals.insert(std::pair(normalCount, normal));
                     normalCount += 1;
                 }
                 break;
@@ -176,6 +184,17 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
         };
     }
 
+    /* ========================================================
+        Wavefront animation isn't supported so zero-out the
+        buffers.
+    =========================================================== */
+
+    for(size_t i = 0; i < tempVertexPositions.size(); i++)
+    {
+        tempJoints.insert(std::pair<uint32_t, glm::vec4>(i, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
+        tempWeights.insert(std::pair<uint32_t, glm::vec4>(i, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
+    };
+
     /* ======================================================
         All required elements have been extracted. Begin 
         construction.
@@ -199,7 +218,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
     data.armature = {};
     data.animations = {};
 
-    this->constructIndexBuffer(data.attributes, data.indices, tempDiffuse, this->vertexIndices.size());
+    this->constructIndexBuffer(data.attributes, data.movements, data.indices, tempDiffuse, this->vertexIndices.size());
     out.push_back(data);
 
     return lazarus_result::LAZARUS_OK;
@@ -856,11 +875,16 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
 
         tempVertexPositions.clear();
         tempNormals.clear();
+        tempUvs.clear();
+        tempJoints.clear();
+        tempWeights.clear();
         tempDiffuse.clear();
         tempImages.clear();
         vertexIndices.clear();
         normalIndices.clear();
         uvIndices.clear();
+        jointIndices.clear();
+        weightIndices.clear();
         layers.clear();
 
         uint32_t indicesCount = 0;
@@ -1185,10 +1209,25 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     mesh.uvAccessor >= 0 
                     ? tempUvs.emplace(serial, vertexUvs[index]) 
                     : tempUvs.emplace(serial, glm::vec3(0.0f, 0.0f, 0.0f));
+
+                    /* ===================================================================
+                        Same goes for this animation data which is optional. Zero out the
+                        relevant portion of the buffer if no animations are present.
+                    ====================================================================== */
+
+                    mesh.jointsAccessor >= 0 
+                    ? tempJoints.emplace(serial, vertexJoints[index])
+                    : tempJoints.emplace(serial, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
+
+                    mesh.weightsAccessor >= 0
+                    ? tempWeights.emplace(serial, vertexWeights[index])
+                    : tempWeights.emplace(serial, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
                     
                     vertexIndices.push_back(serial + 1);
                     normalIndices.push_back(serial + 1);
                     uvIndices.push_back(serial + 1);
+                    jointIndices.push_back(serial + 1);
+                    weightIndices.push_back(serial + 1);
         
                     tempDiffuse.push_back(material.diffuse);
                     if(usesTextures)
@@ -1208,7 +1247,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
             asset.name = node.name;
             asset.textures = tempImages;
     
-            this->constructIndexBuffer(asset.attributes, asset.indices, tempDiffuse, tempVertexPositions.size());
+            this->constructIndexBuffer(asset.attributes, asset.movements, asset.indices, tempDiffuse, tempVertexPositions.size());
             out.push_back(asset);
         };
     };
@@ -1373,7 +1412,7 @@ int32_t AssetLoader::extractAttributeIndex(std::string bounds, std::string targe
     return out;
 };
 
-void AssetLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint32_t> &outIndexes, vector<vec3> outDiffuse, uint32_t numOfAttributes)
+void AssetLoader::constructIndexBuffer(std::vector<glm::vec3> &outAttributes, std::vector<glm::vec4> &outMovements, std::vector<uint32_t> &outIndexes, std::vector<glm::vec3> outDiffuse, uint32_t numOfAttributes)
 {
     std::unordered_set<uint64_t> hashes = {};
     std::map<uint64_t, uint32_t> entries = {};
@@ -1392,15 +1431,20 @@ void AssetLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint3
             the attribute values themselves, which are definitely 
             faster as maps.
         ============================================================== */
+
         uint32_t vertexIndex = vertexIndices[i];
         uint32_t normalIndex = normalIndices[i];
         uint32_t uvIndex     = uvIndices[i];
+        uint32_t jointIndex  = jointIndices[i];
+        uint32_t weightIndex = weightIndices[i];
         
-        glm::vec3 diffuseColor      = outDiffuse[i];
         uint32_t layer              = layers.size() ? layers[i] : 0; // stupid hack, should fix
-        glm::vec3 uv                = this->tempUvs.at(uvIndex - 1);
         glm::vec3 position          = this->tempVertexPositions.at(vertexIndex - 1);
+        glm::vec3 diffuseColor      = outDiffuse[i];
         glm::vec3 normalCoordinates = this->tempNormals.at(normalIndex - 1);
+        glm::vec3 uv                = this->tempUvs.at(uvIndex - 1);
+        glm::vec4 joint             = this->tempJoints.at(jointIndex - 1);
+        glm::vec4 weight            = this->tempWeights.at(weightIndex - 1);
         
         /* =====================================================
             It's implicit that we are using a 
@@ -1423,8 +1467,9 @@ void AssetLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint3
         uint64_t positionHash = std::hash<glm::vec3>()(position);
         uint64_t normalHash = std::hash<glm::vec3>()(normalCoordinates);
         uint64_t uvHash = std::hash<glm::vec3>()(uvCoordinates);
+        uint64_t jointHash = std::hash<glm::vec4>()(joint);
 
-        uint64_t hash = positionHash ^ ((normalHash << 1) >> 1) ^ (uvHash << 1); 
+        uint64_t hash = positionHash ^ ((jointHash << 1) >> 1) ^ ((normalHash << 1) >> 1) ^ (uvHash << 1); 
 
         if(outAttributes.size() == 0)
         {
@@ -1432,6 +1477,9 @@ void AssetLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint3
             outAttributes.push_back(diffuseColor);
             outAttributes.push_back(normalCoordinates);
             outAttributes.push_back(uvCoordinates);
+
+            outMovements.push_back(joint);
+            outMovements.push_back(weight);
 
             outIndexes.push_back(count);
             entries.emplace(hash, count);
@@ -1464,6 +1512,9 @@ void AssetLoader::constructIndexBuffer(vector<vec3> &outAttributes, vector<uint3
                 outAttributes.push_back(diffuseColor);
                 outAttributes.push_back(normalCoordinates);
                 outAttributes.push_back(uvCoordinates);
+
+                outMovements.push_back(joint);
+                outMovements.push_back(weight);
 
                 outIndexes.push_back(count);
                 entries.emplace(hash, count);
@@ -1499,8 +1550,7 @@ lazarus_result AssetLoader::constructTriangle()
     {
         LOG_ERROR("Asset Error:", __FILE__, __LINE__);
 
-        return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
-        
+        return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;    
     }
 
     this->vertexIndices.push_back(std::stoi(this->attributeIndexes[0]));
@@ -1512,6 +1562,19 @@ lazarus_result AssetLoader::constructTriangle()
     this->normalIndices.push_back(std::stoi(this->attributeIndexes[2]));
     this->normalIndices.push_back(std::stoi(this->attributeIndexes[5]));
     this->normalIndices.push_back(std::stoi(this->attributeIndexes[8]));
+
+    /* ===================================================
+        This function is currently only used for loading
+        wavefront which doesn't support animation. So the
+        values pushed back here are arbitrary.
+    ====================================================== */
+
+    this->jointIndices.push_back(1);
+    this->jointIndices.push_back(1);
+    this->jointIndices.push_back(1);
+    this->weightIndices.push_back(1);
+    this->weightIndices.push_back(1);
+    this->weightIndices.push_back(1);
 
     attributeIndexes.clear();
 
@@ -1554,10 +1617,14 @@ void AssetLoader::resetMembers()
     this->vertexIndices.clear();
     this->normalIndices.clear();
     this->uvIndices.clear();
+    this->jointIndices.clear();
+    this->weightIndices.clear();
     this->attributeIndexes.clear();
     this->tempVertexPositions.clear();
     this->tempNormals.clear();
     this->tempUvs.clear();
+    this->tempJoints.clear();
+    this->tempWeights.clear();
     this->tempDiffuse.clear();
     this->tempImages.clear();
     this->layers.clear();

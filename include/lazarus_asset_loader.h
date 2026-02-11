@@ -96,6 +96,7 @@ class AssetLoader
             
             std::string name;
             std::vector<glm::vec3> attributes;
+            std::vector<glm::vec4> movements;
             std::vector<glm::vec3> colors;
             std::vector<uint32_t> indices;
             std::vector<FileLoader::Image> textures;
@@ -309,7 +310,7 @@ class AssetLoader
         //  Deduplicate vertex attributes and construct a serial for those that are unique to be 
         //  passed to the renderers IBO. Interleaves attributes in the order that is expected by
         //  the renderers VBO.
-        void constructIndexBuffer(std::vector<glm::vec3> &outAttributes, std::vector<uint32_t> &outIndexes, std::vector<glm::vec3> outDiffuse, uint32_t numOfAttributes);
+        void constructIndexBuffer(std::vector<glm::vec3> &outAttributes, std::vector<glm::vec4> &outMovements, std::vector<uint32_t> &outIndexes, std::vector<glm::vec3> outDiffuse, uint32_t numOfAttributes);
         //  Clears containers of all their contents.
         void resetMembers();
 
@@ -318,16 +319,16 @@ class AssetLoader
         std::vector<uint32_t> vertexIndices;
         std::vector<uint32_t> uvIndices;
         std::vector<uint32_t> normalIndices;
+        std::vector<uint32_t> jointIndices;
+        std::vector<uint32_t> weightIndices;
 
         std::map<uint32_t, glm::vec3> tempVertexPositions;
         std::map<uint32_t, glm::vec3> tempUvs;
         std::map<uint32_t, glm::vec3> tempNormals;
+        std::map<uint32_t, glm::vec4> tempJoints;
+        std::map<uint32_t, glm::vec4> tempWeights;
         std::vector<FileLoader::Image> tempImages;
         std::vector<glm::vec3> tempDiffuse;
-
-        glm::vec3 vertex;
-        glm::vec3 uv;
-        glm::vec3 normal;
 };
 
 #endif

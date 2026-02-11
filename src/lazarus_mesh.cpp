@@ -107,7 +107,6 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
     for(size_t i = 0; i < assets.size(); i++)
     {
         AssetLoader::AssetData &assetData = assets[i];
-        
         this->meshData = {};
         this->meshData.attributes = assetData.attributes;
         this->meshData.indexes = assetData.indices;
@@ -309,6 +308,12 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
         6, 5, 7
     };
 
+    /* ====================================================
+        Zero-out movement / animation buf
+    ======================================================= */
+    assetData.movements.clear();
+    assetData.movements.resize(assetData.attributes.size() / 2, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
+
     this->meshData = {};
     this->meshData.attributes = assetData.attributes;
     this->meshData.indexes = assetData.indices;
@@ -465,6 +470,12 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
         20, 21, 22, 20, 23, 21
     };
     
+    /* ====================================================
+        Zero-out movement / animation buf
+    ======================================================= */
+    assetData.movements.clear();
+    assetData.movements.resize(assetData.attributes.size() / 2, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
+
     this->meshData = {};
     this->meshData.attributes = assetData.attributes;
     this->meshData.indexes = assetData.indices;
