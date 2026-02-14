@@ -88,6 +88,7 @@ class AssetLoader
             };
             struct Joint
             {
+                uint32_t id;
                 glm::mat4 inverseBindMatrice;
                 glm::vec3 location;
                 std::vector<uint32_t> children;

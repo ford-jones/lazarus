@@ -928,6 +928,9 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     glm::quat conjugate = glm::conjugate(quaternion);
                     glm::vec3 orientation = quaternion * jointNode.translation * conjugate;
 
+                    //  TODO
+                    //  This should += n_joints with a place holder for meshes which dont have any
+                    joint.id = j;
                     joint.location = orientation * jointNode.scale;
                     joint.children = jointNode.children;
                     joint.inverseBindMatrice = matrices[j];
@@ -1047,7 +1050,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                         
                         Note that much like the vertex indices, the 
                         joint indexes here may be either 8-bit OR 16-bit
-                        ("-.-)
+                        ("-.-).
                     ===================================================== */
 
                     std::vector<glm::u8vec4> shortJoints;
@@ -1057,24 +1060,38 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     if(jointAccessor.componentType == GL_UNSIGNED_BYTE)
                     {
                         this->populateVectorFromMemory<glm::u8vec4>(jointAccessor, bufferViews[jointAccessor.bufferViewIndex], shortJoints);
+                        //  Convert 8-bit indices to 32-bit
+                        //  Use extracted value (node index) to look up joint index (armature id)
                         std::transform(
                             shortJoints.begin(), 
                             shortJoints.end(),
                             std::back_inserter(vertexJoints),
-                            [](glm::u8vec4 jointIndex) {
-                                return glm::vec4(jointIndex);
+                            [asset](glm::u8vec4 nodeIndex) {
+                                return glm::vec4(
+                                    asset.armature.at(nodeIndex.x).id,
+                                    asset.armature.at(nodeIndex.y).id,
+                                    asset.armature.at(nodeIndex.z).id,
+                                    asset.armature.at(nodeIndex.w).id
+                                );
                             }
                         );
                     }
                     else
                     {
                         this->populateVectorFromMemory<glm::u16vec4>(jointAccessor, bufferViews[jointAccessor.bufferViewIndex], longerJoints);
+                        //  Convert 16-bit indices to 32-bit
+                        //  Use extracted value (node index) to look up joint index (armature id)
                         std::transform(
                             longerJoints.begin(), 
                             longerJoints.end(),
                             std::back_inserter(vertexJoints),
-                            [](glm::u8vec4 jointIndex) {
-                                return glm::vec4(jointIndex);
+                            [asset](glm::u16vec4 nodeIndex) {
+                                return glm::vec4(
+                                    asset.armature.at(nodeIndex.x).id,
+                                    asset.armature.at(nodeIndex.y).id,
+                                    asset.armature.at(nodeIndex.z).id,
+                                    asset.armature.at(nodeIndex.w).id
+                                );
                             }
                         );
                     };
