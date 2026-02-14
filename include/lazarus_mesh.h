@@ -168,6 +168,7 @@ class ModelManager
             GLuint VBO;     //  Vertex Buffer Object (attributes: interleaved)
             GLuint EBO;     //  Element Buffer Object (indices: tightly-packed)
             GLuint MBO;     //  Matrice Buffer Object (per-instance matrix: tightly-packed)
+            GLuint ABO;     //  Animation Buffer Object (joints + weights: interleaved)
             GLuint IIBO;    //  Instance-info Buffer Object (per-instance: tightly-packed -> will probably end up interleaved)
             
             ModelType type;
@@ -176,6 +177,9 @@ class ModelManager
             std::vector<FileLoader::Image> images;
             std::vector<uint32_t> indexes;
             std::vector<glm::vec3> attributes;
+            
+            std::vector<AssetLoader::AssetData::Animation> animation;
+            std::vector<glm::vec4> movements;
         };
         typedef std::vector<MeshData> ModelData;
 

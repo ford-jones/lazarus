@@ -112,6 +112,8 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
         this->meshData.indexes = assetData.indices;
         this->meshData.texture.unitId = GL_TEXTURE2;
         this->meshData.instanceCount = options.instanceCount;
+        this->meshData.movements = assetData.movements;
+        this->meshData.animation = assetData.animations;
         this->instantiateMesh(options.selectable);
         
         status = this->setMaterials(assetData);
@@ -319,6 +321,8 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
     this->meshData.indexes = assetData.indices;
     this->meshData.texture.unitId = textureUnit;
     this->meshData.instanceCount = options.instanceCount;
+    this->meshData.movements = assetData.movements;
+    this->meshData.animation = assetData.animations;
     this->instantiateMesh(options.selectable);
     
     status = this->setMaterials(assetData);
@@ -481,6 +485,8 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
     this->meshData.indexes = assetData.indices;
     this->meshData.texture.unitId = textureUnit;
     this->meshData.instanceCount = options.instanceCount;
+    this->meshData.movements = assetData.movements;
+    this->meshData.animation = assetData.animations;
     this->instantiateMesh(options.selectable);
     
     status = this->setMaterials(assetData);
@@ -582,6 +588,7 @@ lazarus_result ModelManager::uploadVertexData()
         Buffer used for storing per-instance model-matrix data. 
         This data is changed very frequently, so use dynamic draw.
     ============================================================== */
+    LOG_DEBUG("Allocating matrice buffer object");
     glGenBuffers(1, &meshData.MBO);
     glBindBuffer(GL_ARRAY_BUFFER, meshData.MBO);
 
@@ -663,6 +670,22 @@ lazarus_result ModelManager::uploadVertexData()
     glVertexAttribPointer(8, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
 
     glVertexAttribDivisor(8, 1);
+
+    LOG_DEBUG("Allocating animation buffer object");
+
+    glGenBuffers(1, &meshData.ABO);
+    glBindBuffer(GL_ARRAY_BUFFER, meshData.ABO);
+    glBufferData(
+        GL_ARRAY_BUFFER,
+        meshData.movements.size() * sizeof(glm::vec4),
+        &meshData.movements[0],
+        GL_STATIC_DRAW
+    );
+
+    glEnableVertexAttribArray(9);
+    glVertexAttribPointer(9, 4, GL_FLOAT, GL_FALSE, 2 * sizeof(glm::vec4), (void*)0);
+    glEnableVertexAttribArray(10);
+    glVertexAttribPointer(10, 4, GL_FLOAT, GL_FALSE, 2 * sizeof(glm::vec4), (void*)(1 * sizeof(glm::vec4)));
 
     status = this->checkErrors(__FILE__, __LINE__);
     if(status != lazarus_result::LAZARUS_OK)
@@ -754,6 +777,8 @@ lazarus_result ModelManager::reallocateTextures()
 lazarus_result ModelManager::clearMeshStorage()
 {	
     LOG_DEBUG("Freeing model store contents");
+    this->errorCode = GL_NO_ERROR;
+    
     this->clearErrors();
     for(auto i: modelStore)
     {
@@ -762,6 +787,7 @@ lazarus_result ModelManager::clearMeshStorage()
             glDeleteBuffers         (1, &j.VBO);
             glDeleteBuffers         (1, &j.MBO);
             glDeleteBuffers         (1, &j.EBO);
+            glDeleteBuffers         (1, &j.ABO);
             glDeleteBuffers         (1, &j.IIBO);
             glDeleteVertexArrays    (1, &j.VAO);
         };
@@ -774,9 +800,6 @@ lazarus_result ModelManager::clearMeshStorage()
     this->modelStore.clear();
 
     this->childCount = 0;
-	
-	this->errorCode = GL_NO_ERROR;
-    
     AssetLoader::layerCount = 0;
     
     return this->checkErrors(__FILE__, __LINE__);
@@ -1176,6 +1199,7 @@ ModelManager::~ModelManager()
         for(auto j: i.second)
         {
             glDeleteBuffers         (1, &j.IIBO);
+            glDeleteBuffers         (1, &j.ABO);
             glDeleteBuffers         (1, &j.MBO);
             glDeleteBuffers         (1, &j.VBO);
             glDeleteBuffers         (1, &j.EBO);
