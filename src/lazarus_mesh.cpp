@@ -43,6 +43,7 @@ ModelManager::ModelManager(GLuint shader, TextureLoader::StorageType textureType
 
     this->meshVariantLocation           = glGetUniformLocation(this->shaderProgram, "samplerType");
     this->discardFragsLocation          = glGetUniformLocation(this->shaderProgram, "discardFrags");
+    this->motionCountLocation           = glGetUniformLocation(this->shaderProgram, "motionCount");
 
     this->maxTexWidth = 0;
     this->maxTexHeight = 0;
@@ -113,7 +114,8 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
         this->meshData.texture.unitId = GL_TEXTURE2;
         this->meshData.instanceCount = options.instanceCount;
         this->meshData.movements = assetData.movements;
-        this->meshData.animation = assetData.animations;
+        this->meshData.animations = assetData.animations;
+        this->meshData.armature = assetData.armature;
         this->instantiateMesh(options.selectable);
         
         status = this->setMaterials(assetData);
@@ -322,7 +324,8 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
     this->meshData.texture.unitId = textureUnit;
     this->meshData.instanceCount = options.instanceCount;
     this->meshData.movements = assetData.movements;
-    this->meshData.animation = assetData.animations;
+    this->meshData.animations = assetData.animations;
+    this->meshData.armature = assetData.armature;
     this->instantiateMesh(options.selectable);
     
     status = this->setMaterials(assetData);
@@ -486,7 +489,8 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
     this->meshData.texture.unitId = textureUnit;
     this->meshData.instanceCount = options.instanceCount;
     this->meshData.movements = assetData.movements;
-    this->meshData.animation = assetData.animations;
+    this->meshData.animations = assetData.animations;
+    this->meshData.armature = assetData.armature;
     this->instantiateMesh(options.selectable);
     
     status = this->setMaterials(assetData);
@@ -682,8 +686,11 @@ lazarus_result ModelManager::uploadVertexData()
         GL_STATIC_DRAW
     );
 
+    //  Joints
     glEnableVertexAttribArray(9);
     glVertexAttribPointer(9, 4, GL_FLOAT, GL_FALSE, 2 * sizeof(glm::vec4), (void*)0);
+
+    //  Weights
     glEnableVertexAttribArray(10);
     glVertexAttribPointer(10, 4, GL_FLOAT, GL_FALSE, 2 * sizeof(glm::vec4), (void*)(1 * sizeof(glm::vec4)));
 
@@ -937,6 +944,46 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
             
         glUniform1i(this->meshVariantLocation, this->textureStorage);
         glUniform1i(this->discardFragsLocation, data.texture.discardAlphaZero);
+
+        /* =================================================
+            Upload animation data if present
+        ==================================================== */
+        if(data.animations.size() > 0)
+        {
+            size_t keyframeCount = 0;
+        
+            AssetLoader::AssetData::Animation animation = data.animations[0];
+            for(size_t j = 0; j < animation.size(); j++)
+            {
+                /* ================================================
+                    An animation is made up of a number of motions.
+                    Each motion targets a joint, noting that each 
+                    vertex is aware of which joints it is effected
+                    by. Every motion has it's own set of timesteps
+                    and keyframes, noting these sets are of equal
+                    length and match up 1:1.
+                =================================================== */
+                AssetLoader::AssetData::JointMotion motion = animation[j];
+                
+                this->jointTargetsLocation  = glGetUniformLocation(this->shaderProgram, std::string("jointTargets[").append(std::to_string(j) + "]").c_str());
+                this->motionLengthsLocation = glGetUniformLocation(this->shaderProgram, std::string("motionLengths[").append(std::to_string(j) + "]").c_str());
+                
+                glUniform1i(this->jointTargetsLocation, motion.targetJoint);
+                glUniform1i(this->motionLengthsLocation, motion.keyframes.size());
+
+                for(size_t k = 0; k < motion.timesteps.size(); k++)
+                {   
+                    this->timestepsLocation = glGetUniformLocation(this->shaderProgram, std::string("animationTimesteps[").append(std::to_string(keyframeCount + k) + "]").c_str());
+                    this->keyframesLocation = glGetUniformLocation(this->shaderProgram, std::string("animationKeyframes[").append(std::to_string(keyframeCount + k) + "]").c_str());
+
+                    glUniform1f(this->timestepsLocation, motion.timesteps[k]);
+                    glUniform3fv(this->keyframesLocation, 1, &motion.keyframes[k][0]);
+                    
+                    keyframeCount++;
+                };
+            };
+            glUniform1i(this->motionCountLocation, animation.size());
+        }
     
         status = this->checkErrors(__FILE__, __LINE__);
         if(status != lazarus_result::LAZARUS_OK)

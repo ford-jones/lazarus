@@ -979,7 +979,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                             std::transform(
                                 quats.begin(), 
                                 quats.end(), 
-                                std::back_inserter(movement.pointsInTime), 
+                                std::back_inserter(movement.keyframes), 
                                 [](glm::vec4 quat) {
                                     glm::quat q(quat);
                                     return glm::eulerAngles(q);
@@ -988,7 +988,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                         }
                         else
                         {
-                            this->populateBufferFromAccessor(kfAccessor, movement.pointsInTime);
+                            this->populateBufferFromAccessor(kfAccessor, movement.keyframes);
                         };
                         
                         animation.push_back(movement);

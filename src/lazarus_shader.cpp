@@ -21,6 +21,8 @@
 const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
     #version 410 core
 
+    #define MAX_KEYFRAMES 255
+
     //  VBO 1
     layout(location = 0) in vec3 inVertex;
     layout(location = 1) in vec3 inDiffuse;
@@ -29,14 +31,28 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
 
     //  VBO 2 (MBO)
     //  Occupies 4, 5, 6 and 7 (4 * vec4), dilineated by glVertexAttribDivisor
+    
     layout(location = 4) in mat4 instanceModelMatrix;
     layout(location = 8) in float visible;
+
+    layout(location = 9) in vec4 inJoints;
+    layout(location = 10) in vec4 inWeights;
 
     uniform int usesPerspective;
 
     uniform mat4 viewMatrix;
     uniform mat4 perspectiveProjectionMatrix;
     uniform mat4 orthoProjectionMatrix;
+
+    uniform int motionCount;
+    
+    //  equal len
+    uniform int motionLengths[MAX_KEYFRAMES];
+    uniform int jointTargets[MAX_KEYFRAMES];
+
+    //  equal len
+    uniform float animationTimesteps[MAX_KEYFRAMES];
+    uniform vec3 animationKeyframes[MAX_KEYFRAMES];
 
     out vec3 fragPosition;
     out vec3 diffuseColor;
@@ -125,6 +141,7 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     in vec3 normalCoordinate;
     in vec3 textureCoordinate;
     in vec3 skyBoxTextureCoordinate;
+    in vec4 nothing;
 
     in float keepFragment;
 
@@ -203,6 +220,10 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
 
                 case CUBEMAP:
                     result = texture(textureCube, skyBoxTextureCoordinate);
+                    break;
+                
+                case 666:
+                    result = nothing;
                     break;
 
                 default:

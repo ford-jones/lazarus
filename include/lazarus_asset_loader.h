@@ -79,7 +79,7 @@ class AssetLoader
                     CUBICSPLINE
                 };
                 std::vector<float> timesteps;
-                std::vector<glm::vec3> pointsInTime;
+                std::vector<glm::vec3> keyframes;
                 uint32_t targetJoint;
                 //  TODO:
                 //  Find a better way to express these

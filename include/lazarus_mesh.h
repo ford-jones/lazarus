@@ -178,7 +178,8 @@ class ModelManager
             std::vector<uint32_t> indexes;
             std::vector<glm::vec3> attributes;
             
-            std::vector<AssetLoader::AssetData::Animation> animation;
+            std::vector<AssetLoader::AssetData::Animation> animations;
+            std::map<uint32_t, AssetLoader::AssetData::Joint> armature;
             std::vector<glm::vec4> movements;
         };
         typedef std::vector<MeshData> ModelData;
@@ -204,6 +205,13 @@ class ModelManager
 		GLuint shaderProgram;
         GLint meshVariantLocation;
         GLint discardFragsLocation;
+
+        GLint timestepsLocation;
+        GLint keyframesLocation;
+
+        GLint jointTargetsLocation;
+        GLint motionLengthsLocation;
+        GLint motionCountLocation;
 
         std::unique_ptr<FileLoader> finder;
         TextureLoader::StorageType textureStorage;
