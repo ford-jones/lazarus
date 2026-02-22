@@ -160,9 +160,18 @@ class ModelManager
     private:
         struct MeshData
         {
+            struct Joint
+            {
+                std::vector<uint32_t> children;
+                glm::vec3 location;
+                glm::mat4 inverseBindMatrix;
+                glm::mat4 localTransform;
+                glm::mat4 jointMatrix;
+            };
             uint32_t id;
             uint32_t instanceCount;
             uint8_t stencilBufferId;
+            bool isAnimated;
             
             GLuint VAO;     //  Vertex Array Object
             GLuint VBO;     //  Vertex Buffer Object (attributes: interleaved)
@@ -178,8 +187,9 @@ class ModelManager
             std::vector<uint32_t> indexes;
             std::vector<glm::vec3> attributes;
             
+            glm::mat4 globalTransform;
             std::vector<AssetLoader::AssetData::Animation> animations;
-            std::map<uint32_t, AssetLoader::AssetData::Joint> armature;
+            std::vector<Joint> armature;
             std::vector<glm::vec4> movements;
         };
         typedef std::vector<MeshData> ModelData;
@@ -193,7 +203,7 @@ class ModelManager
         
         void clearErrors();
         void instantiateMesh(bool selectable);
-        void setSharedProperties();
+        void setMeshProperties(AssetLoader::AssetData &assetData);
         
         uint32_t childCount;
 
@@ -205,6 +215,8 @@ class ModelManager
 		GLuint shaderProgram;
         GLint meshVariantLocation;
         GLint discardFragsLocation;
+
+        GLint jointsMatricesLocation;
 
         GLint timestepsLocation;
         GLint keyframesLocation;

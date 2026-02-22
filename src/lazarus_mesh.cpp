@@ -100,8 +100,6 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
     {
         return status;
     };
-    //  TODO:
-    //  Transform meshes to localspace locations
 
     LOG_DEBUG(std::string("Model consists of [").append(std::to_string(assets.size()) + "] mesh objects.").c_str());
 
@@ -109,13 +107,78 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
     {
         AssetLoader::AssetData &assetData = assets[i];
         this->meshData = {};
-        this->meshData.attributes = assetData.attributes;
-        this->meshData.indexes = assetData.indices;
         this->meshData.texture.unitId = GL_TEXTURE2;
         this->meshData.instanceCount = options.instanceCount;
-        this->meshData.movements = assetData.movements;
-        this->meshData.animations = assetData.animations;
-        this->meshData.armature = assetData.armature;
+        
+        
+        this->setMeshProperties(assetData);
+        
+        
+        if(meshData.animations.size() > 0)
+        {
+            meshData.isAnimated = true;
+
+            /* =========================================================
+                Overide default global transform (identity) to use 
+                whatever was acquired from asset loading.
+            ============================================================ */
+            this->meshData.globalTransform = assetData.globalTransform;
+
+            std::map<uint32_t, AssetLoader::AssetData::JointData> rig = assetData.armature;
+            for(size_t j = 0; j < rig.size(); j++)
+            {
+                AssetLoader::AssetData::JointData jointData = rig[j];
+                MeshData::Joint joint = {};
+                joint.inverseBindMatrix = jointData.inverseBindMatrix;
+                
+                for(size_t k = 0; k < jointData.children.size(); k++)
+                {
+                    /* ============================================
+                        Use GLB node id to look up joint indices
+                        (.id), these are required for computing the
+                        joint matrix.
+                    =============================================== */
+                    uint32_t childID = jointData.children[k];
+                    uint32_t index = assetData.armature.at(childID).id;
+                    joint.children.push_back(index);
+                };
+                
+                /* =======================================================
+                    Compute the joints localspace position within 
+                    the skeleton heirachy in a way that can be expressed
+                    on 3d axis.
+                ========================================================== */
+                
+                glm::quat quaternion = glm::quat(jointData.rotation);
+                glm::quat conjugate = glm::conjugate(quaternion);
+                glm::vec3 orientation = quaternion * jointData.translation * conjugate;
+                joint.location = orientation * jointData.scale;
+                
+                /* ================================================
+                    Compute the local transform of the joint,
+                    relative to its other joints.
+                =================================================== */
+                //  TODO:
+                //  If this joint has a parent joint it should also be multiplied here
+                //  e.g. parentGlobal * localJointTransform
+                joint.localTransform = glm::translate(glm::mat4(1.0f), jointData.translation) *
+                glm::mat4_cast(quaternion) * 
+                glm::scale(glm::mat4(1.0f), jointData.scale);
+
+                /* ================================================================
+                    Compute the joint matrix, used to compute the 
+                    skinning matrix in the vertex shader. Using the
+                    formula described here: 
+                    https://www.scribd.com/document/619514490/gltf20-reference-guide#page=6
+                =================================================================== */
+                joint.jointMatrix = (
+                    glm::inverse(meshData.globalTransform) * joint.localTransform * joint.inverseBindMatrix
+                );
+
+                meshData.armature.push_back(joint);
+            };
+        };
+
         this->instantiateMesh(options.selectable);
         
         status = this->setMaterials(assetData);
@@ -124,7 +187,6 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
             break;
         };
 
-        this->setSharedProperties();
         status = this->uploadVertexData();
         if(status != lazarus_result::LAZARUS_OK)
         {
@@ -319,13 +381,10 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
     assetData.movements.resize(assetData.attributes.size() / 2, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
 
     this->meshData = {};
-    this->meshData.attributes = assetData.attributes;
-    this->meshData.indexes = assetData.indices;
     this->meshData.texture.unitId = textureUnit;
     this->meshData.instanceCount = options.instanceCount;
-    this->meshData.movements = assetData.movements;
-    this->meshData.animations = assetData.animations;
-    this->meshData.armature = assetData.armature;
+
+    this->setMeshProperties(assetData);
     this->instantiateMesh(options.selectable);
     
     status = this->setMaterials(assetData);
@@ -333,7 +392,6 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
     {
         return status;
     };
-    this->setSharedProperties();
 
     status = this->uploadVertexData();
     if(status != lazarus_result::LAZARUS_OK)
@@ -484,13 +542,10 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
     assetData.movements.resize(assetData.attributes.size() / 2, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
 
     this->meshData = {};
-    this->meshData.attributes = assetData.attributes;
-    this->meshData.indexes = assetData.indices;
     this->meshData.texture.unitId = textureUnit;
     this->meshData.instanceCount = options.instanceCount;
-    this->meshData.movements = assetData.movements;
-    this->meshData.animations = assetData.animations;
-    this->meshData.armature = assetData.armature;
+
+    this->setMeshProperties(assetData);
     this->instantiateMesh(options.selectable);
     
     status = this->setMaterials(assetData);
@@ -498,7 +553,6 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
     {
         return status;
     };
-    this->setSharedProperties();
     
     status = this->uploadVertexData();
     if(status != lazarus_result::LAZARUS_OK)
@@ -900,7 +954,8 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
             need to happen for every instance that has had any 
             change.
         ============================================================ */
-    
+        LOG_DEBUG("Uploading instance matrices");
+
         glBindVertexArray(data.VAO);
         glBindBuffer(GL_ARRAY_BUFFER, data.MBO);
         glBufferSubData(
@@ -910,6 +965,7 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
             &matrices[0][0]
         );
     
+        LOG_DEBUG("Uploading instance information");
         glBindBuffer(GL_ARRAY_BUFFER, data.IIBO);
         glBufferSubData(
             GL_ARRAY_BUFFER, 
@@ -941,18 +997,32 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
         };
     
         this->clearErrors();
-            
+        
         glUniform1i(this->meshVariantLocation, this->textureStorage);
         glUniform1i(this->discardFragsLocation, data.texture.discardAlphaZero);
 
         /* =================================================
             Upload animation data if present
         ==================================================== */
-        if(data.animations.size() > 0)
+        if(data.isAnimated)
         {
+            LOG_DEBUG("Loading animation data");
+            
+            //  Rigging
+            LOG_DEBUG("Uploading joint matrices");
+            for(size_t j = 0; j < data.armature.size(); j++)
+            {
+                MeshData::Joint joint = data.armature[j];
+
+                this->jointsMatricesLocation = glGetUniformLocation(this->shaderProgram, std::string("jointMatrices[").append(std::to_string(j) + "]").c_str());
+                glUniformMatrix4fv(this->jointsMatricesLocation, 1, GL_FALSE, &joint.jointMatrix[0][0]);
+            };
+
+            //  Timing, keyframe values and rigging targets
+            LOG_DEBUG("Uploading timesteps and keyframes");
             size_t keyframeCount = 0;
-        
             AssetLoader::AssetData::Animation animation = data.animations[0];
+
             for(size_t j = 0; j < animation.size(); j++)
             {
                 /* ================================================
@@ -983,7 +1053,7 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
                 };
             };
             glUniform1i(this->motionCountLocation, animation.size());
-        }
+        };
     
         status = this->checkErrors(__FILE__, __LINE__);
         if(status != lazarus_result::LAZARUS_OK)
@@ -1060,6 +1130,7 @@ lazarus_result ModelManager::drawModel(ModelManager::Model &meshIn)
 
 void ModelManager::setDiscardFragments(ModelManager::Model &meshIn, bool shouldDiscard)
 {
+    LOG_DEBUG("Setting fragment-discard flags");
     ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
 
     for(size_t i = 0; i < model.size(); i++)
@@ -1092,6 +1163,7 @@ lazarus_result ModelManager::setMaterials(AssetLoader::AssetData &assetData)
         if(((material.diffuse.r + material.diffuse.b + material.diffuse.g) < -0.1f) && 
              material.texture.pixelData != NULL)
         {
+            LOG_DEBUG("Copying textures");
             material.type = MaterialType::IMAGE_TEXTURE;
 
             /* ===============================================
@@ -1104,6 +1176,7 @@ lazarus_result ModelManager::setMaterials(AssetLoader::AssetData &assetData)
         }
         else
         {
+            LOG_DEBUG("Copying diffuse colors");
             material.type = MaterialType::BASE_COLOR;
     
             meshData.texture.samplerId = 0;
@@ -1124,13 +1197,27 @@ lazarus_result ModelManager::setMaterials(AssetLoader::AssetData &assetData)
     return lazarus_result::LAZARUS_OK;
 };
 
-void ModelManager::setSharedProperties()
+void ModelManager::setMeshProperties(AssetLoader::AssetData &assetData)
 {
+    LOG_DEBUG("Loading base mesh properties");
+    meshData.attributes = assetData.attributes;
+    meshData.indexes = assetData.indices;
+    meshData.movements = assetData.movements;
+    meshData.animations = assetData.animations;
+    meshData.globalTransform = glm::mat4(1.0f);
+
     meshData.texture.discardAlphaZero = false;
     meshData.texture.samplerId = TextureLoader::textureId;
-
+    
     modelOut.numOfVertices = meshData.attributes.size() / 4;
     modelOut.numOfFaces = (modelOut.numOfVertices) / 3;
+
+    /* ===============================================
+        Note that these will be evaluated again when 
+        loading from a file (create3DAsset).
+    ================================================== */
+    meshData.armature = {};
+    meshData.isAnimated = false;
 
    return;
 }
@@ -1213,7 +1300,7 @@ void ModelManager::instantiateMesh(bool selectable)
 
         ModelManager::Model::Instance instance = {};
         instance.id = this->childCount;
-        instance.modelMatrix = glm::mat4(1.0f);
+        instance.modelMatrix = meshData.globalTransform;
         instance.isClickable = selectable;
         instance.isVisible = true;
         

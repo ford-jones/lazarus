@@ -217,6 +217,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
     ================================================= */
     data.armature = {};
     data.animations = {};
+    // data.globalTransform = glm::mat4(1.0f);
 
     this->constructIndexBuffer(data.attributes, data.movements, data.indices, tempDiffuse, this->vertexIndices.size());
     out.push_back(data);
@@ -908,8 +909,16 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 glbAccessorData accessor = accessors[skinData.inverseBindMatriceAccessor];
                 glbBufferViewData bufferView = bufferViews[accessor.bufferViewIndex];
 
-                std::vector<glm::mat4> matrices = {};
-                this->populateVectorFromMemory(accessor, bufferView, matrices);
+                std::vector<glm::mat4> inverseBindMatrices = {};
+                this->populateVectorFromMemory(accessor, bufferView, inverseBindMatrices);
+
+                /* =====================================================
+                    Compute the global transform of the mesh that this
+                    joint is a part of.
+                ======================================================== */
+                asset.globalTransform = glm::translate(glm::mat4(1.0f), node.translation) *
+                glm::mat4_cast(glm::quat(node.rotation)) * 
+                glm::scale(glm::mat4(1.0f), node.scale);
 
                 /* =================================================
                     Load armature data
@@ -917,31 +926,22 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 for(size_t j = 0; j < skinData.joints.size(); j++)
                 {
                     glbNodeData jointNode = nodes[skinData.joints[j]];
-                    AssetData::Joint joint = {};
+                    AssetData::JointData joint = {};
 
-                    /* =======================================================
-                        Transform the joint to its localspace position within 
-                        the skeleton heirachy.
-                    ========================================================== */
-                   
-                    glm::quat quaternion = glm::quat(jointNode.rotation);
-                    glm::quat conjugate = glm::conjugate(quaternion);
-                    glm::vec3 orientation = quaternion * jointNode.translation * conjugate;
-
-                    //  TODO
-                    //  This should += n_joints with a place holder for meshes which dont have any
-                    joint.id = j;
-                    joint.location = orientation * jointNode.scale;
-                    joint.children = jointNode.children;
-                    joint.inverseBindMatrice = matrices[j];
+                    joint.id = asset.armature.size();
+                    joint.children = jointNode.children;            //  Note that these are the
+                    joint.inverseBindMatrix = inverseBindMatrices[j];
+                    joint.translation = jointNode.translation;
+                    joint.rotation = jointNode.rotation;
+                    joint.scale = jointNode.scale;
 
                     /* =====================================================
                         Preserve and use original node index position as 
                         key for lookup by children and sampler.targets
                     ======================================================== */
-                    asset.armature.insert(std::pair<uint32_t, AssetData::Joint>(jointNode.id, joint));
+                    asset.armature.insert(std::pair<uint32_t, AssetData::JointData>(jointNode.id, joint));
                 };
-
+                
                 /* ====================================================
                     Load the models animations
                 ======================================================= */
@@ -957,7 +957,11 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                         glbAnimationChannel channel = animationData.channels[k];
                         glbAnimationSampler sampler = animationData.samplers[channel.samplerIndex];
 
-                        movement.targetJoint = channel.nodeIndex;
+                        /* ======================================
+                            Get actual armature indices instead
+                            of node index.
+                        ========================================= */
+                        movement.targetJoint = asset.armature.at(channel.nodeIndex).id;
                         movement.transform = channel.transformType;
                         movement.lerp = sampler.lerpType;
 
@@ -1035,6 +1039,11 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     glbAccessorData uvAccessor = accessors[mesh.uvAccessor];
                     this->populateBufferFromAccessor(uvAccessor, vertexUvs);
                 };
+
+                /* ==================================================
+                    An animated model will have a rig so extract the
+                    vertex weights and joint indices.
+                ===================================================== */
 
                 if(mesh.jointsAccessor >= 0 && mesh.weightsAccessor >= 0)
                 {
@@ -1215,6 +1224,11 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     glm::vec3 orientation = quaternion * vertexPositions[index] * conjugate;
     
                     tempVertexPositions.emplace(serial, (orientation + node.translation) * node.scale);
+                    // asset.globalTransform = glm::translate(glm::mat4(1.0f), node.translation) *
+                    // glm::mat4_cast(glm::quat(node.rotation)) * 
+                    // glm::scale(glm::mat4(1.0f), node.scale);
+                    
+                    // tempVertexPositions.emplace(serial, vertexPositions[index]);
                     tempNormals.emplace(serial, vertexNormals[index]);
         
                     /* ===================================================================

@@ -44,6 +44,8 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
     uniform mat4 perspectiveProjectionMatrix;
     uniform mat4 orthoProjectionMatrix;
 
+    uniform mat4 jointMatrices[MAX_KEYFRAMES];
+
     uniform int motionCount;
     
     //  equal len
@@ -61,10 +63,29 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
     out float keepFragment;
     out vec3 skyBoxTextureCoordinate;
 
+    out vec4 nothing;
+
     flat out int isUnderPerspective;
 
     vec3 _lazarusComputeWorldPosition()
     {
+        float blah = 0.0;
+        vec4 wut = vec4(0.0, 0.0, 0.0, 0.0);
+
+        for(int i = 0; i < motionCount; i++)
+        {
+            int target = jointTargets[i];
+            mat4 jointMatrix = jointMatrices[target];
+
+            for(int j = 0; j < motionLengths[i]; j++)
+            {
+                blah += animationTimesteps[j] + jointMatrix[0][0];
+                wut += vec4(animationKeyframes[j], 0.0);
+            };
+        };
+        
+        nothing = inJoints * inWeights * (wut * blah);
+        
         vec4 worldPosition = instanceModelMatrix * vec4(inVertex, 1.0);
    
         //  Determine the vertex's clip-space position

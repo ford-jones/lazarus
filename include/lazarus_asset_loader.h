@@ -64,6 +64,15 @@ class AssetLoader
     	    
         struct AssetData
         {
+            struct JointData
+            {
+                uint32_t id;
+                std::vector<uint32_t> children;
+                glm::mat4 inverseBindMatrix;
+                glm::vec3 translation = glm::vec3(0.0f, 0.0f, 0.0f);
+                glm::vec3 scale = glm::vec3(1.0f, 1.0f, 1.0f);
+                glm::vec4 rotation = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
+            };
             struct JointMotion
             {
                 enum TransformType
@@ -78,31 +87,25 @@ class AssetLoader
                     STEP,
                     CUBICSPLINE
                 };
+                uint32_t targetJoint;
                 std::vector<float> timesteps;
                 std::vector<glm::vec3> keyframes;
-                uint32_t targetJoint;
-                //  TODO:
-                //  Find a better way to express these
+
                 InterpolationType lerp;
                 TransformType transform;
             };
-            struct Joint
-            {
-                uint32_t id;
-                glm::mat4 inverseBindMatrice;
-                glm::vec3 location;
-                std::vector<uint32_t> children;
-            };
             typedef std::vector<JointMotion> Animation;
             
+            glm::mat4 globalTransform;
             std::string name;
+
             std::vector<glm::vec3> attributes;
             std::vector<glm::vec4> movements;
             std::vector<glm::vec3> colors;
             std::vector<uint32_t> indices;
             std::vector<FileLoader::Image> textures;
             std::vector<Animation> animations;
-            std::map<uint32_t, Joint> armature;
+            std::map<uint32_t, JointData> armature;
         };
 
         lazarus_result parseWavefrontObj(
