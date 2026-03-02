@@ -39,22 +39,13 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
     layout(location = 10) in vec4 inWeights;
 
     uniform int usesPerspective;
+    uniform int isAnimated;
 
     uniform mat4 viewMatrix;
     uniform mat4 perspectiveProjectionMatrix;
     uniform mat4 orthoProjectionMatrix;
 
     uniform mat4 jointMatrices[MAX_KEYFRAMES];
-
-    uniform int motionCount;
-    
-    //  equal len
-    uniform int motionLengths[MAX_KEYFRAMES];
-    uniform int jointTargets[MAX_KEYFRAMES];
-
-    //  equal len
-    uniform float animationTimesteps[MAX_KEYFRAMES];
-    uniform vec3 animationKeyframes[MAX_KEYFRAMES];
 
     out vec3 fragPosition;
     out vec3 diffuseColor;
@@ -63,31 +54,25 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
     out float keepFragment;
     out vec3 skyBoxTextureCoordinate;
 
-    out vec4 nothing;
-
     flat out int isUnderPerspective;
+
+    mat4 _lazarusComputeSkinningMatrix()
+    {
+        mat4 skinningMatrix = 
+        inWeights.x * jointMatrices[int(inJoints.x)] +
+        inWeights.y * jointMatrices[int(inJoints.y)] +
+        inWeights.z * jointMatrices[int(inJoints.z)] +
+        inWeights.w * jointMatrices[int(inJoints.w)];
+        
+        return skinningMatrix;
+    };
 
     vec3 _lazarusComputeWorldPosition()
     {
-        float blah = 0.0;
-        vec4 wut = vec4(0.0, 0.0, 0.0, 0.0);
+        vec4 worldPosition = isAnimated != 0
+        ? instanceModelMatrix * _lazarusComputeSkinningMatrix() * vec4(inVertex, 1.0)
+        : instanceModelMatrix * vec4(inVertex, 1.0);
 
-        for(int i = 0; i < motionCount; i++)
-        {
-            int target = jointTargets[i];
-            mat4 jointMatrix = jointMatrices[target];
-
-            for(int j = 0; j < motionLengths[i]; j++)
-            {
-                blah += animationTimesteps[j] + jointMatrix[0][0];
-                wut += vec4(animationKeyframes[j], 0.0);
-            };
-        };
-        
-        nothing = inJoints * inWeights * (wut * blah);
-        
-        vec4 worldPosition = instanceModelMatrix * vec4(inVertex, 1.0);
-   
         //  Determine the vertex's clip-space position
         if(usesPerspective != 0)
         {
@@ -162,7 +147,6 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     in vec3 normalCoordinate;
     in vec3 textureCoordinate;
     in vec3 skyBoxTextureCoordinate;
-    in vec4 nothing;
 
     in float keepFragment;
 
@@ -241,10 +225,6 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
 
                 case CUBEMAP:
                     result = texture(textureCube, skyBoxTextureCoordinate);
-                    break;
-                
-                case 666:
-                    result = nothing;
                     break;
 
                 default:
@@ -397,10 +377,12 @@ lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentSha
     glGetShaderiv(this->vertShader, GL_COMPILE_STATUS, &this->accepted);                                                            //   Check the compilation status
     if(!accepted)                                                                                                       //   If it failed
     {
+        this->message = new char[512];
         glGetShaderInfoLog(this->vertShader, 512, NULL, this->message);                                                             //   Retrieve the OpenGL shader logs if there are any and print them to the console
 
         std::string message = std::string("Shader Compilation Error: ").append(this->message);
         LOG_ERROR(message.c_str(), __FILE__, __LINE__);
+        delete this->message;
 
         return lazarus_result::LAZARUS_VSHADER_COMPILE_FAILURE;
     };
@@ -410,9 +392,11 @@ lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentSha
     glGetShaderiv(this->fragShader, GL_COMPILE_STATUS, &this->accepted);                                                            //   Check the compilation status
     if(!accepted)                                                                                                       //   If it failed
     {
+        this->message = new char[512];
         glGetShaderInfoLog(this->fragShader, 512, NULL, this->message);                                                             //   Retrieve the OpenGL shader logs if there are any and print them to the console
         std::string message = std::string("Shader Compilation Error: ").append(this->message);
         LOG_ERROR(message.c_str(), __FILE__, __LINE__);
+        delete this->message;
 
         return lazarus_result::LAZARUS_FSHADER_COMPILE_FAILURE;
     };
@@ -423,10 +407,12 @@ lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentSha
     glGetProgramiv(this->shaderProgram, GL_LINK_STATUS, &this->accepted);                                                           //   Check the link status
     if(!accepted)                                                                                                       //   If it failed
     {
+        this->message = new char[512];
         glGetProgramInfoLog(this->shaderProgram, 512, NULL, this->message);                                                         //   Retrieve the OpenGL shader logs if there are any and print them to the console
 
         std::string message = std::string("Shader Error: ").append(this->message);
         LOG_ERROR(message.c_str(), __FILE__, __LINE__);
+        delete this->message;
 
         return lazarus_result::LAZARUS_SHADER_LINKING_FAILURE;
     }
