@@ -26,6 +26,8 @@ ModelManager::ModelManager(GLuint shader, TextureLoader::StorageType textureType
 	LOG_DEBUG("Constructing Lazarus::ModelManager");
 
     this->childCount = 0;
+    this->previousMs = 0;
+    this->upTimeMs = 0;
 
     this->shaderProgram = shader;
     this->finder = std::make_unique<FileLoader>();
@@ -43,7 +45,7 @@ ModelManager::ModelManager(GLuint shader, TextureLoader::StorageType textureType
 
     this->meshVariantLocation           = glGetUniformLocation(this->shaderProgram, "samplerType");
     this->discardFragsLocation          = glGetUniformLocation(this->shaderProgram, "discardFrags");
-    this->motionCountLocation           = glGetUniformLocation(this->shaderProgram, "motionCount");
+    // this->motionCountLocation           = glGetUniformLocation(this->shaderProgram, "motionCount");
 
     this->maxTexWidth = 0;
     this->maxTexHeight = 0;
@@ -110,9 +112,7 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
         this->meshData.texture.unitId = GL_TEXTURE2;
         this->meshData.instanceCount = options.instanceCount;
         
-        
         this->setMeshProperties(assetData);
-        
         
         if(meshData.animations.size() > 0)
         {
@@ -124,58 +124,128 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
             ============================================================ */
             this->meshData.globalTransform = assetData.globalTransform;
 
+            /* ====================================================
+                Construct joints and transfroms from loaded data. 
+                Flatten out this map and resolve indices 
+                corrections.
+            ======================================================= */
             std::map<uint32_t, AssetLoader::AssetData::JointData> rig = assetData.armature;
-            for(size_t j = 0; j < rig.size(); j++)
+
+            uint32_t rootID = UINT32_MAX;
+            std::set<uint32_t> heirachy;
+            for(auto pair : rig)
             {
-                AssetLoader::AssetData::JointData jointData = rig[j];
-                MeshData::Joint joint = {};
+                AssetLoader::AssetData::JointData jointData = pair.second;
+                AssetLoader::AssetData::Joint joint = {};
                 joint.inverseBindMatrix = jointData.inverseBindMatrix;
+                joint.id = jointData.id;
+
+                /* ============================================
+                    Construct pose transform. Note: Blender
+                    exports its' quats with 'w' on the wrong 
+                    side.
+                =============================================== */
+                joint.globalJointTransform = (
+                    glm::translate(glm::mat4(1.0f), jointData.translation) *
+                    glm::mat4_cast(glm::quat(jointData.rotation.w, jointData.rotation.x, jointData.rotation.y, jointData.rotation.z)) * 
+                    glm::scale(glm::mat4(1.0f), jointData.scale)
+                );
+                joint.jointMatrix = glm::mat4(0.0f);
                 
                 for(size_t k = 0; k < jointData.children.size(); k++)
                 {
                     /* ============================================
-                        Use GLB node id to look up joint indices
-                        (.id), these are required for computing the
-                        joint matrix.
+                        Use GLB node id to look up the actual joint 
+                        locations within the buffer (.id), these 
+                        are required for computing the joint matrix 
+                        (the same as JointMotion::targetJoint)
                     =============================================== */
                     uint32_t childID = jointData.children[k];
                     uint32_t index = assetData.armature.at(childID).id;
                     joint.children.push_back(index);
+
+                    /*
+                        {J,  J,  m,  c,  J,  J, ...}
+                         0   1           4   5       <-childID
+                         |   |     ______|   |
+                         |   |    /    ______|
+                        {J,  J,  J,  J,         ...}
+                         0   1   2   3               <-JointData::id
+                    */
+                   heirachy.insert(index);
                 };
                 
-                /* =======================================================
-                    Compute the joints localspace position within 
-                    the skeleton heirachy in a way that can be expressed
-                    on 3d axis.
-                ========================================================== */
-                
-                glm::quat quaternion = glm::quat(jointData.rotation);
-                glm::quat conjugate = glm::conjugate(quaternion);
-                glm::vec3 orientation = quaternion * jointData.translation * conjugate;
-                joint.location = orientation * jointData.scale;
-                
-                /* ================================================
-                    Compute the local transform of the joint,
-                    relative to its other joints.
-                =================================================== */
-                //  TODO:
-                //  If this joint has a parent joint it should also be multiplied here
-                //  e.g. parentGlobal * localJointTransform
-                joint.localTransform = glm::translate(glm::mat4(1.0f), jointData.translation) *
-                glm::mat4_cast(quaternion) * 
-                glm::scale(glm::mat4(1.0f), jointData.scale);
-
-                /* ================================================================
-                    Compute the joint matrix, used to compute the 
-                    skinning matrix in the vertex shader. Using the
-                    formula described here: 
-                    https://www.scribd.com/document/619514490/gltf20-reference-guide#page=6
-                =================================================================== */
-                joint.jointMatrix = (
-                    glm::inverse(meshData.globalTransform) * joint.localTransform * joint.inverseBindMatrix
-                );
-
                 meshData.armature.push_back(joint);
+            };
+            
+            /* =========================================
+                Ensure flattened armature is indexed in
+                the same order of appearance as in glb.
+            ============================================ */
+            std::sort(
+                meshData.armature.begin(), 
+                meshData.armature.end(), 
+                [](AssetLoader::AssetData::Joint &jointA, AssetLoader::AssetData::Joint &jointB) {
+                    return jointA.id < jointB.id;
+                }
+            );
+            /* ====================================================
+                Determine armature root (The only node in the tree
+                which is never referred to as a child of another 
+                node).
+            ======================================================= */
+
+            for(size_t j = 0; j < meshData.armature.size(); j++)
+            {
+                if(heirachy.insert(j).second)
+                {
+                    rootID = j;
+                    break;
+                };
+            };
+
+            /* ==================================================
+                Traverse joint structure from root and apply 
+                transforms forward to children as the tree is 
+                descended.
+            ===================================================== */
+
+            AssetLoader::AssetData::Joint &rootJoint = meshData.armature[rootID];
+            std::vector<uint32_t> children = rootJoint.children;
+            std::vector<uint32_t> parents;
+            parents.resize(rootJoint.children.size(), rootID);
+            rootJoint.parentID = rootID;
+            rootJoint.posePosition = rootJoint.globalJointTransform;
+            rootJoint.jointMatrix = rootJoint.globalJointTransform * rootJoint.inverseBindMatrix;
+            
+            while(children.size() > 0)
+            {
+                std::vector<uint32_t> nextChildren;
+                std::vector<uint32_t> nextParents;
+
+                for(size_t k = 0; k < children.size(); k++)
+                {
+                    uint32_t childID = children[k];
+                    uint32_t parentID = parents[k];
+
+                    AssetLoader::AssetData::Joint &child = meshData.armature[childID];     // Note: Joint is declared as a reference
+                    AssetLoader::AssetData::Joint parent = meshData.armature[parentID];
+                    nextChildren.insert(
+                        nextChildren.end(), 
+                        child.children.begin(), 
+                        child.children.end()
+                    );
+                    nextParents.resize(nextParents.size() + child.children.size(), childID);
+
+                    glm::mat4 localTransform = child.globalJointTransform;
+                    child.parentID = parentID;
+                    child.globalJointTransform = parent.globalJointTransform * localTransform;
+                    child.posePosition = child.globalJointTransform;
+                    child.jointMatrix = child.globalJointTransform * child.inverseBindMatrix;
+                };
+
+                children = nextChildren;
+                parents = nextParents;
             };
         };
 
@@ -910,6 +980,12 @@ lazarus_result ModelManager::setSelectable(bool selectable)
 
 lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
 {
+    std::chrono::system_clock::duration epoch = std::chrono::system_clock::now().time_since_epoch();
+    uint32_t currentMs = epoch / std::chrono::milliseconds(1);
+    uint32_t timeDelta = currentMs - previousMs;
+    previousMs = currentMs;
+    upTimeMs += timeDelta;
+    
     LOG_DEBUG("Loading model data");
     ModelManager::ModelData &model = modelStore.at(meshIn.id);
     lazarus_result status = lazarus_result::LAZARUS_OK;
@@ -1000,60 +1076,6 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
         
         glUniform1i(this->meshVariantLocation, this->textureStorage);
         glUniform1i(this->discardFragsLocation, data.texture.discardAlphaZero);
-
-        /* =================================================
-            Upload animation data if present
-        ==================================================== */
-        if(data.isAnimated)
-        {
-            LOG_DEBUG("Loading animation data");
-            
-            //  Rigging
-            LOG_DEBUG("Uploading joint matrices");
-            for(size_t j = 0; j < data.armature.size(); j++)
-            {
-                MeshData::Joint joint = data.armature[j];
-
-                this->jointsMatricesLocation = glGetUniformLocation(this->shaderProgram, std::string("jointMatrices[").append(std::to_string(j) + "]").c_str());
-                glUniformMatrix4fv(this->jointsMatricesLocation, 1, GL_FALSE, &joint.jointMatrix[0][0]);
-            };
-
-            //  Timing, keyframe values and rigging targets
-            LOG_DEBUG("Uploading timesteps and keyframes");
-            size_t keyframeCount = 0;
-            AssetLoader::AssetData::Animation animation = data.animations[0];
-
-            for(size_t j = 0; j < animation.size(); j++)
-            {
-                /* ================================================
-                    An animation is made up of a number of motions.
-                    Each motion targets a joint, noting that each 
-                    vertex is aware of which joints it is effected
-                    by. Every motion has it's own set of timesteps
-                    and keyframes, noting these sets are of equal
-                    length and match up 1:1.
-                =================================================== */
-                AssetLoader::AssetData::JointMotion motion = animation[j];
-                
-                this->jointTargetsLocation  = glGetUniformLocation(this->shaderProgram, std::string("jointTargets[").append(std::to_string(j) + "]").c_str());
-                this->motionLengthsLocation = glGetUniformLocation(this->shaderProgram, std::string("motionLengths[").append(std::to_string(j) + "]").c_str());
-                
-                glUniform1i(this->jointTargetsLocation, motion.targetJoint);
-                glUniform1i(this->motionLengthsLocation, motion.keyframes.size());
-
-                for(size_t k = 0; k < motion.timesteps.size(); k++)
-                {   
-                    this->timestepsLocation = glGetUniformLocation(this->shaderProgram, std::string("animationTimesteps[").append(std::to_string(keyframeCount + k) + "]").c_str());
-                    this->keyframesLocation = glGetUniformLocation(this->shaderProgram, std::string("animationKeyframes[").append(std::to_string(keyframeCount + k) + "]").c_str());
-
-                    glUniform1f(this->timestepsLocation, motion.timesteps[k]);
-                    glUniform3fv(this->keyframesLocation, 1, &motion.keyframes[k][0]);
-                    
-                    keyframeCount++;
-                };
-            };
-            glUniform1i(this->motionCountLocation, animation.size());
-        };
     
         status = this->checkErrors(__FILE__, __LINE__);
         if(status != lazarus_result::LAZARUS_OK)
@@ -1200,24 +1222,25 @@ lazarus_result ModelManager::setMaterials(AssetLoader::AssetData &assetData)
 void ModelManager::setMeshProperties(AssetLoader::AssetData &assetData)
 {
     LOG_DEBUG("Loading base mesh properties");
-    meshData.attributes = assetData.attributes;
-    meshData.indexes = assetData.indices;
-    meshData.movements = assetData.movements;
-    meshData.animations = assetData.animations;
-    meshData.globalTransform = glm::mat4(1.0f);
 
     meshData.texture.discardAlphaZero = false;
     meshData.texture.samplerId = TextureLoader::textureId;
-    
-    modelOut.numOfVertices = meshData.attributes.size() / 4;
-    modelOut.numOfFaces = (modelOut.numOfVertices) / 3;
+    meshData.globalTransform = glm::mat4(1.0f);
 
+    meshData.attributes = assetData.attributes;     //  Positon, Diffuse, normal, uvs
+    meshData.movements = assetData.movements;       //  joints, weights
+    meshData.indexes = assetData.indices;           
+    meshData.animations = assetData.animations;
+
+    meshData.isAnimated = false;
     /* ===============================================
         Note that these will be evaluated again when 
         loading from a file (create3DAsset).
     ================================================== */
     meshData.armature = {};
-    meshData.isAnimated = false;
+    
+    modelOut.numOfVertices = meshData.attributes.size() / 4;
+    modelOut.numOfFaces = (modelOut.numOfVertices) / 3;
 
    return;
 }

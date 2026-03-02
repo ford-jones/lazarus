@@ -71,7 +71,18 @@ class AssetLoader
                 glm::mat4 inverseBindMatrix;
                 glm::vec3 translation = glm::vec3(0.0f, 0.0f, 0.0f);
                 glm::vec3 scale = glm::vec3(1.0f, 1.0f, 1.0f);
-                glm::vec4 rotation = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
+                glm::vec4 rotation = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
+            };
+            struct Joint
+            {
+                uint32_t id;
+                uint32_t parentID;
+                std::vector<uint32_t> children;
+                
+                glm::mat4 posePosition;
+                glm::mat4 inverseBindMatrix;
+                glm::mat4 globalJointTransform;
+                glm::mat4 jointMatrix;
             };
             struct JointMotion
             {
@@ -106,7 +117,7 @@ class AssetLoader
             std::vector<FileLoader::Image> textures;
             std::vector<Animation> animations;
             std::map<uint32_t, JointData> armature;
-        };
+        };  
 
         lazarus_result parseWavefrontObj(
             std::vector<AssetData> &out,

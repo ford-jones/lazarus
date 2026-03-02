@@ -27,6 +27,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <set>
 #include <string>
 #include <stdlib.h>
 #include <memory>
@@ -42,7 +43,6 @@ using std::string;
 using std::vector;
 using glm::mat4;
 using glm::vec3;
-using glm::vec2;
 
 #ifndef LAZARUS_MESH_H
 #define LAZARUS_MESH_H
@@ -160,14 +160,6 @@ class ModelManager
     private:
         struct MeshData
         {
-            struct Joint
-            {
-                std::vector<uint32_t> children;
-                glm::vec3 location;
-                glm::mat4 inverseBindMatrix;
-                glm::mat4 localTransform;
-                glm::mat4 jointMatrix;
-            };
             uint32_t id;
             uint32_t instanceCount;
             uint8_t stencilBufferId;
@@ -189,7 +181,7 @@ class ModelManager
             
             glm::mat4 globalTransform;
             std::vector<AssetLoader::AssetData::Animation> animations;
-            std::vector<Joint> armature;
+            std::vector<AssetLoader::AssetData::Joint> armature;
             std::vector<glm::vec4> movements;
         };
         typedef std::vector<MeshData> ModelData;
@@ -211,6 +203,9 @@ class ModelManager
 
         uint32_t maxTexWidth;
         uint32_t maxTexHeight;
+
+        uint32_t previousMs;
+        uint32_t upTimeMs;
 
 		GLuint shaderProgram;
         GLint meshVariantLocation;

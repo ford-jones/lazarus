@@ -919,6 +919,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 asset.globalTransform = glm::translate(glm::mat4(1.0f), node.translation) *
                 glm::mat4_cast(glm::quat(node.rotation)) * 
                 glm::scale(glm::mat4(1.0f), node.scale);
+                
 
                 /* =================================================
                     Load armature data
@@ -1224,11 +1225,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     glm::vec3 orientation = quaternion * vertexPositions[index] * conjugate;
     
                     tempVertexPositions.emplace(serial, (orientation + node.translation) * node.scale);
-                    // asset.globalTransform = glm::translate(glm::mat4(1.0f), node.translation) *
-                    // glm::mat4_cast(glm::quat(node.rotation)) * 
-                    // glm::scale(glm::mat4(1.0f), node.scale);
                     
-                    // tempVertexPositions.emplace(serial, vertexPositions[index]);
                     tempNormals.emplace(serial, vertexNormals[index]);
         
                     /* ===================================================================
