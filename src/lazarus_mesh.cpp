@@ -1076,6 +1076,171 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
         
         glUniform1i(this->meshVariantLocation, this->textureStorage);
         glUniform1i(this->discardFragsLocation, data.texture.discardAlphaZero);
+        glUniform1i(glGetUniformLocation(this->shaderProgram, "isAnimated"), 0);
+        /* =================================================
+            Upload animation data if present
+        ==================================================== */
+        if(data.isAnimated)
+        {
+            LOG_DEBUG("Loading animation data");
+            std::cout << "uptime: " << upTimeMs << std::endl;
+            AssetLoader::AssetData::Animation animation = data.animations[0];
+            for(size_t j = 0; j < animation.size(); j++)
+            {
+                AssetLoader::AssetData::JointMotion motion = animation[j];
+                AssetLoader::AssetData::Joint &joint = data.armature[motion.targetJoint];
+
+                std::vector<uint32_t> children = joint.children;
+                // std::vector<uint32_t> parents;
+                // parents.resize(joint.children.size(), motion.targetJoint);
+                std::set<uint32_t> visited = {motion.targetJoint};
+                
+                /* ======================================================
+                    Lock time-advance within the maximum duration of the
+                    active motion.
+
+                    TODO:
+                    An "upTimeMs" is almost needed for every motion?
+                    i.e. an animation with a duration of 0.2ms that
+                    follows one that is 0.5ms would be cancelled out. Or 
+                    inversely, 0.5ms would never be reached... 
+                ========================================================= */
+                uint32_t durationMax = static_cast<uint32_t>(motion.timesteps.back() * 1000.0f);
+                if(upTimeMs >= durationMax)
+                {
+                    upTimeMs = 0;
+                };
+                /* ===========================================
+                    Establish current location in the frame 
+                    sequence.
+                ============================================== */
+                uint32_t now = upTimeMs;
+                std::vector<float>::iterator it = std::find_if(
+                    motion.timesteps.begin(), 
+                    motion.timesteps.end(), 
+                    [now](float time) {
+                        /* ============================================
+                            Convert to ms and compare with current 
+                            time.
+                        =============================================== */
+                        uint32_t timestep = static_cast<uint32_t>(time * 1000.0f);
+                        return now < timestep;
+                    }
+                );
+                uint32_t index = it - motion.timesteps.begin();
+                std::cout << "keyframe index: " << index << std::endl;
+
+                /* ===================================================
+                    Interpolate keyframe values by time factor using
+                    the non-monotonic fomula decribed here:
+                    https://en.wikipedia.org/wiki/Linear_interpolation#Programming_language_support
+                ====================================================== */
+                float interpolationFactor = now / durationMax;
+                glm::vec3 motionStart = motion.keyframes[index];
+                glm::vec3 motionEnd = motion.keyframes[index + 1 != motion.keyframes.size() ? index + 1 : 0];
+                glm::vec3 interpolatedMotion = (1 - interpolationFactor) * motionStart + interpolationFactor * motionEnd;
+
+                // if(motion.lerp == AssetData::JointMotion::InterpolationType::LINEAR)
+                // {
+                //     glm::mat4 localTransform = glm::mat4(1.0f);
+                //     switch (motion.transform)
+                //     {
+                //         case AssetLoader::AssetData::JointMotion::TransformType::ROTATION:
+                //             localTransform = localTransform * glm::mat4_cast(glm::quat(interpolatedMotion));
+                //             break;
+                //         case AssetLoader::AssetData::JointMotion::TransformType::TRANSLATION:
+                //             localTransform = glm::translate(localTransform, interpolatedMotion);
+                //             break;
+                //         case AssetLoader::AssetData::JointMotion::TransformType::SCALE:
+                //             localTransform = glm::scale(localTransform, interpolatedMotion);
+                //             break;
+                //         default:
+                //             break;
+                //     };
+
+                //     joint.globalJointTransform = data.armature[joint.parentID].globalJointTransform * localTransform;
+                //     /* ================================================================
+                //         Compute the joint matrix, used to compute the 
+                //         skinning matrix in the vertex shader. Using the
+                //         formula described here: 
+                //         https://www.scribd.com/document/619514490/gltf20-reference-guide#page=6
+                //     =================================================================== */
+                //     joint.jointMatrix = (
+                //         joint.globalJointTransform * joint.inverseBindMatrix
+                //     );
+
+                //     /* ==============================================
+                //         Construct and collateraly transform the joint
+                //         matrices of every child by the lerp'ed 
+                //         keyframe value at each level of the skeleton 
+                //         heirachy. Starting from the root / parent 
+                //         joint.
+                //     ================================================= */
+                //     while(children.size() > 0)
+                //     {
+                //         // std::vector<uint32_t> nextParents;
+                //         std::vector<uint32_t> nextChildren;
+    
+                //         for(size_t k = 0; k < children.size(); k++)
+                //         {   
+                //             uint32_t childID = children[k];
+                //             // uint32_t parentID = parents[k];
+                //             /* ==========================================
+                //                 Colaterally append all children that
+                //                 exist at this depth to the control vector
+                //                 if this joint hasn't already been 
+                //                 inspected.
+                //             ============================================= */
+                //             if(visited.insert(childID).second)
+                //             {
+                //                 MeshData::Joint &child = data.armature[childID];     // Note: Joint is declared as a reference
+                //                 MeshData::Joint parent = data.armature[child.parentID];
+    
+                //                 nextChildren.insert(
+                //                     nextChildren.end(), 
+                //                     child.children.begin(), 
+                //                     child.children.end()
+                //                 );
+                //                 // nextParents.resize(nextParents.size() + child.children.size(), childID);
+    
+                //                 glm::mat localTransform = child.globalJointTransform;
+                //                 child.globalJointTransform = parent.globalJointTransform * localTransform;
+                //                 /* ================================================================
+                //                     Compute the joint matrix, used to compute the 
+                //                     skinning matrix in the vertex shader. Using the
+                //                     formula described here: 
+                //                     https://www.scribd.com/document/619514490/gltf20-reference-guide#page=6
+                //                 =================================================================== */
+                //                 child.jointMatrix = (
+                //                     child.globalJointTransform * child.inverseBindMatrix
+                //                 );
+                //             } 
+                //         };
+                //         /* ==========================================
+                //             Descend into the children of the children
+                //             which were just processed.
+                //         ============================================= */
+                //         children = nextChildren;
+                //         // parents = nextParents;
+                //     };
+                // }
+                
+            };
+
+            /* ==============================================
+                Upload updated armature locations
+            ================================================= */
+            LOG_DEBUG("Uploading joint matrices");
+            for(size_t j = 0; j < data.armature.size(); j++)
+            {
+                AssetLoader::AssetData::Joint joint = data.armature[j];
+                
+                this->jointsMatricesLocation = glGetUniformLocation(this->shaderProgram, std::string("jointMatrices[").append(std::to_string(j) + "]").c_str());
+                glUniformMatrix4fv(this->jointsMatricesLocation, 1, GL_FALSE, &joint.jointMatrix[0][0]);
+            };
+            
+            glUniform1i(glGetUniformLocation(this->shaderProgram, "isAnimated"), 1);
+        };
     
         status = this->checkErrors(__FILE__, __LINE__);
         if(status != lazarus_result::LAZARUS_OK)
