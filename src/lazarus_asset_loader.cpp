@@ -538,6 +538,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     std::string str = fileLoader->extractContainedContents(nodeData, ROTATION, "]")[0];
                     std::vector<std::string> axis = fileLoader->splitTokensFromLine(str.substr(1, str.size() - 2).c_str(), ',');
 
+                    
                     /* ===========================================
                         glb rotations are supplied as a
                         quaternion.
@@ -710,15 +711,15 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 {
                     //  TRANSLATION
                     case 't':
-                        channel.transformType = AssetData::JointMotion::TransformType::TRANSLATION;
+                        channel.transformType = AssetData::JointMotion::TransformData::TransformType::TRANSLATION;
                         break;
                     //  ROTATION
                     case 'r':
-                        channel.transformType = AssetData::JointMotion::TransformType::ROTATION;
+                        channel.transformType = AssetData::JointMotion::TransformData::TransformType::ROTATION;
                         break;
                     //  SCALE
                     case 's':
-                        channel.transformType = AssetData::JointMotion::TransformType::SCALE;
+                        channel.transformType = AssetData::JointMotion::TransformData::TransformType::SCALE;
                         break;
                 
                     default:
@@ -747,15 +748,15 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 {
                     //  LINEAR
                     case 'L':
-                        sampler.lerpType = AssetData::JointMotion::InterpolationType::LINEAR;
+                        sampler.lerpType = AssetData::JointMotion::TransformData::InterpolationType::LINEAR;
                         break;
                     //  STEP
                     case 'S':
-                        sampler.lerpType = AssetData::JointMotion::InterpolationType::STEP;
+                        sampler.lerpType = AssetData::JointMotion::TransformData::InterpolationType::STEP;
                         break;
                     //  CUBIC SPLINE
                     case 'C':
-                        sampler.lerpType = AssetData::JointMotion::InterpolationType::CUBICSPLINE;
+                        sampler.lerpType = AssetData::JointMotion::TransformData::InterpolationType::CUBICSPLINE;
                         break;
 
                     default:
@@ -962,41 +963,68 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                             Get actual armature indices instead
                             of node index.
                         ========================================= */
-                        movement.targetJoint = asset.armature.at(channel.nodeIndex).id;
-                        movement.transform = channel.transformType;
-                        movement.lerp = sampler.lerpType;
-
-                        glbAccessorData kfAccessor = accessors[sampler.keyframeContentsAccessor];
-                        glbAccessorData tsAccessor = accessors[sampler.timestepAccessor];
-
-                        this->populateVectorFromMemory<float>(tsAccessor, bufferViews[tsAccessor.bufferViewIndex], movement.timesteps);
-
-                        /* =================================================
-                            Convert quaternions to radians (euler) to 
-                            preserve 12-byte alignment. (Scale and translate
-                            are vec3).
-                        ==================================================== */
-                        if(movement.transform == AssetData::JointMotion::TransformType::ROTATION)
-                        {
-                            std::vector<glm::vec4> quats;
-                            this->populateVectorFromMemory<glm::vec4>(kfAccessor, bufferViews[kfAccessor.bufferViewIndex], quats);
-
-                            std::transform(
-                                quats.begin(), 
-                                quats.end(), 
-                                std::back_inserter(movement.keyframes), 
-                                [](glm::vec4 quat) {
-                                    glm::quat q(quat);
-                                    return glm::eulerAngles(q);
-                                }
-                            );
-                        }
-                        else
-                        {
-                            this->populateBufferFromAccessor(kfAccessor, movement.keyframes);
-                        };
+                        uint32_t id = asset.armature.at(channel.nodeIndex).id;
+                        animation.emplace(id, movement);
                         
-                        animation.push_back(movement);
+                            AssetData::JointMotion &m = animation.at(id);
+                            AssetData::JointMotion::TransformData t = {};
+                            // m.targetJoint = id;
+                            t.transform = channel.transformType;
+                            t.lerp = sampler.lerpType;
+    
+                            glbAccessorData kfAccessor = accessors[sampler.keyframeContentsAccessor];
+                            glbAccessorData tsAccessor = accessors[sampler.timestepAccessor];
+    
+                            this->populateVectorFromMemory<float>(tsAccessor, bufferViews[tsAccessor.bufferViewIndex], t.timesteps);
+                            /* =================================================
+                                Convert quaternions to radians (euler) to 
+                                preserve 12-byte alignment. (Scale and translate
+                                are vec3).
+                            ==================================================== */
+                            if(t.transform == AssetData::JointMotion::TransformData::TransformType::ROTATION)
+                            {
+                                // std::vector<glm::vec4> quats;
+                                // this->populateVectorFromMemory<glm::vec4>(kfAccessor, bufferViews[kfAccessor.bufferViewIndex], quats);
+    
+                                // std::transform(
+                                //     quats.begin(), 
+                                //     quats.end(), 
+                                //     std::back_inserter(t.keyframes), 
+                                //     [](glm::vec4 quat) {
+                                //         return glm::vec4(quat.w, quat.x, quat.y, quat.z);
+                                //     }
+                                // );
+
+                                this->populateVectorFromMemory<glm::vec4>(kfAccessor, bufferViews[kfAccessor.bufferViewIndex], t.keyframes);
+                                m.rotation = t;
+                            }
+                            else
+                            {
+                                // this->populateBufferFromAccessor(kfAccessor, movement.keyframes);
+                                std::vector<glm::vec3> transforms;
+                                this->populateVectorFromMemory<glm::vec3>(kfAccessor, bufferViews[kfAccessor.bufferViewIndex], transforms);
+                                std::transform(
+                                    transforms.begin(), 
+                                    transforms.end(), 
+                                    std::back_inserter(t.keyframes), 
+                                    [](glm::vec3 transform) {
+                                        return glm::vec4(transform.x, transform.y, transform.z, 1.0f);
+                                    }
+                                );
+
+                                if(t.transform == AssetData::JointMotion::TransformData::TransformType::TRANSLATION)
+                                {
+                                    m.translation = t;
+                                }
+                                else
+                                {
+                                    m.scale = t;
+                                };
+                            };
+                            
+                            // animation.push_back(movement);
+                        
+
                     };
 
                     asset.animations.push_back(animation);
@@ -1072,16 +1100,22 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                         this->populateVectorFromMemory<glm::u8vec4>(jointAccessor, bufferViews[jointAccessor.bufferViewIndex], shortJoints);
                         //  Convert 8-bit indices to 32-bit
                         //  Use extracted value (node index) to look up joint index (armature id)
+                        std::vector<uint32_t> joints = skins[0].joints;
                         std::transform(
                             shortJoints.begin(), 
                             shortJoints.end(),
                             std::back_inserter(vertexJoints),
-                            [asset](glm::u8vec4 nodeIndex) {
+                            [asset, joints](glm::u8vec4 nodeIndex) {
+                                uint32_t x_id = joints[nodeIndex.x];
+                                uint32_t y_id = joints[nodeIndex.y];
+                                uint32_t z_id = joints[nodeIndex.z];
+                                uint32_t w_id = joints[nodeIndex.w];
+
                                 return glm::vec4(
-                                    asset.armature.at(nodeIndex.x).id,
-                                    asset.armature.at(nodeIndex.y).id,
-                                    asset.armature.at(nodeIndex.z).id,
-                                    asset.armature.at(nodeIndex.w).id
+                                    asset.armature.at(x_id).id,
+                                    asset.armature.at(y_id).id,
+                                    asset.armature.at(z_id).id,
+                                    asset.armature.at(w_id).id
                                 );
                             }
                         );
@@ -1091,16 +1125,22 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                         this->populateVectorFromMemory<glm::u16vec4>(jointAccessor, bufferViews[jointAccessor.bufferViewIndex], longerJoints);
                         //  Convert 16-bit indices to 32-bit
                         //  Use extracted value (node index) to look up joint index (armature id)
+                        std::vector<uint32_t> joints = skins[0].joints;
                         std::transform(
                             longerJoints.begin(), 
                             longerJoints.end(),
                             std::back_inserter(vertexJoints),
-                            [asset](glm::u16vec4 nodeIndex) {
+                            [asset, joints](glm::u16vec4 nodeIndex) {
+                                uint32_t x_id = joints[nodeIndex.x];
+                                uint32_t y_id = joints[nodeIndex.y];
+                                uint32_t z_id = joints[nodeIndex.z];
+                                uint32_t w_id = joints[nodeIndex.w];
+
                                 return glm::vec4(
-                                    asset.armature.at(nodeIndex.x).id,
-                                    asset.armature.at(nodeIndex.y).id,
-                                    asset.armature.at(nodeIndex.z).id,
-                                    asset.armature.at(nodeIndex.w).id
+                                    asset.armature.at(x_id).id,
+                                    asset.armature.at(y_id).id,
+                                    asset.armature.at(z_id).id,
+                                    asset.armature.at(w_id).id
                                 );
                             }
                         );

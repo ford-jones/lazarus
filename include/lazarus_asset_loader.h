@@ -71,41 +71,38 @@ class AssetLoader
                 glm::mat4 inverseBindMatrix;
                 glm::vec3 translation = glm::vec3(0.0f, 0.0f, 0.0f);
                 glm::vec3 scale = glm::vec3(1.0f, 1.0f, 1.0f);
-                glm::vec4 rotation = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
-            };
-            struct Joint
-            {
-                uint32_t id;
-                uint32_t parentID;
-                std::vector<uint32_t> children;
-                
-                glm::mat4 posePosition;
-                glm::mat4 inverseBindMatrix;
-                glm::mat4 globalJointTransform;
-                glm::mat4 jointMatrix;
+                glm::vec4 rotation = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
             };
             struct JointMotion
             {
-                enum TransformType
+                struct TransformData
                 {
-                    TRANSLATION,
-                    ROTATION,
-                    SCALE
+                    enum TransformType
+                    {
+                        TRANSLATION,
+                        ROTATION,
+                        SCALE
+                    };
+                    enum InterpolationType
+                    {
+                        LINEAR,
+                        STEP,
+                        CUBICSPLINE
+                    };
+                    std::vector<float> timesteps;
+                    std::vector<glm::vec4> keyframes;
+                    
+                    InterpolationType lerp;
+                    TransformType transform;
                 };
-                enum InterpolationType
-                {
-                    LINEAR,
-                    STEP,
-                    CUBICSPLINE
-                };
-                uint32_t targetJoint;
-                std::vector<float> timesteps;
-                std::vector<glm::vec3> keyframes;
+                
+                // uint32_t targetJoint;
 
-                InterpolationType lerp;
-                TransformType transform;
+                TransformData translation;
+                TransformData rotation;
+                TransformData scale;
             };
-            typedef std::vector<JointMotion> Animation;
+            typedef std::map<uint32_t, JointMotion> Animation;
             
             glm::mat4 globalTransform;
             std::string name;
@@ -221,13 +218,13 @@ class AssetLoader
         };
         struct glbAnimationChannel
         {
-            AssetData::JointMotion::TransformType transformType;
+            AssetData::JointMotion::TransformData::TransformType transformType;
             uint32_t samplerIndex;
             uint32_t nodeIndex;
         };
         struct glbAnimationSampler
         {
-            AssetData::JointMotion::InterpolationType lerpType;
+            AssetData::JointMotion::TransformData::InterpolationType lerpType;
             uint32_t timestepAccessor;
             uint32_t keyframeContentsAccessor;
         };

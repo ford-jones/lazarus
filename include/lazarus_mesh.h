@@ -160,10 +160,26 @@ class ModelManager
     private:
         struct MeshData
         {
+            struct MotionPoint
+            {
+                uint32_t id;
+                uint32_t parentID;
+                std::vector<uint32_t> children;
+                
+                glm::mat4 posePosition;
+                glm::mat4 inverseBindMatrix;
+                glm::mat4 localJointTransform;
+                glm::mat4 globalJointTransform;
+                glm::mat4 jointMatrix;
+
+                AssetLoader::AssetData::JointMotion animationData;
+            };
+
             uint32_t id;
             uint32_t instanceCount;
             uint8_t stencilBufferId;
             bool isAnimated;
+            uint32_t armatureRoot = UINT32_MAX;
             
             GLuint VAO;     //  Vertex Array Object
             GLuint VBO;     //  Vertex Buffer Object (attributes: interleaved)
@@ -180,8 +196,8 @@ class ModelManager
             std::vector<glm::vec3> attributes;
             
             glm::mat4 globalTransform;
-            std::vector<AssetLoader::AssetData::Animation> animations;
-            std::vector<AssetLoader::AssetData::Joint> armature;
+            // std::vector<AssetLoader::AssetData::Animation> animations;
+            std::vector<MotionPoint> armature;
             std::vector<glm::vec4> movements;
         };
         typedef std::vector<MeshData> ModelData;
@@ -196,6 +212,11 @@ class ModelManager
         void clearErrors();
         void instantiateMesh(bool selectable);
         void setMeshProperties(AssetLoader::AssetData &assetData);
+
+
+        uint32_t getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData &motion);
+        glm::vec4 getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData &motion, uint32_t frameBegin);
+
         
         uint32_t childCount;
 
