@@ -45,7 +45,6 @@ ModelManager::ModelManager(GLuint shader, TextureLoader::StorageType textureType
 
     this->meshVariantLocation           = glGetUniformLocation(this->shaderProgram, "samplerType");
     this->discardFragsLocation          = glGetUniformLocation(this->shaderProgram, "discardFrags");
-    // this->motionCountLocation           = glGetUniformLocation(this->shaderProgram, "motionCount");
 
     this->maxTexWidth = 0;
     this->maxTexHeight = 0;
@@ -118,12 +117,6 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
         {
             meshData.isAnimated = true;
 
-            /* =========================================================
-                Overide default global transform (identity) to use 
-                whatever was acquired from asset loading.
-            ============================================================ */
-            this->meshData.globalTransform = assetData.globalTransform;
-
             /* ====================================================
                 Construct joints and transfroms from loaded data. 
                 Flatten out this map and resolve indices 
@@ -131,7 +124,6 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
             ======================================================= */
             std::map<uint32_t, AssetLoader::AssetData::JointData> rig = assetData.armature;
 
-            // uint32_t rootID = UINT32_MAX;
             std::set<uint32_t> heirachy;
             for(auto pair : rig)
             {
@@ -143,15 +135,16 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
                 motionPoint.inverseBindMatrix = jointData.inverseBindMatrix;
                 motionPoint.animationData = jointMotion;
 
-                /* ============================================
-                    Construct pose transform. Note: Blender
-                    exports its' quats with 'w' on the wrong 
-                    side.
-                =============================================== */
+                /* =============================================
+                    Compute the transformation matrix required
+                    for moving into the bind-pose. 
+                    
+                    Note: Blender exports its' quats with 'w' on 
+                    the wrong side.
+                ================================================ */
                 motionPoint.localJointTransform = (
                     glm::translate(glm::mat4(1.0f), jointData.translation) *
                     glm::mat4_cast(glm::quat(jointData.rotation.w, jointData.rotation.x, jointData.rotation.y, jointData.rotation.z)) * 
-                    // glm::mat4_cast(glm::quat(jointData.rotation)) * 
                     glm::scale(glm::mat4(1.0f), jointData.scale)
                 );
                 motionPoint.globalJointTransform = motionPoint.localJointTransform;
@@ -169,15 +162,7 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
                     uint32_t index = assetData.armature.at(childID).id;
                     motionPoint.children.push_back(index);
 
-                    /*
-                        {J,  J,  m,  c,  J,  J, ...}
-                         0   1           4   5       <-childID
-                         |   |     ______|   |
-                         |   |    /    ______|
-                        {J,  J,  J,  J,         ...}
-                         0   1   2   3               <-JointData::id
-                    */
-                   heirachy.insert(index);
+                    heirachy.insert(index);
                 };
                 
                 meshData.armature.push_back(motionPoint);
@@ -185,7 +170,8 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
             
             /* =========================================
                 Ensure flattened armature is indexed in
-                the same order of appearance as in glb.
+                the same order of appearance as the glb 
+                'skins' vector.
             ============================================ */
             std::sort(
                 meshData.armature.begin(), 
@@ -197,9 +183,13 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
             
 
             /* ====================================================
-                Determine armature root (The only node in the tree
-                which is never referred to as a child of another 
-                node).
+                Determine the armature's root joint (The only node 
+                in the tree which is never referred to as a child of 
+                another node).
+
+                TODO:
+                This should be extended to be more inclusive of 
+                armatures with multiple roots (forests).
             ======================================================= */
             for(size_t j = 0; j < meshData.armature.size(); j++)
             {
@@ -214,6 +204,8 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
                 Traverse joint structure from root and apply 
                 transforms forward to children as the tree is 
                 descended.
+
+                I.e. Breadth-first search begin.
             ===================================================== */
             MeshData::MotionPoint &rootJoint = meshData.armature[meshData.armatureRoot];
             std::vector<uint32_t> children = rootJoint.children;
@@ -236,7 +228,7 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
 
                     if(visited.insert(childID).second)
                     {
-                        MeshData::MotionPoint &child = meshData.armature[childID];     // Note: Joint is declared as a reference
+                        MeshData::MotionPoint &child = meshData.armature[childID];
                         MeshData::MotionPoint &parent = meshData.armature[parentID];
                         nextChildren.insert(
                             nextChildren.end(), 
@@ -245,6 +237,12 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
                         );
                         nextParents.resize(nextParents.size() + child.children.size(), childID);
     
+                        /* ==========================================
+                            Compute the pose and set it as the joint 
+                            matrix value required for vertex skinning
+                            by editting the rig in-place.
+
+                        ============================================= */
                         glm::mat4 localTransform = child.globalJointTransform;
                         child.parentID = parentID;
                         child.globalJointTransform = parent.globalJointTransform * localTransform;
@@ -1092,7 +1090,12 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
         if(data.isAnimated)
         {
             LOG_DEBUG("Loading animation data");
-            std::cout << "uptime: " << upTimeMs << std::endl;
+
+            /* =================================================
+                Calculate the animation's armature-root position
+                and begin breadth-first descent into the rigs 
+                node heirachy.
+            ==================================================== */
 
             MeshData::MotionPoint &animationRoot = data.armature[data.armatureRoot];
 
@@ -1143,6 +1146,14 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
                             child.children.end()
                         );
 
+                        /* ===================================================
+                            Based on the current elapsed ms (time), determine
+                            where abouts we are in the animation sequence. Use
+                            this to look up and interpolate the relevant TRS 
+                            keyframe values for the next draw of the animated
+                            asset.
+                        ====================================================== */
+
                         uint32_t translateIdx = this->getKeyframeIndex(child.animationData.translation);
                         uint32_t rotateIdx = this->getKeyframeIndex(child.animationData.rotation);
                         uint32_t scaleIdx = this->getKeyframeIndex(child.animationData.scale);
@@ -1172,7 +1183,8 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
             };
 
             /* ==============================================
-                Upload updated armature locations
+                Upload updated armature joint matrices to
+                uniform locations.
             ================================================= */
             LOG_DEBUG("Uploading joint matrices");
 
@@ -1229,13 +1241,26 @@ uint32_t ModelManager::getKeyframeIndex(AssetLoader::AssetData::JointMotion::Tra
         }
     );
     uint32_t index = it - motion.timesteps.begin();
-    std::cout << "keyframe index: " << index << std::endl;
 
     return index;
 };
 
 glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData &motion, uint32_t frameBegin)
 {
+    /* =====================================================================
+        Perform spherical interpolation on keyframe values for joints that 
+        are non-static. As mentioned previously, Blender exports rotations
+        as quats in xyzw order so they must be swizzled here in order to be 
+        calculated correctly.
+
+        TODO:
+        - Should only swizzle xyzw for quats / rotations
+        - Note that non-static joints may also just not have a JointMotion 
+        present at all but I haven't seen this. In the cases identified so 
+        far, they typically have exactly two keyframe indices with identical
+        values.
+    ======================================================================== */
+
     glm::vec4 keyframe = motion.keyframes[frameBegin];
     if( motion.lerp == AssetData::JointMotion::TransformData::InterpolationType::LINEAR &&
         motion.keyframes.size() > 2)
@@ -1246,7 +1271,6 @@ glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::Tr
 
         glm::vec4 keyframeEnd = motion.keyframes[frameBegin + 1 != motion.keyframes.size() ? frameBegin + 1 : 0];
         glm::quat k = glm::slerp(glm::quat(keyframe.w, keyframe.x, keyframe.y, keyframe.z), glm::quat(keyframeEnd.w, keyframeEnd.x, keyframeEnd.y, keyframeEnd.z), interpolatedTimestep);
-        // keyframe = (1 - interpolatedTimestep) * keyframe + interpolatedTimestep * keyframeEnd;
         keyframe = glm::vec4(k.x, k.y, k.z, k.w);
     };
 
@@ -1391,12 +1415,10 @@ void ModelManager::setMeshProperties(AssetLoader::AssetData &assetData)
 
     meshData.texture.discardAlphaZero = false;
     meshData.texture.samplerId = TextureLoader::textureId;
-    meshData.globalTransform = glm::mat4(1.0f);
 
     meshData.attributes = assetData.attributes;     //  Positon, Diffuse, normal, uvs
     meshData.movements = assetData.movements;       //  joints, weights
     meshData.indexes = assetData.indices;           
-    // meshData.animations = assetData.animations;
 
     meshData.isAnimated = false;
     /* ===============================================
@@ -1489,7 +1511,7 @@ void ModelManager::instantiateMesh(bool selectable)
 
         ModelManager::Model::Instance instance = {};
         instance.id = this->childCount;
-        instance.modelMatrix = meshData.globalTransform;
+        instance.modelMatrix = glm::mat4(1.0f);
         instance.isClickable = selectable;
         instance.isVisible = true;
         
@@ -1498,6 +1520,11 @@ void ModelManager::instantiateMesh(bool selectable)
             looking down the z-axis at 1:1 scale to 
             that which was specified during VBO
             construction.
+
+            TODO:
+            Why z-axis and is it + or -?
+            Camera starts by looking down +x, why
+            not do the same here? 
         ============================================ */
         
         instance.position = glm::vec3(0.0f, 0.0f, 0.0f);

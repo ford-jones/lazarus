@@ -379,7 +379,6 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
     //  TODO:
     //  Consider a threading implentation to speed up loads and not block the main-thread/renderer
     //  Get the size of this function down, too many lines... (-_-*)
-    //  Extract animation data
 
     this->resetMembers();
     lazarus_result status = lazarus_result::LAZARUS_OK;
@@ -538,7 +537,6 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     std::string str = fileLoader->extractContainedContents(nodeData, ROTATION, "]")[0];
                     std::vector<std::string> axis = fileLoader->splitTokensFromLine(str.substr(1, str.size() - 2).c_str(), ',');
 
-                    
                     /* ===========================================
                         glb rotations are supplied as a
                         quaternion.
@@ -694,9 +692,9 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
             std::string samplers = fileLoader->extractContainedContents(animationData, SAMPLERS + "[", "]")[0];
 
             /* ===================================================
-                Apply the same methodology as is used duriing mesh
-                extraction due to existence of nested structs in
-                these json objects.
+                Apply the same methodology as is used during mesh
+                extraction due to the nested structs in these json 
+                objects.
             ====================================================== */
 
             std::vector<std::string> targetInfo = fileLoader->extractContainedContents(channels, TARGET, "}");
@@ -913,15 +911,6 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 std::vector<glm::mat4> inverseBindMatrices = {};
                 this->populateVectorFromMemory(accessor, bufferView, inverseBindMatrices);
 
-                /* =====================================================
-                    Compute the global transform of the mesh that this
-                    joint is a part of.
-                ======================================================== */
-                asset.globalTransform = glm::translate(glm::mat4(1.0f), node.translation) *
-                glm::mat4_cast(glm::quat(node.rotation)) * 
-                glm::scale(glm::mat4(1.0f), node.scale);
-                
-
                 /* =================================================
                     Load armature data
                 ==================================================== */
@@ -959,72 +948,60 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                         glbAnimationChannel channel = animationData.channels[k];
                         glbAnimationSampler sampler = animationData.samplers[channel.samplerIndex];
 
-                        /* ======================================
-                            Get actual armature indices instead
-                            of node index.
-                        ========================================= */
+                        /* ========================================
+                            Note: Translation, rotation and scale
+                            keyframe values for a joint are stored 
+                            in seperate channels.
+
+                            So get the map key and try to insert
+                            (emplace ensures uniqueness). Then
+                            update the value in-place accordingly.
+                        =========================================== */
                         uint32_t id = asset.armature.at(channel.nodeIndex).id;
                         animation.emplace(id, movement);
                         
-                            AssetData::JointMotion &m = animation.at(id);
-                            AssetData::JointMotion::TransformData t = {};
-                            // m.targetJoint = id;
-                            t.transform = channel.transformType;
-                            t.lerp = sampler.lerpType;
-    
-                            glbAccessorData kfAccessor = accessors[sampler.keyframeContentsAccessor];
-                            glbAccessorData tsAccessor = accessors[sampler.timestepAccessor];
-    
-                            this->populateVectorFromMemory<float>(tsAccessor, bufferViews[tsAccessor.bufferViewIndex], t.timesteps);
-                            /* =================================================
-                                Convert quaternions to radians (euler) to 
-                                preserve 12-byte alignment. (Scale and translate
-                                are vec3).
-                            ==================================================== */
-                            if(t.transform == AssetData::JointMotion::TransformData::TransformType::ROTATION)
-                            {
-                                // std::vector<glm::vec4> quats;
-                                // this->populateVectorFromMemory<glm::vec4>(kfAccessor, bufferViews[kfAccessor.bufferViewIndex], quats);
-    
-                                // std::transform(
-                                //     quats.begin(), 
-                                //     quats.end(), 
-                                //     std::back_inserter(t.keyframes), 
-                                //     [](glm::vec4 quat) {
-                                //         return glm::vec4(quat.w, quat.x, quat.y, quat.z);
-                                //     }
-                                // );
+                        AssetData::JointMotion &m = animation.at(id);
+                        AssetData::JointMotion::TransformData t = {};
 
-                                this->populateVectorFromMemory<glm::vec4>(kfAccessor, bufferViews[kfAccessor.bufferViewIndex], t.keyframes);
-                                m.rotation = t;
+                        t.transform = channel.transformType;
+                        t.lerp = sampler.lerpType;
+    
+                        glbAccessorData kfAccessor = accessors[sampler.keyframeContentsAccessor];
+                        glbAccessorData tsAccessor = accessors[sampler.timestepAccessor];
+    
+                        this->populateVectorFromMemory<float>(tsAccessor, bufferViews[tsAccessor.bufferViewIndex], t.timesteps);
+
+                        /* ========================================
+                            Rotation values are vec4, everything
+                            else is vec3.
+                        =========================================== */
+                        if(t.transform == AssetData::JointMotion::TransformData::TransformType::ROTATION)
+                        {
+                            this->populateVectorFromMemory<glm::vec4>(kfAccessor, bufferViews[kfAccessor.bufferViewIndex], t.keyframes);
+                            m.rotation = t;
+                        }
+                        else
+                        {
+                            std::vector<glm::vec3> transforms;
+                            this->populateVectorFromMemory<glm::vec3>(kfAccessor, bufferViews[kfAccessor.bufferViewIndex], transforms);
+                            std::transform(
+                                transforms.begin(), 
+                                transforms.end(), 
+                                std::back_inserter(t.keyframes), 
+                                [](glm::vec3 transform) {
+                                    return glm::vec4(transform.x, transform.y, transform.z, 1.0f);
+                                }
+                            );
+
+                            if(t.transform == AssetData::JointMotion::TransformData::TransformType::TRANSLATION)
+                            {
+                                m.translation = t;
                             }
                             else
                             {
-                                // this->populateBufferFromAccessor(kfAccessor, movement.keyframes);
-                                std::vector<glm::vec3> transforms;
-                                this->populateVectorFromMemory<glm::vec3>(kfAccessor, bufferViews[kfAccessor.bufferViewIndex], transforms);
-                                std::transform(
-                                    transforms.begin(), 
-                                    transforms.end(), 
-                                    std::back_inserter(t.keyframes), 
-                                    [](glm::vec3 transform) {
-                                        return glm::vec4(transform.x, transform.y, transform.z, 1.0f);
-                                    }
-                                );
-
-                                if(t.transform == AssetData::JointMotion::TransformData::TransformType::TRANSLATION)
-                                {
-                                    m.translation = t;
-                                }
-                                else
-                                {
-                                    m.scale = t;
-                                };
+                                m.scale = t;
                             };
-                            
-                            // animation.push_back(movement);
-                        
-
+                        };
                     };
 
                     asset.animations.push_back(animation);
@@ -1055,7 +1032,11 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 /* ==================================================================
                     Load face data / primitives. Unlike wavefront, this format can
                     support n'gons due to it's serialisation of indices per-face.
-                    Note Uvs may not be present.
+                    Note Uvs may not be present, in which case atleast the diffuse 
+                    colors should be.
+
+                    TODO:
+                    Error if no uv's and no diffuse values
                 ===================================================================== */
                 glbAccessorData posiitonAccessor = accessors[mesh.positionAccessor];
                 glbAccessorData normalAccessor = accessors[mesh.normalsAccessor];
@@ -1070,77 +1051,95 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 };
 
                 /* ==================================================
-                    An animated model will have a rig so extract the
-                    vertex weights and joint indices.
-                ===================================================== */
+                    Load vertex joints and weights describing the
+                    parts of the armature of an animated mesh that 
+                    should effect a given vertex.
 
+                    TODO:
+                    Error if animation but no rigging
+                    Error if weight values don't add up to 1.0
+                ===================================================== */
                 if(mesh.jointsAccessor >= 0 && mesh.weightsAccessor >= 0)
                 {
                     /* ==================================================
-                        The maximum number of joints that may have
-                        an effect on a vertex is 4, hence vec4 usage. The
-                        indices of effective joints are stored at 
-                        'vertexJoints' and aligned with the contents of 
-                        'vertexWeights'. The sum of a vec4 of weights
-                        should add up to 1.0, with each component 
-                        describing by how much (%) a joint should effect 
-                        a vertex. 
+                        A single vertex may be affected by 4 different
+                        joints, maximum, hence vec4 usage. The indices of 
+                        effective joints are stored at  'vertexJoints' and 
+                        aligned 1:1 with the contents of 'vertexWeights'. 
+                        The sum of a vec4 of weights should add up to 1.0, 
+                        with each component describing by how much (%) a 
+                        joint transformation should effect a vertex. 
                         
                         Note that much like the vertex indices, the 
-                        joint indexes here may be either 8-bit OR 16-bit
+                        joint indexes here may be either 8-bit OR 16-bit.
                         ("-.-).
                     ===================================================== */
 
-                    std::vector<glm::u8vec4> shortJoints;
-                    std::vector<glm::u16vec4> longerJoints;
+                    std::vector<uint32_t> joints = skins[node.skinIndex].joints;
+                    std::vector<glm::u8vec4> smallRigJoints;
+                    std::vector<glm::u16vec4> bigRigJoints;
 
                     glbAccessorData jointAccessor = accessors[mesh.jointsAccessor];
                     if(jointAccessor.componentType == GL_UNSIGNED_BYTE)
                     {
-                        this->populateVectorFromMemory<glm::u8vec4>(jointAccessor, bufferViews[jointAccessor.bufferViewIndex], shortJoints);
-                        //  Convert 8-bit indices to 32-bit
-                        //  Use extracted value (node index) to look up joint index (armature id)
-                        std::vector<uint32_t> joints = skins[0].joints;
+                        this->populateVectorFromMemory<glm::u8vec4>(jointAccessor, bufferViews[jointAccessor.bufferViewIndex], smallRigJoints);
+                        /* =========================================================
+                            Using 8-bit indices.
+
+                            Lookup joint's node position (id) in the skins array and 
+                            use it to subsequently look up that nodes position in
+                            the (yet to be created) flattened joints array (which 
+                            excludes mesh, camera and lighting node types).
+                            
+                            E.g. 
+
+                            {J,  J,  m,  c,  J,  J, ...}
+                             0   1           4   5       <-childID
+                             |   |     ______|   |
+                             |   |    /    ______|
+                            {J,  J,  J,  J,         ...}
+                             0   1   2   3               <-JointData::id
+                        ============================================================ */
                         std::transform(
-                            shortJoints.begin(), 
-                            shortJoints.end(),
+                            smallRigJoints.begin(), 
+                            smallRigJoints.end(),
                             std::back_inserter(vertexJoints),
-                            [asset, joints](glm::u8vec4 nodeIndex) {
-                                uint32_t x_id = joints[nodeIndex.x];
-                                uint32_t y_id = joints[nodeIndex.y];
-                                uint32_t z_id = joints[nodeIndex.z];
-                                uint32_t w_id = joints[nodeIndex.w];
+                            [asset, joints](glm::u8vec4 jointIndices) {
+                                uint32_t xIndex = joints[jointIndices.x];
+                                uint32_t yIndex = joints[jointIndices.y];
+                                uint32_t zIndex = joints[jointIndices.z];
+                                uint32_t wIndex = joints[jointIndices.w];
 
                                 return glm::vec4(
-                                    asset.armature.at(x_id).id,
-                                    asset.armature.at(y_id).id,
-                                    asset.armature.at(z_id).id,
-                                    asset.armature.at(w_id).id
+                                    asset.armature.at(xIndex).id,
+                                    asset.armature.at(yIndex).id,
+                                    asset.armature.at(zIndex).id,
+                                    asset.armature.at(wIndex).id
                                 );
                             }
                         );
                     }
                     else
                     {
-                        this->populateVectorFromMemory<glm::u16vec4>(jointAccessor, bufferViews[jointAccessor.bufferViewIndex], longerJoints);
-                        //  Convert 16-bit indices to 32-bit
-                        //  Use extracted value (node index) to look up joint index (armature id)
-                        std::vector<uint32_t> joints = skins[0].joints;
+                        this->populateVectorFromMemory<glm::u16vec4>(jointAccessor, bufferViews[jointAccessor.bufferViewIndex], bigRigJoints);
+                        /* =========================================================
+                            Same again using 16-bit indices.
+                        ============================================================ */
                         std::transform(
-                            longerJoints.begin(), 
-                            longerJoints.end(),
+                            bigRigJoints.begin(), 
+                            bigRigJoints.end(),
                             std::back_inserter(vertexJoints),
-                            [asset, joints](glm::u16vec4 nodeIndex) {
-                                uint32_t x_id = joints[nodeIndex.x];
-                                uint32_t y_id = joints[nodeIndex.y];
-                                uint32_t z_id = joints[nodeIndex.z];
-                                uint32_t w_id = joints[nodeIndex.w];
+                            [asset, joints](glm::u16vec4 jointIndices) {
+                                uint32_t xIndex = joints[jointIndices.x];
+                                uint32_t yIndex = joints[jointIndices.y];
+                                uint32_t zIndex = joints[jointIndices.z];
+                                uint32_t wIndex = joints[jointIndices.w];
 
                                 return glm::vec4(
-                                    asset.armature.at(x_id).id,
-                                    asset.armature.at(y_id).id,
-                                    asset.armature.at(z_id).id,
-                                    asset.armature.at(w_id).id
+                                    asset.armature.at(xIndex).id,
+                                    asset.armature.at(yIndex).id,
+                                    asset.armature.at(zIndex).id,
+                                    asset.armature.at(wIndex).id
                                 );
                             }
                         );
@@ -1190,6 +1189,9 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 }
                 else
                 {
+                    //  TODO:
+                    //  This block pops up everywhere and should be defaulted / removed
+
                     FileLoader::Image image = {};
                     image.width = 0;
                     image.height = 0;

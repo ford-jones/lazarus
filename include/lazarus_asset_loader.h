@@ -40,7 +40,6 @@
 #include <algorithm>
 #include <glm/gtx/hash.hpp>
 #include <unordered_set>
-#include <iterator>
 
 #include "lazarus_file_loader.h"
 #include "lazarus_texture_loader.h"
@@ -95,8 +94,6 @@ class AssetLoader
                     InterpolationType lerp;
                     TransformType transform;
                 };
-                
-                // uint32_t targetJoint;
 
                 TransformData translation;
                 TransformData rotation;
@@ -104,7 +101,6 @@ class AssetLoader
             };
             typedef std::map<uint32_t, JointMotion> Animation;
             
-            glm::mat4 globalTransform;
             std::string name;
 
             std::vector<glm::vec3> attributes;

@@ -194,9 +194,7 @@ class ModelManager
             std::vector<FileLoader::Image> images;
             std::vector<uint32_t> indexes;
             std::vector<glm::vec3> attributes;
-            
-            glm::mat4 globalTransform;
-            // std::vector<AssetLoader::AssetData::Animation> animations;
+
             std::vector<MotionPoint> armature;
             std::vector<glm::vec4> movements;
         };
