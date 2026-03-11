@@ -45,6 +45,7 @@ ModelManager::ModelManager(GLuint shader, TextureLoader::StorageType textureType
 
     this->meshVariantLocation           = glGetUniformLocation(this->shaderProgram, "samplerType");
     this->discardFragsLocation          = glGetUniformLocation(this->shaderProgram, "discardFrags");
+    this->isAnimatedLocation            = glGetUniformLocation(this->shaderProgram, "isAnimated");
 
     this->maxTexWidth = 0;
     this->maxTexHeight = 0;
@@ -1083,7 +1084,8 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
         
         glUniform1i(this->meshVariantLocation, this->textureStorage);
         glUniform1i(this->discardFragsLocation, data.texture.discardAlphaZero);
-        glUniform1i(glGetUniformLocation(this->shaderProgram, "isAnimated"), 0);
+        glUniform1i(this->isAnimatedLocation, data.isAnimated);
+
         /* =================================================
             Upload animation data if present
         ==================================================== */
@@ -1194,7 +1196,6 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
                 glUniformMatrix4fv(this->jointsMatricesLocation, 1, GL_FALSE, &joint.jointMatrix[0][0]);
             };
             
-            glUniform1i(glGetUniformLocation(this->shaderProgram, "isAnimated"), 1);
         };
     
         status = this->checkErrors(__FILE__, __LINE__);

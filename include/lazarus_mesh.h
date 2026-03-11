@@ -178,7 +178,7 @@ class ModelManager
             uint32_t id;
             uint32_t instanceCount;
             uint8_t stencilBufferId;
-            bool isAnimated;
+            uint8_t isAnimated;
             uint32_t armatureRoot = UINT32_MAX;
             
             GLuint VAO;     //  Vertex Array Object
@@ -211,10 +211,8 @@ class ModelManager
         void instantiateMesh(bool selectable);
         void setMeshProperties(AssetLoader::AssetData &assetData);
 
-
         uint32_t getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData &motion);
         glm::vec4 getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData &motion, uint32_t frameBegin);
-
         
         uint32_t childCount;
 
@@ -229,6 +227,7 @@ class ModelManager
 		GLuint shaderProgram;
         GLint meshVariantLocation;
         GLint discardFragsLocation;
+        GLint isAnimatedLocation;
 
         GLint jointsMatricesLocation;
 
