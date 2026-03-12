@@ -213,6 +213,7 @@ class ModelManager
 
         uint32_t getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData &motion);
         glm::vec4 getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData &motion, uint32_t frameBegin);
+        glm::mat4 computeLocation(MeshData::MotionPoint &joint);
         
         uint32_t childCount;
 

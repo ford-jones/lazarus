@@ -987,13 +987,7 @@ lazarus_result ModelManager::setSelectable(bool selectable)
 };
 
 lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
-{
-    std::chrono::system_clock::duration epoch = std::chrono::system_clock::now().time_since_epoch();
-    uint32_t currentMs = epoch / std::chrono::milliseconds(1);
-    uint32_t timeDelta = currentMs - previousMs;
-    previousMs = currentMs;
-    upTimeMs += timeDelta;
-    
+{    
     LOG_DEBUG("Loading model data");
     ModelManager::ModelData &model = modelStore.at(meshIn.id);
     lazarus_result status = lazarus_result::LAZARUS_OK;
@@ -1091,6 +1085,12 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
         ==================================================== */
         if(data.isAnimated)
         {
+            std::chrono::system_clock::duration epoch = std::chrono::system_clock::now().time_since_epoch();
+            uint32_t currentMs = epoch / std::chrono::milliseconds(1);
+            uint32_t timeDelta = currentMs - previousMs;
+            previousMs = currentMs;
+            upTimeMs += timeDelta;
+            
             LOG_DEBUG("Loading animation data");
 
             /* =================================================
@@ -1248,31 +1248,71 @@ uint32_t ModelManager::getKeyframeIndex(AssetLoader::AssetData::JointMotion::Tra
 
 glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData &motion, uint32_t frameBegin)
 {
-    /* =====================================================================
-        Perform spherical interpolation on keyframe values for joints that 
-        are non-static. As mentioned previously, Blender exports rotations
-        as quats in xyzw order so they must be swizzled here in order to be 
-        calculated correctly.
+    /* =============================================================
+        Calculate keyframe interpolation. Note that cubicspline is
+        not supported.
 
         TODO:
-        - Should only swizzle xyzw for quats / rotations
-        - Note that non-static joints may also just not have a JointMotion 
-        present at all but I haven't seen this. In the cases identified so 
+        Handle static joints that may not have a JointMotion present at 
+        all, I haven't seen this but it's a thing. In the cases identified so 
         far, they typically have exactly two keyframe indices with identical
         values.
-    ======================================================================== */
+    ================================================================ */
 
-    glm::vec4 keyframe = motion.keyframes[frameBegin];
-    if( motion.lerp == AssetData::JointMotion::TransformData::InterpolationType::LINEAR &&
-        motion.keyframes.size() > 2)
+    glm::vec4 keyframe = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f); 
+
+    if(motion.keyframes.size() >= 2)
     {
-        float timestepStart = motion.timesteps[frameBegin];
-        float timestepEnd = motion.timesteps[frameBegin + 1 != motion.keyframes.size() ? frameBegin + 1 : 0];
-        float interpolatedTimestep = (upTimeMs - timestepStart * 1000.0f) / (timestepEnd * 1000.0f - timestepStart * 1000.0f);
+        if(motion.lerp == AssetData::JointMotion::TransformData::InterpolationType::STEP)
+        {
+            /* =====================================================
+                Use the value as-is
+            ========================================================*/
+            keyframe = motion.keyframes[frameBegin];
+        }
+        else if(motion.lerp == AssetData::JointMotion::TransformData::InterpolationType::LINEAR)
+        {
+            /* ====================================================
+                Determine lerp factor for keyframes by 
+                interpolating between the timestep values which 
+                correlate to the current keyframe and the 
+                next. 
+            ======================================================= */
+            float timestepStart = motion.timesteps[frameBegin];
+            float timestepEnd = motion.timesteps[frameBegin + 1 != motion.keyframes.size() ? frameBegin + 1 : 0];
+            float interpolatedTimestep = (upTimeMs - timestepStart * 1000.0f) / (timestepEnd * 1000.0f - timestepStart * 1000.0f);
 
-        glm::vec4 keyframeEnd = motion.keyframes[frameBegin + 1 != motion.keyframes.size() ? frameBegin + 1 : 0];
-        glm::quat k = glm::slerp(glm::quat(keyframe.w, keyframe.x, keyframe.y, keyframe.z), glm::quat(keyframeEnd.w, keyframeEnd.x, keyframeEnd.y, keyframeEnd.z), interpolatedTimestep);
-        keyframe = glm::vec4(k.x, k.y, k.z, k.w);
+            glm::vec4 keyframeBegin = motion.keyframes[frameBegin];
+            glm::vec4 keyframeEnd = motion.keyframes[frameBegin + 1 != motion.keyframes.size() ? frameBegin + 1 : 0];
+
+            if(motion.transform == AssetData::JointMotion::TransformData::TransformType::ROTATION)
+            {
+                /* =====================================================================
+                    Perform spherical interpolation on rotational quaternion transforms.
+                    As mentioned in previous areas, Blender exports rotations
+                    as quats in wxyz order so they must be swizzled here in  order to 
+                    correctly compute the lerpstep value.
+                ======================================================================== */
+
+                glm::quat sphericalLerp = glm::slerp(
+                    glm::quat(keyframeBegin.w, keyframeBegin.x, keyframeBegin.y, keyframeBegin.z), 
+                    glm::quat(keyframeEnd.w, keyframeEnd.x, keyframeEnd.y, keyframeEnd.z), 
+                    interpolatedTimestep
+                );
+                keyframe = glm::vec4(sphericalLerp.x, sphericalLerp.y, sphericalLerp.z, sphericalLerp.w);
+            }
+            else
+            {   
+                /* ============================================================
+                    Scale and translation cases don't need to be swizzled
+                    so just perform generic linear interpolation upon the 
+                    keyframes using the formula described here:
+
+                    https://en.wikipedia.org/wiki/Linear_interpolation#Programming_language_support
+                =============================================================== */
+                keyframe = (1 - interpolatedTimestep) * keyframeBegin + interpolatedTimestep * keyframeEnd;
+            }
+        };
     };
 
     return keyframe;
