@@ -172,14 +172,14 @@ class ModelManager
                 glm::mat4 globalJointTransform;
                 glm::mat4 jointMatrix;
 
-                AssetLoader::AssetData::JointMotion animationData;
+                std::vector<AssetLoader::AssetData::JointMotion> animationData;
             };
 
             uint32_t id;
             uint32_t instanceCount;
             uint8_t stencilBufferId;
             uint8_t isAnimated;
-            uint32_t armatureRoot = UINT32_MAX;
+            int32_t armatureRoot = -1;
             
             GLuint VAO;     //  Vertex Array Object
             GLuint VBO;     //  Vertex Buffer Object (attributes: interleaved)
@@ -211,9 +211,9 @@ class ModelManager
         void instantiateMesh(bool selectable);
         void setMeshProperties(AssetLoader::AssetData &assetData);
 
-        uint32_t getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData &motion);
-        glm::vec4 getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData &motion, uint32_t frameBegin);
-        glm::mat4 computeLocation(MeshData::MotionPoint &joint);
+        void loadAnimation(MeshData &data, uint32_t animationID);
+        uint32_t getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData motion);
+        glm::vec4 getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t frameBegin);
         
         uint32_t childCount;
 
@@ -224,6 +224,7 @@ class ModelManager
 
         uint32_t previousMs;
         uint32_t upTimeMs;
+        uint32_t timestepCursor;
 
 		GLuint shaderProgram;
         GLint meshVariantLocation;

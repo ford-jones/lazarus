@@ -684,90 +684,99 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         }
         else if(json.find(ANIMATIONS) == 0)
         {
-            glbAnimationData animation = {};
             LOG_DEBUG("Parsing animation data...");
-
+            
             std::string animationData = json;
-            std::string channels = fileLoader->extractContainedContents(animationData, CHANNELS + "[", "]")[0];
-            std::string samplers = fileLoader->extractContainedContents(animationData, SAMPLERS + "[", "]")[0];
-
+            std::vector<std::string> channels = fileLoader->extractContainedContents(animationData, CHANNELS + "[", "]");
+            std::vector<std::string> samplers = fileLoader->extractContainedContents(animationData, SAMPLERS + "[", "]");
+            
             /* ===================================================
                 Apply the same methodology as is used during mesh
                 extraction due to the nested structs in these json 
                 objects.
             ====================================================== */
-
-            std::vector<std::string> targetInfo = fileLoader->extractContainedContents(channels, TARGET, "}");
-            for(size_t j = 0; j < targetInfo.size(); j++)
+            
+            for(size_t j = 0; j < channels.size(); j++)
             {
-                glbAnimationChannel channel = {};
-                std::string info = targetInfo[j];
-                size_t pathStart = info.find(PATH);
+                glbAnimationData animation = {};
 
-                std::string transformType = *fileLoader->extractContainedContents(info.substr(pathStart + PATH.size()), "\"", "\"").data();
-                switch (transformType[0])
+                std::string targetChannels = channels[j];
+                std::vector<std::string> channelInfo = fileLoader->extractContainedContents(targetChannels, TARGET, "}");
+
+                for(size_t k = 0; k < channelInfo.size(); k++)
                 {
-                    //  TRANSLATION
-                    case 't':
-                        channel.transformType = AssetData::JointMotion::TransformData::TransformType::TRANSLATION;
-                        break;
-                    //  ROTATION
-                    case 'r':
-                        channel.transformType = AssetData::JointMotion::TransformData::TransformType::ROTATION;
-                        break;
-                    //  SCALE
-                    case 's':
-                        channel.transformType = AssetData::JointMotion::TransformData::TransformType::SCALE;
-                        break;
+                    glbAnimationChannel channel = {};
+                    std::string info = channelInfo[k];
+
+                    size_t pathStart = info.find(PATH);
+                    std::string transformType = *fileLoader->extractContainedContents(info.substr(pathStart + PATH.size()), "\"", "\"").data();
+                    
+                    switch (transformType[0])
+                    {
+                        //  TRANSLATION
+                        case 't':
+                            channel.transformType = AssetData::JointMotion::TransformData::TransformType::TRANSLATION;
+                            break;
+                        //  ROTATION
+                        case 'r':
+                            channel.transformType = AssetData::JointMotion::TransformData::TransformType::ROTATION;
+                            break;
+                        //  SCALE
+                        case 's':
+                            channel.transformType = AssetData::JointMotion::TransformData::TransformType::SCALE;
+                            break;
+                    
+                        default:
+                            break;
+                    };
+                    channel.nodeIndex = this->extractAttributeIndex(info, NODE_ID);
+                    channel.samplerIndex = this->extractAttributeIndex(targetChannels, SAMPLER_ID);
+    
+                    std::string nextObject = "},{";
+                    int32_t location = targetChannels.find(nextObject);
+                    targetChannels = targetChannels.substr(location + nextObject.size());
+    
+                    animation.channels.push_back(channel);
+                };
+    
+                std::string targetSamplers = samplers[j];
+                std::vector<std::string> samplerInfo = fileLoader->extractContainedContents(targetSamplers, "{", "}");
                 
-                    default:
-                        break;
-                };
-                channel.nodeIndex = this->extractAttributeIndex(info, NODE_ID);
-                channel.samplerIndex = this->extractAttributeIndex(animationData, SAMPLER_ID);
-
-                std::string nextObject = "},{";
-                int32_t location = animationData.find(nextObject);
-                animationData = animationData.substr(location + nextObject.size());
-
-                animation.channels.push_back(channel);
-            };
-
-            std::vector<std::string> samplerInfo = fileLoader->extractContainedContents(samplers, "{", "}");
-            for(size_t j = 0; j < samplerInfo.size(); j++)
-            {
-                glbAnimationSampler sampler = {};
-                std::string info = samplerInfo[j];
-
-                size_t lerpStart = info.find(INTERPOLATION);
-                std::string lerpType = *fileLoader->extractContainedContents(info.substr(lerpStart + INTERPOLATION.size()), "\"", "\"").data();
-
-                switch (lerpType[0])
+                for(size_t k = 0; k < samplerInfo.size(); k++)
                 {
-                    //  LINEAR
-                    case 'L':
-                        sampler.lerpType = AssetData::JointMotion::TransformData::InterpolationType::LINEAR;
-                        break;
-                    //  STEP
-                    case 'S':
-                        sampler.lerpType = AssetData::JointMotion::TransformData::InterpolationType::STEP;
-                        break;
-                    //  CUBIC SPLINE
-                    case 'C':
-                        sampler.lerpType = AssetData::JointMotion::TransformData::InterpolationType::CUBICSPLINE;
-                        break;
-
-                    default:
-                        break;
+                    glbAnimationSampler sampler = {};
+                    std::string info = samplerInfo[k];
+    
+                    size_t lerpStart = info.find(INTERPOLATION);
+                    std::string lerpType = *fileLoader->extractContainedContents(info.substr(lerpStart + INTERPOLATION.size()), "\"", "\"").data();
+    
+                    switch (lerpType[0])
+                    {
+                        //  LINEAR
+                        case 'L':
+                            sampler.lerpType = AssetData::JointMotion::TransformData::InterpolationType::LINEAR;
+                            break;
+                        //  STEP
+                        case 'S':
+                            sampler.lerpType = AssetData::JointMotion::TransformData::InterpolationType::STEP;
+                            break;
+                        //  CUBIC SPLINE
+                        case 'C':
+                            sampler.lerpType = AssetData::JointMotion::TransformData::InterpolationType::CUBICSPLINE;
+                            break;
+    
+                        default:
+                            break;
+                    };
+    
+                    sampler.timestepAccessor = this->extractAttributeIndex(info, INPUT);
+                    sampler.keyframeContentsAccessor = this->extractAttributeIndex(info, OUTPUT);
+    
+                    animation.samplers.push_back(sampler);
                 };
-
-                sampler.timestepAccessor = this->extractAttributeIndex(info, INPUT);
-                sampler.keyframeContentsAccessor = this->extractAttributeIndex(info, OUTPUT);
-
-                animation.samplers.push_back(sampler);
-            };
-
-            animations.push_back(animation);
+    
+                animations.push_back(animation);
+            }
         }
         else if(json.find(TEXTURES) == 0)
         {

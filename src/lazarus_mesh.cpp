@@ -28,6 +28,7 @@ ModelManager::ModelManager(GLuint shader, TextureLoader::StorageType textureType
     this->childCount = 0;
     this->previousMs = 0;
     this->upTimeMs = 0;
+    this->timestepCursor = 0;
 
     this->shaderProgram = shader;
     this->finder = std::make_unique<FileLoader>();
@@ -128,13 +129,21 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
             std::set<uint32_t> heirachy;
             for(auto pair : rig)
             {
-                AssetLoader::AssetData::JointData jointData = pair.second;
-                AssetLoader::AssetData::JointMotion jointMotion = assetData.animations[0].at(jointData.id);
                 MeshData::MotionPoint motionPoint = {};
+                AssetLoader::AssetData::JointData jointData = pair.second;
 
                 motionPoint.id = jointData.id;
                 motionPoint.inverseBindMatrix = jointData.inverseBindMatrix;
-                motionPoint.animationData = jointMotion;
+
+                /* ==================================================
+                    Obtain the movement data for each animation that
+                    can be acted out by the armature.
+                ===================================================== */
+                for(size_t j = 0; j < assetData.animations.size(); j++)
+                {
+                    AssetLoader::AssetData::JointMotion jointMotion = assetData.animations[j].at(jointData.id);
+                    motionPoint.animationData.push_back(jointMotion);
+                };
 
                 /* =============================================
                     Compute the transformation matrix required
@@ -151,14 +160,12 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
                 motionPoint.globalJointTransform = motionPoint.localJointTransform;
                 motionPoint.jointMatrix = glm::mat4(0.0f);
                 
+                /* ============================================
+                    Look up the children of the joints actual 
+                    IDs relative to the flattened armature.
+                =============================================== */
                 for(size_t k = 0; k < jointData.children.size(); k++)
                 {
-                    /* ============================================
-                        Use GLB node id to look up the actual joint 
-                        locations within the buffer (.id), these 
-                        are required for computing the joint matrix 
-                        (the same as JointMotion::targetJoint)
-                    =============================================== */
                     uint32_t childID = jointData.children[k];
                     uint32_t index = assetData.armature.at(childID).id;
                     motionPoint.children.push_back(index);
@@ -1080,155 +1087,160 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
         glUniform1i(this->discardFragsLocation, data.texture.discardAlphaZero);
         glUniform1i(this->isAnimatedLocation, data.isAnimated);
 
-        /* =================================================
-            Upload animation data if present
-        ==================================================== */
-        if(data.isAnimated)
-        {
-            std::chrono::system_clock::duration epoch = std::chrono::system_clock::now().time_since_epoch();
-            uint32_t currentMs = epoch / std::chrono::milliseconds(1);
-            uint32_t timeDelta = currentMs - previousMs;
-            previousMs = currentMs;
-            upTimeMs += timeDelta;
-            
-            LOG_DEBUG("Loading animation data");
-
-            /* =================================================
-                Calculate the animation's armature-root position
-                and begin breadth-first descent into the rigs 
-                node heirachy.
-            ==================================================== */
-
-            MeshData::MotionPoint &animationRoot = data.armature[data.armatureRoot];
-
-            uint32_t rootTranslateIdx = this->getKeyframeIndex(animationRoot.animationData.translation);
-            uint32_t rootRotateIdx = this->getKeyframeIndex(animationRoot.animationData.rotation);
-            uint32_t rootScaleIdx = this->getKeyframeIndex(animationRoot.animationData.scale);
-
-            glm::vec4 rootTranslateKey = this->getTransformLerp(animationRoot.animationData.translation, rootTranslateIdx);
-            glm::vec4 rootRotateKey = this->getTransformLerp(animationRoot.animationData.rotation, rootRotateIdx);
-            glm::vec4 rootScaleKey = this->getTransformLerp(animationRoot.animationData.scale, rootScaleIdx);
-
-            glm::mat4 keyframeTransform = (
-                glm::translate(glm::mat4(1.0f), glm::vec3(rootTranslateKey)) *
-                glm::mat4_cast(glm::quat(rootRotateKey.w, rootRotateKey.x, rootRotateKey.y, rootRotateKey.z)) *
-                glm::scale(glm::mat4(1.0f), glm::vec3(rootScaleKey))
-            );
-
-            animationRoot.globalJointTransform = keyframeTransform;
-            
-            animationRoot.jointMatrix = (
-                animationRoot.globalJointTransform * animationRoot.inverseBindMatrix
-            );
-
-            std::vector<uint32_t> children = animationRoot.children;
-            std::set<uint32_t> visited = {animationRoot.id};
-
-            while(children.size() > 0)
-            {
-                std::vector<uint32_t> nextChildren;
-    
-                for(size_t k = 0; k < children.size(); k++)
-                {   
-                    uint32_t childID = children[k];
-                    /* ==========================================
-                        Colaterally append all children that
-                        exist at this depth to the control vector
-                        if this joint hasn't already been 
-                        inspected.
-                    ============================================= */
-                    if(visited.insert(childID).second)
-                    {
-                        MeshData::MotionPoint &child = data.armature[childID];     // Note: Joint is declared as a reference
-                        MeshData::MotionPoint &parent = data.armature[child.parentID];
-
-                        nextChildren.insert(
-                            nextChildren.end(), 
-                            child.children.begin(), 
-                            child.children.end()
-                        );
-
-                        /* ===================================================
-                            Based on the current elapsed ms (time), determine
-                            where abouts we are in the animation sequence. Use
-                            this to look up and interpolate the relevant TRS 
-                            keyframe values for the next draw of the animated
-                            asset.
-                        ====================================================== */
-
-                        uint32_t translateIdx = this->getKeyframeIndex(child.animationData.translation);
-                        uint32_t rotateIdx = this->getKeyframeIndex(child.animationData.rotation);
-                        uint32_t scaleIdx = this->getKeyframeIndex(child.animationData.scale);
-
-                        glm::vec4 translateKey = this->getTransformLerp(child.animationData.translation, translateIdx);
-                        glm::vec4 rotateKey = this->getTransformLerp(child.animationData.rotation, rotateIdx);
-                        glm::vec4 scaleKey = this->getTransformLerp(child.animationData.scale, scaleIdx);
-
-                        glm::mat4 keyframeTx = (
-                            glm::translate(glm::mat4(1.0f), glm::vec3(translateKey)) *
-                            glm::mat4_cast(glm::quat(rotateKey.w, rotateKey.x, rotateKey.y, rotateKey.z)) *
-                            glm::scale(glm::mat4(1.0f), glm::vec3(scaleKey))
-                        );
-
-                        child.globalJointTransform = parent.globalJointTransform * keyframeTx;
-
-                        child.jointMatrix = (
-                            child.globalJointTransform * child.inverseBindMatrix
-                        );
-                    } 
-                };
-                /* ==========================================
-                    Descend into the children of the children
-                    which were just processed.
-                ============================================= */
-                children = nextChildren;
-            };
-
-            /* ==============================================
-                Upload updated armature joint matrices to
-                uniform locations.
-            ================================================= */
-            LOG_DEBUG("Uploading joint matrices");
-
-            for(auto joint : data.armature)
-            {
-                this->jointsMatricesLocation = glGetUniformLocation(this->shaderProgram, std::string("jointMatrices[").append(std::to_string(joint.id) + "]").c_str());
-                glUniformMatrix4fv(this->jointsMatricesLocation, 1, GL_FALSE, &joint.jointMatrix[0][0]);
-            };
-            
-        };
-    
         status = this->checkErrors(__FILE__, __LINE__);
         if(status != lazarus_result::LAZARUS_OK)
         {
             break;
         };
+
+        /* =================================================
+            Upload animation data if present
+        ==================================================== */
+        if(data.isAnimated)
+        {
+            this->loadAnimation(data, 1);
+        };
+    
     };
 
     return status;
 };
 
-uint32_t ModelManager::getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData &motion)
+
+void ModelManager::loadAnimation(ModelManager::MeshData &data, uint32_t animationID)
+{
+    /* ==================================================
+        Poll time delta and update timestep cursor
+    ===================================================== */
+
+    std::chrono::system_clock::duration epoch = std::chrono::system_clock::now().time_since_epoch();
+    uint32_t currentMs = epoch / std::chrono::milliseconds(1);
+    uint32_t timeDelta = currentMs - previousMs;
+    previousMs = currentMs;
+    upTimeMs += timeDelta;
+
+    LOG_DEBUG("Loading animation data");
+
+    /* =================================================
+        Calculate the animation's armature-root position
+        and begin breadth-first descent into the rigs 
+        node heirachy.
+    ==================================================== */
+
+    MeshData::MotionPoint &animationRoot = data.armature[data.armatureRoot];
+
+    uint32_t rootTranslateIdx = this->getKeyframeIndex(animationRoot.animationData[animationID].translation);
+    uint32_t rootRotateIdx = this->getKeyframeIndex(animationRoot.animationData[animationID].rotation);
+    uint32_t rootScaleIdx = this->getKeyframeIndex(animationRoot.animationData[animationID].scale);
+
+    glm::vec4 rootTranslateKey = this->getTransformLerp(animationRoot.animationData[animationID].translation, rootTranslateIdx);
+    glm::vec4 rootRotateKey = this->getTransformLerp(animationRoot.animationData[animationID].rotation, rootRotateIdx);
+    glm::vec4 rootScaleKey = this->getTransformLerp(animationRoot.animationData[animationID].scale, rootScaleIdx);
+
+    glm::mat4 keyframeTransform = (
+        glm::translate(glm::mat4(1.0f), glm::vec3(rootTranslateKey)) *
+        glm::mat4_cast(glm::quat(rootRotateKey.w, rootRotateKey.x, rootRotateKey.y, rootRotateKey.z)) *
+        glm::scale(glm::mat4(1.0f), glm::vec3(rootScaleKey))
+    );
+
+    animationRoot.globalJointTransform = keyframeTransform;
+            
+    animationRoot.jointMatrix = (
+        animationRoot.globalJointTransform * animationRoot.inverseBindMatrix
+    );
+
+    std::vector<uint32_t> children = animationRoot.children;
+    std::set<uint32_t> visited = {animationRoot.id};
+
+    while(children.size() > 0)
+    {
+        std::vector<uint32_t> nextChildren;
+
+        for(size_t k = 0; k < children.size(); k++)
+        {   
+            uint32_t childID = children[k];
+            /* ==========================================
+                Colaterally append all children that
+                exist at this depth to the control vector
+                if this joint hasn't already been 
+                inspected.
+            ============================================= */
+            if(visited.insert(childID).second)
+            {
+                MeshData::MotionPoint &child = data.armature[childID];     // Note: Joint is declared as a reference
+                MeshData::MotionPoint &parent = data.armature[child.parentID];
+
+                nextChildren.insert(
+                    nextChildren.end(), 
+                    child.children.begin(), 
+                    child.children.end()
+                );
+
+                /* ===================================================
+                    Based on the current elapsed ms (time), determine
+                    where abouts we are in the animation sequence. Use
+                    this to look up and interpolate the relevant TRS 
+                    keyframe values for the next draw of the animated
+                    asset.
+                ====================================================== */
+
+                uint32_t translateIdx = this->getKeyframeIndex(child.animationData[animationID].translation);
+                uint32_t rotateIdx = this->getKeyframeIndex(child.animationData[animationID].rotation);
+                uint32_t scaleIdx = this->getKeyframeIndex(child.animationData[animationID].scale);
+
+                glm::vec4 translateKey = this->getTransformLerp(child.animationData[animationID].translation, translateIdx);
+                glm::vec4 rotateKey = this->getTransformLerp(child.animationData[animationID].rotation, rotateIdx);
+                glm::vec4 scaleKey = this->getTransformLerp(child.animationData[animationID].scale, scaleIdx);
+
+                glm::mat4 keyframeTx = (
+                    glm::translate(glm::mat4(1.0f), glm::vec3(translateKey)) *
+                    glm::mat4_cast(glm::quat(rotateKey.w, rotateKey.x, rotateKey.y, rotateKey.z)) *
+                    glm::scale(glm::mat4(1.0f), glm::vec3(scaleKey))
+                );
+
+                child.globalJointTransform = parent.globalJointTransform * keyframeTx;
+
+                child.jointMatrix = (
+                    child.globalJointTransform * child.inverseBindMatrix
+                );
+            }
+        };
+            /* ==========================================
+                Descend into the children of the children
+                which were just processed.
+            ============================================= */
+            children = nextChildren;
+    };
+
+    /* ==============================================
+        Upload updated armature joint matrices to
+        uniform locations.
+    ================================================= */
+    LOG_DEBUG("Uploading joint matrices");
+
+    for(auto joint : data.armature)
+    {
+        this->jointsMatricesLocation = glGetUniformLocation(this->shaderProgram, std::string("jointMatrices[").append(std::to_string(joint.id) + "]").c_str());
+        glUniformMatrix4fv(this->jointsMatricesLocation, 1, GL_FALSE, &joint.jointMatrix[0][0]);
+    };
+};
+
+uint32_t ModelManager::getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData motion)
 {
     /* ======================================================
         Lock time-advance within the maximum duration of the
         active motion.
+
         TODO:
-        An "upTimeMs" is almost needed for every motion?
-        i.e. an animation with a duration of 0.2ms that
-        follows one that is 0.5ms would be cancelled out. Or 
-        inversely, 0.5ms would never be reached... 
+        - lazarus_result or void these funcs
     ========================================================= */
     uint32_t durationMax = static_cast<uint32_t>(motion.timesteps.back() * 1000.0f);
-    if(upTimeMs >= durationMax)
-    {
-        upTimeMs = 0;
-    };
+
     /* ===========================================
         Establish current location in the frame 
         sequence.
     ============================================== */
-    uint32_t now = upTimeMs;
+    uint32_t now = upTimeMs % durationMax;
     std::vector<float>::iterator it = std::find_if(
         motion.timesteps.begin(), 
         motion.timesteps.end(), 
@@ -1241,12 +1253,13 @@ uint32_t ModelManager::getKeyframeIndex(AssetLoader::AssetData::JointMotion::Tra
             return now < timestep;
         }
     );
+    this->timestepCursor = now;
     uint32_t index = it - motion.timesteps.begin();
 
     return index;
 };
 
-glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData &motion, uint32_t frameBegin)
+glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t frameBegin)
 {
     /* =============================================================
         Calculate keyframe interpolation. Note that cubicspline is
@@ -1280,7 +1293,7 @@ glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::Tr
             ======================================================= */
             float timestepStart = motion.timesteps[frameBegin];
             float timestepEnd = motion.timesteps[frameBegin + 1 != motion.keyframes.size() ? frameBegin + 1 : 0];
-            float interpolatedTimestep = (upTimeMs - timestepStart * 1000.0f) / (timestepEnd * 1000.0f - timestepStart * 1000.0f);
+            float interpolatedTimestep = (this->timestepCursor - timestepStart * 1000.0f) / (timestepEnd * 1000.0f - timestepStart * 1000.0f);
 
             glm::vec4 keyframeBegin = motion.keyframes[frameBegin];
             glm::vec4 keyframeEnd = motion.keyframes[frameBegin + 1 != motion.keyframes.size() ? frameBegin + 1 : 0];
