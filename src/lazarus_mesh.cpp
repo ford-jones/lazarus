@@ -218,9 +218,11 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
             MeshData::MotionPoint &rootJoint = meshData.armature[meshData.armatureRoot];
             std::vector<uint32_t> children = rootJoint.children;
             std::vector<uint32_t> parents;
+
             parents.resize(rootJoint.children.size(), meshData.armatureRoot);
             std::set<uint32_t> visited = {rootJoint.id};
-            rootJoint.parentID = meshData.armatureRoot;
+
+            rootJoint.parentID = -1;
             rootJoint.posePosition = rootJoint.globalJointTransform;
             rootJoint.jointMatrix = rootJoint.globalJointTransform * rootJoint.inverseBindMatrix;
             
@@ -249,7 +251,6 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
                             Compute the pose and set it as the joint 
                             matrix value required for vertex skinning
                             by editting the rig in-place.
-
                         ============================================= */
                         glm::mat4 localTransform = child.globalJointTransform;
                         child.parentID = parentID;
@@ -1098,7 +1099,22 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
         ==================================================== */
         if(data.isAnimated)
         {
-            this->loadAnimation(data, 1);
+            if(data.activeAnimation != -1)
+            {
+                this->loadAnimation(data);
+            };
+
+            /* ==============================================
+                Upload updated armature joint matrices to
+                uniform locations.
+            ================================================= */
+            LOG_DEBUG("Uploading joint matrices");
+
+            for(auto joint : data.armature)
+            {
+                this->jointsMatricesLocation = glGetUniformLocation(this->shaderProgram, std::string("jointMatrices[").append(std::to_string(joint.id) + "]").c_str());
+                glUniformMatrix4fv(this->jointsMatricesLocation, 1, GL_FALSE, &joint.jointMatrix[0][0]);
+            };
         };
     
     };
@@ -1107,7 +1123,7 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
 };
 
 
-void ModelManager::loadAnimation(ModelManager::MeshData &data, uint32_t animationID)
+void ModelManager::loadAnimation(ModelManager::MeshData &data)
 {
     /* ==================================================
         Poll time delta and update timestep cursor
@@ -1129,13 +1145,13 @@ void ModelManager::loadAnimation(ModelManager::MeshData &data, uint32_t animatio
 
     MeshData::MotionPoint &animationRoot = data.armature[data.armatureRoot];
 
-    uint32_t rootTranslateIdx = this->getKeyframeIndex(animationRoot.animationData[animationID].translation);
-    uint32_t rootRotateIdx = this->getKeyframeIndex(animationRoot.animationData[animationID].rotation);
-    uint32_t rootScaleIdx = this->getKeyframeIndex(animationRoot.animationData[animationID].scale);
+    uint32_t rootTranslateIdx = this->getKeyframeIndex(animationRoot.animationData[data.activeAnimation].translation);
+    uint32_t rootRotateIdx = this->getKeyframeIndex(animationRoot.animationData[data.activeAnimation].rotation);
+    uint32_t rootScaleIdx = this->getKeyframeIndex(animationRoot.animationData[data.activeAnimation].scale);
 
-    glm::vec4 rootTranslateKey = this->getTransformLerp(animationRoot.animationData[animationID].translation, rootTranslateIdx);
-    glm::vec4 rootRotateKey = this->getTransformLerp(animationRoot.animationData[animationID].rotation, rootRotateIdx);
-    glm::vec4 rootScaleKey = this->getTransformLerp(animationRoot.animationData[animationID].scale, rootScaleIdx);
+    glm::vec4 rootTranslateKey = this->getTransformLerp(animationRoot.animationData[data.activeAnimation].translation, rootTranslateIdx);
+    glm::vec4 rootRotateKey = this->getTransformLerp(animationRoot.animationData[data.activeAnimation].rotation, rootRotateIdx);
+    glm::vec4 rootScaleKey = this->getTransformLerp(animationRoot.animationData[data.activeAnimation].scale, rootScaleIdx);
 
     glm::mat4 keyframeTransform = (
         glm::translate(glm::mat4(1.0f), glm::vec3(rootTranslateKey)) *
@@ -1184,13 +1200,13 @@ void ModelManager::loadAnimation(ModelManager::MeshData &data, uint32_t animatio
                     asset.
                 ====================================================== */
 
-                uint32_t translateIdx = this->getKeyframeIndex(child.animationData[animationID].translation);
-                uint32_t rotateIdx = this->getKeyframeIndex(child.animationData[animationID].rotation);
-                uint32_t scaleIdx = this->getKeyframeIndex(child.animationData[animationID].scale);
+                uint32_t translateIdx = this->getKeyframeIndex(child.animationData[data.activeAnimation].translation);
+                uint32_t rotateIdx = this->getKeyframeIndex(child.animationData[data.activeAnimation].rotation);
+                uint32_t scaleIdx = this->getKeyframeIndex(child.animationData[data.activeAnimation].scale);
 
-                glm::vec4 translateKey = this->getTransformLerp(child.animationData[animationID].translation, translateIdx);
-                glm::vec4 rotateKey = this->getTransformLerp(child.animationData[animationID].rotation, rotateIdx);
-                glm::vec4 scaleKey = this->getTransformLerp(child.animationData[animationID].scale, scaleIdx);
+                glm::vec4 translateKey = this->getTransformLerp(child.animationData[data.activeAnimation].translation, translateIdx);
+                glm::vec4 rotateKey = this->getTransformLerp(child.animationData[data.activeAnimation].rotation, rotateIdx);
+                glm::vec4 scaleKey = this->getTransformLerp(child.animationData[data.activeAnimation].scale, scaleIdx);
 
                 glm::mat4 keyframeTx = (
                     glm::translate(glm::mat4(1.0f), glm::vec3(translateKey)) *
@@ -1210,18 +1226,6 @@ void ModelManager::loadAnimation(ModelManager::MeshData &data, uint32_t animatio
                 which were just processed.
             ============================================= */
             children = nextChildren;
-    };
-
-    /* ==============================================
-        Upload updated armature joint matrices to
-        uniform locations.
-    ================================================= */
-    LOG_DEBUG("Uploading joint matrices");
-
-    for(auto joint : data.armature)
-    {
-        this->jointsMatricesLocation = glGetUniformLocation(this->shaderProgram, std::string("jointMatrices[").append(std::to_string(joint.id) + "]").c_str());
-        glUniformMatrix4fv(this->jointsMatricesLocation, 1, GL_FALSE, &joint.jointMatrix[0][0]);
     };
 };
 
@@ -1329,6 +1333,21 @@ glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::Tr
     };
 
     return keyframe;
+};
+
+void ModelManager::setActiveAnimation(ModelManager::Model &meshIn, uint32_t animationIndex)
+{
+    ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
+    for(size_t i = 0; i < model.size(); i++)
+    {
+        ModelManager::MeshData &data = model[i];
+        //  TODO:
+        //  This validation should be accompanied by some error
+        if(data.isAnimated && animationIndex < data.armature[0].animationData.size())
+        {
+            data.activeAnimation = animationIndex;
+        };
+    };
 };
 
 lazarus_result ModelManager::drawModel(ModelManager::Model &meshIn)

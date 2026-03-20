@@ -145,13 +145,15 @@ class ModelManager
         lazarus_result loadModel(Model &meshIn);
         lazarus_result drawModel(Model &meshIn);
         
+        void copyModel(Model &dest, Model src);
+
         //  TODO:
         //  This isn't quite the appropriate place to do this
         //  but ok for now
         
         void setDiscardFragments(Model &meshIn, bool shouldDiscard);
-        void copyModel(Model &dest, Model src);
-        
+        void setActiveAnimation(Model &meshIn, uint32_t animationIndex);
+
         virtual ~ModelManager();
         
         // protected:
@@ -163,7 +165,7 @@ class ModelManager
             struct MotionPoint
             {
                 uint32_t id;
-                uint32_t parentID;
+                int32_t parentID;
                 std::vector<uint32_t> children;
                 
                 glm::mat4 posePosition;
@@ -180,6 +182,7 @@ class ModelManager
             uint8_t stencilBufferId;
             uint8_t isAnimated;
             int32_t armatureRoot = -1;
+            int32_t activeAnimation = -1;
             
             GLuint VAO;     //  Vertex Array Object
             GLuint VBO;     //  Vertex Buffer Object (attributes: interleaved)
@@ -211,7 +214,7 @@ class ModelManager
         void instantiateMesh(bool selectable);
         void setMeshProperties(AssetLoader::AssetData &assetData);
 
-        void loadAnimation(MeshData &data, uint32_t animationID);
+        void loadAnimation(MeshData &data);
         uint32_t getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData motion);
         glm::vec4 getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t frameBegin);
         
