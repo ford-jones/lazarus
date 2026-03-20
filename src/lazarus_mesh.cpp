@@ -1350,6 +1350,37 @@ void ModelManager::setActiveAnimation(ModelManager::Model &meshIn, uint32_t anim
     };
 };
 
+void ModelManager::pauseAnimation(ModelManager::Model &meshIn)
+{
+    //  TODO:
+    //  Should only do this if isAnimated
+    ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
+    for(size_t i = 0; i < model.size(); i++)
+    {
+        ModelManager::MeshData &data = model[i];
+        data.activeAnimation = -1;
+    };
+};
+
+void ModelManager::setToPosePosition(ModelManager::Model &meshIn)
+{
+    this->pauseAnimation(meshIn);
+    
+    //  TODO:
+    //  Should only do this if isAnimated
+    ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
+    for(size_t i = 0; i < model.size(); i++)
+    {
+        ModelManager::MeshData &data = model[i];
+        for(size_t j = 0; j < data.armature.size(); j++)
+        {
+            ModelManager::MeshData::MotionPoint &motion = data.armature[j];
+            motion.globalJointTransform = motion.posePosition;
+            motion.jointMatrix = motion.globalJointTransform * motion.inverseBindMatrix;
+        };
+    };
+}
+
 lazarus_result ModelManager::drawModel(ModelManager::Model &meshIn)
 {
     ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
