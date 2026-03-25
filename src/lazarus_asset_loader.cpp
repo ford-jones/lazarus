@@ -217,7 +217,6 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
     ================================================= */
     data.armature = {};
     data.animations = {};
-    // data.globalTransform = glm::mat4(1.0f);
 
     this->constructIndexBuffer(data.attributes, data.movements, data.indices, tempDiffuse, this->vertexIndices.size());
     out.push_back(data);
@@ -922,6 +921,10 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
 
                 /* =================================================
                     Load armature data
+
+                    TODO:
+                    identify armature transform node and apply it
+                    against each of the joints
                 ==================================================== */
                 for(size_t j = 0; j < skinData.joints.size(); j++)
                 {

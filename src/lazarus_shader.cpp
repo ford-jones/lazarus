@@ -242,7 +242,7 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
 
         //  Calculate the fragment's diffuse lighting for each light in the scene.
         for(int i = 0; i < lightCount; i++)
-        {
+        {            
             if(lightTypes[i] == DIRECTIONAL_LIGHT)
             {
                 vec3 direction = lightDirections[i];

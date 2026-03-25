@@ -392,6 +392,12 @@ lazarus_result TextManager::createText(TextManager::Text &out, TextManager::Text
 
 lazarus_result TextManager::loadText(TextManager::Text textIn)
 {
+    /*
+        Note:
+        It's computationally brutal to be doing all of this every frame
+        i.e. Freeing and reprovisioning quads etc
+    */
+
     TextManager::TextConfig &settings = textIn.config;
     lazarus_result status = lazarus_result::LAZARUS_OK;
     
@@ -414,11 +420,17 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
     this->translationStride = 0;
     
     /* ==========================================
-    Generate new tiles which are used as 
-    texture surfaces for a letter. 
-    
-    Letters are identified by their UV 
-    coordinates from within the glyph atlas.
+        Generate new tiles which are used as 
+        texture surfaces for a letter. 
+
+        Letters are identified by their UV 
+        coordinates from within the glyph atlas.
+
+        FIXME:
+        Rendering artifacts caused by a potential
+        out-by-one error here resulting in the 
+        edges of nearby neighbours in the texture 
+        atlas to be mapped to the quad.
     ============================================= */
     
     for(size_t i = 0; i < settings.targetString.size(); i++)

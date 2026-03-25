@@ -88,6 +88,16 @@ lazarus_result Transform::rotateModel(ModelManager::Model &model, float pitch, f
 
 lazarus_result Transform::scaleModel(ModelManager::Model &model, float x, float y, float z, uint32_t instanceID)
 {
+	/*
+		FIXME:
+		Probably not the place to fix but; for some reason the light that is reflected
+		off of a mesh is applied relative to the items scale. 
+
+		E.g
+		* A mesh is shrunk from 1:1 to 1:10 - it then becomes 10x brighter
+		* A mesh is grown from 1:1 to 10:1 - it then becomes 10x dimmer
+	*/
+
 	float sum = (x + y + z);
 	float max = std::max(0.0f, sum);
 

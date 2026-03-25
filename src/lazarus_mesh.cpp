@@ -64,7 +64,7 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
     modelOut.meshFilepath = options.meshPath;
     modelOut.materialFilepath = options.materialPath;
     
-    //  TODO:
+    //  TODO/FIXME:
     //  If not present populate from file contents instead of filename
     this->modelOut.name = options.name.size()
     ? options.name
@@ -136,8 +136,8 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
                 motionPoint.inverseBindMatrix = jointData.inverseBindMatrix;
 
                 /* ==================================================
-                    Obtain the movement data for each animation that
-                    can be acted out by the armature.
+                    Obtain the movement data for this joint for each 
+                    animation that can be enacted by the armature.
                 ===================================================== */
                 for(size_t j = 0; j < assetData.animations.size(); j++)
                 {
@@ -886,7 +886,7 @@ lazarus_result ModelManager::reallocateTextures()
         previous contents now need to be rewritten to
         the new location.
 
-        TODO:
+        RESEARCH:
         Is there some way to invoke a memcpy of the
         VRAM contents from here?
     ================================================== */
@@ -1234,9 +1234,6 @@ uint32_t ModelManager::getKeyframeIndex(AssetLoader::AssetData::JointMotion::Tra
     /* ======================================================
         Lock time-advance within the maximum duration of the
         active motion.
-
-        TODO:
-        - lazarus_result or void these funcs
     ========================================================= */
     uint32_t durationMax = static_cast<uint32_t>(motion.timesteps.back() * 1000.0f);
 
@@ -1269,7 +1266,7 @@ glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::Tr
         Calculate keyframe interpolation. Note that cubicspline is
         not supported.
 
-        TODO:
+        TODO/FIXME:
         Handle static joints that may not have a JointMotion present at 
         all, I haven't seen this but it's a thing. In the cases identified so 
         far, they typically have exactly two keyframe indices with identical
@@ -1354,6 +1351,7 @@ void ModelManager::pauseAnimation(ModelManager::Model &meshIn)
 {
     //  TODO:
     //  Should only do this if isAnimated
+    //  The current position needs to be stored in order to play again from the location that this was at when it was called
     ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
     for(size_t i = 0; i < model.size(); i++)
     {
@@ -1625,8 +1623,7 @@ void ModelManager::instantiateMesh(bool selectable)
             that which was specified during VBO
             construction.
 
-            TODO:
-            Why z-axis and is it + or -?
+            NOTE:
             Camera starts by looking down +x, why
             not do the same here? 
         ============================================ */

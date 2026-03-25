@@ -148,11 +148,13 @@ class ModelManager
         void copyModel(Model &dest, Model src);
 
         //  TODO:
-        //  This isn't quite the appropriate place to do this
+        //  Move these; This isn't quite the appropriate place to do this
         //  but ok for now
         
         void setDiscardFragments(Model &meshIn, bool shouldDiscard);
         void setActiveAnimation(Model &meshIn, uint32_t animationIndex);
+        void setToPosePosition(Model &meshIn);
+        void pauseAnimation(Model &meshIn);
 
         virtual ~ModelManager();
         
