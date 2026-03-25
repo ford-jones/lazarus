@@ -1681,6 +1681,7 @@ void AssetLoader::resetMembers()
     this->buffers.clear();
     this->jsonData.clear();
     this->binaryData.clear();
+    this->animations.clear();
 
     /* =============================
         Obj / Mtl
