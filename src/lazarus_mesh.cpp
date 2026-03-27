@@ -118,6 +118,7 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
         if(assetData.animations.size() > 0)
         {
             meshData.isAnimated = true;
+            meshData.animationCount = assetData.animations.size();
 
             /* ====================================================
                 Construct joints and transfroms from loaded data. 
@@ -1004,6 +1005,10 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
     {
         ModelManager::MeshData &data = model[i];
 
+        /* ==========================
+            Pack instance matrices
+        ============================= */
+
         std::vector<glm::mat4> matrices;
         std::transform(
             meshIn.instances.begin(), 
@@ -1011,7 +1016,7 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
             std::back_inserter(matrices), 
             [](const std::pair<uint32_t, ModelManager::Model::Instance> &pair){
                 return pair.second.modelMatrix; 
-            }
+            } 
         );
     
         std::vector<float> visibility;
@@ -1099,6 +1104,10 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
         ==================================================== */
         if(data.isAnimated)
         {
+            this->clearErrors();
+
+            LOG_DEBUG("Uploading animation data");
+
             if(data.activeAnimation != -1)
             {
                 this->loadAnimation(data);
@@ -1108,12 +1117,16 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
                 Upload updated armature joint matrices to
                 uniform locations.
             ================================================= */
-            LOG_DEBUG("Uploading joint matrices");
-
             for(auto joint : data.armature)
             {
                 this->jointsMatricesLocation = glGetUniformLocation(this->shaderProgram, std::string("jointMatrices[").append(std::to_string(joint.id) + "]").c_str());
                 glUniformMatrix4fv(this->jointsMatricesLocation, 1, GL_FALSE, &joint.jointMatrix[0][0]);
+            };
+
+            status = this->checkErrors(__FILE__, __LINE__);
+            if(status != lazarus_result::LAZARUS_OK)
+            {
+                break;
             };
         };
     
@@ -1139,19 +1152,26 @@ void ModelManager::loadAnimation(ModelManager::MeshData &data)
 
     /* =================================================
         Calculate the animation's armature-root position
-        and begin breadth-first descent into the rigs 
-        node heirachy.
+        and begin iterative breadth-first descent through
+        the node heirarchy.
     ==================================================== */
 
     MeshData::MotionPoint &animationRoot = data.armature[data.armatureRoot];
+    AssetLoader::AssetData::JointMotion animationData = animationRoot.animationData[data.activeAnimation];
+    
+    /* ====================================================================
+        Figure out where we are in the sequence.
+        I.e: Get the index of the keyframes that coincide with the timestep
+        we are currently at
+    ======================================================================= */
+    
+    uint32_t rootTranslateIdx = this->getKeyframeIndex(animationData.translation);
+    uint32_t rootRotateIdx = this->getKeyframeIndex(animationData.rotation);
+    uint32_t rootScaleIdx = this->getKeyframeIndex(animationData.scale);
 
-    uint32_t rootTranslateIdx = this->getKeyframeIndex(animationRoot.animationData[data.activeAnimation].translation);
-    uint32_t rootRotateIdx = this->getKeyframeIndex(animationRoot.animationData[data.activeAnimation].rotation);
-    uint32_t rootScaleIdx = this->getKeyframeIndex(animationRoot.animationData[data.activeAnimation].scale);
-
-    glm::vec4 rootTranslateKey = this->getTransformLerp(animationRoot.animationData[data.activeAnimation].translation, rootTranslateIdx);
-    glm::vec4 rootRotateKey = this->getTransformLerp(animationRoot.animationData[data.activeAnimation].rotation, rootRotateIdx);
-    glm::vec4 rootScaleKey = this->getTransformLerp(animationRoot.animationData[data.activeAnimation].scale, rootScaleIdx);
+    glm::vec4 rootTranslateKey = this->getTransformLerp(animationData.translation, rootTranslateIdx);
+    glm::vec4 rootRotateKey = this->getTransformLerp(animationData.rotation, rootRotateIdx);
+    glm::vec4 rootScaleKey = this->getTransformLerp(animationData.scale, rootScaleIdx);
 
     glm::mat4 keyframeTransform = (
         glm::translate(glm::mat4(1.0f), glm::vec3(rootTranslateKey)) *
@@ -1186,6 +1206,8 @@ void ModelManager::loadAnimation(ModelManager::MeshData &data)
                 MeshData::MotionPoint &child = data.armature[childID];     // Note: Joint is declared as a reference
                 MeshData::MotionPoint &parent = data.armature[child.parentID];
 
+                AssetLoader::AssetData::JointMotion motionData = child.animationData[data.activeAnimation];
+
                 nextChildren.insert(
                     nextChildren.end(), 
                     child.children.begin(), 
@@ -1200,13 +1222,13 @@ void ModelManager::loadAnimation(ModelManager::MeshData &data)
                     asset.
                 ====================================================== */
 
-                uint32_t translateIdx = this->getKeyframeIndex(child.animationData[data.activeAnimation].translation);
-                uint32_t rotateIdx = this->getKeyframeIndex(child.animationData[data.activeAnimation].rotation);
-                uint32_t scaleIdx = this->getKeyframeIndex(child.animationData[data.activeAnimation].scale);
+                uint32_t translateIdx = this->getKeyframeIndex(motionData.translation);
+                uint32_t rotateIdx = this->getKeyframeIndex(motionData.rotation);
+                uint32_t scaleIdx = this->getKeyframeIndex(motionData.scale);
 
-                glm::vec4 translateKey = this->getTransformLerp(child.animationData[data.activeAnimation].translation, translateIdx);
-                glm::vec4 rotateKey = this->getTransformLerp(child.animationData[data.activeAnimation].rotation, rotateIdx);
-                glm::vec4 scaleKey = this->getTransformLerp(child.animationData[data.activeAnimation].scale, scaleIdx);
+                glm::vec4 translateKey = this->getTransformLerp(motionData.translation, translateIdx);
+                glm::vec4 rotateKey = this->getTransformLerp(motionData.rotation, rotateIdx);
+                glm::vec4 scaleKey = this->getTransformLerp(motionData.scale, scaleIdx);
 
                 glm::mat4 keyframeTx = (
                     glm::translate(glm::mat4(1.0f), glm::vec3(translateKey)) *
@@ -1332,51 +1354,73 @@ glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::Tr
     return keyframe;
 };
 
-void ModelManager::setActiveAnimation(ModelManager::Model &meshIn, uint32_t animationIndex)
+lazarus_result ModelManager::setActiveAnimation(ModelManager::Model &meshIn, uint32_t animationIndex)
 {
+    lazarus_result status = lazarus_result::LAZARUS_OK;
     ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
     for(size_t i = 0; i < model.size(); i++)
     {
         ModelManager::MeshData &data = model[i];
-        //  TODO:
-        //  This validation should be accompanied by some error
-        if(data.isAnimated && animationIndex < data.armature[0].animationData.size())
+        if(data.isAnimated)
         {
-            data.activeAnimation = animationIndex;
+            if(animationIndex + 1 <= data.animationCount)
+            {
+                data.activeAnimation = animationIndex;
+            }
+            else
+            {
+                status = lazarus_result::LAZARUS_INVALID_ANIMATION_ID;
+                break;
+            }
         };
     };
+
+    return status;
 };
 
-void ModelManager::pauseAnimation(ModelManager::Model &meshIn)
+lazarus_result ModelManager::pauseAnimation(ModelManager::Model &meshIn)
 {
     //  TODO:
-    //  Should only do this if isAnimated
     //  The current position needs to be stored in order to play again from the location that this was at when it was called
+
+    uint32_t animatedAssets = 0;
     ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
     for(size_t i = 0; i < model.size(); i++)
     {
         ModelManager::MeshData &data = model[i];
-        data.activeAnimation = -1;
+        if(data.isAnimated)
+        {
+            data.activeAnimation = -1;
+            animatedAssets++;
+        }
     };
+
+    return animatedAssets ? lazarus_result::LAZARUS_OK : lazarus_result::LAZARUS_NO_ANIMATION_DATA;
 };
 
-void ModelManager::setToPosePosition(ModelManager::Model &meshIn)
+lazarus_result ModelManager::setToPosePosition(ModelManager::Model &meshIn)
 {
     this->pauseAnimation(meshIn);
-    
-    //  TODO:
-    //  Should only do this if isAnimated
+
+    uint32_t animatedAssets = 0;
     ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
     for(size_t i = 0; i < model.size(); i++)
     {
         ModelManager::MeshData &data = model[i];
-        for(size_t j = 0; j < data.armature.size(); j++)
+        if(data.isAnimated)
         {
-            ModelManager::MeshData::MotionPoint &motion = data.armature[j];
-            motion.globalJointTransform = motion.posePosition;
-            motion.jointMatrix = motion.globalJointTransform * motion.inverseBindMatrix;
-        };
+            for(size_t j = 0; j < data.armature.size(); j++)
+            {
+                ModelManager::MeshData::MotionPoint &motion = data.armature[j];
+                motion.globalJointTransform = motion.posePosition;
+                motion.jointMatrix = motion.globalJointTransform * motion.inverseBindMatrix;
+            };
+            
+            animatedAssets++;
+        }
     };
+
+    return animatedAssets ? lazarus_result::LAZARUS_OK : lazarus_result::LAZARUS_NO_ANIMATION_DATA;
 }
 
 lazarus_result ModelManager::drawModel(ModelManager::Model &meshIn)

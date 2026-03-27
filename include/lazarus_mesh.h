@@ -152,9 +152,9 @@ class ModelManager
         //  but ok for now
         
         void setDiscardFragments(Model &meshIn, bool shouldDiscard);
-        void setActiveAnimation(Model &meshIn, uint32_t animationIndex);
-        void setToPosePosition(Model &meshIn);
-        void pauseAnimation(Model &meshIn);
+        lazarus_result setActiveAnimation(Model &meshIn, uint32_t animationIndex);
+        lazarus_result setToPosePosition(Model &meshIn);
+        lazarus_result pauseAnimation(Model &meshIn);
 
         virtual ~ModelManager();
         
@@ -180,8 +180,9 @@ class ModelManager
             };
 
             uint32_t id;
-            uint32_t instanceCount;
             uint8_t stencilBufferId;
+            uint32_t instanceCount;
+            uint32_t animationCount = 0;
             uint8_t isAnimated;
             int32_t armatureRoot = -1;
             int32_t activeAnimation = -1;
