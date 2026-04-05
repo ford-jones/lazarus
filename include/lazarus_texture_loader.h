@@ -39,7 +39,6 @@ using std::shared_ptr;
 
 class TextureLoader
 {
-	
 	protected:
 		enum StorageType
 		{

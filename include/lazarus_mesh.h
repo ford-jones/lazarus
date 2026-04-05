@@ -63,8 +63,6 @@ class ModelManager
             
             FileLoader::Image texture;
             glm::vec3 diffuse;
-            
-            bool discardsAlphaZero;
         };
         enum ModelType 
         {
@@ -77,10 +75,6 @@ class ModelManager
         {
             struct Instance
             {
-                //  TODO:
-                //  Add a visibility flag that can be used to 
-                //  toggle whether frags should be discarded or not
-
                 uint32_t id;
                 glm::vec3 position;
                 glm::vec3 direction;
@@ -184,7 +178,7 @@ class ModelManager
             uint32_t instanceCount;
             uint32_t animationCount = 0;
             uint8_t isAnimated;
-            int32_t armatureRoot = -1;
+            int16_t armatureRoot = -1;
             int32_t activeAnimation = -1;
             
             GLuint VAO;     //  Vertex Array Object
@@ -236,15 +230,7 @@ class ModelManager
         GLint meshVariantLocation;
         GLint discardFragsLocation;
         GLint isAnimatedLocation;
-
         GLint jointsMatricesLocation;
-
-        GLint timestepsLocation;
-        GLint keyframesLocation;
-
-        GLint jointTargetsLocation;
-        GLint motionLengthsLocation;
-        GLint motionCountLocation;
 
         std::unique_ptr<FileLoader> finder;
         TextureLoader::StorageType textureStorage;

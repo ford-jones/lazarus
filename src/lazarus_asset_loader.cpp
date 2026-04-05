@@ -952,7 +952,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 {
                     AssetData::Animation animation = {};
                     glbAnimationData animationData = animations[j];
-                    
+
                     for(size_t k = 0; k < animationData.channels.size(); k++)
                     {
                         AssetData::JointMotion movement = {};
