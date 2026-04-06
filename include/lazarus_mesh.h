@@ -171,6 +171,7 @@ class ModelManager
                 glm::mat4 jointMatrix;
 
                 std::vector<AssetLoader::AssetData::JointMotion> animationData;
+                uint32_t sequenceCursor = 0;
             };
 
             uint32_t id;
@@ -210,10 +211,12 @@ class ModelManager
         void clearErrors();
         void instantiateMesh(bool selectable);
         void setMeshProperties(AssetLoader::AssetData &assetData);
+        
+        glm::mat4 computeLocalJointTransform(MeshData::MotionPoint &motionPoint, uint32_t animationID);
 
         void loadAnimation(MeshData &data);
-        uint32_t getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData motion);
-        glm::vec4 getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t frameBegin);
+        uint32_t getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t &sequenceCursor);
+        glm::vec4 getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t frameBegin, uint32_t sequenceCursor);
         
         uint32_t childCount;
 
@@ -224,7 +227,6 @@ class ModelManager
 
         uint32_t previousMs;
         uint32_t upTimeMs;
-        uint32_t timestepCursor;
 
 		GLuint shaderProgram;
         GLint meshVariantLocation;

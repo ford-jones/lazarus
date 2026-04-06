@@ -28,7 +28,6 @@ ModelManager::ModelManager(GLuint shader, TextureLoader::StorageType textureType
     this->childCount = 0;
     this->previousMs = 0;
     this->upTimeMs = 0;
-    this->timestepCursor = 0;
 
     this->shaderProgram = shader;
     this->finder = std::make_unique<FileLoader>();
@@ -1138,16 +1137,6 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
 
 void ModelManager::loadAnimation(ModelManager::MeshData &data)
 {
-    /* ==================================================
-        Poll time delta and update timestep cursor
-    ===================================================== */
-
-    std::chrono::system_clock::duration epoch = std::chrono::system_clock::now().time_since_epoch();
-    uint32_t currentMs = epoch / std::chrono::milliseconds(1);
-    uint32_t timeDelta = currentMs - previousMs;
-    previousMs = currentMs;
-    upTimeMs += timeDelta;
-
     LOG_DEBUG("Loading animation data");
 
     /* =================================================
@@ -1157,29 +1146,7 @@ void ModelManager::loadAnimation(ModelManager::MeshData &data)
     ==================================================== */
 
     MeshData::MotionPoint &animationRoot = data.armature[data.armatureRoot];
-    AssetLoader::AssetData::JointMotion animationData = animationRoot.animationData[data.activeAnimation];
-    
-    /* ====================================================================
-        Figure out where we are in the sequence.
-        I.e: Get the index of the keyframes that coincide with the timestep
-        we are currently at
-    ======================================================================= */
-    
-    uint32_t rootTranslateIdx = this->getKeyframeIndex(animationData.translation);
-    uint32_t rootRotateIdx = this->getKeyframeIndex(animationData.rotation);
-    uint32_t rootScaleIdx = this->getKeyframeIndex(animationData.scale);
-
-    glm::vec4 rootTranslateKey = this->getTransformLerp(animationData.translation, rootTranslateIdx);
-    glm::vec4 rootRotateKey = this->getTransformLerp(animationData.rotation, rootRotateIdx);
-    glm::vec4 rootScaleKey = this->getTransformLerp(animationData.scale, rootScaleIdx);
-
-    glm::mat4 keyframeTransform = (
-        glm::translate(glm::mat4(1.0f), glm::vec3(rootTranslateKey)) *
-        glm::mat4_cast(glm::quat(rootRotateKey.w, rootRotateKey.x, rootRotateKey.y, rootRotateKey.z)) *
-        glm::scale(glm::mat4(1.0f), glm::vec3(rootScaleKey))
-    );
-
-    animationRoot.globalJointTransform = keyframeTransform;
+    animationRoot.globalJointTransform = this->computeLocalJointTransform(animationRoot, data.activeAnimation);
             
     animationRoot.jointMatrix = (
         animationRoot.globalJointTransform * animationRoot.inverseBindMatrix
@@ -1206,37 +1173,14 @@ void ModelManager::loadAnimation(ModelManager::MeshData &data)
                 MeshData::MotionPoint &child = data.armature[childID];     // Note: Joint is declared as a reference
                 MeshData::MotionPoint &parent = data.armature[child.parentID];
 
-                AssetLoader::AssetData::JointMotion motionData = child.animationData[data.activeAnimation];
-
                 nextChildren.insert(
                     nextChildren.end(), 
                     child.children.begin(), 
                     child.children.end()
                 );
 
-                /* ===================================================
-                    Based on the current elapsed ms (time), determine
-                    where abouts we are in the animation sequence. Use
-                    this to look up and interpolate the relevant TRS 
-                    keyframe values for the next draw of the animated
-                    asset.
-                ====================================================== */
-
-                uint32_t translateIdx = this->getKeyframeIndex(motionData.translation);
-                uint32_t rotateIdx = this->getKeyframeIndex(motionData.rotation);
-                uint32_t scaleIdx = this->getKeyframeIndex(motionData.scale);
-
-                glm::vec4 translateKey = this->getTransformLerp(motionData.translation, translateIdx);
-                glm::vec4 rotateKey = this->getTransformLerp(motionData.rotation, rotateIdx);
-                glm::vec4 scaleKey = this->getTransformLerp(motionData.scale, scaleIdx);
-
-                glm::mat4 keyframeTx = (
-                    glm::translate(glm::mat4(1.0f), glm::vec3(translateKey)) *
-                    glm::mat4_cast(glm::quat(rotateKey.w, rotateKey.x, rotateKey.y, rotateKey.z)) *
-                    glm::scale(glm::mat4(1.0f), glm::vec3(scaleKey))
-                );
-
-                child.globalJointTransform = parent.globalJointTransform * keyframeTx;
+                glm::mat4 localTransform = this->computeLocalJointTransform(child, data.activeAnimation);
+                child.globalJointTransform = parent.globalJointTransform * localTransform;
 
                 child.jointMatrix = (
                     child.globalJointTransform * child.inverseBindMatrix
@@ -1251,8 +1195,45 @@ void ModelManager::loadAnimation(ModelManager::MeshData &data)
     };
 };
 
-uint32_t ModelManager::getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData motion)
+glm::mat4 ModelManager::computeLocalJointTransform(ModelManager::MeshData::MotionPoint &motionPoint, uint32_t animationID)
 {
+    AssetLoader::AssetData::JointMotion motionData = motionPoint.animationData[animationID];
+    /* ===================================================
+        Based on the current elapsed ms (time), determine
+        where abouts we are in the animation sequence. Use
+        this to look up and interpolate the relevant TRS 
+        keyframe values for the next draw of the animated
+        asset.
+    ====================================================== */
+
+    uint32_t translateIdx = this->getKeyframeIndex(motionData.translation, motionPoint.sequenceCursor);
+    uint32_t rotateIdx = this->getKeyframeIndex(motionData.rotation, motionPoint.sequenceCursor);
+    uint32_t scaleIdx = this->getKeyframeIndex(motionData.scale, motionPoint.sequenceCursor);
+
+    glm::vec4 translateKey = this->getTransformLerp(motionData.translation, translateIdx, motionPoint.sequenceCursor);
+    glm::vec4 rotateKey = this->getTransformLerp(motionData.rotation, rotateIdx, motionPoint.sequenceCursor);
+    glm::vec4 scaleKey = this->getTransformLerp(motionData.scale, scaleIdx, motionPoint.sequenceCursor);
+
+    glm::mat4 localTransform = (
+        glm::translate(glm::mat4(1.0f), glm::vec3(translateKey)) *
+        glm::mat4_cast(glm::quat(rotateKey.w, rotateKey.x, rotateKey.y, rotateKey.z)) *
+        glm::scale(glm::mat4(1.0f), glm::vec3(scaleKey))
+    );
+
+    return localTransform;
+};
+
+uint32_t ModelManager::getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t &sequenceCursor)
+{
+    /* ==================================================
+        Poll time delta and update timestep cursor
+    ===================================================== */
+    std::chrono::system_clock::duration epoch = std::chrono::system_clock::now().time_since_epoch();
+    uint32_t currentMs = epoch / std::chrono::milliseconds(1);
+    uint32_t timeDelta = currentMs - this->previousMs;
+    this->previousMs = currentMs;
+    this->upTimeMs += timeDelta;
+
     /* ======================================================
         Lock time-advance within the maximum duration of the
         active motion.
@@ -1276,13 +1257,13 @@ uint32_t ModelManager::getKeyframeIndex(AssetLoader::AssetData::JointMotion::Tra
             return now < timestep;
         }
     );
-    this->timestepCursor = now;
+    sequenceCursor = now;
     uint32_t index = it - motion.timesteps.begin();
 
     return index;
 };
 
-glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t frameBegin)
+glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t frameBegin, uint32_t sequenceCursor)
 {
     /* =============================================================
         Calculate keyframe interpolation. Note that cubicspline is
@@ -1316,7 +1297,7 @@ glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::Tr
             ======================================================= */
             float timestepStart = motion.timesteps[frameBegin];
             float timestepEnd = motion.timesteps[frameBegin + 1 != motion.keyframes.size() ? frameBegin + 1 : 0];
-            float interpolatedTimestep = (this->timestepCursor - timestepStart * 1000.0f) / (timestepEnd * 1000.0f - timestepStart * 1000.0f);
+            float interpolatedTimestep = (sequenceCursor - timestepStart * 1000.0f) / (timestepEnd * 1000.0f - timestepStart * 1000.0f);
 
             glm::vec4 keyframeBegin = motion.keyframes[frameBegin];
             glm::vec4 keyframeEnd = motion.keyframes[frameBegin + 1 != motion.keyframes.size() ? frameBegin + 1 : 0];
@@ -1412,6 +1393,7 @@ lazarus_result ModelManager::setToPosePosition(ModelManager::Model &meshIn)
             for(size_t j = 0; j < data.armature.size(); j++)
             {
                 ModelManager::MeshData::MotionPoint &motion = data.armature[j];
+                motion.sequenceCursor = 0;
                 motion.globalJointTransform = motion.posePosition;
                 motion.jointMatrix = motion.globalJointTransform * motion.inverseBindMatrix;
             };
