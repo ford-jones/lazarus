@@ -69,10 +69,10 @@ class LightManager
         void clearErrors();
         struct LightData
         {
-            /* ==========================================
+            /*
                 Used to traverse the point light uniform
                 array.
-            ============================================= */
+            */
             uint32_t uniformIndex;
 
             GLint lightTypeUniformLocation;

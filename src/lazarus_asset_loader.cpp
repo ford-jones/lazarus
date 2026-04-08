@@ -71,9 +71,9 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
         switch (currentLine[0])
         {
             case 'v':
-                /* =============================================
+                /*
                     v = Vertex Position Coordinates (location)
-                ================================================ */
+                */
                 if ( currentLine[1] == ' ' )
                 {
                     wavefrontCoordinates = fileLoader->splitTokensFromLine(currentLine, ' ');
@@ -86,15 +86,15 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                     this->tempVertexPositions.insert(std::pair(positionCount, vertex));
                     positionCount += 1;
                 } 
-                /* =============================================
+                /*
                     vt = Vertex Texture Coordinates (UV / ST)
-                ================================================ */
+                */
                 else if ( currentLine[1] == 't' )
                 {
                     wavefrontCoordinates = fileLoader->splitTokensFromLine(currentLine, ' ');
                     glm::vec3 uv = glm::vec3(0.0f, 0.0f, 0.0f);
 
-                    /* =========================================
+                    /*
                         uv is extended from its generic xy components
                         to include a z value here to meet the expected
                         stride range for attributes in the vertex buffer.
@@ -102,7 +102,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                         i.e: (4 * sizeof(vec3)) = 12
 
                         Once in the shaders it is disregarded. 
-                    ============================================ */
+                    */
 
                     uv.x = stof(wavefrontCoordinates[1]);
                     uv.y = stof(wavefrontCoordinates[2]);
@@ -111,9 +111,9 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                     this->tempUvs.insert(std::pair(uvCount, uv));
                     uvCount += 1;
                 }
-                /* ==============================================
+                /*
                     vn = Vertex Normal coordinates (direction)
-                ================================================= */
+                */
                 else if ( currentLine[1] == 'n' )
                 {
                     wavefrontCoordinates = fileLoader->splitTokensFromLine(currentLine, ' ');
@@ -127,9 +127,9 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                     normalCount += 1;
                 }
                 break;
-            /* ==============================================
+            /*
                 f = Face
-            ================================================= */
+            */
             case 'f':
                 this->triangleCount += 1;
 
@@ -140,7 +140,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                     stringstream ssJ(i);
                     string tokenJ;
 
-                    /* ============================================
+                    /*
                         Unlike the other identifiers on the current
                         line which are folliowed by xyz coordinates; 
                         values following a face identifier contain 
@@ -151,7 +151,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                         Some editors deliminate face data with a 
                         dash character '-', others use whitespace
                         ' '. Blender uses a forward-slash '/'.
-                    =============================================== */
+                    */
                     while(getline(ssJ, tokenJ, '/')) 
                     {
                         if (tokenJ != "f") 
@@ -163,9 +163,9 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
 
                 status = this->constructTriangle();
                 break;
-            /* ===============================================
+            /*
                 usemtl = Use material identifier
-            ================================================== */
+            */
             case 'u':
                 this->materialData = {materialIdentifierIndex, triangleCount};
 		    	this->materialBuffer.push_back(this->materialData);
@@ -184,10 +184,10 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
         };
     }
 
-    /* ========================================================
+    /*
         Wavefront animation isn't supported so zero-out the
         buffers.
-    =========================================================== */
+    */
 
     for(size_t i = 0; i < tempVertexPositions.size(); i++)
     {
@@ -195,10 +195,10 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
         tempWeights.insert(std::pair<uint32_t, glm::vec4>(i, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
     };
 
-    /* ======================================================
+    /*
         All required elements have been extracted. Begin 
         construction.
-    ========================================================= */
+    */
     AssetLoader::AssetData data = {};
     if (file.eof())
     {
@@ -211,10 +211,10 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
         this->parseWavefrontMtl(materialPath, materialBuffer, tempDiffuse, data.colors, data.textures);
     }
 
-    /* ==============================================
+    /*
         Rigging and animation for wavefront is not 
         supported.
-    ================================================= */
+    */
     data.armature = {};
     data.animations = {};
 
@@ -254,9 +254,9 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath, vector<v
     
     while(file.getline(currentLine, UINT8_MAX)) 
     {        
-        /* =============================================
+        /*
             Kd = diffuse colors
-        ================================================ */
+        */
         if( (currentLine[0] == 'K') && (currentLine[1] == 'd') )
         {
             diffuseCount += 1;
@@ -279,13 +279,13 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath, vector<v
                     diffuse.r = std::stof(tokenStore[1]);
                     diffuse.g = std::stof(tokenStore[2]);
                     diffuse.b = std::stof(tokenStore[3]);
-                    /* ====================================================
+                    /*
                         Push the current diffuse object into the out
                         out parameter N times.
 
                         N = The number of vertices which use this color.
                         (faceCount * 3)
-                    ======================================================= */
+                    */
     	            for(size_t j = 0; j < faceCount * 3; j++)
     	            {
                         temp.push_back(diffuse);
@@ -300,9 +300,9 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath, vector<v
     	        };        
             };
         }
-        /* ==========================================
+        /*
             map_Kd = Image texture
-        ============================================= */
+        */
         if( (currentLine[0] == 'm') && 
             (currentLine[1] == 'a') && 
             (currentLine[2] == 'p')
@@ -318,7 +318,7 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath, vector<v
                 {
                     for(size_t j = 0; j < faceCount * 3; j++)
                     {
-                        /* ===========================================
+                        /*
                             Negative values passed here are an indicator
                             to the fragment shader that it should instead 
                             interpret the desired frag color of this face
@@ -328,20 +328,20 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath, vector<v
                             positiveDiffuseValues
                             ? fragColor(positiveDiffuseValues.xyz) 
                             : fragColor(images[layer].xyz)
-                        ============================================== */
+                        */
                         temp.push_back(vec3(-0.1f, -0.1f, -0.1f));
                         layers.push_back(layerCount);
                     };
                 }  
             } 
-            /* =================================================
+            /*
                 Construct path to texture file using 
                 pre-computed absolute path to material file and 
                 replacing the file suffix with the name of the 
                 file as indicated by the material file. It's for
                 this reason that wavefront assets must have
                 their path names stripped on export.
-            ==================================================== */
+            */
 
             uint32_t suffix = std::string(materialPath).find_last_of("/");
             std::string directory = std::string(materialPath).substr(0, suffix).append("/");
@@ -399,10 +399,10 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
     std::vector<std::string> propertyStrings = {};
     std::vector<uint32_t> propertyIndexes = {};
 
-    /* ====================================================
+    /*
         Read top-level glb json properties, find their
         locations and then remove those that aren't present.
-    ======================================================= */
+    */
     for(size_t i = 0; i < propertyIdentifiers.size(); i++)
     {
         std::string property = propertyIdentifiers[i];   
@@ -413,11 +413,11 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
             propertyIndexes.push_back(propertyLocation);
         };
     };
-    /* ========================================================
+    /*
         Sort in order of appearance and split to avoid 
         duplicate / red-herring identifiers. 
         E.g. "buffer" vs "bufferView" vs "bufferViews"
-    =========================================================== */
+    */
     std::sort(propertyIndexes.begin(), propertyIndexes.end());
 
     for(size_t i = 0; i < propertyIndexes.size(); i++)
@@ -432,11 +432,11 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         propertyStrings.push_back(json);
     };
 
-    /* =====================================================
+    /*
         Extract variables required for reading the next 
         chunk from the json contents between each 
         propertyIndex.
-    ======================================================== */
+    */
     for(size_t i = 0; i < propertyStrings.size(); i++)
     {
         std::string json = propertyStrings[i];
@@ -446,9 +446,9 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
             LOG_DEBUG("Parsing materials...");
             uint32_t prev = 0;
             
-            /* ========================================
+            /*
                 Split-out and identify materials
-            =========================================== */
+            */
             for(size_t j = 0; j < json.size(); j++)
             {
                 std::string current = json.substr(j, 3);
@@ -458,10 +458,10 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     std::string material = json.substr(prev, j - prev);
                     prev = j + 2;
 
-                    /* ==================================================
+                    /*
                         Check whether the mesh uses an image texture or 
                         is diffuse-colored.
-                    ===================================================== */
+                    */
                     
                     if(material.find(DIFFUSE) != std::string::npos)
                     {
@@ -479,9 +479,9 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     else if(material.find(TEXTURE_ID) != std::string::npos)
                     {
                         LOG_DEBUG("Inspecting texture info");
-                        /* =============================================
+                        /*
                             Identify texture index.
-                        ================================================ */
+                        */
                         std::vector<std::string> imageTextures = fileLoader->extractContainedContents(material, TEXTURE_ID + "{", "}");
                         for(size_t j = 0; j < imageTextures.size(); j++)
                         {            
@@ -514,10 +514,10 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 glbNodeData node = {};
                 node.id = j;
                 node.children = {};
-                /* ============================================
+                /*
                     Extract mesh name in the event that user 
                     didn't configure one.
-                =============================================== */
+                */
                 size_t nameStart = nodeData.find(NAME);
                 std::string nameBuff = *fileLoader->extractContainedContents(nodeData.substr(nameStart + NAME.size()), "\"", "\"").data();
 
@@ -536,10 +536,10 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     std::string str = fileLoader->extractContainedContents(nodeData, ROTATION, "]")[0];
                     std::vector<std::string> axis = fileLoader->splitTokensFromLine(str.substr(1, str.size() - 2).c_str(), ',');
 
-                    /* ===========================================
+                    /*
                         glb rotations are supplied as a
                         quaternion.
-                    ============================================== */
+                    */
                     node.rotation.x = std::stof(axis[0]);
                     node.rotation.y = std::stof(axis[1]);
                     node.rotation.z = std::stof(axis[2]);
@@ -612,12 +612,12 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                             return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
                         };
     
-                        /* ========================================================
+                        /*
                             Note that UV's, joints and weights are marked as absent
                             by default. Uv's are only present when image textures
                             are in use. Joints and weights are only present if the 
                             primitives are components in an animated skin.
-                        =========================================================== */
+                        */
                         int32_t value = std::stoi(property.substr(index + 1));
                         switch (property[1])
                         {
@@ -689,11 +689,11 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
             std::vector<std::string> channels = fileLoader->extractContainedContents(animationData, CHANNELS + "[", "]");
             std::vector<std::string> samplers = fileLoader->extractContainedContents(animationData, SAMPLERS + "[", "]");
             
-            /* ===================================================
+            /*
                 Apply the same methodology as is used during mesh
                 extraction due to the nested structs in these json 
                 objects.
-            ====================================================== */
+            */
             
             for(size_t j = 0; j < channels.size(); j++)
             {
@@ -827,7 +827,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         else if(json.find(BUFFERVIEWS) == 0)
         {
             LOG_DEBUG("Inspecting bufferviews...");
-            /* ============================================================================
+            /*
                 Note that the bufferView's 'target' property (responsible for describing 
                 what kind of buffer object this data should be written to) is skipped. 
                 
@@ -836,7 +836,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 type GL_ELEMENT_ARRAY_BUFFER. Anything other than that should be of 
                 componentType 5126 (GL_FLOAT), which will be written to GL_ARRAY_BUFFER. If 
                 it isn't then the mesh is not supported.
-            =============================================================================== */
+            */
             std::vector<std::string> data = fileLoader->extractContainedContents(json, "{", "}");
             
             for(size_t j = 0; j < data.size(); j++)
@@ -872,10 +872,10 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         };
     };
 
-    /* ===========================================
+    /*
         Load values from this->binaryData
         ...
-    ============================================== */
+    */
     for(size_t i = 0; i < nodes.size(); i++)
     {
         AssetLoader::AssetData asset = {};
@@ -902,16 +902,16 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
             LOG_DEBUG(std::string("Loading asset: [").append(node.name + "]").c_str());
             LOG_DEBUG(std::string("Mesh Index: ").append(std::to_string(node.meshIndex)).c_str());
             
-            /* ======================================================
+            /*
                 Skin is present so load the models rigging and 
                 animation data.
-            ========================================================= */
+            */
             if(node.skinIndex >= 0)
             {
-                /* ====================================================
+                /*
                     Extract inverse-bind-matrices (one for each joint)
                     used to perform animation transforms on a joint.
-                ======================================================= */
+                */
                 glbSkinData skinData = skins[node.skinIndex];
                 glbAccessorData accessor = accessors[skinData.inverseBindMatriceAccessor];
                 glbBufferViewData bufferView = bufferViews[accessor.bufferViewIndex];
@@ -919,13 +919,13 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 std::vector<glm::mat4> inverseBindMatrices = {};
                 this->populateVectorFromMemory(accessor, bufferView, inverseBindMatrices);
 
-                /* =================================================
+                /*
                     Load armature data
 
                     TODO:
                     identify armature transform node and apply it
                     against each of the joints
-                ==================================================== */
+                */
                 for(size_t j = 0; j < skinData.joints.size(); j++)
                 {
                     glbNodeData jointNode = nodes[skinData.joints[j]];
@@ -938,16 +938,16 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     joint.rotation = jointNode.rotation;
                     joint.scale = jointNode.scale;
 
-                    /* =====================================================
+                    /*
                         Preserve and use original node index position as 
                         key for lookup by children and sampler.targets
-                    ======================================================== */
+                    */
                     asset.armature.insert(std::pair<uint32_t, AssetData::JointData>(jointNode.id, joint));
                 };
                 
-                /* ====================================================
+                /*
                     Load the models animations
-                ======================================================= */
+                */
                 for(size_t j = 0; j < animations.size(); j++)
                 {
                     AssetData::Animation animation = {};
@@ -960,7 +960,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                         glbAnimationChannel channel = animationData.channels[k];
                         glbAnimationSampler sampler = animationData.samplers[channel.samplerIndex];
 
-                        /* ========================================
+                        /*
                             Note: Translation, rotation and scale
                             keyframe values for a joint are stored 
                             in seperate channels.
@@ -968,7 +968,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                             So get the map key and try to insert
                             (emplace ensures uniqueness). Then
                             update the value in-place accordingly.
-                        =========================================== */
+                        */
                         uint32_t id = asset.armature.at(channel.nodeIndex).id;
                         animation.emplace(id, movement);
                         
@@ -983,10 +983,10 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
     
                         this->populateVectorFromMemory<float>(tsAccessor, bufferViews[tsAccessor.bufferViewIndex], t.timesteps);
 
-                        /* ========================================
+                        /*
                             Rotation values are vec4, everything
                             else is vec3.
-                        =========================================== */
+                        */
                         if(t.transform == AssetData::JointMotion::TransformData::TransformType::ROTATION)
                         {
                             this->populateVectorFromMemory<glm::vec4>(kfAccessor, bufferViews[kfAccessor.bufferViewIndex], t.keyframes);
@@ -1020,14 +1020,14 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 };
             };
             
-            /* ==============================================
+            /*
                 A model may be constructed from a number of
                 different meshes. A mesh may be constructed
                 from a number of different attributes, each
                 with their own defining characteristics. E.g. 
                 some may be textured, others may use diffuse
                 colors.
-            ================================================= */
+            */
             glbMeshData meshData = meshes[node.meshIndex];
             for(size_t j = 0; j < meshData.size(); j++)
             {
@@ -1041,7 +1041,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
     
                 glbAttributeData mesh = meshData[j];
         
-                /* ==================================================================
+                /*
                     Load face data / primitives. Unlike wavefront, this format can
                     support n'gons due to it's serialisation of indices per-face.
                     Note Uvs may not be present, in which case atleast the diffuse 
@@ -1049,7 +1049,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
 
                     TODO:
                     Error if no uv's and no diffuse values
-                ===================================================================== */
+                */
                 glbAccessorData posiitonAccessor = accessors[mesh.positionAccessor];
                 glbAccessorData normalAccessor = accessors[mesh.normalsAccessor];
 
@@ -1062,7 +1062,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     this->populateBufferFromAccessor(uvAccessor, vertexUvs);
                 };
 
-                /* ==================================================
+                /*
                     Load vertex joints and weights describing the
                     parts of the armature of an animated mesh that 
                     should effect a given vertex.
@@ -1070,10 +1070,10 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     TODO:
                     Error if animation but no rigging
                     Error if weight values don't add up to 1.0
-                ===================================================== */
+                */
                 if(mesh.jointsAccessor >= 0 && mesh.weightsAccessor >= 0)
                 {
-                    /* ==================================================
+                    /*
                         A single vertex may be affected by 4 different
                         joints, maximum, hence vec4 usage. The indices of 
                         effective joints are stored at  'vertexJoints' and 
@@ -1085,7 +1085,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                         Note that much like the vertex indices, the 
                         joint indexes here may be either 8-bit OR 16-bit.
                         ("-.-).
-                    ===================================================== */
+                    */
 
                     std::vector<uint32_t> joints = skins[node.skinIndex].joints;
                     std::vector<glm::u8vec4> smallRigJoints;
@@ -1095,7 +1095,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     if(jointAccessor.componentType == GL_UNSIGNED_BYTE)
                     {
                         this->populateVectorFromMemory<glm::u8vec4>(jointAccessor, bufferViews[jointAccessor.bufferViewIndex], smallRigJoints);
-                        /* =========================================================
+                        /*
                             Using 8-bit indices.
 
                             Lookup joint's node position (id) in the skins array and 
@@ -1111,7 +1111,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                              |   |    /    ______|
                             {J,  J,  J,  J,         ...}
                              0   1   2   3               <-JointData::id
-                        ============================================================ */
+                        */
                         std::transform(
                             smallRigJoints.begin(), 
                             smallRigJoints.end(),
@@ -1134,9 +1134,9 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     else
                     {
                         this->populateVectorFromMemory<glm::u16vec4>(jointAccessor, bufferViews[jointAccessor.bufferViewIndex], bigRigJoints);
-                        /* =========================================================
+                        /*
                             Same again using 16-bit indices.
-                        ============================================================ */
+                        */
                         std::transform(
                             bigRigJoints.begin(), 
                             bigRigJoints.end(),
@@ -1161,11 +1161,11 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     this->populateVectorFromMemory<glm::vec4>(weightAccessor, bufferViews[weightAccessor.bufferViewIndex], vertexWeights);
                 };
                 
-                /* =========================================================
+                /*
                     Load materials. Load the image from memory if the mesh
                     uses an image texture. If an image is loaded, the 
                     diffuse portion of the attributes vector is zero'd.
-                ============================================================ */
+                */
         
                 glbMaterialData material = materials[mesh.materialIndex];
                 bool usesTextures = false;
@@ -1179,11 +1179,11 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         
                     glbBufferViewData bufferView = bufferViews[image.bufferViewIndex];
         
-                    /* ==============================================================
+                    /*
                         Allocate the image buffer on the heap. Even when the texture 
                         image is compressed, it's raw size can be in the MBs and in
                         the worst case can cause stack overflows (and has).
-                    ================================================================== */
+                    */
         
                     unsigned char *buffer = new unsigned char[bufferView.byteLength];
                     std::memset(buffer, 0, sizeof(unsigned char) * bufferView.byteLength);
@@ -1212,9 +1212,9 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     tempImages.push_back(image);
                 }
                 
-                /* =================================================
+                /*
                     Load indices data and perform lookups.
-                ==================================================== */
+                */
         
                 glbAccessorData indicesAccessor = accessors[mesh.indicesAccessor];
                 glbBufferViewData indicesBufferView = bufferViews[indicesAccessor.bufferViewIndex];
@@ -1225,10 +1225,10 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 ? indicesBufferView.byteOffset + indicesAccessor.byteOffset
                 : indicesBufferView.byteOffset;
         
-                /* ===============================================================
+                /*
                     Ensure that the correct size is being used as indices values may 
                     be expressed as either 16 OR 32 bit. 
-                ================================================================== */
+                */
                 std::vector<uint16_t> indicesShort(indicesAccessor.count);
                 std::vector<uint32_t> indices(indicesAccessor.count);
                 
@@ -1236,7 +1236,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 ? std::memcpy(indicesShort.data(), &this->binaryData[indicesOffset], sizeof(uint16_t) * indicesAccessor.count)
                 : std::memcpy(indices.data(), &this->binaryData[indicesOffset], sizeof(uint32_t) * indicesAccessor.count);
                 
-                /* ========================================================================================
+                /*
                     The indices / SCALAR buffer-values contained inside  of the glb file don't actually 
                     correspond directly to the indices used to traverse the VBO. Instead; these values 
                     pertain to the indices of the attributes for how a single face / primitive is  
@@ -1250,7 +1250,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     To get an actual index buffer, the verts must be duplicated one face at a time using 
                     these values, once that's done 'constructIndexBuffer' can be called to deduplicate them 
                     again and do it properly... sigh.
-                ============================================================================================= */
+                */
         
                 for(size_t j = 0; j < indicesAccessor.count; j++)
                 {
@@ -1260,7 +1260,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         
                     uint32_t serial = (indicesCount - indicesAccessor.count) + j;
         
-                    /* ========================================================
+                    /*
                         Apply localspace transforms specified by the node
                         data to each of the meshes vertices. This is done here
                         so that the orientation of each vertex is baked into
@@ -1272,7 +1272,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                         Using the formula described here for passive 
                         quaternion rotation:
                         https://danceswithcode.net/engineeringnotes/quaternions/quaternions.html#:~:text=(13)-,Quaternion%20Rotation,-We%20can%20rotate
-                    =========================================================== */
+                    */
     
                     glm::quat quaternion = glm::quat(node.rotation);
                     glm::quat conjugate = glm::conjugate(quaternion);
@@ -1282,20 +1282,20 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     
                     tempNormals.emplace(serial, vertexNormals[index]);
         
-                    /* ===================================================================
+                    /*
                         mesh.uvAccessor is optional. I.e. it doesn't nessecarily exist. 
                         In the case that it's not present in the json chunk, the VBO will 
                         still need to be populated so push back zeroes.
-                    ====================================================================== */
+                    */
         
                     mesh.uvAccessor >= 0 
                     ? tempUvs.emplace(serial, vertexUvs[index]) 
                     : tempUvs.emplace(serial, glm::vec3(0.0f, 0.0f, 0.0f));
 
-                    /* ===================================================================
+                    /*
                         Same goes for this animation data which is optional. Zero out the
                         relevant portion of the buffer if no animations are present.
-                    ====================================================================== */
+                    */
 
                     mesh.jointsAccessor >= 0 
                     ? tempJoints.emplace(serial, vertexJoints[index])
@@ -1364,18 +1364,18 @@ void AssetLoader::populateBufferFromAccessor(glbAccessorData accessor, std::vect
 
 template<typename T> void AssetLoader::populateVectorFromMemory(glbAccessorData accessor, glbBufferViewData bufferView, std::vector<T> &vertexData)
 {
-    /* =====================================================
+    /*
         The bufferView.byteOffset defines the stride up-to 
         the beginning of the vertex attributes. An additional 
         offset wil be defined in the accessor if the data is 
         interleaved for striding to a specific attribute.
-    ======================================================== */
+    */
 
     uint32_t offset = accessor.byteOffset != -1 
     ? accessor.byteOffset + bufferView.byteOffset 
     : bufferView.byteOffset;
 
-    /* ================================================================
+    /*
         Note the spec enforces a 4-byte alignment. This means that 
         usage of sizeof(type) * accessor.count is preferable to 
         bufferView.byteLength which is merely an indication of the raw
@@ -1388,7 +1388,7 @@ template<typename T> void AssetLoader::populateVectorFromMemory(glbAccessorData 
         {Pos | Norm | Uv | Indices},{...}
          ^     ^      ^    ^
          12    12     8    4 or 2
-    =================================================================== */
+    */
 
     uint32_t bufferPadding = bufferView.byteLength % 4;
     uint32_t bufferSize = bufferPadding == 0
@@ -1425,39 +1425,39 @@ lazarus_result AssetLoader::loadGlbChunks(const char *filepath)
     {
         uint32_t chunkSize = 0;
 
-        /* ========================================================
+        /*
             Read first 20 bytes (header + first 8 bytes of chunk_0)
             to retrieve total size of chunk_0 and to align the 
             readers cursor to the start of the json chunkData[].
-        =========================================================== */
+        */
 
         std::string headerBuffer;
         file.read(headerBuffer.data(), sizeof(char) * 20);
         std::memcpy(&chunkSize, &headerBuffer[12], sizeof(uint32_t));
         
-        /* =========================================================
+        /*
             Read and store JSON chunkData[] up to the beginning of 
             the next chunk. This data describes how to interpret the
             bytes from the next chunk.
-        ============================================================ */
+        */
 
         jsonData.resize(chunkSize);
         file.read(jsonData.data(), chunkSize);
 
-        /* ==========================================================
+        /*
             Read first 8 bytes of final chunk and extract the byte
             length of it's chunkData[] from the first 4. 
-        ============================================================= */        
+        */        
 
         std::string binaryChunkDetails;
         file.read(binaryChunkDetails.data(), sizeof(char) * 8);
         std::memcpy(&chunkSize, &binaryChunkDetails[0], sizeof(uint32_t));
         
-        /* =============================================================
+        /*
             Read final chunkData[] from final chunk. This data may
             contain the data of several 'buffers' identifiers, split by
             buffers.byteLength
-        ================================================================ */
+        */
 
         binaryData.resize(chunkSize);
         file.read(binaryData.data(), chunkSize);
@@ -1472,10 +1472,10 @@ int32_t AssetLoader::extractAttributeIndex(std::string bounds, std::string targe
     int32_t out = -1;
     size_t attributeNameLocation = bounds.find(target);
 
-    /* ====================================================
+    /*
         Pick out all occurances of an integer value that 
         appear following the target key / property name.
-    ======================================================= */
+    */
 
     if(attributeNameLocation != std::string::npos)
     {
@@ -1501,18 +1501,18 @@ void AssetLoader::constructIndexBuffer(std::vector<glm::vec3> &outAttributes, st
 
     uint32_t count = 0;
 
-    /* ===================================================
+    /*
         Construct each of the mesh's vertexes. Lookup 
         attribute values from temporary buffers.
-    ====================================================== */
+    */
 
     for(size_t i = 0; i < numOfAttributes; i++)
     {
-        /* ===========================================================
+        /*
             These lookups are faster as vectors for some reason unlike 
             the attribute values themselves, which are definitely 
             faster as maps.
-        ============================================================== */
+        */
 
         uint32_t vertexIndex = vertexIndices[i];
         uint32_t normalIndex = normalIndices[i];
@@ -1528,23 +1528,23 @@ void AssetLoader::constructIndexBuffer(std::vector<glm::vec3> &outAttributes, st
         glm::vec4 joint             = this->tempJoints.at(jointIndex - 1);
         glm::vec4 weight            = this->tempWeights.at(weightIndex - 1);
         
-        /* =====================================================
+        /*
             It's implicit that we are using a 
             TextureLoader::StorageType::ARRAY which means that 
             when a texture is present, we need to store it's 
             array-layer number. If there's no texture present, 
             use a uv padded with a zero.
-        ======================================================== */
+        */
 
         glm::vec3 uvCoordinates = (diffuseColor.r + diffuseColor.g + diffuseColor.b) < -0.1f
         ? glm::vec3(uv.x, uv.y, static_cast<float>(layer))
         : uv;
 
-        /* =========================================================
+        /*
             https://docs.vulkan.org/tutorial/latest/08_Loading_models.html#_vertex_deduplication:~:text=cppreference.com%20recommends
 
             Generate a hash value from the vertex attributes.
-        ============================================================ */
+        */
 
         uint64_t positionHash = std::hash<glm::vec3>()(position);
         uint64_t normalHash = std::hash<glm::vec3>()(normalCoordinates);
@@ -1568,13 +1568,13 @@ void AssetLoader::constructIndexBuffer(std::vector<glm::vec3> &outAttributes, st
         }
         else
         {
-            /* ===================================================
+            /*
                 Perform deduplication of vertex attributes.
 
                 Check for duplicates by attempting to store the 
                 hash in a set (unique values only). If it fails 
                 we know it's already been inserted somewhere.
-            ====================================================== */
+            */
             
             std::pair<std::unordered_set<uint64_t>::iterator, bool> result = hashes.insert(hash);
 
@@ -1582,13 +1582,13 @@ void AssetLoader::constructIndexBuffer(std::vector<glm::vec3> &outAttributes, st
             {
                 count += 1;
 
-                /* =========================================
+                /*
                     Interleave bufferdata in order expected 
                     by MeshManager::initialiseMesh
 
                     I.e.
                     [ Pos | Norm | color | uv ]
-                ============================================ */
+                */
 
                 outAttributes.push_back(position);
                 outAttributes.push_back(diffuseColor);
@@ -1603,10 +1603,10 @@ void AssetLoader::constructIndexBuffer(std::vector<glm::vec3> &outAttributes, st
             }
             else
             {
-                /* ===========================================
+                /*
                     Identify / retreive the location of a 
                     duplicate hash value.
-                ============================================== */
+                */
 
                 uint32_t location = entries.at(hash);
                 outIndexes.push_back(location);
@@ -1619,14 +1619,14 @@ void AssetLoader::constructIndexBuffer(std::vector<glm::vec3> &outAttributes, st
 
 lazarus_result AssetLoader::constructTriangle()
 {
-    /* =======================================================
+    /*
         The faces of a wavefront mesh will be treated as 
         primitives. I.e. they should have 3 points, each with 
         3 different vertex attributes. If the face data 
         contains any more than 9 vertex attribute indexes we 
         know this mesh hasn't been triangulated and isn't
         supported.
-    ========================================================== */
+    */
 
     if ( this->attributeIndexes.size() !=  9)
     {
@@ -1645,11 +1645,11 @@ lazarus_result AssetLoader::constructTriangle()
     this->normalIndices.push_back(std::stoi(this->attributeIndexes[5]));
     this->normalIndices.push_back(std::stoi(this->attributeIndexes[8]));
 
-    /* ===================================================
+    /*
         This function is currently only used for loading
         wavefront which doesn't support animation. So the
         values pushed back here are arbitrary.
-    ====================================================== */
+    */
 
     this->jointIndices.push_back(1);
     this->jointIndices.push_back(1);
@@ -1665,9 +1665,9 @@ lazarus_result AssetLoader::constructTriangle()
 
 void AssetLoader::resetMembers()
 {
-    /* =============================
+    /*
         Glb
-    ================================ */
+    */
 
     this->nodes.clear();
     this->mesh.clear();
@@ -1683,9 +1683,9 @@ void AssetLoader::resetMembers()
     this->binaryData.clear();
     this->animations.clear();
 
-    /* =============================
+    /*
         Obj / Mtl
-    ================================ */
+    */
 
     this->wavefrontCoordinates.clear();
     this->materialBuffer.clear();
@@ -1693,9 +1693,9 @@ void AssetLoader::resetMembers()
     this->materialIdentifierIndex = 0;
     this->triangleCount = 0;
     
-    /* =============================
+    /*
         Shared
-    ================================ */
+    */
     
     this->vertexIndices.clear();
     this->normalIndices.clear();

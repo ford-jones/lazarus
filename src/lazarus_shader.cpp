@@ -611,7 +611,7 @@ lazarus_result Shader::checkErrors(const char *file, uint32_t line)
 
 void Shader::clearErrors()
 {
-    /* ============================================================
+    /*
         Reset OpenGL's error state by flushing out all of the 
         internal state flags containing the error value (which may 
         be several). This is so that persistence of an errors 
@@ -622,7 +622,7 @@ void Shader::clearErrors()
         
         Absolutely painful, see:
         https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetError.xhtml#:~:text=glGetError%20should%20always%20be%20called%20in%20a%20loop
-    ================================================================ */
+    */
 
     this->errorCode = glGetError();
 

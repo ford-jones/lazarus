@@ -116,7 +116,7 @@ lazarus_result LightManager::loadLightSource(LightManager::Light &lightIn, int32
     }
     else
     {
-        /* ==============================================================
+        /*
             When using a shader other than that which this light manager
             was initialised with, we need to rediscover and reset the 
             values of the uniform arrays. This is an expensive opperation
@@ -126,7 +126,7 @@ lazarus_result LightManager::loadLightSource(LightManager::Light &lightIn, int32
             Another noteworthy performance reduction is that regardless
             of how many lights have been loaded with 'shader', the entire
             lightCount is sent and iterated over.
-        ================================================================= */
+        */
 
         this->clearErrors();
 

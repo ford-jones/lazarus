@@ -87,7 +87,7 @@ lazarus_result FontLoader::loadCharacter(FileLoader::Image &glyph, char characte
     this->fontFace = fontStack[fontIndex - 1];
     this->keyCode = static_cast<uint8_t>(character);
 
-    /* ====================================================================
+    /*
         The glyph needs to be rotated on load, prior to being rendered to a
         bitmap. When rendered; each glyph will then be aligned on the 
         bottom of it's bounding box rather than the default behaviour which 
@@ -99,7 +99,7 @@ lazarus_result FontLoader::loadCharacter(FileLoader::Image &glyph, char characte
 
         If you need to see what I mean, disable the following line and use
         renderDoc to inspect the texture once it's on the GPU.
-    ======================================================================= */
+    */
     this->flipGlyph();
 
     this->glyphIndex = FT_Get_Char_Index(fontFace, keyCode);
@@ -167,13 +167,13 @@ void FontLoader::flipGlyph()
     pixelStore.x = 1 * 64;
     pixelStore.y = 1 * 64;
 
-    /* =========================================
+    /*
         Construct a transformation matrix used to
         flip the glyph vertically. This is to 
         accomidate OpenGL's cartesian coordinate
         system (0.0 being bottom left instead of top 
         left).
-    ============================================ */
+    */
     transformationMatrix.xx = (FT_Fixed)( cos( 0.0f ) * 0x10000L );
     transformationMatrix.xy = (FT_Fixed)(-sin( 0.0f ) * 0x10000L );
     transformationMatrix.yx = (FT_Fixed)( sin( 0.0f ) * 0x10000L );
@@ -181,11 +181,11 @@ void FontLoader::flipGlyph()
 
     FT_Set_Transform( fontFace, &transformationMatrix, &pixelStore);
 
-    /* ==========================================
+    /*
         Advance the pen / cursor / locator to the 
         end of the active glyph's coordinates to 
         be properly located for next glyph load.
-    ============================================= */
+    */
     pixelStore.x += fontFace->glyph->advance.x;
     pixelStore.y += fontFace->glyph->advance.y;
 
@@ -252,7 +252,7 @@ lazarus_result TextManager::initialise()
         return status;
     };
 
-    /* ===============================================
+    /*
         Unlike other mesh assets (i.e. 3D mesh or 
         sprites), quads which are wrapped with a glyph
         texture are rendered using an orthographic 
@@ -261,7 +261,7 @@ lazarus_result TextManager::initialise()
         saving glyph draw calls till last, prior to 
         swapping the front and back buffers. This 
         gives the effect of 2D / HUD text.
-    ================================================== */
+    */
 
     return cameraBuilder->createOrthoCam(camera, config);
 };
@@ -278,12 +278,12 @@ lazarus_result TextManager::extendFontStack(uint32_t &fontId, std::string filepa
         return status;
     };
     
-    /* ===========================================================================
+    /*
         The expression (n - 33) AKA (i = 33 && i < 128) occurs in several places 
         and is used to skip control keys as well as calculate the offset for 
         non-control characters (i.e. keycodes which don't have a unicode UTF-8 
         glyph associated with them. e.g. shift / ctrl).
-    ============================================================================== */
+    */
 
     rowWidth = 0;
     rowHeight = 0;
@@ -293,7 +293,7 @@ lazarus_result TextManager::extendFontStack(uint32_t &fontId, std::string filepa
     uint32_t yOffset = 0;
     uint32_t xOffset = 0;
     
-    /* ============================================
+    /*
         Provision storage for known aphabets.
         
         I.e.
@@ -301,7 +301,7 @@ lazarus_result TextManager::extendFontStack(uint32_t &fontId, std::string filepa
         equal to the width of each char in the widest
         font and the sum of the heights of each font's
         tallest char.
-    =============================================== */
+    */
     for(size_t n = 0; n < this->fontIndex; n++)
     {   
         rowHeight = 0;
@@ -329,10 +329,10 @@ lazarus_result TextManager::extendFontStack(uint32_t &fontId, std::string filepa
         };
     }
     
-    /* =============================================
+    /*
         Load each character of each font to it's
         respective location within the texture atlas.
-    ================================================ */
+    */
     for(size_t n = 0; n < this->fontIndex; n++)
     {
         characters.clear();
@@ -340,9 +340,9 @@ lazarus_result TextManager::extendFontStack(uint32_t &fontId, std::string filepa
         yOffset = alphabetHeights[n * 2];
         xOffset = 0;
         
-        /* ==========================================
+        /*
             +1 for zero-exclusive keycode indexing
-        ============================================= */
+        */
         
         for(uint32_t i = 33; i < INT8_MAX + 1; i++)
         {
@@ -401,14 +401,14 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
     TextManager::TextConfig &settings = textIn.config;
     lazarus_result status = lazarus_result::LAZARUS_OK;
     
-    /* =================================================
+    /*
         Creation of these tiles takes up space in the
         manager's dataStore and will grow indefinitely
         if not flushed out. 
         
         Also helps ensure the location of the tiles at
         the time of draw. I.e. index 0 .. n
-    ==================================================== */
+    */
     
     ModelManager::clearMeshStorage();
     
@@ -419,7 +419,7 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
     
     this->translationStride = 0;
     
-    /* ==========================================
+    /*
         Generate new tiles which are used as 
         texture surfaces for a letter. 
 
@@ -431,7 +431,7 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
         out-by-one error here resulting in the 
         edges of nearby neighbours in the texture 
         atlas to be mapped to the quad.
-    ============================================= */
+    */
     
     for(size_t i = 0; i < settings.targetString.size(); i++)
     {   
@@ -454,10 +454,10 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
         {
             return status;
         };
-        /* =============================================
+        /*
             Translate the tile to it's location within
             the word, relative to the other letters.
-        ================================================ */
+        */
         status = transformer.translateModel(
             quad, 
             static_cast<float>((settings.location.x + (this->glyph.width / 2.0f)) + this->translationStride), 
@@ -473,11 +473,11 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
         this->word.push_back(quad);
     };
 
-    /* ============================================
+    /*
         Cleanup the layout at the locaiton of an
         entry and assume its position with the new
         set of tiles.
-    =============================================== */
+    */
 
     layout.erase(textIn.layoutIndex);
     layout.insert_or_assign(textIn.layoutIndex, this->word);
@@ -514,12 +514,12 @@ lazarus_result TextManager::drawText(TextManager::Text textIn)
 
 lazarus_result TextManager::identifyAlphabetDimensions(uint32_t fontId)
 {
-    /* =====================================================
+    /*
         Glyphs will be loaded into the texture atlas in a 
         continuous line. The height of this line is equal to 
         the tallest glyph bitmap and the width is equal to 
         the culmilative width of each glyph's bitmap.
-    ======================================================== */
+    */
     this->rowWidth = 0;
     this->rowHeight = 0;
 
@@ -543,11 +543,11 @@ lazarus_result TextManager::identifyAlphabetDimensions(uint32_t fontId)
 
 void TextManager::setActiveGlyph(char target, uint32_t fontId, uint32_t spacing)
 {
-    /* =====================================================
+    /*
         If the active glyph is a space; set the UV coordinates
         to be outside of the texture atlas. That way the 
         sampled area of the atlas will contain nothing.
-    ======================================================== */
+    */
 
     if(target == ' ')
     {
@@ -579,11 +579,11 @@ void TextManager::lookUpUVs(uint8_t keyCode, uint32_t fontId)
     uint32_t targetXL = 0;
     uint32_t targetXR = 0;
 
-    /* ===========================================================================
+    /*
         Calculate L / R / T / B UV coordinates / where the glyph is located in
         the alphabet texture atlas. Divide by primary monitor dimensions to get 
         normalised value.
-    ============================================================================== */
+    */
     for(uint8_t i = 0; i < range; ++i)
     {
         this->glyph = characters.at(i);
@@ -596,10 +596,10 @@ void TextManager::lookUpUVs(uint8_t keyCode, uint32_t fontId)
     float uvRangeX = static_cast<float>(this->atlasWidth);
     float uvRangeY = static_cast<float>(this->atlasHeight);
     
-    /* ===================================================
+    /*
         Normalise the values of the pixel locations within
         the dimensions of the texture atlas.
-    ====================================================== */
+    */
     this->uvL = static_cast<float>(targetXL) / uvRangeX;
     this->uvR = static_cast<float>(targetXR) / uvRangeX;
     this->uvU = static_cast<float>(this->alphabetHeights[(fontId * 2) + 1]) / uvRangeY;

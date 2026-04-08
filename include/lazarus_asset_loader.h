@@ -24,10 +24,10 @@
 	#include "lazarus_common.h"
 #endif
 
-/* =========================================
+/*
     Required for generating hashes for glm
     types.
-============================================ */
+*/
 #define GLM_ENABLE_EXPERIMENTAL
 
 #include <iostream>

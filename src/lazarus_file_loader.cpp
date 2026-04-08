@@ -19,12 +19,12 @@
 
 #include "../include/lazarus_file_loader.h"
 
-/* =============================================
+/*
     Note: These definitions must be compiled as
     source / baked-in for stb libraries to work.
     I.e. they must be in scope of 1 source file
     and so can't be linked all over the place.
-================================================ */
+*/
 
 #ifndef STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
@@ -113,7 +113,7 @@ lazarus_result FileLoader::loadImage(FileLoader::Image &out, const char *filenam
     
     if(raw == NULL && filename)
     {   
-        /* ====================================================
+        /*
             Images should be flipped on load due to the fact that 
             most file formats store the (x: 0.0, y: 0.0) coordinate
             at the top left (first pixel of first row), while 
@@ -122,17 +122,17 @@ lazarus_result FileLoader::loadImage(FileLoader::Image &out, const char *filenam
 
             It seems the exception to this rule are glb files
             (i.e. load_from_memory).
-        ======================================================= */
+        */
         stbi_set_flip_vertically_on_load(flipVert);
         this->imageData = stbi_load(filename, &imageWidth, &imageHeight, &channelCount, 0);
     }
     else
     {
         stbi_set_flip_vertically_on_load(flipVert);
-        /* =============================================================
+        /*
             If the file has already been opened and read elsewhere in 
             the program, but has not yet been decoded.
-        ================================================================ */
+        */
         this->imageData = stbi_load_from_memory(const_cast<stbi_uc*>(raw), size, &imageWidth, &imageHeight, &channelCount, 0);
     }
 
@@ -144,7 +144,7 @@ lazarus_result FileLoader::loadImage(FileLoader::Image &out, const char *filenam
 
         if(enforceResize == true && this->maxWidth > 0 && this->maxHeight > 0)
         {   
-            /* ================================================= 
+            /*
                 Evil solution (the correct way):
             
                 The return value of stbir_resize_uint8, unlike 
@@ -156,16 +156,16 @@ lazarus_result FileLoader::loadImage(FileLoader::Image &out, const char *filenam
                 actual byte array.
             
                 See: https://stackoverflow.com/a/65873156/23636614
-            ==================================================== */
+            */
             outResize = (unsigned char *) malloc(this->maxWidth * this->maxHeight * channelCount);
 
             resizeStatus = stbir_resize_uint8(this->imageData, imageWidth, imageHeight, 0, outResize, this->maxWidth, this->maxHeight, 0, channelCount);
 
             if(resizeStatus == 1)
             {
-                /* ===============================================
+                /*
                     Resize success, send back result.
-                ================================================== */
+                */
 
                 out.pixelData = outResize;
                 out.height = this->maxWidth;
@@ -175,10 +175,10 @@ lazarus_result FileLoader::loadImage(FileLoader::Image &out, const char *filenam
             }
             else 
             {
-                /* ================================================
+                /*
                     Resize failed so send back the image as it was
                     when loaded.
-                =================================================== */
+                */
 
                 out.pixelData = this->imageData;
                 out.height = imageHeight;
@@ -192,10 +192,10 @@ lazarus_result FileLoader::loadImage(FileLoader::Image &out, const char *filenam
         }
         else
         {
-            /* ==========================================
+            /*
                 Send back the data as-is, user doesn't
                 want to resize.
-            ============================================= */
+            */
 
             out.pixelData = this->imageData;
             out.height = imageHeight;
@@ -206,9 +206,9 @@ lazarus_result FileLoader::loadImage(FileLoader::Image &out, const char *filenam
     }
 	else
 	{
-        /* ===============
+        /*
             Load failed.
-        ================== */
+        */
 
         out.pixelData = NULL;
         out.height = 0;
@@ -246,10 +246,10 @@ std::vector<std::string> FileLoader::extractContainedContents(std::string bounds
     int32_t start = 0;
     int32_t end = 0;
 
-    /* ==============================================
+    /*
         Identify target containers and split-out their
         contents.
-    ================================================= */
+    */
 
     while(moreToUnpack)
     {

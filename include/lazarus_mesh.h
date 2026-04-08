@@ -241,10 +241,10 @@ class ModelManager
         std::unique_ptr<FileLoader> finder;
         TextureLoader::StorageType textureStorage;
 
-        /* ====================================
+        /*
             Convert std::map to std::set once
             instanced rendering is available.
-        ======================================= */
+        */
 
         Model modelOut;
         MeshData meshData;

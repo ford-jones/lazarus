@@ -62,7 +62,7 @@ lazarus_result WorldFX::createSkyBox(WorldFX::Skybox &out, std::string rightPath
 
 lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox skyboxIn, CameraManager::Camera camera)
 {
-    /* ===========================================================
+    /*
         For the illusion of infinite depth of the skybox  tp work, 
         the translation transform needs to be culled from the
         viewing matrix (the result of the glm::lookAt() operation 
@@ -73,7 +73,7 @@ lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox skyboxIn, CameraManager::Came
         describes the vertex position from the origin and replaces
         it with 0's (essentially back at the origin). It's then
         changed back again afterwards.
-    ============================================================== */
+    */
     glDisable           (GL_CULL_FACE);
 
     glm::mat4 viewFromOrigin = glm::mat4(glm::mat3(camera.viewMatrix)); 
@@ -198,7 +198,7 @@ lazarus_result WorldFX::loadSkyMap()
             return status;
         };
         
-        /* =======================================================
+        /*
             Validate that the image inputs for the cubemap are 
             each of the same size. 
 
@@ -208,7 +208,7 @@ lazarus_result WorldFX::loadSkyMap()
             func so that this execution state isn't overwritten 
             with 301 (LAZARUS_OPENGL_ERROR) by the textureLoader's 
             checkErrors subroutine.
-        ========================================================== */
+        */
         if(
             this->skyBoxOut.cubeMap.size() > 0 && 
             (image.width != image.height || image.width != this->skyBoxOut.cubeMap[0].width)
@@ -222,11 +222,11 @@ lazarus_result WorldFX::loadSkyMap()
         this->skyBoxOut.cubeMap.push_back(image);
     };
 
-    /* =============================================================
+    /*
         Access the same texture ID values used by the skybox's mesh.
         Do so by using the ModelManager's TextureManager inherited 
         members to perform texture operations for this skybox.
-    ================================================================ */
+    */
     
     status = ModelManager::TextureLoader::storeCubeMap(this->skyBoxOut.cubeMap[0].width, this->skyBoxOut.cubeMap[0].height);
     if(status != lazarus_result::LAZARUS_OK)

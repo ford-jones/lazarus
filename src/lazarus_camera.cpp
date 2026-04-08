@@ -53,10 +53,10 @@ lazarus_result CameraManager::createPerspectiveCam(CameraManager::Camera &out, C
 
     this->setAspectRatio(camera.config.aspectRatioX, camera.config.aspectRatioY);
 
-    /* ===============================================
+    /*
         The direction of the back of the camera, so
         the camera is actually looking down +X
-    ================================================== */
+    */
     glm::vec3 inverseTarget     = glm::vec3(-1.0f, 0.0f, 0.0f);
 
     camera.position             = vec3(0.0f, 0.0f, 0.0f);
@@ -64,9 +64,9 @@ lazarus_result CameraManager::createPerspectiveCam(CameraManager::Camera &out, C
     camera.upVector             = vec3(0.0f, 1.0f, 0.0f);
     
     camera.viewMatrix           = glm::lookAt(camera.position, (camera.position + camera.direction), camera.upVector);
-    /* ================================
+    /*
         45° = 0.785398 radians
-    =================================== */ 
+    */ 
     camera.projectionMatrix     = glm::perspective(0.785398f, this->aspectRatio, 0.1f, camera.config.clippingDistance);
 
     camera.usesPerspective      = 1;
@@ -92,10 +92,10 @@ lazarus_result CameraManager::createOrthoCam(CameraManager::Camera &out, CameraM
         camera.config.name.append(std::to_string(camera.id));
     };
 
-    /* ================================================
+    /*
         Negative Z so as to be "back" from the viewing
         plane.
-    =================================================== */
+    */
     camera.position             = vec3(0.0f, 0.0f, -1.0f);
     camera.direction            = glm::normalize(camera.position);
     camera.upVector             = vec3(0.0f, 1.0f, 0.0f);
@@ -139,11 +139,11 @@ lazarus_result CameraManager::loadCamera(CameraManager::Camera &cameraIn)
     return lazarus_result::LAZARUS_OK;
 };
 
-/* ==============================================
+/*
     TODO:
     Create a function for ray-picking positions
     in worldspace out from the camera.
-================================================= */
+*/
 
 lazarus_result CameraManager::getPixelOccupant(uint32_t positionX, uint32_t positionY, uint8_t &out)
 {
@@ -152,22 +152,22 @@ lazarus_result CameraManager::getPixelOccupant(uint32_t positionX, uint32_t posi
         this->pixel = 0;
         if(positionX < pixelWidth && positionY < pixelHeight) {
             this->clearErrors();
-            /* ============================================
+            /*
                 Perform an inversion of the window's y-axis
                 to accomidate for FBO's measure of 
                 pixel's from the top-left corner of the
                 screen as opposed to bottom-left.
-            =============================================== */
+            */
             uint32_t inverseY = pixelWidth - positionY;
         
-            /* =================================================
+            /*
                 Read entity ID's if present from the back-buffer's 
                 stencil-depth buffer. If none are present at the
                 pixel site the result will be 0.
     
                 Note: Minus positions by 1 because the pixels 
                 are zero-indexed inside the framebuffer.
-            ==================================================== */
+            */
             glReadBuffer(GL_BACK);
             glReadPixels(
                 (positionX - 1), 
@@ -191,7 +191,7 @@ lazarus_result CameraManager::getPixelOccupant(uint32_t positionX, uint32_t posi
                 out = stencilId;
             };
         }
-        /* =================================================
+        /*
             else
             {
                 globals.setExecutionState(lazarus_result::LAZARUS_INVALID_COORDINATE);
@@ -199,7 +199,7 @@ lazarus_result CameraManager::getPixelOccupant(uint32_t positionX, uint32_t posi
 
             Would be good to have this here but out of frame
             cursor positions continue being recorded...
-        ==================================================== */
+        */
     }
     else
     {
@@ -214,11 +214,11 @@ lazarus_result CameraManager::getPixelOccupant(uint32_t positionX, uint32_t posi
 
 void CameraManager::setAspectRatio(uint32_t x, uint32_t y)
 {
-    /* ===============================================
+    /*
         If a target aspect ratio has been defined then
         use that. Otherwise use the dimensions 
         returned from the machine's primary monitor.
-    ================================================== */
+    */
     if((x + y) > 0)
     {
         this->aspectRatio      = static_cast<float>(x) / static_cast<float>(y);

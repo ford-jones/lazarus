@@ -145,11 +145,11 @@ lazarus_result EventManager::eventsInit()
 		});
 
 		glfwSetMouseButtonCallback(win, [](GLFWwindow *win, int button, int action, int mods){			
-			/* ==========================================
+			/*
 				Buttons are zero-indexed, i.e. left click
 				is 0. Instead; here zero is reserved for 
 				displaying release state.
-			============================================= */
+			*/
 			int32_t mouseButton = 0;
 
 			if(action != GLFW_RELEASE)
@@ -184,20 +184,20 @@ lazarus_result EventManager::eventsInit()
 
 lazarus_result EventManager::monitorEvents()
 {	
-	/* ============================================
+	/*
 		Release all events that were in the queue 
 		at the time of the previous call to poll and 
 		replace them with any events processed via
 		callbacks inbetween.
-	=============================================== */
+	*/
 	this->eventQueue.clear();
-	/* ========================================================
+	/*
 		The glfw scroll state when monitored can only be on or
 		off - there is no scroll "neutral" state, so one is 
 		created here. It's only changed then when the callback
 		is fired and the result is polled. it will then be 
 		reset here appropriately.
-	=========================================================== */
+	*/
 	this->latestScrollState = 0;
     glfwPollEvents();
 
@@ -206,12 +206,12 @@ lazarus_result EventManager::monitorEvents()
 
 lazarus_result EventManager::convertKeyName(int32_t key, int32_t scan, std::string &out)
 {	
-	/* =========================================
+	/*
 		Check the static global value as it 
 		accounts for signedness, which is needed
 		to check the name of GLFW_KEY_UNKNOWN
 		with the scancode
-	============================================ */
+	*/
 	switch(key)
 	{
 		case GLFW_KEY_UP :
@@ -247,11 +247,11 @@ lazarus_result EventManager::convertKeyName(int32_t key, int32_t scan, std::stri
 		case GLFW_KEY_RIGHT_CONTROL :
 			out = "ctrl-r";
 			break;
-		/* ==================================
+		/*
 			TODO: 
 			alt and super keys seem buggy?
 			investigate.
-		===================================== */
+		*/
 		
 		case GLFW_KEY_LEFT_ALT :
 			out = "alt-l";
@@ -329,11 +329,11 @@ lazarus_result EventManager::convertKeyName(int32_t key, int32_t scan, std::stri
 			out = "pgdn";
 			break;
 		case GLFW_KEY_UNKNOWN :
-			/* ============================================
+			/*
 				Unkown key. Use the scancode (which is 
 				specific to the hardware as opposed to the 
 				ascii code).
-			=============================================== */
+			*/
 			out = glfwGetKeyName(key, scan);
 			break;
 		default :
@@ -378,7 +378,7 @@ void EventManager::dispatchEvent(EventManager::EventType variant, int32_t aValue
 	event = {};
 	event.type = variant;
 
-	/* ================================================
+	/*
 		Identify whether input states returned by glfw
 		are any different to what they were when the
 		last event of that type was checked-in.
@@ -386,7 +386,7 @@ void EventManager::dispatchEvent(EventManager::EventType variant, int32_t aValue
 		Dispatch those that pass this check to the 
 		queue and checkin the new input to the relevant
 		state variable.
-	=================================================== */
+	*/
 	switch (event.type)
 	{
 		case EventType::KEY_PRESS:
@@ -486,9 +486,9 @@ WindowManager::WindowManager(const char *title, uint32_t width, uint32_t height)
 	originalWidth = this->frame.width;
 	originalHeight = this->frame.height;
 
-    /* ==================
+    /*
         Optional
-    ===================== */
+    */
     this->monitor = NULL;
 
     this->videoMode = NULL;
@@ -508,7 +508,7 @@ lazarus_result WindowManager::createWindow()
 		return status;
     };
 
-    /* ==================================================
+    /*
       MacOS support:
       Can't use latest version of the OpenGL context (4.6).
       Based on what I've read online - Apple deprecated 
@@ -518,7 +518,7 @@ lazarus_result WindowManager::createWindow()
       The only way I've been able to get it working is to 
       explicitly request this older version of the GL context
       with GLEW experimental features also turned on.
-    ===================================================== */
+    */
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
@@ -583,7 +583,7 @@ lazarus_result WindowManager::createWindow()
 		return status;
 	};
 
-    /* ========================================================================== 
+    /*
         Note that alot of the GL ecosystem uses C-style callbacks. The repercussion
         being that pointers such as "this" cannot be used because of the required
         function signature being a static constant. 
@@ -591,7 +591,7 @@ lazarus_result WindowManager::createWindow()
         The solution here is to set the glfw user pointer value to "this" (i.e. 
         this class) and then perform a get on the user pointer inside of the actual 
         callback, which; is declared inline as a non-capturing lambda function.
-    ============================================================================= */
+    */
     glfwSetWindowUserPointer(this->window, this);
 
     glfwSetWindowCloseCallback(this->window, [](GLFWwindow *win){
@@ -646,11 +646,11 @@ lazarus_result WindowManager::loadConfig()
     }
     else
     {
-        /* ======================================
+        /*
             Unless Vsync is disabled, go 
             frame-for-frame between rendering and
             processing.
-        ========================================= */
+        */
         glfwSwapInterval(1);
     };
 
@@ -671,7 +671,7 @@ lazarus_result WindowManager::toggleFullscreen()
 {
 	if(!this->isFullscreen)
 	{
-		/* =============================================
+		/*
 			Track original size so as to restore to
 			previous state on next toggle. Note that
 			usage of this->frame directly causes a
@@ -679,7 +679,7 @@ lazarus_result WindowManager::toggleFullscreen()
 			overwritten by WindowManager::resize(...) 
 			when the callback is fired after this
 			function is called.
-		================================================ */
+		*/
 
 		this->originalWidth = this->frame.width;
 		this->originalHeight = this->frame.height;
@@ -696,7 +696,7 @@ lazarus_result WindowManager::toggleFullscreen()
 	}
 	else
 	{
-		/* ====================================
+		/*
 			Frame width and height should be
 			preserved from last time the screen
 			was fullscreen. If it was never
@@ -704,7 +704,7 @@ lazarus_result WindowManager::toggleFullscreen()
 
 			the default or the last size 
 			specified by the user.
-		======================================= */
+		*/
 
 		this->frame.width = this->originalWidth;
 		this->frame.height = this->originalHeight;
@@ -732,14 +732,14 @@ lazarus_result WindowManager::toggleFullscreen()
 
 lazarus_result WindowManager::resize(uint32_t width, uint32_t height)
 {
-	/* ===========================================
+	/*
 		Due to this being set as the glfw 
 		framebuffer resize callback, this is in
 		turn also fired following a call to 
 		WindowManager::toggleFullscreen(), hence
 		why setDisplaySize doesn't need to be 
 		called there.
-	============================================== */
+	*/
 
 	this->frame.height = height;
 	this->frame.width = width;
@@ -810,39 +810,39 @@ lazarus_result WindowManager::presentNextFrame()
     return this->checkErrors(__FILE__, __LINE__);
 };
 
-/* =========================================
+/*
 	TODO:
 	Consider using color buffer instead of 
 	stencil buffer for this. Currently the 
 	max number of entities is 255 due to
 	only being able to store 8-bit numbers 
 	in the stencil-depth buffer.
-============================================ */
+*/
 lazarus_result WindowManager::monitorPixelOccupants()
 {
-	/* ==========================================
+	/*
 		Notifies MeshManager::drawMesh to draw 
 		not only VBO contents but also to draw to
 		the stencil buffer.
-	============================================= */
+	*/
 	if(!GlobalsManager::getManageStencilBuffer()) 
 	{
 		GlobalsManager::setManageStencilBuffer(true);
 	};
 
-	/* ==========================================
+	/*
 		Stop tests from last cycle.
-	============================================= */
+	*/
 	glDisable(GL_STENCIL_TEST);
     glDisable(GL_DEPTH_TEST);
 
-	/* ==========================================
+	/*
 		Begin the stencil-depth test for the 
 		cycle. Fill the depth-buffer with 0's 
 		which are only replaced when the test is
 		passed. (I.e. The fragment(s) is actually 
 		occupying some pixel(s) in screenspace.)
-	============================================= */
+	*/
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_STENCIL_TEST);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);

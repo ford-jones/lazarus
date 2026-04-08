@@ -37,10 +37,10 @@ using std::shared_ptr;
 #ifndef LAZARUS_TRANSFORMS_H
 #define LAZARUS_TRANSFORMS_H
 
-/* =====================================================
+/*
 	TODO:
 	1. Light rotation (For use with directional lights)
-======================================================== */
+*/
 
 class Transform
 {	

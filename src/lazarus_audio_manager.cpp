@@ -44,10 +44,10 @@ lazarus_result AudioManager::initialise()
 	this->reader = std::make_unique<FileLoader>();
 
 	this->result = FMOD::System_Create(&this->system);
-	/* ==============================================
+	/*
 		Initialise the system with a right-handed 
 		coordinate system, the same as OpenGL's
-	================================================= */
+	*/
 	this->result = system->init(512, FMOD_INIT_3D_RIGHTHANDED, 0);
 	this->result = system->createChannelGroup("lazarusGroup", &this->mixer);
 
@@ -238,10 +238,10 @@ lazarus_result AudioManager::updateListenerLocation(glm::vec3 location)
 {
 	this->currentListenerPosition = {location.x, location.y, location.z};
 
-	/* =====================================
+	/*
 		TODO:
 		Change (1000 / 60) to FpsCounter::durationTillRendered
-	======================================== */
+	*/
 
 	this->listenerVelocity = {
 		((this->currentListenerPosition.x - this->prevListenerPosition.x) / (1000 / 60)),
@@ -271,7 +271,7 @@ lazarus_result AudioManager::updateListenerLocation(glm::vec3 location)
 
 lazarus_result AudioManager::validateAudioHandle(AudioData &audioData)
 {
-	/* =========================================
+	/*
 		Channel handles become invalid upon it's
 		audio playback reaching completion. 
 		https://www.fmod.com/docs/2.02/api/white-papers-handle-system.html#core-api-channels
@@ -279,18 +279,18 @@ lazarus_result AudioManager::validateAudioHandle(AudioData &audioData)
 		Perform a channel operation that has
 		little overhead so that the result can
 		be checked.
-	============================================ */
+	*/
 	int index = 0;
 	this->result = audioData.channel->getIndex(&index);
 	
 	if(result == FMOD_ERR_INVALID_HANDLE)
 	{
-		/* ===============================================
+		/*
 			Ensure that the AudioData object is holding an 
 			up to date reference to a valid channel handle 
 			by having FMOD reload the sample into one of
 			it's free channels (512 max).
-		================================================== */
+		*/
 		this->result = system->playSound(
 			audioData.sound, 
 			audioData.group, 
