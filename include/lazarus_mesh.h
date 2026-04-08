@@ -149,6 +149,7 @@ class ModelManager
         lazarus_result setActiveAnimation(Model &meshIn, uint32_t animationIndex);
         lazarus_result setToPosePosition(Model &meshIn);
         lazarus_result pauseAnimation(Model &meshIn);
+        lazarus_result playAnimation(Model &meshIn);
 
         virtual ~ModelManager();
         
@@ -171,16 +172,22 @@ class ModelManager
                 glm::mat4 jointMatrix;
 
                 std::vector<AssetLoader::AssetData::JointMotion> animationData;
-                uint32_t sequenceCursor = 0;
+
+                uint32_t playbackPosition = 0;  //  Animation playback pos relative to duration
+                uint32_t elapsedPlaytime = 0;   //  The total amount of time the animation has been playing for
+                uint32_t previousPlaytime = 0;  //  The above ^ value last-tick
             };
 
             uint32_t id;
             uint8_t stencilBufferId;
+
             uint32_t instanceCount;
-            uint32_t animationCount = 0;
+
             uint8_t isAnimated;
             int16_t armatureRoot = -1;
             int32_t activeAnimation = -1;
+            uint32_t animationCount = 0;
+            bool animationPaused = true;
             
             GLuint VAO;     //  Vertex Array Object
             GLuint VBO;     //  Vertex Buffer Object (attributes: interleaved)
@@ -215,7 +222,7 @@ class ModelManager
         glm::mat4 computeLocalJointTransform(MeshData::MotionPoint &motionPoint, uint32_t animationID);
 
         void loadAnimation(MeshData &data);
-        uint32_t getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t &sequenceCursor);
+        uint32_t getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t &playbackPosition, uint32_t &elapsedMs, uint32_t &previousMs);
         glm::vec4 getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t frameBegin, uint32_t sequenceCursor);
         
         uint32_t childCount;
@@ -224,9 +231,6 @@ class ModelManager
 
         uint32_t maxTexWidth;
         uint32_t maxTexHeight;
-
-        uint32_t previousMs;
-        uint32_t upTimeMs;
 
 		GLuint shaderProgram;
         GLint meshVariantLocation;

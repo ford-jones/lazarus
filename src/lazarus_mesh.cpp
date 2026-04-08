@@ -26,8 +26,6 @@ ModelManager::ModelManager(GLuint shader, TextureLoader::StorageType textureType
 	LOG_DEBUG("Constructing Lazarus::ModelManager");
 
     this->childCount = 0;
-    this->previousMs = 0;
-    this->upTimeMs = 0;
 
     this->shaderProgram = shader;
     this->finder = std::make_unique<FileLoader>();
@@ -1107,7 +1105,7 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
 
             LOG_DEBUG("Uploading animation data");
 
-            if(data.activeAnimation != -1)
+            if(data.activeAnimation != -1 && !data.animationPaused)
             {
                 this->loadAnimation(data);
             };
@@ -1206,13 +1204,13 @@ glm::mat4 ModelManager::computeLocalJointTransform(ModelManager::MeshData::Motio
         asset.
     ====================================================== */
 
-    uint32_t translateIdx = this->getKeyframeIndex(motionData.translation, motionPoint.sequenceCursor);
-    uint32_t rotateIdx = this->getKeyframeIndex(motionData.rotation, motionPoint.sequenceCursor);
-    uint32_t scaleIdx = this->getKeyframeIndex(motionData.scale, motionPoint.sequenceCursor);
+    uint32_t translateIdx = this->getKeyframeIndex(motionData.translation, motionPoint.playbackPosition, motionPoint.elapsedPlaytime, motionPoint.previousPlaytime);
+    uint32_t rotateIdx = this->getKeyframeIndex(motionData.rotation, motionPoint.playbackPosition, motionPoint.elapsedPlaytime, motionPoint.previousPlaytime);
+    uint32_t scaleIdx = this->getKeyframeIndex(motionData.scale, motionPoint.playbackPosition, motionPoint.elapsedPlaytime, motionPoint.previousPlaytime);
 
-    glm::vec4 translateKey = this->getTransformLerp(motionData.translation, translateIdx, motionPoint.sequenceCursor);
-    glm::vec4 rotateKey = this->getTransformLerp(motionData.rotation, rotateIdx, motionPoint.sequenceCursor);
-    glm::vec4 scaleKey = this->getTransformLerp(motionData.scale, scaleIdx, motionPoint.sequenceCursor);
+    glm::vec4 translateKey = this->getTransformLerp(motionData.translation, translateIdx, motionPoint.playbackPosition);
+    glm::vec4 rotateKey = this->getTransformLerp(motionData.rotation, rotateIdx, motionPoint.playbackPosition);
+    glm::vec4 scaleKey = this->getTransformLerp(motionData.scale, scaleIdx, motionPoint.playbackPosition);
 
     glm::mat4 localTransform = (
         glm::translate(glm::mat4(1.0f), glm::vec3(translateKey)) *
@@ -1223,20 +1221,22 @@ glm::mat4 ModelManager::computeLocalJointTransform(ModelManager::MeshData::Motio
     return localTransform;
 };
 
-uint32_t ModelManager::getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t &sequenceCursor)
+uint32_t ModelManager::getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t &playbackPosition, uint32_t &elapsedMs, uint32_t &previousMs)
 {
     /* ==================================================
-        Poll time delta and update timestep cursor
+        Determine how many ms have passed since this was
+        last called.
+
+        TODO: Find way to remove division
     ===================================================== */
     std::chrono::system_clock::duration epoch = std::chrono::system_clock::now().time_since_epoch();
     uint32_t currentMs = epoch / std::chrono::milliseconds(1);
-    uint32_t timeDelta = currentMs - this->previousMs;
-    this->previousMs = currentMs;
-    this->upTimeMs += timeDelta;
+    uint32_t timeDelta = currentMs - previousMs;
+    previousMs = currentMs;
+    elapsedMs += timeDelta;
 
     /* ======================================================
-        Lock time-advance within the maximum duration of the
-        active motion.
+        Determine motions total duration.
     ========================================================= */
     uint32_t durationMax = static_cast<uint32_t>(motion.timesteps.back() * 1000.0f);
 
@@ -1244,7 +1244,9 @@ uint32_t ModelManager::getKeyframeIndex(AssetLoader::AssetData::JointMotion::Tra
         Establish current location in the frame 
         sequence.
     ============================================== */
-    uint32_t now = upTimeMs % durationMax;
+    uint32_t now = elapsedMs % durationMax;
+    playbackPosition = now;
+
     std::vector<float>::iterator it = std::find_if(
         motion.timesteps.begin(), 
         motion.timesteps.end(), 
@@ -1257,13 +1259,12 @@ uint32_t ModelManager::getKeyframeIndex(AssetLoader::AssetData::JointMotion::Tra
             return now < timestep;
         }
     );
-    sequenceCursor = now;
     uint32_t index = it - motion.timesteps.begin();
 
     return index;
 };
 
-glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t frameBegin, uint32_t sequenceCursor)
+glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t frameBegin, uint32_t playbackPosition)
 {
     /* =============================================================
         Calculate keyframe interpolation. Note that cubicspline is
@@ -1297,7 +1298,7 @@ glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::Tr
             ======================================================= */
             float timestepStart = motion.timesteps[frameBegin];
             float timestepEnd = motion.timesteps[frameBegin + 1 != motion.keyframes.size() ? frameBegin + 1 : 0];
-            float interpolatedTimestep = (sequenceCursor - timestepStart * 1000.0f) / (timestepEnd * 1000.0f - timestepStart * 1000.0f);
+            float interpolatedTimestep = (playbackPosition - timestepStart * 1000.0f) / (timestepEnd * 1000.0f - timestepStart * 1000.0f);
 
             glm::vec4 keyframeBegin = motion.keyframes[frameBegin];
             glm::vec4 keyframeEnd = motion.keyframes[frameBegin + 1 != motion.keyframes.size() ? frameBegin + 1 : 0];
@@ -1347,6 +1348,13 @@ lazarus_result ModelManager::setActiveAnimation(ModelManager::Model &meshIn, uin
             if(animationIndex + 1 <= data.animationCount)
             {
                 data.activeAnimation = animationIndex;
+        
+                for(size_t j = 0; j < data.armature.size(); j++) 
+                {
+                    ModelManager::MeshData::MotionPoint &motion = data.armature[j];
+                    motion.elapsedPlaytime = 0;
+                    motion.previousPlaytime = 0;
+                }
             }
             else
             {
@@ -1356,13 +1364,43 @@ lazarus_result ModelManager::setActiveAnimation(ModelManager::Model &meshIn, uin
         };
     };
 
+    /* ========================================
+        Animation has changed so begin playing
+        it from the start.
+    ===========================================*/
+    this->playAnimation(meshIn);
+
     return status;
 };
 
 lazarus_result ModelManager::pauseAnimation(ModelManager::Model &meshIn)
 {
-    //  TODO:
-    //  The current position needs to be stored in order to play again from the location that this was at when it was called
+    uint32_t animatedAssets = 0;
+    ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
+    for(size_t i = 0; i < model.size(); i++)
+    {
+        ModelManager::MeshData &data = model[i];
+        if(data.isAnimated)
+        {
+            data.animationPaused = true;
+            animatedAssets++;
+        }
+    };
+
+    
+    return animatedAssets 
+    ? lazarus_result::LAZARUS_OK 
+    : lazarus_result::LAZARUS_NO_ANIMATION_DATA;
+};
+
+lazarus_result ModelManager::playAnimation(ModelManager::Model &meshIn)
+{
+    /* =================================================
+        FIXME:
+        This doesn't quite work as it should. There is 
+        an observable "jump" during playback following
+        a call to pauseAnimation().
+    ==================================================== */
 
     uint32_t animatedAssets = 0;
     ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
@@ -1371,12 +1409,21 @@ lazarus_result ModelManager::pauseAnimation(ModelManager::Model &meshIn)
         ModelManager::MeshData &data = model[i];
         if(data.isAnimated)
         {
-            data.activeAnimation = -1;
+            for(size_t j = 0; j < data.armature.size(); j++) 
+            {
+                ModelManager::MeshData::MotionPoint &motion = data.armature[j];
+                motion.elapsedPlaytime = motion.playbackPosition;
+                motion.previousPlaytime = 0;
+            }
+
+            data.animationPaused = false;
             animatedAssets++;
         }
     };
 
-    return animatedAssets ? lazarus_result::LAZARUS_OK : lazarus_result::LAZARUS_NO_ANIMATION_DATA;
+    return animatedAssets 
+    ? lazarus_result::LAZARUS_OK 
+    : lazarus_result::LAZARUS_NO_ANIMATION_DATA;
 };
 
 lazarus_result ModelManager::setToPosePosition(ModelManager::Model &meshIn)
@@ -1390,10 +1437,14 @@ lazarus_result ModelManager::setToPosePosition(ModelManager::Model &meshIn)
         ModelManager::MeshData &data = model[i];
         if(data.isAnimated)
         {
+            data.activeAnimation = -1;
+
             for(size_t j = 0; j < data.armature.size(); j++)
             {
                 ModelManager::MeshData::MotionPoint &motion = data.armature[j];
-                motion.sequenceCursor = 0;
+                motion.playbackPosition = 0;
+                motion.elapsedPlaytime = 0;
+                motion.previousPlaytime = 0;
                 motion.globalJointTransform = motion.posePosition;
                 motion.jointMatrix = motion.globalJointTransform * motion.inverseBindMatrix;
             };
@@ -1402,7 +1453,9 @@ lazarus_result ModelManager::setToPosePosition(ModelManager::Model &meshIn)
         }
     };
 
-    return animatedAssets ? lazarus_result::LAZARUS_OK : lazarus_result::LAZARUS_NO_ANIMATION_DATA;
+    return animatedAssets 
+    ? lazarus_result::LAZARUS_OK 
+    : lazarus_result::LAZARUS_NO_ANIMATION_DATA;
 }
 
 lazarus_result ModelManager::drawModel(ModelManager::Model &meshIn)
