@@ -118,14 +118,6 @@ class AssetLoader
             const char *materialPath
         );
 
-        lazarus_result parseWavefrontMtl(
-            const char *materialPath,
-            std::vector<std::vector<uint32_t>> data,
-            std::vector<glm::vec3> &temp,
-            std::vector<glm::vec3> &outColors,
-            std::vector<FileLoader::Image> &outImages
-        );
-
         lazarus_result parseGlBinary(
             std::vector<AssetData> &out,
             const char *meshPath
@@ -291,25 +283,68 @@ class AssetLoader
         int32_t extractAttributeIndex(std::string bounds, std::string target);
 
         //  wavefront-related members
+        
+        struct WavefrontMaterialData
+        {
+            uint32_t id;
+            uint32_t triangleCount;
+            std::string filepath;
+            // std::string name;
 
+            bool isTextured;
+            std::vector<glm::vec3> diffuseColors;
+            std::vector<FileLoader::Image> imageTextures;
+        };
+        struct WavefrontMeshData
+        {
+            uint32_t id;
+            std::string name;
+
+            // std::vector<glm::vec3> vertexPositions;
+            // std::vector<glm::vec3> vertexNormals;
+            // std::vector<glm::vec3> vertexUvCoords;
+            std::map<uint32_t, glm::vec3> vertexPositions;
+            std::map<uint32_t, glm::vec3> vertexNormals;
+            std::map<uint32_t, glm::vec3> vertexUvCoords;
+
+            //  TODO:
+            //  Get these from constructTriangle
+            
+            std::vector<uint32_t> positionIndices;
+            std::vector<uint32_t> normalIndices;
+            std::vector<uint32_t> uvIndices;
+
+            std::vector<WavefrontMaterialData> materials;
+            
+        };
+
+        std::vector<WavefrontMeshData> wavefrontMeshObjects;
         std::vector<std::string> wavefrontCoordinates;
         
         std::vector<std::vector<uint32_t>> materialBuffer;
         std::vector<uint32_t> materialData;
         uint32_t materialIdentifierIndex;
-        uint32_t triangleCount;
+        uint32_t faceCount;
         
         char currentLine[UINT8_MAX];
-        std::vector<std::string> attributeIndexes;
+        // std::vector<std::string> attributeIndexes;
 
         //  wavefront mtl
         uint32_t diffuseCount;
         uint32_t textureCount;
         glm::vec3 diffuse;
+
+        lazarus_result parseWavefrontMtl(
+            const char *materialPath
+            // std::vector<std::vector<uint32_t>> data,
+            // std::vector<glm::vec3> &temp,
+            // std::vector<glm::vec3> &outColors,
+            // std::vector<FileLoader::Image> &outImages
+        );
         
         //  Read vertex attributes from temp* members and group them together 
         //  in sets of three's if possible.
-        lazarus_result constructTriangle();
+        lazarus_result constructTriangle(WavefrontMeshData &obj, std::vector<std::string> attributeIndexes);
 
         //  Shared members
         

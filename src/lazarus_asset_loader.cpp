@@ -24,7 +24,7 @@ AssetLoader::AssetLoader()
 	LOG_DEBUG("Constructing Lazarus::AssetLoader");
 
 	this->materialIdentifierIndex	= 0;
-	this->triangleCount				= 0;
+	this->faceCount				= 0;
     this->diffuseCount              = 0;
     this->textureCount              = 0;
     this->layerCount                = 0;
@@ -70,20 +70,40 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
     {
         switch (currentLine[0])
         {
+            case 'o':
+            {
+                /*
+                    o = new mesh object
+                */
+                AssetLoader::WavefrontMeshData obj;
+                obj.name = &currentLine[2];
+                obj.id = wavefrontMeshObjects.size();
+                wavefrontMeshObjects.push_back(obj);
+
+                positionCount = 0;
+                uvCount = 0;
+                normalCount = 0;
+
+                break;
+            }
             case 'v':
+            {
                 /*
                     v = Vertex Position Coordinates (location)
                 */
                 if ( currentLine[1] == ' ' )
                 {
+                    AssetLoader::WavefrontMeshData &obj = wavefrontMeshObjects.back();
                     wavefrontCoordinates = fileLoader->splitTokensFromLine(currentLine, ' ');
+                    
                     glm::vec3 vertex = glm::vec3(0.0f, 0.0f, 0.0f);
-
                     vertex.x = stof(wavefrontCoordinates[1]);
                     vertex.y = stof(wavefrontCoordinates[2]);
                     vertex.z = stof(wavefrontCoordinates[3]);
 
-                    this->tempVertexPositions.insert(std::pair(positionCount, vertex));
+                    // this->tempVertexPositions.insert(std::pair(positionCount, vertex));
+                    // obj.vertexPositions.push_back(vertex);
+                    obj.vertexPositions.insert(std::pair(positionCount, vertex));
                     positionCount += 1;
                 } 
                 /*
@@ -91,7 +111,9 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 */
                 else if ( currentLine[1] == 't' )
                 {
+                    AssetLoader::WavefrontMeshData &obj = wavefrontMeshObjects.back();
                     wavefrontCoordinates = fileLoader->splitTokensFromLine(currentLine, ' ');
+
                     glm::vec3 uv = glm::vec3(0.0f, 0.0f, 0.0f);
 
                     /*
@@ -108,7 +130,9 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                     uv.y = stof(wavefrontCoordinates[2]);
                     uv.z = 0.0f;
 
-                    this->tempUvs.insert(std::pair(uvCount, uv));
+                    // this->tempUvs.insert(std::pair(uvCount, uv));
+                    // obj.vertexUvCoords.push_back(uv);
+                    obj.vertexUvCoords.insert(std::pair(uvCount, uv));
                     uvCount += 1;
                 }
                 /*
@@ -116,22 +140,29 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 */
                 else if ( currentLine[1] == 'n' )
                 {
+                    AssetLoader::WavefrontMeshData &obj = wavefrontMeshObjects.back();
                     wavefrontCoordinates = fileLoader->splitTokensFromLine(currentLine, ' ');
+
                     glm::vec3 normal = glm::vec3(0.0f, 0.0f, 0.0f);
 
                     normal.x = stof(wavefrontCoordinates[1]);
                     normal.y = stof(wavefrontCoordinates[2]);
                     normal.z = stof(wavefrontCoordinates[3]);
 
-                    this->tempNormals.insert(std::pair(normalCount, normal));
+                    // this->tempNormals.insert(std::pair(normalCount, normal));
+                    // obj.vertexNormals.push_back(normal);
+                    obj.vertexNormals.insert(std::pair(normalCount, normal));
                     normalCount += 1;
                 }
                 break;
-            /*
-                f = Face
-            */
+            }
             case 'f':
-                this->triangleCount += 1;
+            {
+                /*
+                    f = Face
+                */
+                this->faceCount += 1;
+                std::vector<std::string> attributeIndexes;
 
                 wavefrontCoordinates = fileLoader->splitTokensFromLine(currentLine, ' ');
 
@@ -161,21 +192,31 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                     }
                 }            
 
-                status = this->constructTriangle();
+                AssetLoader::WavefrontMeshData &obj = this->wavefrontMeshObjects.back();
+                status = this->constructTriangle(obj, attributeIndexes);
                 break;
-            /*
-                usemtl = Use material identifier
-            */
+            }
             case 'u':
-                this->materialData = {materialIdentifierIndex, triangleCount};
-		    	this->materialBuffer.push_back(this->materialData);
+            {
+                /*
+                    usemtl = Use material identifier
+                */
+                AssetLoader::WavefrontMeshData &obj = wavefrontMeshObjects.back();
+                AssetLoader::WavefrontMaterialData mtl;
+                mtl.id = this->materialIdentifierIndex;
+                mtl.triangleCount = this->faceCount;
+                obj.materials.push_back(mtl);
+                // this->materialData = {materialIdentifierIndex, triangleCount};
+		    	// this->materialBuffer.push_back(this->materialData);
             
                 this->materialIdentifierIndex += 1;
-                this->triangleCount = 0;
+                this->faceCount = 0;
                 break;
-
+            }
             default:
+            {
                 break;
+            }
         }
 
         if(status != lazarus_result::LAZARUS_OK)
@@ -185,51 +226,97 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
     }
 
     /*
-        Wavefront animation isn't supported so zero-out the
-        buffers.
-    */
+    //     Wavefront animation isn't supported so zero-out the
+    //     buffers.
+    // */
 
-    for(size_t i = 0; i < tempVertexPositions.size(); i++)
-    {
-        tempJoints.insert(std::pair<uint32_t, glm::vec4>(i, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
-        tempWeights.insert(std::pair<uint32_t, glm::vec4>(i, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
-    };
+    // for(size_t i = 0; i < tempVertexPositions.size(); i++)
+    // {
+    //     tempJoints.insert(std::pair<uint32_t, glm::vec4>(i, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
+    //     tempWeights.insert(std::pair<uint32_t, glm::vec4>(i, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
+    // };
 
-    /*
-        All required elements have been extracted. Begin 
-        construction.
-    */
-    AssetLoader::AssetData data = {};
+    // /*
+    //     All required elements have been extracted. Begin 
+    //     construction.
+    // */
+    // AssetLoader::AssetData data = {};
     if (file.eof())
     {
         file.close();
+
+        AssetLoader::WavefrontMeshData &obj = wavefrontMeshObjects.back();
+        AssetLoader::WavefrontMaterialData mtl;
+        mtl.id = this->materialIdentifierIndex;
+        mtl.triangleCount = this->faceCount;
+        obj.materials.push_back(mtl);
+        
         //  TODO:
         //  The following operations need to happen in a loop in order to load multiple assets.
-        this->materialData = {materialIdentifierIndex, triangleCount};
-		this->materialBuffer.push_back(this->materialData);
+        //  ^ maybe untrue (?)
+
+        // this->materialData = {materialIdentifierIndex, triangleCount};
+		// this->materialBuffer.push_back(this->materialData);
         
-        this->parseWavefrontMtl(materialPath, materialBuffer, tempDiffuse, data.colors, data.textures);
+        // this->parseWavefrontMtl(materialPath, materialBuffer, tempDiffuse, data.colors, data.textures);
+        this->parseWavefrontMtl(materialPath);
     }
 
-    /*
-        Rigging and animation for wavefront is not 
-        supported.
-    */
-    data.armature = {};
-    data.animations = {};
+    for(size_t i = 0; i < this->wavefrontMeshObjects.size(); i++)
+    {
+        /*
+            set loader values (temps) in preperation for ibo generation
+        */
+        AssetLoader::WavefrontMeshData obj = this->wavefrontMeshObjects[i];
+        AssetLoader::AssetData asset;
+        asset.armature.clear();
+        asset.animations.clear();
 
-    this->constructIndexBuffer(data.attributes, data.movements, data.indices, tempDiffuse, this->vertexIndices.size());
-    out.push_back(data);
+        for(size_t j = 0; j < obj.materials.size(); j++)
+        {
+            AssetLoader::WavefrontMaterialData mtl = obj.materials[j];
+            std::copy(
+                mtl.diffuseColors.begin(), 
+                mtl.diffuseColors.end(), 
+                std::back_inserter(this->tempDiffuse)
+            );
+            // this->tempDiffuse.reserve(this->tempDiffuse.size() + mtl.diffuseColors.size());
+            // this->tempDiffuse.resize(this->tempDiffuse.size() + mtl.diffuseColors.size());
+        }
+
+        this->tempVertexPositions = obj.vertexPositions;
+        this->tempUvs = obj.vertexUvCoords;
+        this->tempNormals = obj.vertexNormals;
+        
+        for(size_t j = 0; j < obj.positionIndices.size(); j++)
+        {
+            /*
+                Wavefront does not support bone animation so the values
+                set here are completely arbitrary.
+            */
+            this->tempJoints.insert(std::pair<uint32_t, glm::vec4>(j, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
+            this->tempWeights.insert(std::pair<uint32_t, glm::vec4>(j, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
+            this->jointIndices.push_back(1);
+            this->weightIndices.push_back(1);
+        };
+        this->vertexIndices = obj.positionIndices;
+        this->uvIndices = obj.uvIndices;
+        this->normalIndices = obj.normalIndices;
+
+        this->constructIndexBuffer(asset.attributes, asset.movements, asset.indices, tempDiffuse, this->vertexIndices.size());
+        out.push_back(asset);
+    }
 
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath, vector<vector<uint32_t>> data, vector<vec3> &temp, vector<vec3> &outColors, std::vector<FileLoader::Image> &outImages)
+lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath)
 {    
     lazarus_result status = lazarus_result::LAZARUS_OK;
 
     this->textureCount = 0;
     this->diffuseCount = 0;
+    this->layerCount = 0;
 
     if(file.is_open())
     {
@@ -260,12 +347,24 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath, vector<v
         if( (currentLine[0] == 'K') && (currentLine[1] == 'd') )
         {
             diffuseCount += 1;
-            for(auto i: data)
+            uint32_t count = diffuseCount;
+            for(AssetLoader::WavefrontMeshData &obj: this->wavefrontMeshObjects)
             {
-                uint32_t index = i[0];
-            	uint32_t faceCount = i[1];
-            	
-	            if(diffuseCount == index) {
+                auto it = std::find_if(
+                    obj.materials.begin(), 
+                    obj.materials.end(), 
+                    [count](AssetLoader::WavefrontMaterialData mtl) {
+                        return mtl.id == count;
+                    }
+                );
+
+                // if(diffuseCount == index) {
+                if(it != obj.materials.end())
+                {
+                    AssetLoader::WavefrontMaterialData &mtl = obj.materials[it - obj.materials.begin()];
+                    // uint32_t index = mtl.id;
+                    uint32_t faceCount = mtl.triangleCount;
+                    
                     string currentString = currentLine;
                     stringstream ss(currentString);
                     string token;
@@ -286,18 +385,21 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath, vector<v
                         N = The number of vertices which use this color.
                         (faceCount * 3)
                     */
-    	            for(size_t j = 0; j < faceCount * 3; j++)
-    	            {
-                        temp.push_back(diffuse);
-    	            };
-                    FileLoader::Image image = {};
-                    image.width = 0;
-                    image.height = 0;
-                    image.pixelData = NULL;
-                    
-                    outColors.push_back(diffuse);
-                    outImages.push_back(image);
-    	        };        
+                    for(size_t j = 0; j < faceCount * 3; j++)
+                    {
+                        // temp.push_back(diffuse);
+                        mtl.diffuseColors.push_back(diffuse);
+                    };
+                    // FileLoader::Image image = {};
+                    // image.width = 0;
+                    // image.height = 0;
+                    // image.pixelData = NULL;
+                        
+                    mtl.isTextured = false;
+                    // outColors.push_back(diffuse);
+                    // outImages.push_back(image);
+                }
+    	        // };        
             };
         }
         /*
@@ -309,13 +411,26 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath, vector<v
         )
         {
             textureCount += 1;
-            for(auto i: data)
+            uint32_t count = this->textureCount;
+            for(AssetLoader::WavefrontMeshData &obj: this->wavefrontMeshObjects)
             {
-                uint32_t index = i[0];
-                uint32_t faceCount = i[1];
-
-                if(textureCount == index)
+                auto it = std::find_if(
+                    obj.materials.begin(), 
+                    obj.materials.end(), 
+                    [count](AssetLoader::WavefrontMaterialData mtl) {
+                        return mtl.id == count;
+                    }
+                );
+                // uint32_t index = i[0];
+                // uint32_t faceCount = i[1];
+                
+                // if(textureCount == index)
+                if(it != obj.materials.end())
                 {
+                    AssetLoader::WavefrontMaterialData &mtl = obj.materials[it - obj.materials.begin()];
+                    // uint32_t index = mtl.id;
+                    uint32_t faceCount = mtl.triangleCount;
+
                     for(size_t j = 0; j < faceCount * 3; j++)
                     {
                         /*
@@ -329,38 +444,40 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath, vector<v
                             ? fragColor(positiveDiffuseValues.xyz) 
                             : fragColor(images[layer].xyz)
                         */
-                        temp.push_back(vec3(-0.1f, -0.1f, -0.1f));
+
+                        // temp.push_back(vec3(-0.1f, -0.1f, -0.1f));
+                        mtl.diffuseColors.push_back(vec3(-0.1f, -0.1f, -0.1f));
                         layers.push_back(layerCount);
                     };
+                    /*
+                        Construct path to texture file using 
+                        pre-computed absolute path to material file and 
+                        replacing the file suffix with the name of the 
+                        file as indicated by the material file. It's for
+                        this reason that wavefront assets must have
+                        their path names stripped on export.
+                    */
+        
+                    uint32_t suffix = std::string(materialPath).find_last_of("/");
+                    std::string directory = std::string(materialPath).substr(0, suffix).append("/");
+                    uint32_t whiteSpace = (std::string(currentLine).find(" ")) + 1;
+                    std::string filename = std::string(currentLine).substr(whiteSpace);
+                    
+                    const char *path = directory.append(filename).c_str();
+        
+                    FileLoader::Image image = {};
+                    status = fileLoader->loadImage(image, path);
+                    if(status != lazarus_result::LAZARUS_OK)
+                    {
+                        return status;
+                    };
+        
+                    // mtl.diffuseColors.push_back(vec3(-0.1f, -0.1f, -0.1f));
+                    mtl.imageTextures.push_back(image);
+                    
+                    layerCount += 1;
                 }  
             } 
-            /*
-                Construct path to texture file using 
-                pre-computed absolute path to material file and 
-                replacing the file suffix with the name of the 
-                file as indicated by the material file. It's for
-                this reason that wavefront assets must have
-                their path names stripped on export.
-            */
-
-            uint32_t suffix = std::string(materialPath).find_last_of("/");
-            std::string directory = std::string(materialPath).substr(0, suffix).append("/");
-            uint32_t whiteSpace = (std::string(currentLine).find(" ")) + 1;
-            std::string filename = std::string(currentLine).substr(whiteSpace);
-            
-            const char *path = directory.append(filename).c_str();
-
-            FileLoader::Image image = {};
-            status = fileLoader->loadImage(image, path);
-            if(status != lazarus_result::LAZARUS_OK)
-            {
-                return status;
-            };
-
-            outColors.push_back(vec3(-0.1f, -0.1f, -0.1f));
-            outImages.push_back(image);
-            
-            layerCount += 1;
         }
     };
         
@@ -1587,7 +1704,7 @@ void AssetLoader::constructIndexBuffer(std::vector<glm::vec3> &outAttributes, st
                     by MeshManager::initialiseMesh
 
                     I.e.
-                    [ Pos | Norm | color | uv ]
+                    [ Pos | Norm | color | uv ]resetMembers
                 */
 
                 outAttributes.push_back(position);
@@ -1617,7 +1734,7 @@ void AssetLoader::constructIndexBuffer(std::vector<glm::vec3> &outAttributes, st
     return;
 }
 
-lazarus_result AssetLoader::constructTriangle()
+lazarus_result AssetLoader::constructTriangle(AssetLoader::WavefrontMeshData &obj, std::vector<std::string> attributeIndexes)
 {
     /*
         The faces of a wavefront mesh will be treated as 
@@ -1628,37 +1745,37 @@ lazarus_result AssetLoader::constructTriangle()
         supported.
     */
 
-    if ( this->attributeIndexes.size() !=  9)
+    if ( attributeIndexes.size() !=  9)
     {
         LOG_ERROR("Asset Error:", __FILE__, __LINE__);
 
         return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;    
     }
 
-    this->vertexIndices.push_back(std::stoi(this->attributeIndexes[0]));
-    this->vertexIndices.push_back(std::stoi(this->attributeIndexes[3]));
-    this->vertexIndices.push_back(std::stoi(this->attributeIndexes[6]));
-    this->uvIndices    .push_back(std::stoi(this->attributeIndexes[1]));
-    this->uvIndices    .push_back(std::stoi(this->attributeIndexes[4]));
-    this->uvIndices    .push_back(std::stoi(this->attributeIndexes[7]));
-    this->normalIndices.push_back(std::stoi(this->attributeIndexes[2]));
-    this->normalIndices.push_back(std::stoi(this->attributeIndexes[5]));
-    this->normalIndices.push_back(std::stoi(this->attributeIndexes[8]));
+    obj.positionIndices.push_back(std::stoi(attributeIndexes[0]));
+    obj.positionIndices.push_back(std::stoi(attributeIndexes[3]));
+    obj.positionIndices.push_back(std::stoi(attributeIndexes[6]));
+    obj.uvIndices.push_back(std::stoi(attributeIndexes[1]));
+    obj.uvIndices.push_back(std::stoi(attributeIndexes[4]));
+    obj.uvIndices.push_back(std::stoi(attributeIndexes[7]));
+    obj.normalIndices.push_back(std::stoi(attributeIndexes[2]));
+    obj.normalIndices.push_back(std::stoi(attributeIndexes[5]));
+    obj.normalIndices.push_back(std::stoi(attributeIndexes[8]));
 
-    /*
-        This function is currently only used for loading
-        wavefront which doesn't support animation. So the
-        values pushed back here are arbitrary.
-    */
+    // /*
+    //     This function is currently only used for loading
+    //     wavefront which doesn't support animation. So the
+    //     values pushed back here are arbitrary.
+    // */
 
-    this->jointIndices.push_back(1);
-    this->jointIndices.push_back(1);
-    this->jointIndices.push_back(1);
-    this->weightIndices.push_back(1);
-    this->weightIndices.push_back(1);
-    this->weightIndices.push_back(1);
+    // this->jointIndices.push_back(1);
+    // this->jointIndices.push_back(1);
+    // this->jointIndices.push_back(1);
+    // this->weightIndices.push_back(1);
+    // this->weightIndices.push_back(1);
+    // this->weightIndices.push_back(1);
 
-    attributeIndexes.clear();
+    // attributeIndexes.clear();
 
     return lazarus_result::LAZARUS_OK;
 }
@@ -1687,11 +1804,12 @@ void AssetLoader::resetMembers()
         Obj / Mtl
     */
 
+    this->wavefrontMeshObjects.clear();
     this->wavefrontCoordinates.clear();
     this->materialBuffer.clear();
     this->materialData.clear();
     this->materialIdentifierIndex = 0;
-    this->triangleCount = 0;
+    this->faceCount = 0;
     
     /*
         Shared
@@ -1702,7 +1820,7 @@ void AssetLoader::resetMembers()
     this->uvIndices.clear();
     this->jointIndices.clear();
     this->weightIndices.clear();
-    this->attributeIndexes.clear();
+    // this->attributeIndexes.clear();
     this->tempVertexPositions.clear();
     this->tempNormals.clear();
     this->tempUvs.clear();
