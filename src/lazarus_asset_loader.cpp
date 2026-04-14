@@ -24,7 +24,7 @@ AssetLoader::AssetLoader()
 	LOG_DEBUG("Constructing Lazarus::AssetLoader");
 
 	this->materialIdentifierIndex	= 0;
-	this->faceCount				= 0;
+	this->faceCount				    = 0;
     this->diffuseCount              = 0;
     this->textureCount              = 0;
     this->layerCount                = 0;
@@ -80,10 +80,6 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 obj.id = wavefrontMeshObjects.size();
                 wavefrontMeshObjects.push_back(obj);
 
-                positionCount = 0;
-                uvCount = 0;
-                normalCount = 0;
-
                 break;
             }
             case 'v':
@@ -94,15 +90,13 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 if ( currentLine[1] == ' ' )
                 {
                     AssetLoader::WavefrontMeshData &obj = wavefrontMeshObjects.back();
-                    wavefrontCoordinates = fileLoader->splitTokensFromLine(currentLine, ' ');
+                    wavefrontRawValues = fileLoader->splitTokensFromLine(currentLine, ' ');
                     
                     glm::vec3 vertex = glm::vec3(0.0f, 0.0f, 0.0f);
-                    vertex.x = stof(wavefrontCoordinates[1]);
-                    vertex.y = stof(wavefrontCoordinates[2]);
-                    vertex.z = stof(wavefrontCoordinates[3]);
+                    vertex.x = stof(wavefrontRawValues[1]);
+                    vertex.y = stof(wavefrontRawValues[2]);
+                    vertex.z = stof(wavefrontRawValues[3]);
 
-                    // this->tempVertexPositions.insert(std::pair(positionCount, vertex));
-                    // obj.vertexPositions.push_back(vertex);
                     obj.vertexPositions.insert(std::pair(positionCount, vertex));
                     positionCount += 1;
                 } 
@@ -112,7 +106,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 else if ( currentLine[1] == 't' )
                 {
                     AssetLoader::WavefrontMeshData &obj = wavefrontMeshObjects.back();
-                    wavefrontCoordinates = fileLoader->splitTokensFromLine(currentLine, ' ');
+                    wavefrontRawValues = fileLoader->splitTokensFromLine(currentLine, ' ');
 
                     glm::vec3 uv = glm::vec3(0.0f, 0.0f, 0.0f);
 
@@ -126,12 +120,10 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                         Once in the shaders it is disregarded. 
                     */
 
-                    uv.x = stof(wavefrontCoordinates[1]);
-                    uv.y = stof(wavefrontCoordinates[2]);
+                    uv.x = stof(wavefrontRawValues[1]);
+                    uv.y = stof(wavefrontRawValues[2]);
                     uv.z = 0.0f;
 
-                    // this->tempUvs.insert(std::pair(uvCount, uv));
-                    // obj.vertexUvCoords.push_back(uv);
                     obj.vertexUvCoords.insert(std::pair(uvCount, uv));
                     uvCount += 1;
                 }
@@ -141,16 +133,14 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 else if ( currentLine[1] == 'n' )
                 {
                     AssetLoader::WavefrontMeshData &obj = wavefrontMeshObjects.back();
-                    wavefrontCoordinates = fileLoader->splitTokensFromLine(currentLine, ' ');
+                    wavefrontRawValues = fileLoader->splitTokensFromLine(currentLine, ' ');
 
                     glm::vec3 normal = glm::vec3(0.0f, 0.0f, 0.0f);
 
-                    normal.x = stof(wavefrontCoordinates[1]);
-                    normal.y = stof(wavefrontCoordinates[2]);
-                    normal.z = stof(wavefrontCoordinates[3]);
+                    normal.x = stof(wavefrontRawValues[1]);
+                    normal.y = stof(wavefrontRawValues[2]);
+                    normal.z = stof(wavefrontRawValues[3]);
 
-                    // this->tempNormals.insert(std::pair(normalCount, normal));
-                    // obj.vertexNormals.push_back(normal);
                     obj.vertexNormals.insert(std::pair(normalCount, normal));
                     normalCount += 1;
                 }
@@ -164,9 +154,9 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 this->faceCount += 1;
                 std::vector<std::string> attributeIndexes;
 
-                wavefrontCoordinates = fileLoader->splitTokensFromLine(currentLine, ' ');
+                wavefrontRawValues = fileLoader->splitTokensFromLine(currentLine, ' ');
 
-                for(auto i: wavefrontCoordinates) 
+                for(auto i: wavefrontRawValues) 
                 {
                     stringstream ssJ(i);
                     string tokenJ;
@@ -201,14 +191,16 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 /*
                     usemtl = Use material identifier
                 */
-                AssetLoader::WavefrontMeshData &obj = wavefrontMeshObjects.back();
-                AssetLoader::WavefrontMaterialData mtl;
-                mtl.id = this->materialIdentifierIndex;
-                mtl.triangleCount = this->faceCount;
-                obj.materials.push_back(mtl);
-                // this->materialData = {materialIdentifierIndex, triangleCount};
-		    	// this->materialBuffer.push_back(this->materialData);
-            
+               if(this->faceCount > 0)
+               {
+                   AssetLoader::WavefrontMeshData &obj = wavefrontMeshObjects.back();
+                   AssetLoader::WavefrontMaterialData mtl;
+                   mtl.id = this->materialIdentifierIndex;
+                   mtl.triangleCount = this->faceCount;
+                   obj.materials.push_back(mtl);
+               
+                }
+
                 this->materialIdentifierIndex += 1;
                 this->faceCount = 0;
                 break;
@@ -225,22 +217,6 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
         };
     }
 
-    /*
-    //     Wavefront animation isn't supported so zero-out the
-    //     buffers.
-    // */
-
-    // for(size_t i = 0; i < tempVertexPositions.size(); i++)
-    // {
-    //     tempJoints.insert(std::pair<uint32_t, glm::vec4>(i, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
-    //     tempWeights.insert(std::pair<uint32_t, glm::vec4>(i, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
-    // };
-
-    // /*
-    //     All required elements have been extracted. Begin 
-    //     construction.
-    // */
-    // AssetLoader::AssetData data = {};
     if (file.eof())
     {
         file.close();
@@ -250,15 +226,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
         mtl.id = this->materialIdentifierIndex;
         mtl.triangleCount = this->faceCount;
         obj.materials.push_back(mtl);
-        
-        //  TODO:
-        //  The following operations need to happen in a loop in order to load multiple assets.
-        //  ^ maybe untrue (?)
 
-        // this->materialData = {materialIdentifierIndex, triangleCount};
-		// this->materialBuffer.push_back(this->materialData);
-        
-        // this->parseWavefrontMtl(materialPath, materialBuffer, tempDiffuse, data.colors, data.textures);
         this->parseWavefrontMtl(materialPath);
     }
 
@@ -275,24 +243,29 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
         for(size_t j = 0; j < obj.materials.size(); j++)
         {
             AssetLoader::WavefrontMaterialData mtl = obj.materials[j];
-            std::copy(
-                mtl.diffuseColors.begin(), 
-                mtl.diffuseColors.end(), 
-                std::back_inserter(this->tempDiffuse)
-            );
-            // this->tempDiffuse.reserve(this->tempDiffuse.size() + mtl.diffuseColors.size());
-            // this->tempDiffuse.resize(this->tempDiffuse.size() + mtl.diffuseColors.size());
+            
+            asset.colors.push_back(mtl.diffuseColor);
+            asset.textures.push_back(mtl.imageTexture);
+            
+            for(size_t k = 0; k < mtl.triangleCount * 3; k++)
+            {
+                if(mtl.isTextured)
+                {
+                    this->layers.push_back(mtl.layerID);
+                }
+                this->tempDiffuse.push_back(mtl.diffuseColor);
+            }
         }
 
         this->tempVertexPositions = obj.vertexPositions;
         this->tempUvs = obj.vertexUvCoords;
         this->tempNormals = obj.vertexNormals;
-        
+
         for(size_t j = 0; j < obj.positionIndices.size(); j++)
         {
             /*
-                Wavefront does not support bone animation so the values
-                set here are completely arbitrary.
+                Wavefront does not support bone animation so zero the buffers.
+                Any value could be set here it's completely arbitrary.
             */
             this->tempJoints.insert(std::pair<uint32_t, glm::vec4>(j, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
             this->tempWeights.insert(std::pair<uint32_t, glm::vec4>(j, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
@@ -303,7 +276,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
         this->uvIndices = obj.uvIndices;
         this->normalIndices = obj.normalIndices;
 
-        this->constructIndexBuffer(asset.attributes, asset.movements, asset.indices, tempDiffuse, this->vertexIndices.size());
+        this->constructIndexBuffer(asset.attributes, asset.movements, asset.indices, this->tempDiffuse, this->vertexIndices.size());
         out.push_back(asset);
     }
 
@@ -316,7 +289,6 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath)
 
     this->textureCount = 0;
     this->diffuseCount = 0;
-    this->layerCount = 0;
 
     if(file.is_open())
     {
@@ -358,12 +330,11 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath)
                     }
                 );
 
-                // if(diffuseCount == index) {
                 if(it != obj.materials.end())
                 {
                     AssetLoader::WavefrontMaterialData &mtl = obj.materials[it - obj.materials.begin()];
-                    // uint32_t index = mtl.id;
-                    uint32_t faceCount = mtl.triangleCount;
+                    mtl.isTextured = false;
+                    mtl.layerID = 0;
                     
                     string currentString = currentLine;
                     stringstream ss(currentString);
@@ -374,32 +345,20 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath)
                     {
                         tokenStore.push_back(token);
                     }
+                    glm::vec3 diffuse = glm::vec3(0.0f, 0.0f, 0.0f);
                     
                     diffuse.r = std::stof(tokenStore[1]);
                     diffuse.g = std::stof(tokenStore[2]);
                     diffuse.b = std::stof(tokenStore[3]);
-                    /*
-                        Push the current diffuse object into the out
-                        out parameter N times.
 
-                        N = The number of vertices which use this color.
-                        (faceCount * 3)
-                    */
-                    for(size_t j = 0; j < faceCount * 3; j++)
-                    {
-                        // temp.push_back(diffuse);
-                        mtl.diffuseColors.push_back(diffuse);
-                    };
-                    // FileLoader::Image image = {};
-                    // image.width = 0;
-                    // image.height = 0;
-                    // image.pixelData = NULL;
-                        
-                    mtl.isTextured = false;
-                    // outColors.push_back(diffuse);
-                    // outImages.push_back(image);
+                    FileLoader::Image image;
+                    image.width = 0;
+                    image.height = 0;
+                    image.pixelData = NULL;
+
+                    mtl.diffuseColor = diffuse;
+                    mtl.imageTexture = image;
                 }
-    	        // };        
             };
         }
         /*
@@ -421,34 +380,13 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath)
                         return mtl.id == count;
                     }
                 );
-                // uint32_t index = i[0];
-                // uint32_t faceCount = i[1];
-                
-                // if(textureCount == index)
+
                 if(it != obj.materials.end())
                 {
                     AssetLoader::WavefrontMaterialData &mtl = obj.materials[it - obj.materials.begin()];
-                    // uint32_t index = mtl.id;
-                    uint32_t faceCount = mtl.triangleCount;
+                    mtl.isTextured = true;
+                    mtl.layerID = this->layerCount;
 
-                    for(size_t j = 0; j < faceCount * 3; j++)
-                    {
-                        /*
-                            Negative values passed here are an indicator
-                            to the fragment shader that it should instead 
-                            interpret the desired frag color of this face
-                            from the current layer of the sampler array 
-                            (an image) instead of a diffuse texture.
-                            i.e: 
-                            positiveDiffuseValues
-                            ? fragColor(positiveDiffuseValues.xyz) 
-                            : fragColor(images[layer].xyz)
-                        */
-
-                        // temp.push_back(vec3(-0.1f, -0.1f, -0.1f));
-                        mtl.diffuseColors.push_back(vec3(-0.1f, -0.1f, -0.1f));
-                        layers.push_back(layerCount);
-                    };
                     /*
                         Construct path to texture file using 
                         pre-computed absolute path to material file and 
@@ -471,13 +409,22 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath)
                     {
                         return status;
                     };
-        
-                    // mtl.diffuseColors.push_back(vec3(-0.1f, -0.1f, -0.1f));
-                    mtl.imageTextures.push_back(image);
-                    
-                    layerCount += 1;
+                    /*
+                        Negative values passed here are an indicator
+                        to the fragment shader that it should instead 
+                        interpret the desired frag color of this face
+                        from the current layer of the sampler array 
+                        (an image) instead of a diffuse texture.
+                        i.e: 
+                        positiveDiffuseValues
+                        ? fragColor(positiveDiffuseValues.xyz) 
+                        : fragColor(images[layer].xyz)
+                    */
+                    mtl.diffuseColor = glm::vec3(-0.1f, -0.1f, -0.1f);
+                    mtl.imageTexture = image;
                 }  
             } 
+            layerCount += 1;
         }
     };
         
@@ -1762,21 +1709,6 @@ lazarus_result AssetLoader::constructTriangle(AssetLoader::WavefrontMeshData &ob
     obj.normalIndices.push_back(std::stoi(attributeIndexes[5]));
     obj.normalIndices.push_back(std::stoi(attributeIndexes[8]));
 
-    // /*
-    //     This function is currently only used for loading
-    //     wavefront which doesn't support animation. So the
-    //     values pushed back here are arbitrary.
-    // */
-
-    // this->jointIndices.push_back(1);
-    // this->jointIndices.push_back(1);
-    // this->jointIndices.push_back(1);
-    // this->weightIndices.push_back(1);
-    // this->weightIndices.push_back(1);
-    // this->weightIndices.push_back(1);
-
-    // attributeIndexes.clear();
-
     return lazarus_result::LAZARUS_OK;
 }
 
@@ -1805,9 +1737,7 @@ void AssetLoader::resetMembers()
     */
 
     this->wavefrontMeshObjects.clear();
-    this->wavefrontCoordinates.clear();
-    this->materialBuffer.clear();
-    this->materialData.clear();
+    this->wavefrontRawValues.clear();
     this->materialIdentifierIndex = 0;
     this->faceCount = 0;
     
@@ -1820,7 +1750,6 @@ void AssetLoader::resetMembers()
     this->uvIndices.clear();
     this->jointIndices.clear();
     this->weightIndices.clear();
-    // this->attributeIndexes.clear();
     this->tempVertexPositions.clear();
     this->tempNormals.clear();
     this->tempUvs.clear();

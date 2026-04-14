@@ -1547,7 +1547,7 @@ void ModelManager::setDiscardFragments(ModelManager::Model &meshIn, bool shouldD
 
 lazarus_result ModelManager::setMaterials(AssetLoader::AssetData &assetData)
 {
-    LOG_DEBUG("Allocating materials");
+    LOG_DEBUG("Loading material properties");
     if(assetData.colors.size() != assetData.textures.size())
     {
         LOG_ERROR("Load Error: Invalid materials", __FILE__, __LINE__);
@@ -1557,7 +1557,7 @@ lazarus_result ModelManager::setMaterials(AssetLoader::AssetData &assetData)
 
     for(size_t i = 0; i < assetData.colors.size(); i++)
     {
-        Material material = {};
+        ModelManager::Material material = {};
         material.diffuse = assetData.colors[i];
         material.texture = assetData.textures[i];
 
@@ -1566,7 +1566,7 @@ lazarus_result ModelManager::setMaterials(AssetLoader::AssetData &assetData)
         if(((material.diffuse.r + material.diffuse.b + material.diffuse.g) < -0.1f) && 
              material.texture.pixelData != NULL)
         {
-            LOG_DEBUG("Copying textures");
+            LOG_DEBUG("IMAGE_TEXTURE");
             material.type = MaterialType::IMAGE_TEXTURE;
 
             /*
@@ -1579,8 +1579,8 @@ lazarus_result ModelManager::setMaterials(AssetLoader::AssetData &assetData)
         }
         else
         {
-            LOG_DEBUG("Copying diffuse colors");
-            material.type = MaterialType::BASE_COLOR;
+            LOG_DEBUG("DIFFUSE_COLOR");
+            material.type = MaterialType::DIFFUSE_COLOR;
     
             meshData.texture.samplerId = 0;
             meshData.texture.unitId = GL_TEXTURE2;

@@ -292,54 +292,40 @@ class AssetLoader
             // std::string name;
 
             bool isTextured;
-            std::vector<glm::vec3> diffuseColors;
-            std::vector<FileLoader::Image> imageTextures;
+            glm::vec3 diffuseColor;
+            FileLoader::Image imageTexture;
+            int32_t layerID;
         };
         struct WavefrontMeshData
         {
             uint32_t id;
             std::string name;
 
-            // std::vector<glm::vec3> vertexPositions;
-            // std::vector<glm::vec3> vertexNormals;
-            // std::vector<glm::vec3> vertexUvCoords;
             std::map<uint32_t, glm::vec3> vertexPositions;
             std::map<uint32_t, glm::vec3> vertexNormals;
             std::map<uint32_t, glm::vec3> vertexUvCoords;
-
-            //  TODO:
-            //  Get these from constructTriangle
             
             std::vector<uint32_t> positionIndices;
             std::vector<uint32_t> normalIndices;
             std::vector<uint32_t> uvIndices;
 
             std::vector<WavefrontMaterialData> materials;
-            
         };
 
         std::vector<WavefrontMeshData> wavefrontMeshObjects;
-        std::vector<std::string> wavefrontCoordinates;
-        
-        std::vector<std::vector<uint32_t>> materialBuffer;
-        std::vector<uint32_t> materialData;
-        uint32_t materialIdentifierIndex;
-        uint32_t faceCount;
+        std::vector<std::string> wavefrontRawValues;
         
         char currentLine[UINT8_MAX];
-        // std::vector<std::string> attributeIndexes;
-
+        
         //  wavefront mtl
         uint32_t diffuseCount;
         uint32_t textureCount;
-        glm::vec3 diffuse;
+
+        uint32_t materialIdentifierIndex;
+        uint32_t faceCount;
 
         lazarus_result parseWavefrontMtl(
             const char *materialPath
-            // std::vector<std::vector<uint32_t>> data,
-            // std::vector<glm::vec3> &temp,
-            // std::vector<glm::vec3> &outColors,
-            // std::vector<FileLoader::Image> &outImages
         );
         
         //  Read vertex attributes from temp* members and group them together 

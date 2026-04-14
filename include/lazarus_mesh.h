@@ -54,7 +54,7 @@ class ModelManager
         enum MaterialType
         {
             IMAGE_TEXTURE = 1,
-            BASE_COLOR = 2
+            DIFFUSE_COLOR = 2
         };
         struct Material
         {
