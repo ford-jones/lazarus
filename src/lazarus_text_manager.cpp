@@ -549,7 +549,7 @@ void TextManager::setActiveGlyph(char target, uint32_t fontId, uint32_t spacing)
         sampled area of the atlas will contain nothing.
     */
 
-    if(target == ' ')
+    if(isspace(target))
     {
         this->uvL = -1.0f;
         this->uvR = -1.0f;

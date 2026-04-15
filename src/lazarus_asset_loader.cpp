@@ -70,7 +70,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
     {
         switch (currentLine[0])
         {
-            case 'o':
+            case OBJ_MESH:
             {
                 /*
                     o = new mesh object
@@ -82,12 +82,12 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
 
                 break;
             }
-            case 'v':
+            case OBJ_VERTEX:
             {
                 /*
                     v = Vertex Position Coordinates (location)
                 */
-                if ( currentLine[1] == ' ' )
+                if ( isspace(currentLine[1]) )
                 {
                     AssetLoader::WavefrontMeshData &obj = wavefrontMeshObjects.back();
                     wavefrontRawValues = fileLoader->splitTokensFromLine(currentLine, ' ');
@@ -103,7 +103,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 /*
                     vt = Vertex Texture Coordinates (UV / ST)
                 */
-                else if ( currentLine[1] == 't' )
+                if ( currentLine[1] == OBJ_UV_COORDINATES )
                 {
                     AssetLoader::WavefrontMeshData &obj = wavefrontMeshObjects.back();
                     wavefrontRawValues = fileLoader->splitTokensFromLine(currentLine, ' ');
@@ -130,7 +130,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 /*
                     vn = Vertex Normal coordinates (direction)
                 */
-                else if ( currentLine[1] == 'n' )
+                else if ( currentLine[1] == OBJ_NORMALS )
                 {
                     AssetLoader::WavefrontMeshData &obj = wavefrontMeshObjects.back();
                     wavefrontRawValues = fileLoader->splitTokensFromLine(currentLine, ' ');
@@ -146,7 +146,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 }
                 break;
             }
-            case 'f':
+            case OBJ_TRIANGLE:
             {
                 /*
                     f = Face
@@ -186,7 +186,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 status = this->constructTriangle(obj, attributeIndexes);
                 break;
             }
-            case 'u':
+            case OBJ_MATERIAL_INDEX:
             {
                 /*
                     usemtl = Use material identifier
@@ -316,7 +316,7 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath)
         /*
             Kd = diffuse colors
         */
-        if( (currentLine[0] == 'K') && (currentLine[1] == 'd') )
+        if( (currentLine[0] & currentLine[1]) == OBJ_MTL_DIFFUSE )
         {
             diffuseCount += 1;
             uint32_t count = diffuseCount;
@@ -364,10 +364,7 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath)
         /*
             map_Kd = Image texture
         */
-        if( (currentLine[0] == 'm') && 
-            (currentLine[1] == 'a') && 
-            (currentLine[2] == 'p')
-        )
+        if((currentLine[0] & currentLine[1] & currentLine[2]) == OBJ_MTL_TEXTURE)
         {
             textureCount += 1;
             uint32_t count = this->textureCount;
@@ -459,7 +456,9 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
         return status;
     };
 
-    std::vector<std::string> propertyIdentifiers = {MESHES,NODES,SKINS,ACCESSORS,MATERIALS,TEXTURES,IMAGES,BUFFERVIEWS,BUFFERS,ANIMATIONS};
+    std::vector<std::string> propertyIdentifiers = {
+        GLB_MESHES,GLB_NODES,GLB_SKINS,GLB_ACCESSORS,GLB_MATERIALS,GLB_TEXTURES,GLB_IMAGES,GLB_BUFFERVIEWS,GLB_BUFFERS,GLB_ANIMATIONS
+    };
     std::vector<std::string> propertyStrings = {};
     std::vector<uint32_t> propertyIndexes = {};
 
@@ -505,7 +504,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
     {
         std::string json = propertyStrings[i];
 
-        if(json.find(MATERIALS) == 0)
+        if(json.find(GLB_MATERIALS) == 0)
         {
             LOG_DEBUG("Parsing materials...");
             uint32_t prev = 0;
@@ -527,10 +526,10 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                         is diffuse-colored.
                     */
                     
-                    if(material.find(DIFFUSE) != std::string::npos)
+                    if(material.find(GLB_DIFFUSE) != std::string::npos)
                     {
                         LOG_DEBUG("Inspecting diffuse colors");
-                        std::vector<std::string> colors = fileLoader->extractContainedContents(material, DIFFUSE + "[", "]");
+                        std::vector<std::string> colors = fileLoader->extractContainedContents(material, std::string(GLB_DIFFUSE) + "[", "]");
                         for(size_t j = 0; j < colors.size(); j++)
                         {
                             std::vector<std::string> color = fileLoader->splitTokensFromLine(colors[j].c_str(), ',');
@@ -540,16 +539,16 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                             materials.push_back(colorMaterial);
                         };
                     }
-                    else if(material.find(TEXTURE_ID) != std::string::npos)
+                    else if(material.find(GLB_TEXTURE_ID) != std::string::npos)
                     {
                         LOG_DEBUG("Inspecting texture info");
                         /*
                             Identify texture index.
                         */
-                        std::vector<std::string> imageTextures = fileLoader->extractContainedContents(material, TEXTURE_ID + "{", "}");
+                        std::vector<std::string> imageTextures = fileLoader->extractContainedContents(material, std::string(GLB_TEXTURE_ID) + "{", "}");
                         for(size_t j = 0; j < imageTextures.size(); j++)
                         {            
-                            int32_t index = this->extractAttributeIndex(imageTextures[j], INDEX);
+                            int32_t index = this->extractAttributeIndex(imageTextures[j], GLB_INDEX);
         
                             glbMaterialData texturedMaterial = {};
                             texturedMaterial.diffuse = glm::vec3(-0.1f, -0.1f, -0.1f);
@@ -566,7 +565,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 };
             };
         }
-        else if(json.find(NODES) == 0)
+        else if(json.find(GLB_NODES) == 0)
         {
             LOG_DEBUG("Parsing node...");
             std::string meshData = json;
@@ -582,12 +581,12 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     Extract mesh name in the event that user 
                     didn't configure one.
                 */
-                size_t nameStart = nodeData.find(NAME);
-                std::string nameBuff = *fileLoader->extractContainedContents(nodeData.substr(nameStart + NAME.size()), "\"", "\"").data();
+                size_t nameStart = nodeData.find(GLB_NAME);
+                std::string nameBuff = *fileLoader->extractContainedContents(nodeData.substr(nameStart + std::string(GLB_NAME).size()), "\"", "\"").data();
 
-                if(nodeData.find(TRANSLATION) != std::string::npos)
+                if(nodeData.find(GLB_TRANSLATION) != std::string::npos)
                 {
-                    std::string str = fileLoader->extractContainedContents(nodeData, TRANSLATION, "]")[0];
+                    std::string str = fileLoader->extractContainedContents(nodeData, GLB_TRANSLATION, "]")[0];
                     std::vector<std::string> axis = fileLoader->splitTokensFromLine(str.substr(1, str.size() - 2).c_str(), ',');
         
                     node.translation.x = std::stof(axis[0]);
@@ -595,9 +594,9 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     node.translation.z = std::stof(axis[2]);
                 };
                 
-                if(nodeData.find(ROTATION) != std::string::npos)
+                if(nodeData.find(GLB_ROTATION) != std::string::npos)
                 {
-                    std::string str = fileLoader->extractContainedContents(nodeData, ROTATION, "]")[0];
+                    std::string str = fileLoader->extractContainedContents(nodeData, GLB_ROTATION, "]")[0];
                     std::vector<std::string> axis = fileLoader->splitTokensFromLine(str.substr(1, str.size() - 2).c_str(), ',');
 
                     /*
@@ -610,9 +609,9 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     node.rotation.w = std::stof(axis[3]);
                 };
 
-                if(nodeData.find(SCALE) != std::string::npos)
+                if(nodeData.find(GLB_SCALE) != std::string::npos)
                 {
-                    std::string str = fileLoader->extractContainedContents(nodeData, SCALE, "]")[0];
+                    std::string str = fileLoader->extractContainedContents(nodeData, GLB_SCALE, "]")[0];
                     std::vector<std::string> axis = fileLoader->splitTokensFromLine(str.substr(1, str.size() - 2).c_str(), ',');
 
                     node.scale.x = std::stof(axis[0]);
@@ -620,10 +619,10 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     node.scale.z = std::stof(axis[2]);
                 };
 
-                size_t childrenLocation = nodeData.find(CHILDREN);
+                size_t childrenLocation = nodeData.find(GLB_CHILDREN);
                 if(childrenLocation != std::string::npos)
                 {
-                    std::string data = fileLoader->extractContainedContents(nodeData, CHILDREN + "[", "]")[0];
+                    std::string data = fileLoader->extractContainedContents(nodeData, std::string(GLB_CHILDREN) + "[", "]")[0];
                     std::vector<std::string> children = fileLoader->splitTokensFromLine(data.substr(0, data.size() - 1).c_str(), ',');
 
                     std::transform(
@@ -637,24 +636,24 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 };
 
                 node.name = nameBuff.substr(0, nameBuff.size() - 1);
-                node.meshIndex = this->extractAttributeIndex(nodeData, MESH);
-                node.skinIndex = this->extractAttributeIndex(nodeData, SKIN);
+                node.meshIndex = this->extractAttributeIndex(nodeData, GLB_MESH);
+                node.skinIndex = this->extractAttributeIndex(nodeData, GLB_SKIN);
 
                 nodes.push_back(node);
             };
         }
-        else if(json.find(MESHES) == 0)
+        else if(json.find(GLB_MESHES) == 0)
         {
             LOG_DEBUG("Parsing primitives...");
             std::string meshData = json;
-            std::vector<std::string> primitives = fileLoader->extractContainedContents(meshData, PRIMITIVES, "]");
+            std::vector<std::string> primitives = fileLoader->extractContainedContents(meshData, GLB_PRIMITIVES, "]");
             
             meshes = {};
             
             for(size_t a = 0; a < primitives.size(); a++)
             {
                 std::string &primitiveData = primitives[a];
-                std::vector<std::string> attributes = fileLoader->extractContainedContents(primitiveData, ATTRIBUTES, "}");
+                std::vector<std::string> attributes = fileLoader->extractContainedContents(primitiveData, GLB_ATTRIBUTES, "}");
                 LOG_DEBUG("Inspecting attributes");
 
                 mesh.clear();
@@ -710,8 +709,8 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                         };
                     };
     
-                    properties.indicesAccessor = this->extractAttributeIndex(primitiveData, INDICES);
-                    properties.materialIndex = this->extractAttributeIndex(primitiveData, MATERIAL_ID);
+                    properties.indicesAccessor = this->extractAttributeIndex(primitiveData, GLB_INDICES);
+                    properties.materialIndex = this->extractAttributeIndex(primitiveData, GLB_MATERIAL_ID);
                     mesh.push_back(properties);
     
                     std::string nextObject = "},{";
@@ -722,17 +721,17 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 meshes.push_back(mesh);
             };
         }
-        else if(json.find(SKINS) == 0)
+        else if(json.find(GLB_SKINS) == 0)
         {
             LOG_DEBUG("Parsing skinning data...");
             std::vector<std::string> skinData = fileLoader->extractContainedContents(json, "{", "}");
             for(size_t j = 0; j < skinData.size(); j++)
             {
                 glbSkinData skin = {};
-                std::string jointData = fileLoader->extractContainedContents(skinData[j], JOINTS + "[", "]")[0];
+                std::string jointData = fileLoader->extractContainedContents(skinData[j], std::string(GLB_JOINTS) + "[", "]")[0];
                 std::vector<std::string> joints = fileLoader->splitTokensFromLine(jointData.substr(0, jointData.size() -1).c_str(), ',');
 
-                skin.inverseBindMatriceAccessor = this->extractAttributeIndex(skinData[j], INVERSE_BIND_MATRICES);
+                skin.inverseBindMatriceAccessor = this->extractAttributeIndex(skinData[j], GLB_INVERSE_BIND_MATRICES);
                 std::transform(
                     joints.begin(), 
                     joints.end(), 
@@ -745,13 +744,13 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 skins.push_back(skin);
             };
         }
-        else if(json.find(ANIMATIONS) == 0)
+        else if(json.find(GLB_ANIMATIONS) == 0)
         {
             LOG_DEBUG("Parsing animation data...");
             
             std::string animationData = json;
-            std::vector<std::string> channels = fileLoader->extractContainedContents(animationData, CHANNELS + "[", "]");
-            std::vector<std::string> samplers = fileLoader->extractContainedContents(animationData, SAMPLERS + "[", "]");
+            std::vector<std::string> channels = fileLoader->extractContainedContents(animationData, std::string(GLB_CHANNELS) + "[", "]");
+            std::vector<std::string> samplers = fileLoader->extractContainedContents(animationData, std::string(GLB_SAMPLERS) + "[", "]");
             
             /*
                 Apply the same methodology as is used during mesh
@@ -764,15 +763,15 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 glbAnimationData animation = {};
 
                 std::string targetChannels = channels[j];
-                std::vector<std::string> channelInfo = fileLoader->extractContainedContents(targetChannels, TARGET, "}");
+                std::vector<std::string> channelInfo = fileLoader->extractContainedContents(targetChannels, GLB_TARGET, "}");
 
                 for(size_t k = 0; k < channelInfo.size(); k++)
                 {
                     glbAnimationChannel channel = {};
                     std::string info = channelInfo[k];
 
-                    size_t pathStart = info.find(PATH);
-                    std::string transformType = *fileLoader->extractContainedContents(info.substr(pathStart + PATH.size()), "\"", "\"").data();
+                    size_t pathStart = info.find(GLB_PATH);
+                    std::string transformType = *fileLoader->extractContainedContents(info.substr(pathStart + std::string(GLB_PATH).size()), "\"", "\"").data();
                     
                     switch (transformType[0])
                     {
@@ -792,8 +791,8 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                         default:
                             break;
                     };
-                    channel.nodeIndex = this->extractAttributeIndex(info, NODE_ID);
-                    channel.samplerIndex = this->extractAttributeIndex(targetChannels, SAMPLER_ID);
+                    channel.nodeIndex = this->extractAttributeIndex(info, GLB_NODE_ID);
+                    channel.samplerIndex = this->extractAttributeIndex(targetChannels, GLB_SAMPLER_ID);
     
                     std::string nextObject = "},{";
                     int32_t location = targetChannels.find(nextObject);
@@ -810,8 +809,8 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     glbAnimationSampler sampler = {};
                     std::string info = samplerInfo[k];
     
-                    size_t lerpStart = info.find(INTERPOLATION);
-                    std::string lerpType = *fileLoader->extractContainedContents(info.substr(lerpStart + INTERPOLATION.size()), "\"", "\"").data();
+                    size_t lerpStart = info.find(GLB_INTERPOLATION);
+                    std::string lerpType = *fileLoader->extractContainedContents(info.substr(lerpStart + std::string(GLB_INTERPOLATION).size()), "\"", "\"").data();
     
                     switch (lerpType[0])
                     {
@@ -832,8 +831,8 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                             break;
                     };
     
-                    sampler.timestepAccessor = this->extractAttributeIndex(info, INPUT);
-                    sampler.keyframeContentsAccessor = this->extractAttributeIndex(info, OUTPUT);
+                    sampler.timestepAccessor = this->extractAttributeIndex(info, GLB_INPUT);
+                    sampler.keyframeContentsAccessor = this->extractAttributeIndex(info, GLB_OUTPUT);
     
                     animation.samplers.push_back(sampler);
                 };
@@ -841,30 +840,30 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 animations.push_back(animation);
             }
         }
-        else if(json.find(TEXTURES) == 0)
+        else if(json.find(GLB_TEXTURES) == 0)
         {
             LOG_DEBUG("Parsing texture data...");
             glbTextureData texture = {};
             std::vector<std::string> textureProperties = fileLoader->extractContainedContents(json, "{", "}");
             for(size_t j = 0; j < textureProperties.size(); j++)
             {
-                texture.samplerIndex = this->extractAttributeIndex(textureProperties[j], SAMPLER_ID);
-                texture.imageIndex = this->extractAttributeIndex(textureProperties[j], IMAGE_ID);
+                texture.samplerIndex = this->extractAttributeIndex(textureProperties[j], GLB_SAMPLER_ID);
+                texture.imageIndex = this->extractAttributeIndex(textureProperties[j], GLB_IMAGE_ID);
                 textures.push_back(texture);
             };
         }
-        else if(json.find(IMAGES) == 0)
+        else if(json.find(GLB_IMAGES) == 0)
         {
             LOG_DEBUG("Copying image data...");
             std::vector<std::string> imageProperties = fileLoader->extractContainedContents(json, "{", "}");
             for(size_t j = 0; j < imageProperties.size(); j++)
             {
                 glbImageData image = {}; 
-                image.bufferViewIndex = this->extractAttributeIndex(imageProperties[j], BUFFERVIEW_ID);
+                image.bufferViewIndex = this->extractAttributeIndex(imageProperties[j], GLB_BUFFERVIEW_ID);
                 images.push_back(image);
             };
         }
-        else if(json.find(ACCESSORS) == 0)
+        else if(json.find(GLB_ACCESSORS) == 0)
         {
             LOG_DEBUG("Parsing accessors...");
             std::vector<std::string> data = fileLoader->extractContainedContents(json, "{", "}");
@@ -878,17 +877,17 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                 std::string accessorData = data[j];
 
                 glbAccessorData accessor = {};
-                accessor.bufferViewIndex = this->extractAttributeIndex(accessorData, BUFFERVIEW_ID);
-                accessor.componentType = this->extractAttributeIndex(accessorData, COMPONENT_TYPE);
-                accessor.byteOffset = this->extractAttributeIndex(accessorData, BYTE_OFFSET);
-                accessor.count = this->extractAttributeIndex(accessorData, COUNT);
+                accessor.bufferViewIndex = this->extractAttributeIndex(accessorData, GLB_BUFFERVIEW_ID);
+                accessor.componentType = this->extractAttributeIndex(accessorData, GLB_COMPONENT_TYPE);
+                accessor.byteOffset = this->extractAttributeIndex(accessorData, GLB_BYTE_OFFSET);
+                accessor.count = this->extractAttributeIndex(accessorData, GLB_COUNT);
                 accessor.type = type;
 
                 accessors.push_back(accessor);
             };
 
         }
-        else if(json.find(BUFFERVIEWS) == 0)
+        else if(json.find(GLB_BUFFERVIEWS) == 0)
         {
             LOG_DEBUG("Inspecting bufferviews...");
             /*
@@ -909,15 +908,15 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
 
                 glbBufferViewData bufferView = {};
 
-                bufferView.bufferIndex  = this->extractAttributeIndex(bvData, BUFFER_ID);
-                bufferView.byteOffset   = this->extractAttributeIndex(bvData, BYTE_OFFSET);
-                bufferView.byteLength   = this->extractAttributeIndex(bvData, BYTE_LENGTH);
-                bufferView.byteStride   = this->extractAttributeIndex(bvData, BYTE_STRIDE);
+                bufferView.bufferIndex  = this->extractAttributeIndex(bvData, GLB_BUFFER_ID);
+                bufferView.byteOffset   = this->extractAttributeIndex(bvData, GLB_BYTE_OFFSET);
+                bufferView.byteLength   = this->extractAttributeIndex(bvData, GLB_BYTE_LENGTH);
+                bufferView.byteStride   = this->extractAttributeIndex(bvData, GLB_BYTE_STRIDE);
 
                 bufferViews.push_back(bufferView);
             };
         }
-        else if(json.find(BUFFERS) == 0)
+        else if(json.find(GLB_BUFFERS) == 0)
         {
             LOG_DEBUG("Copying buffer data...");
             std::vector<std::string> data = fileLoader->extractContainedContents(json, "{", "}");
@@ -928,7 +927,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
 
                 glbBufferData buffer = {};
                 buffer.offset = offset;
-                buffer.stride = this->extractAttributeIndex(bufferData, BYTE_LENGTH);
+                buffer.stride = this->extractAttributeIndex(bufferData, GLB_BYTE_LENGTH);
                 offset += buffer.stride;
 
                 buffers.push_back(buffer);

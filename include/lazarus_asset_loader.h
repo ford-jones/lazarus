@@ -55,6 +55,68 @@ using std::stringstream;
 #ifndef LAZARUS_ASSET_LOADER_H
 #define LAZARUS_ASSET_LOADER_H
 
+//  Wavefront mesh (.obj) properties
+
+#define OBJ_MESH            'o'
+#define OBJ_VERTEX          'v'
+#define OBJ_UV_COORDINATES  't'
+#define OBJ_NORMALS         'n'
+#define OBJ_TRIANGLE        'f'
+#define OBJ_MATERIAL_INDEX  'u'
+
+//  Wavefront material (.mtl) properties
+
+#define OBJ_MTL_DIFFUSE     ('K'&'d')
+#define OBJ_MTL_TEXTURE     ('m'&'a'&'p')
+
+//  Top level: glb mesh properties (note the square-bracket)
+
+#define GLB_NODES                   "\"nodes\":[{"
+#define GLB_MESHES                  "\"meshes\":["
+#define GLB_SKINS                   "\"skins\":["
+#define GLB_PRIMITIVES              "\"primitives\":["
+#define GLB_MATERIALS               "\"materials\":["
+#define GLB_TEXTURES                "\"textures\":["
+#define GLB_ACCESSORS               "\"accessors\":["
+#define GLB_IMAGES                  "\"images\":["
+#define GLB_BUFFERVIEWS             "\"bufferViews\":["
+#define GLB_BUFFERS                 "\"buffers\":[{"
+#define GLB_ANIMATIONS              "\"animations\":[{"
+
+//  Subsequent levels: property attributes
+#define GLB_MESH                    "\"mesh\":"
+#define GLB_TRANSLATION             "\"translation\":"
+#define GLB_ROTATION                "\"rotation\":"
+#define GLB_SCALE                   "\"scale\":"
+#define GLB_MATERIAL_ID             "\"material\":"
+#define GLB_TEXTURE_ID              "\"baseColorTexture\":"
+#define GLB_DIFFUSE                 "\"baseColorFactor\":"
+#define GLB_INDEX                   "\"index\":"
+#define GLB_ATTRIBUTES              "\"attributes\":"
+#define GLB_INDICES                 "\"indices\":"
+#define GLB_SAMPLER_ID              "\"sampler\":"
+#define GLB_IMAGE_ID                "\"source\":"
+#define GLB_BUFFERVIEW_ID           "\"bufferView\":"
+#define GLB_BUFFER_ID               "\"buffer\":"
+#define GLB_COUNT                   "\"count\":"
+#define GLB_COMPONENT_TYPE          "\"componentType\":"
+#define GLB_BYTE_OFFSET             "\"byteOffset\":"
+#define GLB_BYTE_LENGTH             "\"byteLength\":"
+#define GLB_BYTE_STRIDE             "\"byteStride\":"
+#define GLB_NAME                    "\"name\":"
+#define GLB_SKIN                    "\"skin\":"
+#define GLB_CHILDREN                "\"children\":"
+#define GLB_INVERSE_BIND_MATRICES   "\"inverseBindMatrices\":"
+#define GLB_JOINTS                  "\"joints\":"
+#define GLB_TARGET                  "\"target\":"
+#define GLB_NODE_ID                 "\"node\":"
+#define GLB_PATH                    "\"path\":"
+#define GLB_CHANNELS                "\"channels\":"
+#define GLB_SAMPLERS                "\"samplers\":"
+#define GLB_INPUT                   "\"input\":"
+#define GLB_OUTPUT                  "\"output\":"
+#define GLB_INTERPOLATION           "\"interpolation\":"
+
 class AssetLoader 
 {
     protected:
@@ -130,53 +192,6 @@ class AssetLoader
 
         std::string jsonData;
         std::string binaryData;
-
-        //  Top level: mesh properties (note the square-bracket)
-        const std::string NODES = "\"nodes\":[{";
-        const std::string MESHES = "\"meshes\":[";
-        const std::string SKINS = "\"skins\":[";
-        const std::string PRIMITIVES = "\"primitives\":[";
-        const std::string MATERIALS = "\"materials\":[";
-        const std::string TEXTURES = "\"textures\":[";
-        const std::string ACCESSORS = "\"accessors\":[";
-        const std::string IMAGES = "\"images\":[";
-        const std::string BUFFERVIEWS = "\"bufferViews\":[";
-        const std::string BUFFERS = "\"buffers\":[{";
-        const std::string ANIMATIONS = "\"animations\":[{";
-
-        //  Subsequent levels: property attributes
-        const std::string MESH = "\"mesh\":";
-        const std::string TRANSLATION = "\"translation\":";
-        const std::string ROTATION = "\"rotation\":";
-        const std::string SCALE = "\"scale\":";
-        const std::string MATERIAL_ID = "\"material\":";
-        const std::string TEXTURE_ID = "\"baseColorTexture\":";
-        const std::string DIFFUSE = "\"baseColorFactor\":";
-        const std::string INDEX = "\"index\":";
-        const std::string ATTRIBUTES = "\"attributes\":";
-        const std::string INDICES = "\"indices\":";
-        const std::string SAMPLER_ID = "\"sampler\":";
-        const std::string IMAGE_ID = "\"source\":";
-        const std::string BUFFERVIEW_ID = "\"bufferView\":";
-        const std::string BUFFER_ID = "\"buffer\":";
-        const std::string COUNT = "\"count\":";
-        const std::string COMPONENT_TYPE = "\"componentType\":";
-        const std::string BYTE_OFFSET = "\"byteOffset\":";
-        const std::string BYTE_LENGTH = "\"byteLength\":";
-        const std::string BYTE_STRIDE = "\"byteStride\":";
-        const std::string NAME = "\"name\":";
-        const std::string SKIN = "\"skin\":";
-        const std::string CHILDREN = "\"children\":";
-        const std::string INVERSE_BIND_MATRICES = "\"inverseBindMatrices\":";
-        const std::string JOINTS = "\"joints\":";
-        const std::string TARGET = "\"target\":";
-        const std::string NODE_ID = "\"node\":";
-        const std::string PATH = "\"path\":";
-        const std::string CHANNELS = "\"channels\":";
-        const std::string SAMPLERS = "\"samplers\":";
-        const std::string INPUT = "\"input\":";
-        const std::string OUTPUT = "\"output\":";
-        const std::string INTERPOLATION = "\"interpolation\":";
 
         struct glbNodeData
         {
@@ -283,7 +298,7 @@ class AssetLoader
         int32_t extractAttributeIndex(std::string bounds, std::string target);
 
         //  wavefront-related members
-        
+
         struct WavefrontMaterialData
         {
             uint32_t id;
