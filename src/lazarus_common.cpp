@@ -54,6 +54,7 @@ bool                     LAZARUS_DISABLE_VSYNC                  = false;
 bool                     LAZARUS_DO_STENCIL_BUFFER              = false;
 bool                     LAZARUS_CULL_BACK_FACES                = true;
 bool                     LAZARUS_DEPTH_TEST_FRAGS               = true;
+bool                     LAZARUS_WIREFRAME_MODE                 = false;
 
 void GlobalsManager::setEnforceImageSanity(bool shouldEnforce)
 {
@@ -202,4 +203,16 @@ void GlobalsManager::setPickableEntity(uint32_t entityId)
 uint8_t GlobalsManager::getPickableEntity(uint8_t index)
 {
     return LAZARUS_SELECTABLE_ENTITIES[index - 1];
+};
+
+void GlobalsManager::setWireframeMode(bool useWireframe)
+{
+    LAZARUS_WIREFRAME_MODE = useWireframe;
+
+    return;
+};
+
+bool GlobalsManager::getWireframeMode()
+{
+    return LAZARUS_WIREFRAME_MODE;
 };

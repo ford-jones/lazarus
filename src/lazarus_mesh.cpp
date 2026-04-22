@@ -1510,9 +1510,10 @@ lazarus_result ModelManager::drawModel(ModelManager::Model &meshIn)
             default:
                 break;
         };
-    
+
+        bool useWireframe = GlobalsManager::getWireframeMode();
         glDrawElementsInstanced(
-            GL_TRIANGLES, 
+            (!useWireframe ? GL_TRIANGLES : GL_LINES), 
             data.indexes.size(), 
             GL_UNSIGNED_INT, 
             nullptr, 
@@ -1566,7 +1567,6 @@ lazarus_result ModelManager::setMaterials(AssetLoader::AssetData &assetData)
         if(((material.diffuse.r + material.diffuse.b + material.diffuse.g) < -0.1f) && 
              material.texture.pixelData != NULL)
         {
-            LOG_DEBUG("IMAGE_TEXTURE");
             material.type = MaterialType::IMAGE_TEXTURE;
 
             /*
@@ -1579,7 +1579,6 @@ lazarus_result ModelManager::setMaterials(AssetLoader::AssetData &assetData)
         }
         else
         {
-            LOG_DEBUG("DIFFUSE_COLOR");
             material.type = MaterialType::DIFFUSE_COLOR;
     
             meshData.texture.samplerId = 0;

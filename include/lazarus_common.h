@@ -50,6 +50,7 @@ extern bool                      LAZARUS_DISABLE_VSYNC;
 extern bool                      LAZARUS_DO_STENCIL_BUFFER;
 extern uint32_t                  LAZARUS_MAX_IMAGE_WIDTH;
 extern uint32_t                  LAZARUS_MAX_IMAGE_HEIGHT;
+extern bool                      LAZARUS_WIREFRAME_MODE;
 
 
 typedef enum lazarus_result
@@ -159,6 +160,9 @@ class GlobalsManager
 
         static void setPickableEntity(uint32_t entityId);
         static uint8_t getPickableEntity(uint8_t index);
+
+        static void setWireframeMode(bool useWireframe);
+        static bool getWireframeMode();
 };
 
 #endif

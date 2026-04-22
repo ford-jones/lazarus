@@ -393,122 +393,130 @@ lazarus_result TextManager::createText(TextManager::Text &out, TextManager::Text
 
 lazarus_result TextManager::loadText(TextManager::Text textIn)
 {
-    /*
-        Note:
-        It's computationally brutal to be doing all of this every frame
-        i.e. Freeing and reprovisioning quads etc
-    */
-
-    TextManager::TextConfig &settings = textIn.config;
     lazarus_result status = lazarus_result::LAZARUS_OK;
-    
-    /*
-        Creation of these tiles takes up space in the
-        manager's dataStore and will grow indefinitely
-        if not flushed out. 
-        
-        Also helps ensure the location of the tiles at
-        the time of draw. I.e. index 0 .. n
-    */
-    
-    ModelManager::clearMeshStorage();
-    
-    if(word.size() > 0)
+
+    /* Dont do all this in wireframe, glyphs aren't visible anyway */
+    if(!GlobalsManager::getWireframeMode())
     {
-        this->word.clear();
-    };
-    
-    this->translationStride = 0;
-    
-    /*
-        Generate new tiles which are used as 
-        texture surfaces for a letter. 
-
-        Letters are identified by their UV 
-        coordinates from within the glyph atlas.
-
-        FIXME:
-        Rendering artifacts caused by a potential
-        out-by-one error here resulting in the 
-        edges of nearby neighbours in the texture 
-        atlas to be mapped to the quad.
-    */
-    
-    for(size_t i = 0; i < settings.targetString.size(); i++)
-    {   
-        this->quad = {};
-        this->setActiveGlyph(settings.targetString[i], settings.fontIndex, settings.letterSpacing);
-        
-        LOG_DEBUG("Loading glyph tile");
-        ModelManager::QuadConfig quadSettings = {};
-        quadSettings.width = this->glyph.width;
-        quadSettings.height = this->glyph.height;
-        quadSettings.texturePath = "";
-        quadSettings.uvXL = this->uvL;
-        quadSettings.uvXR = this->uvR;
-        quadSettings.uvYU = this->uvU;
-        quadSettings.uvYD = this->uvD;
-        quadSettings.instanceCount = 1;
-
-        status = ModelManager::createQuad(this->quad, quadSettings);
-        if(status != lazarus_result::LAZARUS_OK)
-        {
-            return status;
-        };
         /*
-            Translate the tile to it's location within
-            the word, relative to the other letters.
+            Note:
+            It's computationally brutal to be doing all of this every frame
+            i.e. Freeing and reprovisioning quads etc
         */
-        status = transformer.translateModel(
-            quad, 
-            static_cast<float>((settings.location.x + (this->glyph.width / 2.0f)) + this->translationStride), 
-            static_cast<float>((settings.location.y + (this->rowHeight / 2.0f))), 
-            0.0f
-        );
-        if(status != lazarus_result::LAZARUS_OK)
-        {
-            return status;
-        };
-        this->translationStride += (this->glyph.width + settings.letterSpacing);
-
-        this->word.push_back(quad);
-    };
-
-    /*
-        Cleanup the layout at the locaiton of an
-        entry and assume its position with the new
-        set of tiles.
-    */
-
-    layout.erase(textIn.layoutIndex);
-    layout.insert_or_assign(textIn.layoutIndex, this->word);
-        
-    this->translationStride = 0;
-
-    //  TODO:
-    //  Check opengl errors 
     
-    glUniform3fv(this->textColorUniformLocation, 1, &textIn.config.color[0]);
+        TextManager::TextConfig &settings = textIn.config;
+        
+        /*
+            Creation of these tiles takes up space in the
+            manager's dataStore and will grow indefinitely
+            if not flushed out. 
+            
+            Also helps ensure the location of the tiles at
+            the time of draw. I.e. index 0 .. n
+        */
+        
+        ModelManager::clearMeshStorage();
+        
+        if(word.size() > 0)
+        {
+            this->word.clear();
+        };
+        
+        this->translationStride = 0;
+        
+        /*
+            Generate new tiles which are used as 
+            texture surfaces for a letter. 
+    
+            Letters are identified by their UV 
+            coordinates from within the glyph atlas.
+    
+            FIXME:
+            Rendering artifacts caused by a potential
+            out-by-one error here resulting in the 
+            edges of nearby neighbours in the texture 
+            atlas to be mapped to the quad.
+        */
+        
+        for(size_t i = 0; i < settings.targetString.size(); i++)
+        {   
+            this->quad = {};
+            this->setActiveGlyph(settings.targetString[i], settings.fontIndex, settings.letterSpacing);
+            
+            LOG_DEBUG("Loading glyph tile");
+            ModelManager::QuadConfig quadSettings = {};
+            quadSettings.width = this->glyph.width;
+            quadSettings.height = this->glyph.height;
+            quadSettings.texturePath = "";
+            quadSettings.uvXL = this->uvL;
+            quadSettings.uvXR = this->uvR;
+            quadSettings.uvYU = this->uvU;
+            quadSettings.uvYD = this->uvD;
+            quadSettings.instanceCount = 1;
+    
+            status = ModelManager::createQuad(this->quad, quadSettings);
+            if(status != lazarus_result::LAZARUS_OK)
+            {
+                return status;
+            };
+            /*
+                Translate the tile to it's location within
+                the word, relative to the other letters.
+            */
+            status = transformer.translateModel(
+                quad, 
+                static_cast<float>((settings.location.x + (this->glyph.width / 2.0f)) + this->translationStride), 
+                static_cast<float>((settings.location.y + (this->rowHeight / 2.0f))), 
+                0.0f
+            );
+            if(status != lazarus_result::LAZARUS_OK)
+            {
+                return status;
+            };
+            this->translationStride += (this->glyph.width + settings.letterSpacing);
+    
+            this->word.push_back(quad);
+        };
+    
+        /*
+            Cleanup the layout at the locaiton of an
+            entry and assume its position with the new
+            set of tiles.
+        */
+    
+        layout.erase(textIn.layoutIndex);
+        layout.insert_or_assign(textIn.layoutIndex, this->word);
+            
+        this->translationStride = 0;
+    
+        //  TODO:
+        //  Check opengl errors 
+        
+        glUniform3fv(this->textColorUniformLocation, 1, &textIn.config.color[0]);
+    }
 
     return status;
 };
 
 lazarus_result TextManager::drawText(TextManager::Text textIn)
 {   
-    LOG_DEBUG("Rendering character tiles");
-    this->word = layout.at(textIn.layoutIndex);
-
-    //  TODO:
-    //  Check errors
-
-    for(auto i: this->word)
+    if(!GlobalsManager::getWireframeMode())
     {
-        quad = i;
-        
-        cameraBuilder->loadCamera(camera);
-        ModelManager::loadModel(quad);
-        ModelManager::drawModel(quad);
-    };
+        LOG_DEBUG("Rendering character tiles");
+        this->word = layout.at(textIn.layoutIndex);
+    
+        //  TODO:
+        //  Check errors
+    
+        for(auto i: this->word)
+        {
+            quad = i;
+            
+            cameraBuilder->loadCamera(camera);
+            ModelManager::loadModel(quad);
+            ModelManager::drawModel(quad);
+        };
+    }
 
     return lazarus_result::LAZARUS_OK;
 };
