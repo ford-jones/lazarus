@@ -69,6 +69,7 @@ lazarus_result LightManager::createLightSource(LightManager::Light &out, LightMa
     }
     else
     {
+        LOG_ERROR("Light Error: ", __FILE__, __LINE__);
         return lazarus_result::LAZARUS_LIMIT_REACHED;
     };
     

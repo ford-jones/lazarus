@@ -41,7 +41,8 @@ class LightManager
         enum LightType 
         {
             DIRECTIONAL,
-            POINT
+            POINT,
+            AMBIENT
         };
         struct LightConfig
         {

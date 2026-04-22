@@ -141,6 +141,7 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     //  Light variants
     const int DIRECTIONAL_LIGHT = 0;
     const int POINT_LIGHT = 1;
+    const int AMBIENT_LIGHT = 2;
 
     //  Camera variants
     const int ORTHOGRAPHIC = 0;
@@ -256,13 +257,12 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
             }
             else if(lightTypes[i] == POINT_LIGHT)
             {
-                vec3 color = vec3(colorData.r, colorData.g, colorData.b);
                 vec3 displacement = lightPositions[i] - fragPosition;
 
                 vec3 direction = normalize(displacement);
                 float diffusion = max(dot(normalCoordinate, direction), 0.0);
 
-                vec3 illuminatedFrag = (color * lightColors[i] * diffusion);
+                vec3 illuminatedFrag = (colorData * lightColors[i] * diffusion);
 
                 //  Apply inverse square law to illumination result
                 //  Note: Don't apply for directional lights when they are added
@@ -270,6 +270,10 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
                 vec3 reflection = illuminatedFrag / (dot(displacement, displacement));
 
                 result += (reflection * lightBrightness[i]);
+            } 
+            else if(lightTypes[i] == AMBIENT_LIGHT) 
+            {
+                result += colorData;
             };
         };
 
