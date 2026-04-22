@@ -47,7 +47,7 @@ class LightManager
         struct LightConfig
         {
             std::string name = "LIGHT_";
-            LightType type = LightType::DIRECTIONAL;
+            LightType type = LightType::AMBIENT;
             glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f); 
             glm::vec3 direction = glm::vec3(1.0f, 0.0, 0.0);
             glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f);
