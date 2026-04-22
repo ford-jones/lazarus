@@ -480,6 +480,7 @@ WindowManager::WindowManager(const char *title, uint32_t width, uint32_t height)
     this->cullFaces 	= GlobalsManager::getBackFaceCulling();
     this->testDepth 	= GlobalsManager::getDepthTest();
     this->disableVsync 	= GlobalsManager::getVsyncDisabled();
+	this->wireframeMode = GlobalsManager::getWireframeMode();
 
 	this->isOpen = false;
 
@@ -653,6 +654,15 @@ lazarus_result WindowManager::loadConfig()
         */
         glfwSwapInterval(1);
     };
+
+	if(wireframeMode)
+	{
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	}
+	else
+	{
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	};
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 

@@ -1511,9 +1511,8 @@ lazarus_result ModelManager::drawModel(ModelManager::Model &meshIn)
                 break;
         };
 
-        bool useWireframe = GlobalsManager::getWireframeMode();
         glDrawElementsInstanced(
-            (!useWireframe ? GL_TRIANGLES : GL_LINES), 
+            GL_TRIANGLES, 
             data.indexes.size(), 
             GL_UNSIGNED_INT, 
             nullptr, 
