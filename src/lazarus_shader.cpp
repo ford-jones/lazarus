@@ -134,13 +134,17 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     #define MAX_LIGHTS 255
     
     //  Texture storage types
-	const int CUBEMAP = 1;
-	const int ATLAS = 2;
-	const int ARRAY = 3;
+	const int CUBEMAP = 0;
+	const int ATLAS = 1;
+	const int ARRAY = 2;
 
     //  Light variants
-    const int DIRECTIONAL_LIGHT = 1;
-    const int POINT_LIGHT = 2;
+    const int DIRECTIONAL_LIGHT = 0;
+    const int POINT_LIGHT = 1;
+
+    //  Camera variants
+    const int ORTHOGRAPHIC = 0;
+    const int PERSPECTIVE_FLYING = 1;
 
     in vec3 fragPosition;
     in vec3 diffuseColor;
@@ -301,7 +305,7 @@ const char *LAZARUS_DEFAULT_FRAG_SHADER = R"(
         if(keepFragment < 1.0) discard;
 
         //  When the fragment is part of a skybox or is observed by an orthographic camera, use color as-is.
-        if(samplerType == CUBEMAP || isUnderPerspective == 0)
+        if(samplerType == CUBEMAP || isUnderPerspective == ORTHOGRAPHIC)
         {
             outFragment = fragColor;
         }

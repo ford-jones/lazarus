@@ -245,6 +245,7 @@ lazarus_result TextManager::initialise()
 
     config.aspectRatioX = GlobalsManager::getDisplayWidth();
     config.aspectRatioY = GlobalsManager::getDisplayHeight();
+    config.type = CameraManager::CameraType::ORTHOGRAPHIC;
 
     lazarus_result status = FontLoader::loaderInit();
     if(status != lazarus_result::LAZARUS_OK)
@@ -263,7 +264,7 @@ lazarus_result TextManager::initialise()
         gives the effect of 2D / HUD text.
     */
 
-    return cameraBuilder->createOrthoCam(camera, config);
+    return cameraBuilder->createCamera(camera, config);
 };
 
 lazarus_result TextManager::extendFontStack(uint32_t &fontId, std::string filepath, uint32_t ptSize)

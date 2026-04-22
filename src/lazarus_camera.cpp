@@ -31,79 +31,60 @@ CameraManager::CameraManager(GLuint shader)
     this->viewLocation                      = glGetUniformLocation(shader, "viewMatrix");
     this->perspectiveProjectionLocation     = glGetUniformLocation(shader, "perspectiveProjectionMatrix");
     this->orthographicProjectionLocation    = glGetUniformLocation(shader, "orthoProjectionMatrix");
+    this->projectionTypeLocation            = glGetUniformLocation(shader, "usesPerspective");
 
     this->pixel                             = 0;
     this->errorCode                         = 0;
     this->aspectRatio = 0.0f;
 };
-
-lazarus_result CameraManager::createPerspectiveCam(CameraManager::Camera &out, CameraManager::CameraConfig options)
+lazarus_result CameraManager::createCamera(CameraManager::Camera &out, CameraManager::CameraConfig options)
 {
-    srand(time((0)));
-    
     this->camera = {};
-    
-    camera.id                   = 1 + (rand() % 2147483647);
-    camera.config               = options;
 
-    if(camera.config.name == "CAMERA_")
-    {
-        camera.config.name.append(std::to_string(camera.id));
-    };
-
+    srand(time((0)));
+    camera.id = 1 + (rand() % 2147483647);
+    camera.config = options;
     this->setAspectRatio(camera.config.aspectRatioX, camera.config.aspectRatioY);
 
-    /*
-        The direction of the back of the camera, so
-        the camera is actually looking down +X
-    */
-    glm::vec3 inverseTarget     = glm::vec3(-1.0f, 0.0f, 0.0f);
-
-    camera.position             = vec3(0.0f, 0.0f, 0.0f);
-    camera.direction            = glm::normalize(camera.position - inverseTarget);
-    camera.upVector             = vec3(0.0f, 1.0f, 0.0f);
-    
-    camera.viewMatrix           = glm::lookAt(camera.position, (camera.position + camera.direction), camera.upVector);
-    /*
-        45° = 0.785398 radians
-    */ 
-    camera.projectionMatrix     = glm::perspective(0.785398f, this->aspectRatio, 0.1f, camera.config.clippingDistance);
-
-    camera.usesPerspective      = 1;
-
-    out = camera;
-    return lazarus_result::LAZARUS_OK;
-};
-
-lazarus_result CameraManager::createOrthoCam(CameraManager::Camera &out, CameraManager::CameraConfig options)
-{
-    srand(time((0)));
-
-    this->camera = {};
-
-    camera.id                       = 1 + (rand() % 2147483647);
-    camera.config.aspectRatioX      = options.aspectRatioX;
-    camera.config.aspectRatioY      = options.aspectRatioY;
-    camera.config.clippingDistance  = 0.0f;
-    camera.config.name              = options.name;
-
     if(camera.config.name == "CAMERA_")
     {
         camera.config.name.append(std::to_string(camera.id));
     };
 
-    /*
-        Negative Z so as to be "back" from the viewing
-        plane.
-    */
-    camera.position             = vec3(0.0f, 0.0f, -1.0f);
-    camera.direction            = glm::normalize(camera.position);
-    camera.upVector             = vec3(0.0f, 1.0f, 0.0f);
+    switch(camera.config.type)
+    {
+        case CameraType::ORTHOGRAPHIC:
+        {
+            camera.position         = vec3(0.0f, 0.0f, -1.0f);
+            camera.direction        = glm::normalize(camera.position);
+            camera.upVector         = vec3(0.0f, 1.0f, 0.0f);
     
-    camera.viewMatrix           = glm::lookAt(camera.position, (camera.position + camera.direction), camera.upVector);
-    camera.projectionMatrix     = glm::ortho(0.0f, static_cast<float>(camera.config.aspectRatioX), 0.0f, static_cast<float>(camera.config.aspectRatioY));
+            camera.viewMatrix       = glm::lookAt(camera.position, (camera.position + camera.direction), camera.upVector);
+            camera.projectionMatrix = glm::ortho(0.0f, static_cast<float>(camera.config.aspectRatioX), 0.0f, static_cast<float>(camera.config.aspectRatioY));
+            break;
+        }
+        case CameraType::PERSPECTIVE_FLYING:
+        {
+            /*
+                The direction of the back of the camera, so
+                the camera is actually looking down +X
+            */
+            glm::vec3 inverseTarget     = glm::vec3(-1.0f, 0.0f, 0.0f);
 
-    camera.usesPerspective      = 0;
+            camera.position             = vec3(0.0f, 0.0f, 0.0f);
+            camera.direction            = glm::normalize(camera.position - inverseTarget);
+            camera.upVector             = vec3(0.0f, 1.0f, 0.0f);
+    
+            camera.viewMatrix           = glm::lookAt(camera.position, (camera.position + camera.direction), camera.upVector);
+            /*
+                45° = 0.785398 radians
+            */ 
+            camera.projectionMatrix     = glm::perspective(0.785398f, this->aspectRatio, 0.1f, camera.config.clippingDistance);
+            break;
+        }
+        default:
+            break;
+    };
 
     out = camera;
     return lazarus_result::LAZARUS_OK;
@@ -120,12 +101,11 @@ lazarus_result CameraManager::loadCamera(CameraManager::Camera &cameraIn)
     {
         glUniformMatrix4fv     (this->viewLocation, 1, GL_FALSE, &cameraIn.viewMatrix[0][0]);
 
-        cameraIn.usesPerspective == 1
+        cameraIn.config.type == CameraType::PERSPECTIVE_FLYING
         ? glUniformMatrix4fv     (this->perspectiveProjectionLocation, 1, GL_FALSE, &cameraIn.projectionMatrix[0][0])
         : glUniformMatrix4fv     (this->orthographicProjectionLocation, 1, GL_FALSE, &cameraIn.projectionMatrix[0][0]);
 
-        GLuint location = glGetUniformLocation(this->shader, "usesPerspective");
-        glUniform1i(location, cameraIn.usesPerspective);
+        glUniform1i(this->projectionTypeLocation, cameraIn.config.type);
 
         return this->checkErrors(__FILE__, __LINE__);
     }

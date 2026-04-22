@@ -40,8 +40,8 @@ class LightManager
     public:
         enum LightType 
         {
-            DIRECTIONAL = 1,
-            POINT = 2
+            DIRECTIONAL,
+            POINT
         };
         struct LightConfig
         {
