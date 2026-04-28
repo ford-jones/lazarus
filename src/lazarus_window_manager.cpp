@@ -661,7 +661,7 @@ lazarus_result WindowManager::loadConfig()
 	}
 	else
 	{
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		glPolygonMode(GL_FRONT, GL_FILL);
 	};
 
     glEnable(GL_BLEND);

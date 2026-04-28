@@ -62,10 +62,11 @@ using std::stringstream;
 #define OBJ_UV_COORDINATES  't'
 #define OBJ_NORMALS         'n'
 #define OBJ_TRIANGLE        'f'
-#define OBJ_MATERIAL_INDEX  'u'
+#define OBJ_MATERIAL        'u'
 
 //  Wavefront material (.mtl) properties
 
+#define OBJ_MTL_NAME        ('n'&'e'&'w')
 #define OBJ_MTL_DIFFUSE     ('K'&'d')
 #define OBJ_MTL_TEXTURE     ('m'&'a'&'p')
 
@@ -165,21 +166,22 @@ class AssetLoader
             
             std::string name;
 
+            std::vector<uint32_t> indices;
             std::vector<glm::vec3> attributes;
             std::vector<glm::vec4> movements;
             std::vector<glm::vec3> colors;
-            std::vector<uint32_t> indices;
             std::vector<FileLoader::Image> textures;
             std::vector<Animation> animations;
             std::map<uint32_t, JointData> armature;
         };  
-
+        //  Loads mesh asset data from a `.obj` file... not `gltf`
         lazarus_result parseWavefrontObj(
             std::vector<AssetData> &out,
             const char *meshPath,
             const char *materialPath
         );
-
+        //  Loads mesh asset data from a `.glb` (GL binary) files. `gltf` is not supported but can be 
+        //  easily converted with: [glTF Tools](https://marketplace.visualstudio.com/items?itemName=cesium.gltf-vscode)
         lazarus_result parseGlBinary(
             std::vector<AssetData> &out,
             const char *meshPath
@@ -188,6 +190,53 @@ class AssetLoader
         virtual ~AssetLoader();
 
     private:
+        //  ----------------------------------------
+        //  wavefront-related members
+
+        struct WavefrontMaterialData
+        {
+            uint32_t triangleCount;
+            int32_t layerID;
+            bool isTextured;
+            
+            std::string name;
+            std::string filepath;
+
+            glm::vec3 diffuseColor;
+            FileLoader::Image imageTexture;
+        };
+        struct WavefrontMeshData
+        {
+            uint32_t id;
+            std::string name;
+
+            std::map<uint32_t, glm::vec3> vertexPositions;
+            std::map<uint32_t, glm::vec3> vertexNormals;
+            std::map<uint32_t, glm::vec3> vertexUvCoords;
+            
+            std::vector<uint32_t> positionIndices;
+            std::vector<uint32_t> normalIndices;
+            std::vector<uint32_t> uvIndices;
+
+            std::vector<WavefrontMaterialData> materials;
+            uint32_t prevMax;
+        };
+
+        std::vector<WavefrontMeshData> wavefrontMeshObjects;
+        std::vector<std::string> wavefrontValue;
+        
+        char parserCursor[UINT8_MAX];
+        uint32_t faceCount;
+
+        //  Parses a wavefront file's accompanying .mtl material counterpart
+        lazarus_result parseWavefrontMtl(
+            const char *materialPath
+        );
+        //  Reads vertex attributes from temp* members and group them together 
+        //  in sets of three's if possible.
+        lazarus_result constructTriangle(WavefrontMeshData &obj, std::vector<std::string> attributeIndexes);
+
+        //  -------------------------------------------------
         //  glb-related members
 
         std::string jsonData;
@@ -297,56 +346,7 @@ class AssetLoader
         //  Retrieve all integers immediately following 'target' that occur within 'bounds'.
         int32_t extractAttributeIndex(std::string bounds, std::string target);
 
-        //  wavefront-related members
-
-        struct WavefrontMaterialData
-        {
-            uint32_t id;
-            uint32_t triangleCount;
-            std::string filepath;
-            // std::string name;
-
-            bool isTextured;
-            glm::vec3 diffuseColor;
-            FileLoader::Image imageTexture;
-            int32_t layerID;
-        };
-        struct WavefrontMeshData
-        {
-            uint32_t id;
-            std::string name;
-
-            std::map<uint32_t, glm::vec3> vertexPositions;
-            std::map<uint32_t, glm::vec3> vertexNormals;
-            std::map<uint32_t, glm::vec3> vertexUvCoords;
-            
-            std::vector<uint32_t> positionIndices;
-            std::vector<uint32_t> normalIndices;
-            std::vector<uint32_t> uvIndices;
-
-            std::vector<WavefrontMaterialData> materials;
-        };
-
-        std::vector<WavefrontMeshData> wavefrontMeshObjects;
-        std::vector<std::string> wavefrontRawValues;
-        
-        char currentLine[UINT8_MAX];
-        
-        //  wavefront mtl
-        uint32_t diffuseCount;
-        uint32_t textureCount;
-
-        uint32_t materialIdentifierIndex;
-        uint32_t faceCount;
-
-        lazarus_result parseWavefrontMtl(
-            const char *materialPath
-        );
-        
-        //  Read vertex attributes from temp* members and group them together 
-        //  in sets of three's if possible.
-        lazarus_result constructTriangle(WavefrontMeshData &obj, std::vector<std::string> attributeIndexes);
-
+        //  -------------------------------------------------
         //  Shared members
         
         ifstream file;
@@ -354,7 +354,7 @@ class AssetLoader
         //  Deduplicate vertex attributes and construct a serial for those that are unique to be 
         //  passed to the renderers IBO. Interleaves attributes in the order that is expected by
         //  the renderers VBO.
-        void constructIndexBuffer(std::vector<glm::vec3> &outAttributes, std::vector<glm::vec4> &outMovements, std::vector<uint32_t> &outIndexes, std::vector<glm::vec3> outDiffuse, uint32_t numOfAttributes);
+        void constructIndexBuffer(std::vector<glm::vec3> &outAttributes, std::vector<glm::vec4> &outMovements, std::vector<uint32_t> &outIndexes, uint32_t numOfAttributes);
         //  Clears containers of all their contents.
         void resetMembers();
 

@@ -73,6 +73,8 @@ lazarus_result FileLoader::relativePathToAbsolute(std::string filename, std::str
 lazarus_result FileLoader::loadText(std::string filepath, std::string &out) 
 {
     this->path.clear();
+    this->stringstream.clear();
+    
     if(std::filesystem::exists(filepath))
     {
         std::string absolutePath = "";
