@@ -654,6 +654,15 @@ params:
 #### int getNumberOfActiveLights()
 Returns the number of lights known accross all `LightManager` instances.
 
+#### void setWireframeMode(bool useWireframe)
+Sets the value of `LAZARUS_WIREFRAME_MODE`. Determines whether the scene should be rendered as the lines between a primitive's vertices. Otherwise triangles are filled in and the scene is rendered normally.
+
+> Params: \
+> **useWireframe:** *Render lines when true, otherwise fill faces.*
+
+#### bool getWireframeMode()
+Returns the current value of `LAZARUS_WIREFRAME_MODE`.
+
 ### Members:
 > **lazarus_result**: Various execution status codes (*type:* `enum`)
 > - **LAZARUS_OK** *The engines default state. No problems. (Code: 0)* 
@@ -687,6 +696,8 @@ Returns the number of lights known accross all `LightManager` instances.
 > - **LAZARUS_FT_INIT_FAILURE** *Lazarus failed to inititialise the freetype2 library. (Code: 701)*
 > - **LAZARUS_FT_LOAD_FAILURE** *Freetype has indicated that it is unable to load the TrueType font from the desired location. (Code: 702)*
 > - **LAZARUS_FT_RENDER_FAILURE** *Despite being able to load the target glyph's splines, freetype was unable to render them into a monochrome bitmap. (Code: 703)*
+> - **LAZARUS_INVALID_ANIMATION_ID** *The indices provided for retrieving animation data are out of range. (Code: 801)*
+> - **LAZARUS_NO_ANIMATION_DATA** *An attempt was made to perform an animation operation on an asset which is not rigged. (Code: 802)*
 
 ## WindowManager:
 A class for making and managing the program's window(s). 
@@ -1047,14 +1058,39 @@ Creates a duplicate of `src` at the location of `dest` with updated unique ID fo
 Toggle for removing the areas of a face prior to rendering where the meshes texture's alpha value is zero. Used for rendering sprites.
 
 > Params: \
-> **meshIn:** *The mesh object you wish to draw.* \
+> **modelIn:** *The target mesh object.* \
 > **shouldDiscard:** *The desired value for the option (T/F).* 
+
+#### setActiveAnimation(ModelManager::Model &modelIn, int animationIndex)
+Determine which of an animated asset's movements should be rendered during playback.
+
+> Params: \
+> **modelIn:** *The target mesh object.* \
+> **animationIndex:** *The indices position of the target animation.*
+
+#### setToPosePosition(ModelManager::Model &modelIn)
+Reset an animated assets armature to it's "pose" / rest position. Stops playback.
+
+> Params: \
+> **modelIn:** *The target mesh object.* 
+
+#### pauseAnimation(ModelManager::Model &modelIn)
+Stop playback of the active animation in-place so that the assets armature does not return to it's rest position.
+
+> Params: \
+> **modelIn:** *The target mesh object.*
+
+#### playAnimation(ModelManager::Model &modelIn)
+Play the assets active animation from the armature's current position.
+
+> Params: \
+> **modelIn:** *The target mesh object.*
 
 ### clearMeshStorage()
 Flushes out the internal state(s) of the manager, including it's list of children; freeing ID's of assets and textures for future use and invalidating any asset handles created prior to calling this function.
 
 ### Members:
-> **Mesh:** *A collection of properties which make up a mesh entity. (type: `struct`)* 
+> **Model:** *A collection of properties which make up a mesh entity. (type: `struct`)* 
 >   - **id:** *The meshes serialised ID. Unique only to the manager instance which created it. (type: `int`)*
 >   - **type:** *Which type of asset this mesh is. (type: `ModelManager::ModelType`)*
 >   - **materials:** *The materials used by this mesh. (type: `std::vector<ModelManager::Material>`)*
@@ -1064,7 +1100,7 @@ Flushes out the internal state(s) of the manager, including it's list of childre
 >	- **materialFilepath:** *The absolute path (from system root) to the wavefront file containing this mesh's material data. (type: `std::string*`)*
 >   - **instances:** *A map containing information used for applying transformations to a mesh copy. (type: `std::map<int, ModelManager::Model::Instance>`)*
 
-> **Mesh::Instance** *A collection of properties which make up a GPU copy of a mesh entity. (type: `struct`)*
+> **Model::Instance** *A collection of properties which make up a GPU copy of a mesh entity. (type: `struct`)*
 >	- **position:** *Where the instance is positioned in world space. (type: `glm::vec3`)*
 >	- **direction:** *The instance's forward-vector. Where the instance's local coordinate system's z+ is in relation to world space. (type: `glm::vec3`)*
 >	- **scale:** *The size of the instance. (type: `glm::vec3`)*
@@ -1109,7 +1145,6 @@ Flushes out the internal state(s) of the manager, including it's list of childre
 >   - **type:** *Which type of material this is. (type: `ModelManager::MaterialType`)*
 >   - **texture:** *If `type` is `ModelManager::MaterialType::IMAGE_TEXTURE`, this struct contains the materials texture data, i.e. width, height and raw bytes. (type: `FileLoader::Image`)*
 >   - **diffuse:** *If `type` is `ModelManager::MaterialType::BASE_COLOR`, this struct contains the materials color value.*
->   - **discardsAlphaZero:** *If the contents of `texture.pixelData` contain an `RGBA` value with an alpha of zero, discard the fragment.*
 
 > **MaterialType:** *Different varieties of materials (type: `enum`)*
 >   - **IMAGE_TEXTURE:** *Faces using this material are the rendered using a sample from an image.*
@@ -1125,15 +1160,7 @@ Params:
 > **shader:** *The id of the shader program used to render this camera. Acquired from the out-parameter of `Shader::compileShaders()`*
 
 ### Functions: 
-#### createPerspectiveCam(CameraManager::Camera &out, CameraManager::CameraConfig options)
-Creates a new `Camera` object with a perspective projection matrix located at the scenes origin (x: 0.0, y: 0.0, z: 0.0) which looks directly down the +X axis.
-
-Params:
-> **out:** *An out parameter where load results are stored.* \
-> **options:** *Load settings indicating how the asset should be loaded.*
-
-### Functions: 
-#### createOrthoCam(CameraManager::Camera &out, CameraManager::CameraConfig options)
+#### createCamera(CameraManager::Camera &out, CameraManager::CameraConfig options)
 Creates a new instance of a `Camera`, with an orthographic projection matrix. 
 
 Params:
@@ -1163,10 +1190,16 @@ Retrieves the ID of a pixel occupant in view which has `ModelManager::Model::isC
 >	- **viewMatrix:** *The view matrix to be passed into the shader program at the uniform location of `viewLocation`. (type: `glm::mat4`)*
 >	- **projectionMatrix:** *The projection matrix to be passed into the shader program at the uniform location of `projectionLocation`. (type: `glm::mat4`)*
 
+> **CameraType:** *Different varieties of camera. (type: `enum`)*
+>   - **ORTHOGRAPHIC:** *A "2D" camera with no depth. Coordinates are relative to the width of the viewing port, i.e. in pixels.*
+>   - **PERSPECTIVE_FLYING:** *A 3D camera with free movement in worldspace using euler angles.*
+
 > **CameraConfig:** *Creation function input-settings. (type: `struct`)*
->   - **name:** *What to call this asset. (type: `std::string`, default: `"CAMERA_" + Camera.id`)*
->   - **aspectRatioX:** *The x-axis aspect ratio / width of the viewport. (Default: `LAZARUS_PRIMARY_DISPLAY_WIDTH`)* \
->   - **aspectRatioY:** *The y-axis aspect ratio / height of the viewport. (Default: `LAZARUS_PRIMARY_DISPLAY_HEIGHT`)* 
+>   - **name:** *What to call this asset. (Type: `std::string`, Default: `"CAMERA_" + Camera.id`)*
+>   - **type:** *Which variant of camera to use. (Type: `CameraType`, Default: `ORTHOGRAPHIC`)*
+>   - **aspectRatioX:** *The x-axis aspect ratio / width of the viewport. (Type `int`, Default: `0`)*
+>   - **aspectRatioY:** *The y-axis aspect ratio / height of the viewport. (Type: `int`, Default: `0`)*
+>   - **clippingDistrance:** *How far the camera can see (Type: `float`, Default: `0.0`)* 
 
 ## LightManager:
 A management class for light assets and their properties. 
@@ -1198,8 +1231,9 @@ Params:
 >   - **config:** *Object settings. (type: `LightManager::LightConfig`)*
 
 > **LightType:** *Diffrent varieties of lights. (type: `enum`)*
->   - **DIRECTIONAL:** *Luminence from a far away point such as the sun. Is treated as constant accross the surface of an object.*
->   - **POINT:** *Light which shines at all angles from a point in space with range-based attenuation, like a lightbulb.*
+>   - **DIRECTIONAL:** *Luminence projected in a direction from a far away point. Is treated as constant accross the surface of an object. Like the sun.* 
+>   - **POINT:** *Light which shines outward from a point in space that attenuates over a distance. Like a lightbulb.*
+>   - **AMBIENT:** *Full illumination of all faces equally with no shading.*
 
 > **LightConfig:** *Creation function input-settings. (type: `struct`)*
 >   - **name:** *What to call this asset. (type: `std::string`, default: `"LIGHT_" + n`)*
@@ -1464,17 +1498,21 @@ Free cubemaps: https://www.humus.name/index.php?page=Textures
 ------------------------------------------------------------------
 
 # Known caveats and limitations:
-1. Regarding Wavefront file format: \
-1.A: Your assets must be **triangulated**, this can be done prior to or on export. \
-1.B: Paths must be *stripped*, i.e. exports should include supplementary filenames *only* - with pathing truncated. \
-1.C: Texture files (Those specified by an `.mtl` file's `Map_Kd` property) should be stored in the same directory as the `.mtl` file. \
-1.D: Materials that appear in `.mtl` material files **must** appear in order they were created. A safe way to ensure this is to number any *named* materials during the modeling process (e.g. `1_metal`). This is because named materials are often exported in alphabetical order by modeling software which can lead to undesired loading behaviour.
-2. This project version locks OpenGL to version 4.1 for compatibility with MacOS.
-3. Texture images used in any scene should all have the same pixel width and height. The scene *should* still render but you can expect to find holes in your textures. Use `GlobalsManager::enforceImageSanity` to ensure images are resized on load.
-4. The xy coordinate system of the orthographic camera created by `Camera::createOrthoCam` has `0.0` mapped to the top left corner of the window, while the perspective camera `Camera::createPerspectiveCam` uses the bottom left.
-5. There is no kerning or centering of TrueType fonts loaded by the `TextManager` class. If you need to render perfectly aligned text it may be better to render it directly to a quad as a texture (See: `Mesh::createQuad`). It could then be rendered along with the rest of the text by loading in an orthographic camera (See: `Camera::createOrthoCam`).
-6. The maximum number of lights permitted in any one scene while using the `LAZARUS_DEFAULT_VERT_SHADER` and/or `LAZARUS_DEFAULT_FRAG_SHADER` is limitted to a maximum size of 150.
-7. The maximum number of entities in any one scene who can be picked or looked up using a pixel with `CameraManager::getPixelOccupant` is limmited to a maximum size of 255.
-8. The glb loader does not yet support animation.
+1. Regarding glb file format: \
+1.A: The gltf variant of the specification isn't supported. Files should be exported as or converted to glb. \
+1.B: Textures images should be baked-in, external uri's are not supported. \
+1.C: Animations which utilise morph targets aren't currently supported. \
+1.D: Animations of armatures which contain multiple roots are not currently supported. \
+1.E: Cubicspline animation interpolation isn't supported.
+2. Regarding Wavefront file format: \
+2.A: Your assets must be **triangulated**, this can be done prior to or on export. \
+2.B: Paths must be *stripped*, i.e. exports should include supplementary filenames *only* - with pathing truncated. \
+2.C: Texture files (Those specified by an `.mtl` file's `Map_Kd` property) should be stored in the same directory as the `.mtl` file. 
+3. This project version locks OpenGL to version 4.1 to ensure compatibility with intel based MacOS systems.
+4. Texture images used in any scene should all have the same pixel width and height. If not, the scene *should* still render but you can expect to find holes in your textures. Use `GlobalsManager::enforceImageSanity` to ensure images are resized on load.
+5. The xy coordinate system of the orthographic camera created by `Camera::createOrthoCam` has `0.0` mapped to the top left corner of the window, while the perspective camera `Camera::createPerspectiveCam` uses the bottom left.
+6. There is no kerning or centering of TrueType fonts loaded by the `TextManager` class. If you need to render perfectly aligned text it may be better to render it directly to a quad as a texture (See: `Mesh::createQuad`). It could then be rendered along with the rest of the text by loading in an orthographic camera (See: `Camera::createOrthoCam`).
+7. The maximum number of lights permitted in any one scene while using the `LAZARUS_DEFAULT_VERT_SHADER` and/or `LAZARUS_DEFAULT_FRAG_SHADER` is limitted to a maximum size of 150.
+8. The maximum number of entities in any one scene who can be picked or looked up using a pixel with `CameraManager::getPixelOccupant` is limmited to a maximum size of 255.
 9. For linux systems using wayland graphical sessions, running in windowed mode will throw an error due to window repositioning (the window is centered so it doesn't just appear in a random place). Run the application in fullscreen with `GlobalsManager::setLaunchInFullscreen(true)`.
 10. All images must be formatted with RGBA 8-bit alignment
