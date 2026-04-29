@@ -1,5 +1,7 @@
-# Version: 2026.04.29124352
+# Version: 2026.04.29124558
 
+* [cf3707e](https://github.com/ford-jones/lazarus/commit/cf3707ec5d5ad6c7e5dbac13494e88bff9795ae2): Update readme.md
+* [aeec7c4](https://github.com/ford-jones/lazarus/commit/aeec7c4b2eb196963131d40e6e23d1735246f485): [Changelog CI] Add Changelog for Version 2026.04.29124352
 * [cc87d1e](https://github.com/ford-jones/lazarus/commit/cc87d1ed2fdd31777d4e9da339d36603441d4718): Docs: Updated example reference
 * [1841a13](https://github.com/ford-jones/lazarus/commit/1841a137dfab868205906bfdf3a55ba070b3d2a0): Docs: Updated API reference
 * [a792d80](https://github.com/ford-jones/lazarus/commit/a792d80d40efc96af40bf316f21345d426c63d64): Feat: Loads multiple obj assets from a single file
