@@ -384,12 +384,13 @@ int main()
 
     //  Configure camera settings
     Lazarus::CameraManager::CameraConfig cameraSettings = {};
+    cameraSettings.type = Lazarus::CameraManager::CameraConfig::CameraType::ORTHOGRAPHIC;
     cameraSettings.aspectRatioX = globals.getDisplayWidth();
     cameraSettings.aspectRatioY = globals.getDisplayHeight();
 
     //  Generate camera
     Lazarus::CameraManager::Camera camera = {};
-    cameraManager.createOrthoCam(camera, cameraSettings); //  upon success, camera is given a value
+    cameraManager.createCamera(camera, cameraSettings); //  upon success, camera is given a value
 ```
 
 Now lets create our geometry:
@@ -478,43 +479,61 @@ When you submit your own fragment and / or vertex shaders with a call to `Lazaru
 #### Vertex shader inputs:
 Note these inputs can be found at `LAZARUS_DEFAULT_VERT_LAYOUT`.
 ```c
-layout(location = 0) in vec3 inVertex;      //  Input Vertex position
-layout(location = 1) in vec3 inDiffuse;     //  Input Vertex color
-layout(location = 2) in vec3 inNormal;      //  Input Vertex normal
-layout(location = 3) in vec3 inTexCoord;    //  Input UV (S/T & stack-index)
+#define MAX_KEYFRAMES 255
 
-uniform int usesPerspective;                //  Which projection type to use, 1 for perspective - otherwise orthographic
-uniform mat4 modelMatrix;                   //  The render subject's modelmatrix
-uniform mat4 viewMatrix;                    //  The camera's viewing matrix
-uniform mat4 perspectiveProjectionMatrix;   //  A 3D projection matrix (if one is present)
-uniform mat4 orthoProjectionMatrix;         //  A 2D projection matrix (if one is present)
+//  Vertex buffer object 1 (attributes)
+layout(location = 0) in vec3 inVertex;              //  Input Vertex position
+layout(location = 1) in vec3 inDiffuse;             //  Input Vertex color
+layout(location = 2) in vec3 inNormal;              //  Input Vertex normal
+layout(location = 3) in vec3 inTexCoord;            //  Input UV (S/T & stack-index)
+//  Vertex buffer object 2 (Instance matrices "MBO")
+layout(location = 4) in mat4 instanceModelMatrix;   //  Input instance matrices, memory divisors occupy 4, 5, 6 & 7
+//  Vertex buffer object 3 (Instance-info "IIBO")
+layout(location = 8) in float visible;              //  Input per-instance data
+//  Vertex buffer object 4 (Armature joints)
+layout(location = 9) in vec4 inJoints;              //  Input animation rigging
+layout(location = 10) in vec4 inWeights;            //  Input vertex weights for rigging
 
-out vec3 fragPosition;                      //  Output position
-out vec3 diffuseColor;                      //  Output color data
-out vec3 normalCoordinate;                  //  Output normal coordinates
-out vec3 textureCoordinate;                 //  Output UV for render subject
-out vec3 skyBoxTextureCoordinate;           //  Output for skybox UV
+uniform int usesPerspective;                        //  Which projection type to use, 1 for perspective - otherwise orthographic
+uniform mat4 viewMatrix;                            //  The camera's viewing matrix
+uniform mat4 perspectiveProjectionMatrix;           //  A 3D projection matrix (if one is present)
+uniform mat4 orthoProjectionMatrix;                 //  A 2D projection matrix (if one is present)
 
-flat out int isUnderPerspective;            //  Output required by default program for rendering text / glyphs
+uniform mat4 jointMatrices[MAX_KEYFRAMES];          //  Raw pre-computed joint matrices
 
-vec3 _lazarusComputeWorldPosition();        //  Determine the output vertex position in worldspace coordinates and calculates the relevant clip-space coordinates
-vec3 _lazarusComputeNormalDirection()       //  Determine the direction vector of the output vertex normals. Ensures preservation of the normal direction over non-uniform surfaces.
+out vec3 fragPosition;                              //  Output position
+out vec3 diffuseColor;                              //  Output color data
+out vec3 normalCoordinate;                          //  Output normal coordinates
+out vec3 textureCoordinate;                         //  Output UV for render subject
+out vec3 skyBoxTextureCoordinate;                   //  Output for skybox UV
+out float keepFragment;                             //  Output for fragment discarding
+
+flat out int isUnderPerspective;                    //  Output required by default program for rendering text / glyphs
+
+vec3 _lazarusComputeWorldPosition();                //  Determine the output vertex position in worldspace coordinates and calculates the relevant clip-space coordinates.
+vec3 _lazarusComputeNormalDirection();              //  Determine the direction vector of the output vertex normals. Ensures preservation of the normal direction over non-uniform surfaces.
+vec3 _lazarusComputeSkinningMatrix();               //  Determine the weighted result of the combined joint matrices which effect the output vertex position. 
 ```
 
 #### Pixel / Fragment shader inputs:
 Note these inputs can be found at `LAZARUS_DEFAULT_FRAG_LAYOUT`. \
 Anything not used from here will be optimised-out when compiled.
 ```c
-    #define MAX_LIGHTS 150                          
+    #define MAX_LIGHTS 255
 
     //  Texture storage types for comparisson with samplerType
-    const int CUBEMAP   = 1;
-    const int ATLAS     = 2;
-    const int ARRAY     = 3;
+    const int CUBEMAP   = 0;
+    const int ATLAS     = 1;
+    const int ARRAY     = 2;
 
     //  Light variants
-    const int DIRECTIONAL_LIGHT = 1;
-    const int POINT_LIGHT       = 2;
+    const int DIRECTIONAL_LIGHT = 0;
+    const int POINT_LIGHT       = 1;
+    const int AMBIENT_LIGHT     = 2;
+
+    //  Camera Variants
+    const int ORTHOGRAPHIC = 0;
+    const int PERSPECTIVE_FLYING = 1;
 
     in vec3 fragPosition;                                   //  Input 3D fragment position
     in vec3 diffuseColor;                                   //  Input fragment color
