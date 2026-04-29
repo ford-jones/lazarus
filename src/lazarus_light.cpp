@@ -36,6 +36,8 @@ LightManager::LightManager(GLuint shader)
 
 lazarus_result LightManager::createLightSource(LightManager::Light &out, LightManager::LightConfig options)
 {	
+    LOG_DEBUG("Creating new light...");
+
     this->lightOut = {};
     this->lightData = {};
     
@@ -69,6 +71,7 @@ lazarus_result LightManager::createLightSource(LightManager::Light &out, LightMa
     }
     else
     {
+        LOG_ERROR("Light Error: ", __FILE__, __LINE__);
         return lazarus_result::LAZARUS_LIMIT_REACHED;
     };
     
@@ -78,6 +81,7 @@ lazarus_result LightManager::createLightSource(LightManager::Light &out, LightMa
 
 lazarus_result LightManager::loadLightSource(LightManager::Light &lightIn, int32_t shader)
 {
+    LOG_DEBUG(std::string("Loading lightsource [" + lightIn.config.name + "]").c_str());
     this->lightData = lightStore.at(lightIn.id);
 
     if(lightIn.config.brightness < 0.0f)
@@ -96,6 +100,7 @@ lazarus_result LightManager::loadLightSource(LightManager::Light &lightIn, int32
             lightData.lightDirectionUniformLocation >= 0
         )
         {
+            LOG_DEBUG("Uploading light uniforms");
             this->clearErrors();
     
             glUniform1i         (this->lightCountLocation, this->lightCount);
@@ -116,7 +121,8 @@ lazarus_result LightManager::loadLightSource(LightManager::Light &lightIn, int32
     }
     else
     {
-        /* ==============================================================
+        LOG_DEBUG("Uploading light data to alternate shader program");
+        /*
             When using a shader other than that which this light manager
             was initialised with, we need to rediscover and reset the 
             values of the uniform arrays. This is an expensive opperation
@@ -126,7 +132,10 @@ lazarus_result LightManager::loadLightSource(LightManager::Light &lightIn, int32
             Another noteworthy performance reduction is that regardless
             of how many lights have been loaded with 'shader', the entire
             lightCount is sent and iterated over.
-        ================================================================= */
+
+            Ideally managers should inheret some base class that contains a shader relocation function
+            amongst other potentialy useful things such as error checkers etc.
+        */
 
         this->clearErrors();
 

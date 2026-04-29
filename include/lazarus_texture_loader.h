@@ -39,13 +39,12 @@ using std::shared_ptr;
 
 class TextureLoader
 {
-	
 	protected:
 		enum StorageType
 		{
-			CUBEMAP	= 1,
-			ATLAS	= 2,
-			ARRAY	= 3
+			CUBEMAP,
+			ATLAS,
+			ARRAY
 		};
 		struct TextureData
 		{

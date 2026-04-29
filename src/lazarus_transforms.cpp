@@ -23,11 +23,11 @@ Transform::Transform()
 {
 	LOG_DEBUG("Constructing Lazarus::Transform");
 
-	/* ===========================================
+	/*
 		Use low precision (and incorrect) pi value
 		so that things like camera rotation dont 
 		break at the extremities.
-	============================================== */
+	*/
 
 	this->pi = 3.1419;
 	this->accumulatePitch = 0.0f;
@@ -41,21 +41,21 @@ Transform::Transform()
 	this->rotation = vec3(0.0, 0.0, 0.0);
 };
 
-lazarus_result Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, uint32_t matrixId)
+lazarus_result Transform::translateModel(ModelManager::Model &model, float x, float y, float z, uint32_t instanceID)
 {
-	MeshManager::Mesh::Instance &instance = mesh.instances.at(matrixId);
+	ModelManager::Model::Instance &instance = model.instances.at(instanceID);
 	glm::mat4 &instanceMatrix = instance.modelMatrix;
 
 	this->localCoordinates = glm::vec3(x, y, z);
 
     instanceMatrix = glm::translate(instanceMatrix, this->localCoordinates);
 
-	/* ===========================================================================
+	/*
 		Find worldspace coordinates by multiplying object-space coordinates by the 
 		entity's modelview matrix.
 
 		See: https://learnopengl.com/img/getting-started/coordinate_systems.png
-	=============================================================================== */
+	*/
 	
 	this->worldCoordinates = instanceMatrix * glm::vec4(this->localCoordinates, 1.0);
 
@@ -66,15 +66,15 @@ lazarus_result Transform::translateMeshAsset(MeshManager::Mesh &mesh, float x, f
 	return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, float yaw, float roll, uint32_t matrixId)
+lazarus_result Transform::rotateModel(ModelManager::Model &model, float pitch, float yaw, float roll, uint32_t instanceID)
 {
-	/* ===================================================
+	/*
 		Extract the current z axis rotation values from
 		row 3 of the matrice and then truncate the last 
 		element. This can be treated as the mesh asset's 
 		forward / direction vector.
-	====================================================== */
-	MeshManager::Mesh::Instance &instance = mesh.instances.at(matrixId);
+	*/
+	ModelManager::Model::Instance &instance = model.instances.at(instanceID);
 	glm::mat4 &instanceMatrix = instance.modelMatrix;
 
 	instance.direction = instanceMatrix * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f); 
@@ -86,8 +86,18 @@ lazarus_result Transform::rotateMeshAsset(MeshManager::Mesh &mesh, float pitch, 
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, uint32_t matrixId)
+lazarus_result Transform::scaleModel(ModelManager::Model &model, float x, float y, float z, uint32_t instanceID)
 {
+	/*
+		FIXME:
+		Probably not the place to fix but; for some reason the light that is reflected
+		off of a mesh is applied relative to the items scale. 
+
+		E.g
+		* A mesh is shrunk from 1:1 to 1:10 - it then becomes 10x brighter
+		* A mesh is grown from 1:1 to 10:1 - it then becomes 10x dimmer
+	*/
+
 	float sum = (x + y + z);
 	float max = std::max(0.0f, sum);
 
@@ -99,7 +109,7 @@ lazarus_result Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float
 	}
 	else
 	{
-		MeshManager::Mesh::Instance &instance = mesh.instances.at(matrixId);
+		ModelManager::Model::Instance &instance = model.instances.at(instanceID);
 		glm::mat4 &instanceMatrix = instance.modelMatrix;
 
 		instance.scale = glm::vec3(x, y, z);
@@ -110,23 +120,23 @@ lazarus_result Transform::scaleMeshAsset(MeshManager::Mesh &mesh, float x, float
 	};
 };
 
-lazarus_result Transform::translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity)
+lazarus_result Transform::translateCamera(CameraManager::Camera &camera, float x, float y, float z, float velocity)
 {
-	/* =========================================
+	/*
 		TODO:
 		Handle camera roll
-	============================================ */
+	*/
 
 	if(x != 0.0f)
 	{
-		/* ============================================
+		/*
 			Note the coordinate system is right-handed.
 			If the value of speed is negative, the 
 			camera is moving to the left by a multiple
 			of the -1 to 1 clamped value of the camera's 
 			upward orientation vs direction. If pos,
 			we go right.
-		=============================================== */
+		*/
 		camera.position += glm::normalize(glm::cross(camera.direction, camera.upVector)) * (x * velocity);
 	};
 
@@ -145,13 +155,13 @@ lazarus_result Transform::translateCameraAsset(CameraManager::Camera &camera, fl
 	return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result Transform::rotateCameraAsset(CameraManager::Camera &camera, float pitch, float yaw, float roll)
+lazarus_result Transform::rotateCamera(CameraManager::Camera &camera, float pitch, float yaw, float roll)
 {	
-	/* ============================================
+	/*
 		Ensures consistent behaviour between
 		camera rotation vs translation, as the cam
 		translation naturally accumulates.
-	=============================================== */
+	*/
 	this->accumulatePitch += pitch;
 	this->accumulateYaw += yaw;
 	this->accumulateRoll += roll;
@@ -186,7 +196,7 @@ lazarus_result Transform::rotateCameraAsset(CameraManager::Camera &camera, float
 	return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result Transform::orbitCameraAsset(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX, float tarY, float tarZ)
+lazarus_result Transform::orbitCamera(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX, float tarY, float tarZ)
 {	
 	this->rotation = vec3(0.0, 0.0, 0.0);
 
@@ -217,7 +227,7 @@ lazarus_result Transform::orbitCameraAsset(CameraManager::Camera &camera, float 
 	}
 };
 
-lazarus_result Transform::translateLightAsset(LightManager::Light &light, float x, float y, float z)
+lazarus_result Transform::translateLight(LightManager::Light &light, float x, float y, float z)
 {
 	light.config.position += vec3(x, y, z);
 	
@@ -226,12 +236,12 @@ lazarus_result Transform::translateLightAsset(LightManager::Light &light, float 
 
 float Transform::determineUpVector(float rotation)
 {
-	/* =========================================================
+	/*
 		When in the range of 90 - 270 degrees the orientation of
 		"up" should be +y. (i.e. effectively the same way we see 
 		the world. Consider LOS from looking at your feet, up to 
 		the sky).  
-	============================================================ */
+	*/
 
 	if(
 		(rotation >= 90.0f && rotation <= 270.0f) || 
@@ -247,10 +257,10 @@ float Transform::determineUpVector(float rotation)
 
 float Transform::degreesToRadians(float in, bool enforceLimits)
 {
-	/* =======================================================================
+	/*
 		Optionally check range is valid
 		This is so that certain illegal / breaking calculations can't be made
-	========================================================================== */
+	*/
 	if(
 		enforceLimits && 
 		((in > 360.0f) || (in < -360.0f)))	

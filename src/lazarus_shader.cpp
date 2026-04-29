@@ -21,6 +21,8 @@
 const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
     #version 410 core
 
+    #define MAX_KEYFRAMES 255
+
     //  VBO 1
     layout(location = 0) in vec3 inVertex;
     layout(location = 1) in vec3 inDiffuse;
@@ -29,14 +31,21 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
 
     //  VBO 2 (MBO)
     //  Occupies 4, 5, 6 and 7 (4 * vec4), dilineated by glVertexAttribDivisor
+    
     layout(location = 4) in mat4 instanceModelMatrix;
     layout(location = 8) in float visible;
 
+    layout(location = 9) in vec4 inJoints;
+    layout(location = 10) in vec4 inWeights;
+
     uniform int usesPerspective;
+    uniform int isAnimated;
 
     uniform mat4 viewMatrix;
     uniform mat4 perspectiveProjectionMatrix;
     uniform mat4 orthoProjectionMatrix;
+
+    uniform mat4 jointMatrices[MAX_KEYFRAMES];
 
     out vec3 fragPosition;
     out vec3 diffuseColor;
@@ -47,10 +56,23 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
 
     flat out int isUnderPerspective;
 
+    mat4 _lazarusComputeSkinningMatrix()
+    {
+        mat4 skinningMatrix = 
+        inWeights.x * jointMatrices[int(inJoints.x)] +
+        inWeights.y * jointMatrices[int(inJoints.y)] +
+        inWeights.z * jointMatrices[int(inJoints.z)] +
+        inWeights.w * jointMatrices[int(inJoints.w)];
+        
+        return skinningMatrix;
+    };
+
     vec3 _lazarusComputeWorldPosition()
     {
-        vec4 worldPosition = instanceModelMatrix * vec4(inVertex, 1.0);
-   
+        vec4 worldPosition = isAnimated != 0
+        ? instanceModelMatrix * _lazarusComputeSkinningMatrix() * vec4(inVertex, 1.0)
+        : instanceModelMatrix * vec4(inVertex, 1.0);
+
         //  Determine the vertex's clip-space position
         if(usesPerspective != 0)
         {
@@ -112,13 +134,18 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     #define MAX_LIGHTS 255
     
     //  Texture storage types
-	const int CUBEMAP = 1;
-	const int ATLAS = 2;
-	const int ARRAY = 3;
+	const int CUBEMAP = 0;
+	const int ATLAS = 1;
+	const int ARRAY = 2;
 
     //  Light variants
-    const int DIRECTIONAL_LIGHT = 1;
-    const int POINT_LIGHT = 2;
+    const int DIRECTIONAL_LIGHT = 0;
+    const int POINT_LIGHT = 1;
+    const int AMBIENT_LIGHT = 2;
+
+    //  Camera variants
+    const int ORTHOGRAPHIC = 0;
+    const int PERSPECTIVE_FLYING = 1;
 
     in vec3 fragPosition;
     in vec3 diffuseColor;
@@ -220,7 +247,7 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
 
         //  Calculate the fragment's diffuse lighting for each light in the scene.
         for(int i = 0; i < lightCount; i++)
-        {
+        {            
             if(lightTypes[i] == DIRECTIONAL_LIGHT)
             {
                 vec3 direction = lightDirections[i];
@@ -230,13 +257,12 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
             }
             else if(lightTypes[i] == POINT_LIGHT)
             {
-                vec3 color = vec3(colorData.r, colorData.g, colorData.b);
                 vec3 displacement = lightPositions[i] - fragPosition;
 
                 vec3 direction = normalize(displacement);
                 float diffusion = max(dot(normalCoordinate, direction), 0.0);
 
-                vec3 illuminatedFrag = (color * lightColors[i] * diffusion);
+                vec3 illuminatedFrag = (colorData * lightColors[i] * diffusion);
 
                 //  Apply inverse square law to illumination result
                 //  Note: Don't apply for directional lights when they are added
@@ -244,6 +270,10 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
                 vec3 reflection = illuminatedFrag / (dot(displacement, displacement));
 
                 result += (reflection * lightBrightness[i]);
+            } 
+            else if(lightTypes[i] == AMBIENT_LIGHT) 
+            {
+                result += colorData;
             };
         };
 
@@ -279,7 +309,7 @@ const char *LAZARUS_DEFAULT_FRAG_SHADER = R"(
         if(keepFragment < 1.0) discard;
 
         //  When the fragment is part of a skybox or is observed by an orthographic camera, use color as-is.
-        if(samplerType == CUBEMAP || isUnderPerspective == 0)
+        if(samplerType == CUBEMAP || isUnderPerspective == ORTHOGRAPHIC)
         {
             outFragment = fragColor;
         }
@@ -355,10 +385,12 @@ lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentSha
     glGetShaderiv(this->vertShader, GL_COMPILE_STATUS, &this->accepted);                                                            //   Check the compilation status
     if(!accepted)                                                                                                       //   If it failed
     {
+        this->message = new char[512];
         glGetShaderInfoLog(this->vertShader, 512, NULL, this->message);                                                             //   Retrieve the OpenGL shader logs if there are any and print them to the console
 
         std::string message = std::string("Shader Compilation Error: ").append(this->message);
         LOG_ERROR(message.c_str(), __FILE__, __LINE__);
+        delete this->message;
 
         return lazarus_result::LAZARUS_VSHADER_COMPILE_FAILURE;
     };
@@ -368,9 +400,11 @@ lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentSha
     glGetShaderiv(this->fragShader, GL_COMPILE_STATUS, &this->accepted);                                                            //   Check the compilation status
     if(!accepted)                                                                                                       //   If it failed
     {
+        this->message = new char[512];
         glGetShaderInfoLog(this->fragShader, 512, NULL, this->message);                                                             //   Retrieve the OpenGL shader logs if there are any and print them to the console
         std::string message = std::string("Shader Compilation Error: ").append(this->message);
         LOG_ERROR(message.c_str(), __FILE__, __LINE__);
+        delete this->message;
 
         return lazarus_result::LAZARUS_FSHADER_COMPILE_FAILURE;
     };
@@ -381,10 +415,12 @@ lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentSha
     glGetProgramiv(this->shaderProgram, GL_LINK_STATUS, &this->accepted);                                                           //   Check the link status
     if(!accepted)                                                                                                       //   If it failed
     {
+        this->message = new char[512];
         glGetProgramInfoLog(this->shaderProgram, 512, NULL, this->message);                                                         //   Retrieve the OpenGL shader logs if there are any and print them to the console
 
         std::string message = std::string("Shader Error: ").append(this->message);
         LOG_ERROR(message.c_str(), __FILE__, __LINE__);
+        delete this->message;
 
         return lazarus_result::LAZARUS_SHADER_LINKING_FAILURE;
     }
@@ -583,7 +619,7 @@ lazarus_result Shader::checkErrors(const char *file, uint32_t line)
 
 void Shader::clearErrors()
 {
-    /* ============================================================
+    /*
         Reset OpenGL's error state by flushing out all of the 
         internal state flags containing the error value (which may 
         be several). This is so that persistence of an errors 
@@ -594,7 +630,7 @@ void Shader::clearErrors()
         
         Absolutely painful, see:
         https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetError.xhtml#:~:text=glGetError%20should%20always%20be%20called%20in%20a%20loop
-    ================================================================ */
+    */
 
     this->errorCode = glGetError();
 

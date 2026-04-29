@@ -27,6 +27,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <set>
 #include <string>
 #include <stdlib.h>
 #include <memory>
@@ -42,19 +43,18 @@ using std::string;
 using std::vector;
 using glm::mat4;
 using glm::vec3;
-using glm::vec2;
 
 #ifndef LAZARUS_MESH_H
 #define LAZARUS_MESH_H
 
-class MeshManager 
+class ModelManager 
     : private AssetLoader, protected TextureLoader
 {
     public:
         enum MaterialType
         {
             IMAGE_TEXTURE = 1,
-            BASE_COLOR = 2
+            DIFFUSE_COLOR = 2
         };
         struct Material
         {
@@ -63,24 +63,18 @@ class MeshManager
             
             FileLoader::Image texture;
             glm::vec3 diffuse;
-            
-            bool discardsAlphaZero;
         };
-        enum MeshType 
+        enum ModelType 
         {
-            LOADED_GLB = 1,
-            LOADED_WAVEFRONT = 2,
+            GLB = 1,
+            WAVEFRONT = 2,
             PLANE = 3,
             CUBE = 4
         };
-        struct Mesh
+        struct Model
         {
             struct Instance
             {
-                //  TODO:
-                //  Add a visibility flag that can be used to 
-                //  toggle whether frags should be discarded or not
-
                 uint32_t id;
                 glm::vec3 position;
                 glm::vec3 direction;
@@ -95,7 +89,7 @@ class MeshManager
             uint32_t id;
             std::string name;
 
-            MeshType type;
+            ModelType type;
             std::vector<Material> materials;
 
             uint32_t numOfVertices;
@@ -136,57 +130,100 @@ class MeshManager
             bool selectable = false;
         };
         
-		MeshManager(GLuint shader, TextureLoader::StorageType textureType = TextureLoader::StorageType::ARRAY);
+		ModelManager(GLuint shader, TextureLoader::StorageType textureType = TextureLoader::StorageType::ARRAY);
 		
-        lazarus_result create3DAsset(Mesh &out, AssetConfig options);
-        lazarus_result createQuad(Mesh &out, QuadConfig options);
-        lazarus_result createCube(Mesh &out, CubeConfig options);
+        lazarus_result create3DAsset(Model &out, AssetConfig options);
+        lazarus_result createQuad(Model &out, QuadConfig options);
+        lazarus_result createCube(Model &out, CubeConfig options);
 
-        lazarus_result loadMesh(Mesh &meshIn);
-        lazarus_result drawMesh(Mesh &meshIn);
+        lazarus_result loadModel(Model &meshIn);
+        lazarus_result drawModel(Model &meshIn);
+        
+        void copyModel(Model &dest, Model src);
 
         //  TODO:
-        //  This isn't quite the appropriate place to do this
+        //  Move these; This isn't quite the appropriate place to do this
         //  but ok for now
+        
+        void setDiscardFragments(Model &meshIn, bool shouldDiscard);
+        lazarus_result setActiveAnimation(Model &meshIn, uint32_t animationIndex);
+        lazarus_result setToPosePosition(Model &meshIn);
+        lazarus_result pauseAnimation(Model &meshIn);
+        lazarus_result playAnimation(Model &meshIn);
 
-        void setDiscardFragments(Mesh &meshIn, bool shouldDiscard);
-        void copyMesh(Mesh &dest, Mesh src);
-
-        virtual ~MeshManager();
-    
-    // protected:
+        virtual ~ModelManager();
+        
+        // protected:
         lazarus_result clearMeshStorage();
-
+        
     private:
         struct MeshData
         {
+            struct MotionPoint
+            {
+                uint32_t id;
+                int32_t parentID;
+                std::vector<uint32_t> children;
+                
+                glm::mat4 posePosition;
+                glm::mat4 inverseBindMatrix;
+                glm::mat4 localJointTransform;
+                glm::mat4 globalJointTransform;
+                glm::mat4 jointMatrix;
+
+                std::vector<AssetLoader::AssetData::JointMotion> animationData;
+
+                uint32_t playbackPosition = 0;  //  Animation playback pos relative to duration
+                uint32_t elapsedPlaytime = 0;   //  The total amount of time the animation has been playing for
+                uint32_t previousPlaytime = 0;  //  The above ^ value last-tick
+            };
+
             uint32_t id;
-            uint32_t instanceCount;
             uint8_t stencilBufferId;
 
+            uint32_t instanceCount;
+
+            uint8_t isAnimated;
+            int16_t armatureRoot = -1;
+            int32_t activeAnimation = -1;
+            uint32_t animationCount = 0;
+            bool animationPaused = true;
+            
             GLuint VAO;     //  Vertex Array Object
             GLuint VBO;     //  Vertex Buffer Object (attributes: interleaved)
             GLuint EBO;     //  Element Buffer Object (indices: tightly-packed)
             GLuint MBO;     //  Matrice Buffer Object (per-instance matrix: tightly-packed)
+            GLuint ABO;     //  Animation Buffer Object (joints + weights: interleaved)
             GLuint IIBO;    //  Instance-info Buffer Object (per-instance: tightly-packed -> will probably end up interleaved)
             
-            MeshType type;
+            ModelType type;
             TextureLoader::TextureData texture;
             
             std::vector<FileLoader::Image> images;
             std::vector<uint32_t> indexes;
             std::vector<glm::vec3> attributes;
+
+            std::vector<MotionPoint> armature;
+            std::vector<glm::vec4> movements;
         };
+        typedef std::vector<MeshData> ModelData;
 
-        lazarus_result setMaterialProperties(std::vector<glm::vec3> diffuse, std::vector<FileLoader::Image> images);
+        lazarus_result setMaterials(AssetLoader::AssetData &assetData);
+        lazarus_result setSelectable(bool selectable);
+        lazarus_result uploadVertexData();
+        lazarus_result uploadTextures();
+        lazarus_result reallocateTextures();
         lazarus_result checkErrors(const char *file, uint32_t line);
-        lazarus_result makeSelectable(bool selectable);
-        lazarus_result initialiseMesh();
-        lazarus_result prepareTextures();
-
-        void instantiateMesh(bool selectable);
-        void setSharedProperties();
+        
         void clearErrors();
+        void instantiateMesh(bool selectable);
+        void setMeshProperties(AssetLoader::AssetData &assetData);
+        
+        glm::mat4 computeLocalJointTransform(MeshData::MotionPoint &motionPoint, uint32_t animationID);
+
+        void loadAnimation(MeshData &data);
+        uint32_t getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t &playbackPosition, uint32_t &elapsedMs, uint32_t &previousMs);
+        glm::vec4 getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t frameBegin, uint32_t sequenceCursor);
         
         uint32_t childCount;
 
@@ -198,18 +235,21 @@ class MeshManager
 		GLuint shaderProgram;
         GLint meshVariantLocation;
         GLint discardFragsLocation;
+        GLint isAnimatedLocation;
+        GLint jointsMatricesLocation;
 
         std::unique_ptr<FileLoader> finder;
         TextureLoader::StorageType textureStorage;
 
-        /* ====================================
+        /*
             Convert std::map to std::set once
             instanced rendering is available.
-        ======================================= */
+        */
 
-        Mesh meshOut;
+        Model modelOut;
         MeshData meshData;
-        std::map<uint32_t, MeshData> dataStore;
+        ModelData modelData;
+        std::map<uint32_t, ModelData> modelStore;
 };
 
 #endif

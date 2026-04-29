@@ -24,10 +24,10 @@
 	#include "lazarus_common.h"
 #endif
 
-/* =========================================
+/*
     Required for generating hashes for glm
     types.
-============================================ */
+*/
 #define GLM_ENABLE_EXPERIMENTAL
 
 #include <iostream>
@@ -40,7 +40,6 @@
 #include <algorithm>
 #include <glm/gtx/hash.hpp>
 #include <unordered_set>
-#include <iterator>
 
 #include "lazarus_file_loader.h"
 #include "lazarus_texture_loader.h"
@@ -56,52 +55,235 @@ using std::stringstream;
 #ifndef LAZARUS_ASSET_LOADER_H
 #define LAZARUS_ASSET_LOADER_H
 
+//  Wavefront mesh (.obj) properties
+
+#define OBJ_MESH            'o'
+#define OBJ_VERTEX          'v'
+#define OBJ_UV_COORDINATES  't'
+#define OBJ_NORMALS         'n'
+#define OBJ_TRIANGLE        'f'
+#define OBJ_MATERIAL        'u'
+
+//  Wavefront material (.mtl) properties
+
+#define OBJ_MTL_NAME        ('n'&'e'&'w')
+#define OBJ_MTL_DIFFUSE     ('K'&'d')
+#define OBJ_MTL_TEXTURE     ('m'&'a'&'p')
+
+//  Top level: glb mesh properties (note the square-bracket)
+
+#define GLB_NODES                   "\"nodes\":[{"
+#define GLB_MESHES                  "\"meshes\":["
+#define GLB_SKINS                   "\"skins\":["
+#define GLB_PRIMITIVES              "\"primitives\":["
+#define GLB_MATERIALS               "\"materials\":["
+#define GLB_TEXTURES                "\"textures\":["
+#define GLB_ACCESSORS               "\"accessors\":["
+#define GLB_IMAGES                  "\"images\":["
+#define GLB_BUFFERVIEWS             "\"bufferViews\":["
+#define GLB_BUFFERS                 "\"buffers\":[{"
+#define GLB_ANIMATIONS              "\"animations\":[{"
+
+//  Subsequent levels: property attributes
+#define GLB_MESH                    "\"mesh\":"
+#define GLB_TRANSLATION             "\"translation\":"
+#define GLB_ROTATION                "\"rotation\":"
+#define GLB_SCALE                   "\"scale\":"
+#define GLB_MATERIAL_ID             "\"material\":"
+#define GLB_TEXTURE_ID              "\"baseColorTexture\":"
+#define GLB_DIFFUSE                 "\"baseColorFactor\":"
+#define GLB_INDEX                   "\"index\":"
+#define GLB_ATTRIBUTES              "\"attributes\":"
+#define GLB_INDICES                 "\"indices\":"
+#define GLB_SAMPLER_ID              "\"sampler\":"
+#define GLB_IMAGE_ID                "\"source\":"
+#define GLB_BUFFERVIEW_ID           "\"bufferView\":"
+#define GLB_BUFFER_ID               "\"buffer\":"
+#define GLB_COUNT                   "\"count\":"
+#define GLB_COMPONENT_TYPE          "\"componentType\":"
+#define GLB_BYTE_OFFSET             "\"byteOffset\":"
+#define GLB_BYTE_LENGTH             "\"byteLength\":"
+#define GLB_BYTE_STRIDE             "\"byteStride\":"
+#define GLB_NAME                    "\"name\":"
+#define GLB_SKIN                    "\"skin\":"
+#define GLB_CHILDREN                "\"children\":"
+#define GLB_INVERSE_BIND_MATRICES   "\"inverseBindMatrices\":"
+#define GLB_JOINTS                  "\"joints\":"
+#define GLB_TARGET                  "\"target\":"
+#define GLB_NODE_ID                 "\"node\":"
+#define GLB_PATH                    "\"path\":"
+#define GLB_CHANNELS                "\"channels\":"
+#define GLB_SAMPLERS                "\"samplers\":"
+#define GLB_INPUT                   "\"input\":"
+#define GLB_OUTPUT                  "\"output\":"
+#define GLB_INTERPOLATION           "\"interpolation\":"
+
 class AssetLoader 
 {
     protected:
         uint32_t layerCount;
     	AssetLoader();	
     	    
+        struct AssetData
+        {
+            struct JointData
+            {
+                uint32_t id;
+                std::vector<uint32_t> children;
+                glm::mat4 inverseBindMatrix;
+                glm::vec3 translation = glm::vec3(0.0f, 0.0f, 0.0f);
+                glm::vec3 scale = glm::vec3(1.0f, 1.0f, 1.0f);
+                glm::vec4 rotation = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+            };
+            struct JointMotion
+            {
+                struct TransformData
+                {
+                    enum TransformType
+                    {
+                        TRANSLATION,
+                        ROTATION,
+                        SCALE
+                    };
+                    enum InterpolationType
+                    {
+                        LINEAR,
+                        STEP,
+                        CUBICSPLINE
+                    };
+                    std::vector<float> timesteps;
+                    std::vector<glm::vec4> keyframes;
+                    
+                    InterpolationType lerp;
+                    TransformType transform;
+                };
+
+                TransformData translation;
+                TransformData rotation;
+                TransformData scale;
+            };
+            typedef std::map<uint32_t, JointMotion> Animation;
+            
+            std::string name;
+
+            std::vector<uint32_t> indices;
+            std::vector<glm::vec3> attributes;
+            std::vector<glm::vec4> movements;
+            std::vector<glm::vec3> colors;
+            std::vector<FileLoader::Image> textures;
+            std::vector<Animation> animations;
+            std::map<uint32_t, JointData> armature;
+        };  
+        //  Loads mesh asset data from a `.obj` file... not `gltf`
         lazarus_result parseWavefrontObj(
-            std::vector<glm::vec3> &outAttributes,
-            std::vector<uint32_t> &outIndexes,
-            std::vector<glm::vec3> &outDiffuse,
-            std::vector<FileLoader::Image> &outImages,
+            std::vector<AssetData> &out,
             const char *meshPath,
             const char *materialPath
         );
-
-        lazarus_result parseWavefrontMtl(
-            const char *materialPath,
-            std::vector<std::vector<uint32_t>> data,
-            std::vector<glm::vec3> &temp,
-            std::vector<glm::vec3> &outColors,
-            std::vector<FileLoader::Image> &outImages
-        );
-
+        //  Loads mesh asset data from a `.glb` (GL binary) files. `gltf` is not supported but can be 
+        //  easily converted with: [glTF Tools](https://marketplace.visualstudio.com/items?itemName=cesium.gltf-vscode)
         lazarus_result parseGlBinary(
-            std::vector<glm::vec3> &outAttributes,
-            std::vector<uint32_t> &outIndexes,
-            std::vector<glm::vec3> &outDiffuse,
-            std::vector<FileLoader::Image> &outImages,
+            std::vector<AssetData> &out,
             const char *meshPath
         );
         
         virtual ~AssetLoader();
 
     private:
-        //  glb
+        //  ----------------------------------------
+        //  wavefront-related members
+
+        struct WavefrontMaterialData
+        {
+            uint32_t triangleCount;
+            int32_t layerID;
+            bool isTextured;
+            
+            std::string name;
+            std::string filepath;
+
+            glm::vec3 diffuseColor;
+            FileLoader::Image imageTexture;
+        };
+        struct WavefrontMeshData
+        {
+            uint32_t id;
+            std::string name;
+
+            std::map<uint32_t, glm::vec3> vertexPositions;
+            std::map<uint32_t, glm::vec3> vertexNormals;
+            std::map<uint32_t, glm::vec3> vertexUvCoords;
+            
+            std::vector<uint32_t> positionIndices;
+            std::vector<uint32_t> normalIndices;
+            std::vector<uint32_t> uvIndices;
+
+            std::vector<WavefrontMaterialData> materials;
+            uint32_t prevMax;
+        };
+
+        std::vector<WavefrontMeshData> wavefrontMeshObjects;
+        std::vector<std::string> wavefrontValue;
+        
+        char parserCursor[UINT8_MAX];
+        uint32_t faceCount;
+
+        //  Parses a wavefront file's accompanying .mtl material counterpart
+        lazarus_result parseWavefrontMtl(
+            const char *materialPath
+        );
+        //  Reads vertex attributes from temp* members and group them together 
+        //  in sets of three's if possible.
+        lazarus_result constructTriangle(WavefrontMeshData &obj, std::vector<std::string> attributeIndexes);
+
+        //  -------------------------------------------------
+        //  glb-related members
 
         std::string jsonData;
         std::string binaryData;
-        
-        struct glbMeshData
+
+        struct glbNodeData
+        {
+            uint32_t id;
+            std::string name;
+            int32_t meshIndex;
+            int32_t skinIndex;
+            std::vector<uint32_t> children;
+            glm::vec3 translation = glm::vec3(0.0f, 0.0f, 0.0f);
+            glm::vec3 scale = glm::vec3(1.0f, 1.0f, 1.0f);
+            glm::vec4 rotation = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f);
+        };
+        struct glbAttributeData
         {
             uint32_t positionAccessor;
             uint32_t normalsAccessor;
             uint32_t indicesAccessor;
-            int32_t uvAccessor;
+            int32_t jointsAccessor = -1;
+            int32_t weightsAccessor = -1;
+            int32_t uvAccessor = -1;
             uint32_t materialIndex;
+        };
+        struct glbSkinData
+        {
+            uint32_t inverseBindMatriceAccessor;
+            std::vector<uint32_t> joints;
+        };
+        struct glbAnimationChannel
+        {
+            AssetData::JointMotion::TransformData::TransformType transformType;
+            uint32_t samplerIndex;
+            uint32_t nodeIndex;
+        };
+        struct glbAnimationSampler
+        {
+            AssetData::JointMotion::TransformData::InterpolationType lerpType;
+            uint32_t timestepAccessor;
+            uint32_t keyframeContentsAccessor;
+        };
+        struct glbAnimationData
+        {
+            std::vector<glbAnimationChannel> channels;
+            std::vector<glbAnimationSampler> samplers;
         };
         struct glbMaterialData
         {
@@ -137,7 +319,14 @@ class AssetLoader
             uint32_t offset;
             uint32_t stride;
         };
+
+        typedef std::vector<glbAttributeData> glbMeshData;
+        
+        glbMeshData mesh;
+        std::vector<glbNodeData> nodes;
         std::vector<glbMeshData> meshes;
+        std::vector<glbSkinData> skins;
+        std::vector<glbAnimationData> animations;
         std::vector<glbMaterialData> materials;
         std::vector<glbTextureData> textures;
         std::vector<glbImageData> images;
@@ -154,44 +343,18 @@ class AssetLoader
         //  Perform copies from memory to a glm vector type, regardless of whether the values 
         //  are tightly packed or interleaved.
         template<typename T> void populateVectorFromMemory(glbAccessorData accessor, glbBufferViewData bufferView, std::vector<T> &vertexData);
-        //  Retrieves all information from 'bounds' that occurs between an instance of 'containerStart'
-        //  and 'containerEnd'.
-        std::vector<std::string> extractContainedContents(std::string bounds, std::string containerStart, std::string containerEnd);
         //  Retrieve all integers immediately following 'target' that occur within 'bounds'.
         int32_t extractAttributeIndex(std::string bounds, std::string target);
 
-        //  wavefront obj
-
-        std::vector<std::string> wavefrontCoordinates;
-        
-        std::vector<std::vector<uint32_t>> materialBuffer;
-        std::vector<uint32_t> materialData;
-        uint32_t materialIdentifierIndex;
-        uint32_t triangleCount;
-        
-        char currentLine[UINT8_MAX];
-        std::vector<std::string> attributeIndexes;
-
-        //  wavefront mtl
-        uint32_t diffuseCount;
-        uint32_t textureCount;
-        glm::vec3 diffuse;
-        
-        //  Read vertex attributes from temp* members and group them together 
-        //  in sets of three's if possible.
-        lazarus_result constructTriangle();
-
-        //  Shared
+        //  -------------------------------------------------
+        //  Shared members
         
         ifstream file;
         std::unique_ptr<FileLoader> fileLoader;
-        //  Identifies and contains the contents from 'wavefrontData' that occur between instances
-        //  of 'delim'.
-        std::vector<std::string> splitTokensFromLine(const char *wavefrontData, char delim);
         //  Deduplicate vertex attributes and construct a serial for those that are unique to be 
         //  passed to the renderers IBO. Interleaves attributes in the order that is expected by
         //  the renderers VBO.
-        void constructIndexBuffer(std::vector<glm::vec3> &outAttributes, std::vector<uint32_t> &outIndexes, std::vector<glm::vec3> outDiffuse, uint32_t numOfAttributes);
+        void constructIndexBuffer(std::vector<glm::vec3> &outAttributes, std::vector<glm::vec4> &outMovements, std::vector<uint32_t> &outIndexes, uint32_t numOfAttributes);
         //  Clears containers of all their contents.
         void resetMembers();
 
@@ -200,15 +363,16 @@ class AssetLoader
         std::vector<uint32_t> vertexIndices;
         std::vector<uint32_t> uvIndices;
         std::vector<uint32_t> normalIndices;
+        std::vector<uint32_t> jointIndices;
+        std::vector<uint32_t> weightIndices;
 
         std::map<uint32_t, glm::vec3> tempVertexPositions;
         std::map<uint32_t, glm::vec3> tempUvs;
         std::map<uint32_t, glm::vec3> tempNormals;
+        std::map<uint32_t, glm::vec4> tempJoints;
+        std::map<uint32_t, glm::vec4> tempWeights;
+        std::vector<FileLoader::Image> tempImages;
         std::vector<glm::vec3> tempDiffuse;
-
-        glm::vec3 vertex;
-        glm::vec3 uv;
-        glm::vec3 normal;
 };
 
 #endif

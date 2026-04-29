@@ -17,11 +17,11 @@
 //                                                                                                      .***,.   . .,/##%###(/.  ...,,.      
 /*  LAZARUS ENGINE */
 
-/* ================================================================
+/*
 	TODO:
 	- Support layered textures (layering)
 	- Ideally have each of these functions use immutable storage
-=================================================================== */
+*/
 
 #include "../include/lazarus_texture_loader.h"
 
@@ -67,11 +67,11 @@ lazarus_result TextureLoader::extendTextureStack(uint32_t maxWidth, uint32_t max
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureId);
 
-	/* =========================================================================
+	/*
 		Allocate / Reallocate memory to store texture data. Doesn't actually 
 		upload the texture yet, that's done later. Just (re)provisions room for 
 		the incoming load.
-	============================================================================ */
+	*/
 	glTexImage3D(
 		GL_TEXTURE_2D_ARRAY, 											//	target
 		0, 																//	mip level (0 because opengl is generating the mipmap)
@@ -134,14 +134,14 @@ lazarus_result TextureLoader::storeCubeMap(uint32_t width, uint32_t height)
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, this->textureId);
 	
-	/* ===========================================================
+	/*
 		Calculate the depth of the mip map (levels) for the given
 		width / height params, which are the dimensions for the 
 		images that make up each face of the cubemap. Despite only
 		handing over the dimensions for one face, OpenGL will 
 		multiply this number internally by 6 to allocate storage 
 		each mip of each face.
-	============================================================== */
+	*/
 
 	uint32_t mipCount = 0;
 	this->calculateMipLevels(mipCount, width, height);
@@ -177,13 +177,13 @@ lazarus_result TextureLoader::loadCubeMap(std::vector<FileLoader::Image> faces)
 		{
 			this->clearErrors();
 
-			/* ===================================================
+			/*
 				For each face; buffer the images pixel data to 
 				the respective faces target binding. These targets 
 				are intrinsically related to / a part of the 
 				GL_TEXTURE_CUBE_MAP texture name which is currently 
 				bound to the active texture slot.
-			====================================================== */
+			*/
 			GLenum target = GL_TEXTURE_CUBE_MAP_POSITIVE_X + i;
 
 			glTexSubImage2D(
@@ -218,24 +218,24 @@ lazarus_result TextureLoader::loadCubeMap(std::vector<FileLoader::Image> faces)
 lazarus_result TextureLoader::storeBitmapTexture(uint32_t maxWidth, uint32_t maxHeight)
 {
 	this->clearErrors();
-	/* ===========================================
+	/*
 		Hardcoded because this function is used 
 		specifically for glyph loading only. If 
 		that ends up changing then it should be
 		made dynamic. See other similar 
 		glActiveTexture calls.
-	============================================== */
+	*/
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, this->textureId);
 
-	/* ========================================================================================
+	/*
 		Allocate space for the texture atlas. The texture atlas hasn't been constructed yet so
 		0 is passed into the pixel parameter for the meantime. 
 
 		Note the use of GL_R8. The glyphs are monocolour bitmaps and so are loaded into a 
 		single-channel, which is later swizzled into the alpha value of a RGBA 4-channel color 
 		on the GPU side. The swizzle can and probably should be done here to make it clearer.
-	=========================================================================================== */
+	*/
 
 	std::vector<GLubyte> zeroedBuffer(maxWidth * maxHeight, 0);
 	glTexImage2D(
@@ -261,11 +261,11 @@ lazarus_result TextureLoader::loadBitmapToTexture(FileLoader::Image imageData, u
 
 	this->clearErrors();
 	
-	/* ================================================================
+	/*
 		Load the glyph's rendered bitmap into the previously allocated
 		texture at an offset equal to the current width of the texture
 		atlas and the culmilative height of previous alphabet sets.
-	=================================================================== */
+	*/
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, this->textureId);
 	
@@ -311,11 +311,11 @@ void TextureLoader::calculateMipLevels(uint32_t &mipCount, uint32_t width, uint3
 
 	loopCount += 1;
 
-	/* ===============================================
+	/*
 		Repeatedly halve the image's dimensions until
 		it is 1x1 px in size to calculate the number
 		of mips.
-	================================================== */
+	*/
 	while( 1 )
 	{
 		loopCount += 1;

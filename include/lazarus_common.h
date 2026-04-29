@@ -50,6 +50,7 @@ extern bool                      LAZARUS_DISABLE_VSYNC;
 extern bool                      LAZARUS_DO_STENCIL_BUFFER;
 extern uint32_t                  LAZARUS_MAX_IMAGE_WIDTH;
 extern uint32_t                  LAZARUS_MAX_IMAGE_HEIGHT;
+extern bool                      LAZARUS_WIREFRAME_MODE;
 
 
 typedef enum lazarus_result
@@ -79,6 +80,9 @@ typedef enum lazarus_result
 
     LAZARUS_OPENGL_ERROR                   = 301,
     LAZARUS_NO_CONTEXT                     = 302,
+
+    //  window
+
     LAZARUS_WINDOW_ERROR                   = 303,
     LAZARUS_EVENT_ERROR                    = 304,
     LAZARUS_GLFW_NOINIT                    = 305,
@@ -109,7 +113,12 @@ typedef enum lazarus_result
     
     LAZARUS_FT_INIT_FAILURE                = 701,
     LAZARUS_FT_LOAD_FAILURE                = 702,
-    LAZARUS_FT_RENDER_FAILURE              = 703
+    LAZARUS_FT_RENDER_FAILURE              = 703,
+
+    //  animation
+
+    LAZARUS_INVALID_ANIMATION_ID           = 801,
+    LAZARUS_NO_ANIMATION_DATA              = 802
 } lazarus_result;
 
 class GlobalsManager
@@ -151,6 +160,9 @@ class GlobalsManager
 
         static void setPickableEntity(uint32_t entityId);
         static uint8_t getPickableEntity(uint8_t index);
+
+        static void setWireframeMode(bool useWireframe);
+        static bool getWireframeMode();
 };
 
 #endif

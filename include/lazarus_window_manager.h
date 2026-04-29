@@ -161,7 +161,8 @@ class WindowManager : public EventManager, public Time
         bool cullFaces;
         bool testDepth;
         bool disableVsync;
-
+        bool wireframeMode;
+        
         int32_t originalWidth;
         int32_t originalHeight;
 

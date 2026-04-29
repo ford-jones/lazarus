@@ -79,7 +79,7 @@ class FontLoader
 //  TODO:
 //  Add functionality for scaling text / adjusting ptsize
 
-class TextManager : private FontLoader, private MeshManager
+class TextManager : private FontLoader, private ModelManager
 {
     public:
         TextManager(GLuint shader);
@@ -143,15 +143,15 @@ class TextManager : private FontLoader, private MeshManager
         
         std::unique_ptr<CameraManager> cameraBuilder;
         
-        MeshManager::Mesh quad;
+        ModelManager::Model quad;
         CameraManager::Camera camera;
 
-        std::vector<MeshManager::Mesh> word;
+        std::vector<ModelManager::Model> word;
         std::vector<uint32_t> alphabetHeights;
         std::vector<std::map<uint8_t, FileLoader::Image>> fonts;
         
-        std::pair<uint32_t, std::vector<MeshManager::Mesh>> layoutEntry;
-        std::map<uint32_t, std::vector<MeshManager::Mesh>> layout;
+        std::pair<uint32_t, std::vector<ModelManager::Model>> layoutEntry;
+        std::map<uint32_t, std::vector<ModelManager::Model>> layout;
         std::map<uint8_t, FileLoader::Image> characters;
     };
     

@@ -41,12 +41,19 @@ class CameraManager
 {
     public:
         CameraManager(GLuint shader);
+        enum CameraType
+        {
+            ORTHOGRAPHIC,
+            PERSPECTIVE_FLYING,
+            // PERSPECTIVE_ORBIT /* TODO: Add orbital, toggle logic in transformer appropriately */
+        };
         struct CameraConfig
         {
             std::string name = "CAMERA_";
+            CameraType type = CameraType::ORTHOGRAPHIC;
             uint32_t aspectRatioX = 0;
             uint32_t aspectRatioY = 0;
-            float clippingDistance = 100.0f;
+            float clippingDistance = 0.0f;
         };
          struct Camera
         {
@@ -60,12 +67,9 @@ class CameraManager
 
             mat4 viewMatrix;
             mat4 projectionMatrix;
-
-            uint8_t usesPerspective;
         };
 		
-        lazarus_result createPerspectiveCam(Camera &out, CameraConfig options);
-        lazarus_result createOrthoCam(Camera &out, CameraConfig options);
+        lazarus_result createCamera(Camera &out, CameraConfig options);
         lazarus_result loadCamera(Camera &cameraIn);
         
         lazarus_result getPixelOccupant(uint32_t windowX, uint32_t windowY, uint8_t &out);
@@ -88,6 +92,7 @@ class CameraManager
         GLuint viewLocation;
         GLuint perspectiveProjectionLocation;
         GLuint orthographicProjectionLocation;
+        GLuint projectionTypeLocation;
         
         Camera camera;
 };

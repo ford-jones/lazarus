@@ -23,11 +23,10 @@ void LOG_DEBUG(const char *DEBUG_MESSAGE)
 {
     #ifdef _LAZARUS_DEBUG_BUILD
     
-        std::chrono::time_point getTime = std::chrono::system_clock::now();
-        const std::time_t time = std::chrono::system_clock::to_time_t(getTime);
+        std::chrono::system_clock::duration epoch = std::chrono::system_clock::now().time_since_epoch();
+        uint64_t ms = epoch / std::chrono::milliseconds(1);
         
-        std::cout << DEBUG_MESSAGE << std::endl;
-        std::cout << BLUE_TEXT << "At: "<< std::ctime(&time) << RESET_TEXT << std::endl;
+        std::cout << BLUE_TEXT << "["<< ms << "] " << RESET_TEXT << DEBUG_MESSAGE << std::endl;
     #endif
 
     return;
@@ -55,6 +54,7 @@ bool                     LAZARUS_DISABLE_VSYNC                  = false;
 bool                     LAZARUS_DO_STENCIL_BUFFER              = false;
 bool                     LAZARUS_CULL_BACK_FACES                = true;
 bool                     LAZARUS_DEPTH_TEST_FRAGS               = true;
+bool                     LAZARUS_WIREFRAME_MODE                 = false;
 
 void GlobalsManager::setEnforceImageSanity(bool shouldEnforce)
 {
@@ -203,4 +203,16 @@ void GlobalsManager::setPickableEntity(uint32_t entityId)
 uint8_t GlobalsManager::getPickableEntity(uint8_t index)
 {
     return LAZARUS_SELECTABLE_ENTITIES[index - 1];
+};
+
+void GlobalsManager::setWireframeMode(bool useWireframe)
+{
+    LAZARUS_WIREFRAME_MODE = useWireframe;
+
+    return;
+};
+
+bool GlobalsManager::getWireframeMode()
+{
+    return LAZARUS_WIREFRAME_MODE;
 };

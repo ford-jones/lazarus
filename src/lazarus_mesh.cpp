@@ -19,11 +19,11 @@
 
 #include "../include/lazarus_mesh.h"
 
-MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
-    : MeshManager::AssetLoader(), 
-      MeshManager::TextureLoader(textureType)
+ModelManager::ModelManager(GLuint shader, TextureLoader::StorageType textureType)
+    : ModelManager::AssetLoader(), 
+      ModelManager::TextureLoader(textureType)
 {
-	LOG_DEBUG("Constructing Lazarus::MeshManager");
+	LOG_DEBUG("Constructing Lazarus::ModelManager");
 
     this->childCount = 0;
 
@@ -32,10 +32,10 @@ MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
 
     this->clearMeshStorage();
 
-    /* ===================================================
+    /*
         Bind samplers to texture units and load locations.
         https://www.khronos.org/opengl/wiki/Sampler_(GLSL)#:~:text=The%20value%20you%20provide%20to%20a%20sampler%20uniform%20is%20the%20texture%20image%20unit%20to%20which%20you%20will%20bind%20the%20texture%20that%20the%20sampler%20will%20access
-    ====================================================== */
+    */
 
     glUniform1i(glGetUniformLocation(this->shaderProgram, "textureAtlas"), 1);
     glUniform1i(glGetUniformLocation(this->shaderProgram, "textureArray"), 2);
@@ -43,6 +43,7 @@ MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
 
     this->meshVariantLocation           = glGetUniformLocation(this->shaderProgram, "samplerType");
     this->discardFragsLocation          = glGetUniformLocation(this->shaderProgram, "discardFrags");
+    this->isAnimatedLocation            = glGetUniformLocation(this->shaderProgram, "isAnimated");
 
     this->maxTexWidth = 0;
     this->maxTexHeight = 0;
@@ -50,90 +51,282 @@ MeshManager::MeshManager(GLuint shader, TextureLoader::StorageType textureType)
     this->textureStorage = textureType;
 };
 
-lazarus_result MeshManager::create3DAsset(MeshManager::Mesh &out, MeshManager::AssetConfig options)
+lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManager::AssetConfig options)
 {
-    this->meshOut = {};
-    this->meshData = {};
-    std::vector<glm::vec3> diffuseColors;
-    std::vector<FileLoader::Image> images;
+    this->modelOut = {};
+    this->modelData = {};
     
-    /* ======================================================
-        Default to unit 2 (TextureLoader::StorageType::ARRAY)
-        as this will be set appropriately when material 
-        properties are assigned.
-    ========================================================= */
+    glActiveTexture(GL_TEXTURE2);
 
-    meshData.texture.unitId = GL_TEXTURE2;
-    glActiveTexture(meshData.texture.unitId);
-
-    meshOut.meshFilepath = options.meshPath;
-    meshOut.materialFilepath = options.materialPath;
+    modelOut.meshFilepath = options.meshPath;
+    modelOut.materialFilepath = options.materialPath;
     
-    //  TODO:
+    //  TODO/FIXME:
     //  If not present populate from file contents instead of filename
-    this->meshOut.name = options.name.size()
+    this->modelOut.name = options.name.size()
     ? options.name
-    : meshOut.meshFilepath + "_" + std::to_string(this->dataStore.size());
+    : modelOut.meshFilepath + "_" + std::to_string(this->modelStore.size());
 
-    /* ==========================================
+    /*
         Determine whether the file is wavefront
         or gltf/glb.
-    ============================================= */
-    uint32_t suffixDelimiter = meshOut.meshFilepath.find_last_of(".");
-    std::string suffix = meshOut.meshFilepath.substr(suffixDelimiter + 1);
+    */
+    uint32_t suffixDelimiter = modelOut.meshFilepath.find_last_of(".");
+    std::string suffix = modelOut.meshFilepath.substr(suffixDelimiter + 1);
 
     lazarus_result status = lazarus_result::LAZARUS_OK;
+    std::vector<AssetLoader::AssetData> assets = {};
+
     if(suffix.compare("obj") == 0)
     {
         status = AssetLoader::parseWavefrontObj(
-            meshData.attributes,
-            meshData.indexes,
-            diffuseColors,
-            images,
-            meshOut.meshFilepath.c_str(),
-            meshOut.materialFilepath.c_str()
+            assets,
+            modelOut.meshFilepath.c_str(),
+            modelOut.materialFilepath.c_str()
         );
-        meshOut.type = MeshManager::MeshType::LOADED_WAVEFRONT;
+
+        modelOut.type = ModelManager::ModelType::WAVEFRONT;
     }
     else if(suffix.compare("glb") == 0)
     {
         status = AssetLoader::parseGlBinary(
-            meshData.attributes, 
-            meshData.indexes, 
-            diffuseColors, 
-            images,
-            meshOut.meshFilepath.c_str()
+            assets,
+            modelOut.meshFilepath.c_str()
         );
-        meshOut.type = MeshManager::MeshType::LOADED_GLB;
+        
+        modelOut.type = ModelManager::ModelType::GLB;
     };
     if(status != lazarus_result::LAZARUS_OK)
     {
         return status;
     };
 
-    meshData.instanceCount = options.instanceCount;
-    this->instantiateMesh(options.selectable);
-    
-    status = this->setMaterialProperties(diffuseColors, images);
-    if(status != lazarus_result::LAZARUS_OK)
-    {
-        return status;
-    };
-    this->setSharedProperties();
+    LOG_DEBUG(std::string("Model consists of [").append(std::to_string(assets.size()) + "] mesh objects.").c_str());
 
-    status = this->initialiseMesh();
-    if(status != lazarus_result::LAZARUS_OK)
+    for(size_t i = 0; i < assets.size(); i++)
     {
-        return status;
+        AssetLoader::AssetData &assetData = assets[i];
+        this->meshData = {};
+        this->meshData.texture.unitId = GL_TEXTURE2;
+        this->meshData.instanceCount = options.instanceCount;
+        
+        this->setMeshProperties(assetData);
+        
+        if(assetData.animations.size() > 0)
+        {
+            meshData.isAnimated = true;
+            meshData.animationCount = assetData.animations.size();
+
+            /*
+                Construct joints and transfroms from loaded data. 
+                Flatten out this map and resolve indices 
+                corrections.
+            */
+            std::map<uint32_t, AssetLoader::AssetData::JointData> rig = assetData.armature;
+
+            std::set<uint32_t> heirachy;
+            for(auto pair : rig)
+            {
+                MeshData::MotionPoint motionPoint = {};
+                AssetLoader::AssetData::JointData jointData = pair.second;
+
+                motionPoint.id = jointData.id;
+                motionPoint.inverseBindMatrix = jointData.inverseBindMatrix;
+
+                /*
+                    Obtain the movement data for this joint for each 
+                    animation that can be enacted by the armature.
+                */
+                for(size_t j = 0; j < assetData.animations.size(); j++)
+                {
+                    AssetLoader::AssetData::JointMotion jointMotion = assetData.animations[j].at(jointData.id);
+                    motionPoint.animationData.push_back(jointMotion);
+                };
+
+                /*
+                    Compute the transformation matrix required
+                    for moving into the bind-pose. 
+                    
+                    Note: Blender exports its' quats with 'w' on 
+                    the wrong side.
+                */
+                motionPoint.localJointTransform = (
+                    glm::translate(glm::mat4(1.0f), jointData.translation) *
+                    glm::mat4_cast(glm::quat(jointData.rotation.w, jointData.rotation.x, jointData.rotation.y, jointData.rotation.z)) * 
+                    glm::scale(glm::mat4(1.0f), jointData.scale)
+                );
+                motionPoint.globalJointTransform = motionPoint.localJointTransform;
+                motionPoint.jointMatrix = glm::mat4(0.0f);
+                
+                /*
+                    Look up the children of the joints actual 
+                    IDs relative to the flattened armature.
+                */
+                for(size_t k = 0; k < jointData.children.size(); k++)
+                {
+                    uint32_t childID = jointData.children[k];
+                    uint32_t index = assetData.armature.at(childID).id;
+                    motionPoint.children.push_back(index);
+
+                    heirachy.insert(index);
+                };
+                
+                meshData.armature.push_back(motionPoint);
+            };
+            
+            /*
+                Ensure flattened armature is indexed in
+                the same order of appearance as the glb 
+                'skins' vector.
+            */
+            std::sort(
+                meshData.armature.begin(), 
+                meshData.armature.end(), 
+                [](MeshData::MotionPoint &jointA, MeshData::MotionPoint &jointB) {
+                    return jointA.id < jointB.id;
+                }
+            );
+            
+
+            /*
+                Determine the armature's root joint (The only node 
+                in the tree which is never referred to as a child of 
+                another node).
+
+                TODO:
+                This should be extended to be more inclusive of 
+                armatures with multiple roots (forests).
+            */
+            for(size_t j = 0; j < meshData.armature.size(); j++)
+            {
+                if(heirachy.insert(j).second)
+                {
+                    meshData.armatureRoot = j;
+                    break;
+                };
+            };
+
+            /*
+                Traverse joint structure from root and apply 
+                transforms forward to children as the tree is 
+                descended.
+
+                I.e. Breadth-first search begin.
+            */
+            MeshData::MotionPoint &rootJoint = meshData.armature[meshData.armatureRoot];
+            std::vector<uint32_t> children = rootJoint.children;
+            std::vector<uint32_t> parents;
+
+            parents.resize(rootJoint.children.size(), meshData.armatureRoot);
+            std::set<uint32_t> visited = {rootJoint.id};
+
+            rootJoint.parentID = -1;
+            rootJoint.posePosition = rootJoint.globalJointTransform;
+            rootJoint.jointMatrix = rootJoint.globalJointTransform * rootJoint.inverseBindMatrix;
+            
+            while(children.size() > 0)
+            {
+                std::vector<uint32_t> nextChildren;
+                std::vector<uint32_t> nextParents;
+
+                for(size_t k = 0; k < children.size(); k++)
+                {
+                    uint32_t childID = children[k];
+                    uint32_t parentID = parents[k];
+
+                    if(visited.insert(childID).second)
+                    {
+                        MeshData::MotionPoint &child = meshData.armature[childID];
+                        MeshData::MotionPoint &parent = meshData.armature[parentID];
+                        nextChildren.insert(
+                            nextChildren.end(), 
+                            child.children.begin(), 
+                            child.children.end()
+                        );
+                        nextParents.resize(nextParents.size() + child.children.size(), childID);
+    
+                        /*
+                            Compute the pose and set it as the joint 
+                            matrix value required for vertex skinning
+                            by editting the rig in-place.
+                        */
+                        glm::mat4 localTransform = child.globalJointTransform;
+                        child.parentID = parentID;
+                        child.globalJointTransform = parent.globalJointTransform * localTransform;
+                        child.posePosition = child.globalJointTransform;
+                        child.jointMatrix = child.globalJointTransform * child.inverseBindMatrix;
+                    };
+                };
+
+                children = nextChildren;
+                parents = nextParents;
+            };
+        };
+
+        this->instantiateMesh(options.selectable);
+        
+        status = this->setMaterials(assetData);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            break;
+        };
+
+        status = this->uploadVertexData();
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            break;
+        };
+            
+        this->modelData.push_back(this->meshData);
     };
     
-    out = this->meshOut;
+    out = this->modelOut;
     glBindVertexArray(0);
     
-    return this->makeSelectable(options.selectable);
+    this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, this->modelData));
+    this->setSelectable(options.selectable);
+
+    return this->uploadTextures();
 };
 
-/* ========================================================================================
+lazarus_result ModelManager::uploadTextures()
+{
+    /*
+        Reload the entire texture stack / array if the mesh isn't
+        being used for anything special like glyphs or skyboxes, which
+        use different loaders. 
+        
+        I.e. reallocate the existing memory size + the new amount and 
+        upload all of the textures again if the current mesh uses 
+        image textures.
+    */
+    bool containsTextures = false;
+    lazarus_result status = lazarus_result::LAZARUS_OK;
+
+    if(this->textureStorage == TextureLoader::StorageType::ARRAY)
+    {
+        for(size_t i = 0; i < modelOut.materials.size(); i++)
+        {
+            if(modelOut.materials[i].type == MaterialType::IMAGE_TEXTURE)
+            {
+                containsTextures = true;
+                break;
+            };
+        };
+        if(containsTextures)
+        {
+            status = this->reallocateTextures();
+            if(status != lazarus_result::LAZARUS_OK)
+            {
+                return status;
+            };
+        };
+    };
+
+    return status;
+};
+
+/*
     Note: There is some strange behaviour with this function.
     If a single instance of *this* class is responsible for creating quads as well as 3D
     assets - a texturing artifact will present itself when the user *creates* the quad 
@@ -147,10 +340,12 @@ lazarus_result MeshManager::create3DAsset(MeshManager::Mesh &out, MeshManager::A
 
     Worth mentioning that this doesn't seem to happen with glyphs - which are wrapped over
     a quad under the hood.
-=========================================================================================== */
+*/
 
-lazarus_result MeshManager::createQuad(MeshManager::Mesh &out, MeshManager::QuadConfig options)
+lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::QuadConfig options)
 {
+    LOG_DEBUG("Generating quad");
+    
     if(options.width < 0.0f || options.height < 0.0f)
     {
         LOG_ERROR("Asset Error:", __FILE__, __LINE__);
@@ -158,26 +353,24 @@ lazarus_result MeshManager::createQuad(MeshManager::Mesh &out, MeshManager::Quad
         return lazarus_result::LAZARUS_INVALID_DIMENSIONS;
     };
 
-    std::vector<glm::vec3> diffuseColors = {};
-    std::vector<FileLoader::Image> images = {};
-    
-    this->meshOut = {};
-    this->meshData = {};
+    AssetLoader::AssetData assetData = {};
+    this->modelOut = {};
+    this->modelData = {};
 
-    meshOut.type = MeshManager::MeshType::PLANE;
+    modelOut.type = ModelManager::ModelType::PLANE;
 
-    meshOut.meshFilepath = "";
-    meshOut.materialFilepath = "";
+    modelOut.meshFilepath = "";
+    modelOut.materialFilepath = "";
 
-    this->meshOut.name = options.name.size() 
+    this->modelOut.name = options.name.size() 
     ? options.name 
-    : this->meshOut.name.append(std::to_string(this->dataStore.size()));
+    : this->modelOut.name.append(std::to_string(this->modelStore.size()));
     
-    meshData.texture.unitId = this->textureStorage == TextureLoader::StorageType::ATLAS
+    int32_t textureUnit = this->textureStorage == TextureLoader::StorageType::ATLAS
     ? GL_TEXTURE1
     : GL_TEXTURE2;
 
-    glActiveTexture(meshData.texture.unitId);
+    glActiveTexture(textureUnit);
 
     lazarus_result status = lazarus_result::LAZARUS_OK;
 
@@ -190,42 +383,42 @@ lazarus_result MeshManager::createQuad(MeshManager::Mesh &out, MeshManager::Quad
             return status;
         };
 
-        images.push_back(image);   
-        diffuseColors.push_back(vec3(-0.1f, -0.1f, -0.1f));
+        assetData.textures.push_back(image);
+        assetData.colors.push_back(vec3(-0.1f, -0.1f, -0.1f));
 
-        /* ============================================
+        /*
             Increment the loaders texture array slice 
             count to stay in sync with future loads of
             other assets.
-        =============================================== */
+        */
 
         AssetLoader::layerCount += 1;
     };
 
     float layer = static_cast<float>(AssetLoader::layerCount - 1);
 
-    /* ======================================================
+    /*
         Ensure that the origin is centered.
         (E.g. width 2.0f, height 2.0f becomes 
         width -1.0f, height +1.0f) 
-    ========================================================= */
+    */
     float xMin = -(options.width / 2.0f);
     float xMax = options.width / 2.0f;
     float yMax = options.height / 2.0f;
     float yMin = -(options.height / 2.0f);
-    /* ==========================================================
+    /*
         If the UV params aren't their default values (0.0) then
         this mesh is being created for a glyph which needs to be 
         looked up in the texture atlas.
 
         Otherwise it's a generic sprite.
-    ============================================================= */
+    */
     if(options.uvXL || options.uvXR || options.uvYU || options.uvYD > 0.0f)
     {
-    /* ======================================================================================================
+    /*
             Vertex positions,           Diffuse colors,             Normals,                    UVs 
-    ========================================================================================================= */
-        meshData.attributes = {                                                                                          
+    */
+        assetData.attributes = {                                                                                          
             vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(options.uvXL, options.uvYD, 0.0f),
             vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(options.uvXR, options.uvYD, 0.0f), 
             vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(options.uvXL, options.uvYU, 0.0f),
@@ -239,13 +432,13 @@ lazarus_result MeshManager::createQuad(MeshManager::Mesh &out, MeshManager::Quad
     }
     else
     {
-        /* ==================================================
+        /*
             For some reason Mac requires two sets of the 
             vertices for what at a glance looks like an
             unwinding / culling type of issue. Note the sign
             of the normals.
-        ===================================================== */
-        meshData.attributes = {
+        */
+        assetData.attributes = {
             vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 0.0f, layer),
             vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 0.0f, layer),
             vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 1.0f, layer),
@@ -258,54 +451,72 @@ lazarus_result MeshManager::createQuad(MeshManager::Mesh &out, MeshManager::Quad
         };
     };
 
-    meshData.indexes = {
+    assetData.indices = {
         0, 1, 2, 
         2, 1, 3, 
         4, 5, 6, 
         6, 5, 7
     };
-    meshData.instanceCount = options.instanceCount;
+
+    /*
+        Zero-out movement / animation buf
+    */
+    assetData.movements.clear();
+    assetData.movements.resize(assetData.attributes.size() / 2, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
+
+    this->meshData = {};
+    this->meshData.texture.unitId = textureUnit;
+    this->meshData.instanceCount = options.instanceCount;
+
+    this->setMeshProperties(assetData);
     this->instantiateMesh(options.selectable);
     
-    status = this->setMaterialProperties(diffuseColors, images);
-    if(status != lazarus_result::LAZARUS_OK)
-    {
-        return status;
-    };
-    this->setSharedProperties();
-
-    status = this->initialiseMesh();
+    status = this->setMaterials(assetData);
     if(status != lazarus_result::LAZARUS_OK)
     {
         return status;
     };
 
-    out = this->meshOut;
+    status = this->uploadVertexData();
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+
+    this->modelData.push_back(this->meshData);
+    this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, this->modelData));
+
+    status = this->setSelectable(options.selectable);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+
+    out = this->modelOut;
     glBindVertexArray(0);
 
-    return this->makeSelectable(options.selectable);
+    return this->uploadTextures();
 }
 
-lazarus_result MeshManager::createCube(MeshManager::Mesh &out, MeshManager::CubeConfig options)
+lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::CubeConfig options)
 {
-    std::vector<glm::vec3> diffuseColors = {};
-    std::vector<FileLoader::Image> images = {};
-
+    LOG_DEBUG("Generating cube");
     float vertexPosition = options.scale / 2.0f; 
-
-    this->meshOut = {};
-    this->meshData = {};
-
-    meshOut.type = MeshManager::MeshType::CUBE;
-
-    meshOut.meshFilepath = "";
-    meshOut.materialFilepath = "";
-
-    this->meshOut.name = options.name.size() 
-    ? options.name 
-    : this->meshOut.name.append(std::to_string(this->dataStore.size()));
     
-    meshData.texture.unitId = this->textureStorage == TextureLoader::StorageType::CUBEMAP
+    AssetLoader::AssetData assetData = {};
+    this->modelOut = {};
+    this->modelData = {};
+
+    modelOut.type = ModelManager::ModelType::CUBE;
+
+    modelOut.meshFilepath = "";
+    modelOut.materialFilepath = "";
+
+    this->modelOut.name = options.name.size() 
+    ? options.name 
+    : this->modelOut.name.append(std::to_string(this->modelStore.size()));
+    
+    int32_t textureUnit = this->textureStorage == TextureLoader::StorageType::CUBEMAP
     ? GL_TEXTURE3
     : GL_TEXTURE2;
 
@@ -320,7 +531,7 @@ lazarus_result MeshManager::createCube(MeshManager::Mesh &out, MeshManager::Cube
         image.width = 0;
         image.pixelData = NULL;
 
-        images.push_back(image);   
+        assetData.textures.push_back(image);   
     }
     else
     {
@@ -333,23 +544,23 @@ lazarus_result MeshManager::createCube(MeshManager::Mesh &out, MeshManager::Cube
                 return status;
             };
 
-            images.push_back(image);   
+            assetData.textures.push_back(image);   
 
-            /* ============================================
+            /*
                 Increment the loaders texture array slice 
                 count to stay in sync with future loads of
                 other assets.
-            =============================================== */
+            */
             
             AssetLoader::layerCount += 1;
         };
         layer = static_cast<float>(AssetLoader::layerCount);
     };
     
-    diffuseColors.push_back(vec3(-0.1f, -0.1f, -0.1f));
+    assetData.colors.push_back(vec3(-0.1f, -0.1f, -0.1f));
 
-    meshData.attributes = {                                                                                          
-        /* ===========================================
+    assetData.attributes = {                                                                                          
+        /*
 
                POS                      ST
 
@@ -360,7 +571,7 @@ lazarus_result MeshManager::createCube(MeshManager::Mesh &out, MeshManager::Cube
                \/______\            |__________|
             (1, 4)     (3)         0:0        1:0
 
-        ============================================== */
+        */
         
         // Top face
         vec3(-vertexPosition, vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(0.0f, 0.0f, layer),
@@ -399,7 +610,7 @@ lazarus_result MeshManager::createCube(MeshManager::Mesh &out, MeshManager::Cube
         vec3(vertexPosition, -vertexPosition,  vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 1.0f, layer),
     };
 
-    meshData.indexes = {
+    assetData.indices = {
         0, 1, 2, 0, 3, 1,
         4, 5, 6, 4, 7, 5, 
         8, 9, 10, 8, 11, 9,
@@ -407,35 +618,56 @@ lazarus_result MeshManager::createCube(MeshManager::Mesh &out, MeshManager::Cube
         16, 17, 18, 16, 19, 17,
         20, 21, 22, 20, 23, 21
     };
-    meshData.instanceCount = options.instanceCount;
+    
+    /*
+        Zero-out movement / animation buf
+    */
+    assetData.movements.clear();
+    assetData.movements.resize(assetData.attributes.size() / 2, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
+
+    this->meshData = {};
+    this->meshData.texture.unitId = textureUnit;
+    this->meshData.instanceCount = options.instanceCount;
+
+    this->setMeshProperties(assetData);
     this->instantiateMesh(options.selectable);
-
-    status = this->setMaterialProperties(diffuseColors, images);
+    
+    status = this->setMaterials(assetData);
     if(status != lazarus_result::LAZARUS_OK)
     {
         return status;
     };
-    this->setSharedProperties();
+    
+    status = this->uploadVertexData();
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+    
+    this->modelData.push_back(this->meshData);
+    this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, this->modelData));
 
-    status = this->initialiseMesh();
+    status = this->setSelectable(options.selectable);
     if(status != lazarus_result::LAZARUS_OK)
     {
         return status;
     };
 
-    out = this->meshOut;
+    out = this->modelOut;
     glBindVertexArray(0);
 
-    return this->makeSelectable(options.selectable);
+    return this->uploadTextures();
 };
 
-lazarus_result MeshManager::initialiseMesh()
+lazarus_result ModelManager::uploadVertexData()
 {	
+    LOG_DEBUG("Allocating vertex array object");
     glGenVertexArrays(1, &meshData.VAO);
    	glBindVertexArray(meshData.VAO);
 
     this->clearErrors();
 
+    LOG_DEBUG("Allocating index buffer object.");
     glGenBuffers(1, &meshData.EBO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, meshData.EBO);
     glBufferData(
@@ -445,6 +677,7 @@ lazarus_result MeshManager::initialiseMesh()
         GL_STATIC_DRAW
     );
 
+    LOG_DEBUG("Allocating vertex buffer object");
     glGenBuffers(1, &meshData.VBO);
     glBindBuffer(GL_ARRAY_BUFFER, meshData.VBO);
     glBufferData(
@@ -478,35 +711,37 @@ lazarus_result MeshManager::initialiseMesh()
     
     this->clearErrors();
 
-    /* =================================================================
+    LOG_DEBUG("Allocating per-instance matrice data");
+    /*
         Convert matrice map (RB BT, uint32_t key) to a vector of 
         map[i].second
-    ==================================================================== */
+    */
     std::vector<glm::mat4> matrices;
     std::transform(
-        this->meshOut.instances.begin(), 
-        this->meshOut.instances.end(), 
+        this->modelOut.instances.begin(), 
+        this->modelOut.instances.end(), 
         std::back_inserter(matrices), 
-        [](const std::pair<uint32_t, MeshManager::Mesh::Instance> &pair){
+        [](const std::pair<uint32_t, ModelManager::Model::Instance> &pair){
             return pair.second.modelMatrix;
         }
     );
 
-    /* ===========================================================
+    /*
         Buffer used for storing per-instance model-matrix data. 
         This data is changed very frequently, so use dynamic draw.
-    ============================================================== */
+    */
+    LOG_DEBUG("Allocating matrice buffer object");
     glGenBuffers(1, &meshData.MBO);
     glBindBuffer(GL_ARRAY_BUFFER, meshData.MBO);
 
     glBufferData(
         GL_ARRAY_BUFFER, 
-        this->meshOut.instances.size() * sizeof(glm::mat4), 
+        this->modelOut.instances.size() * sizeof(glm::mat4), 
         &matrices[0][0],
         GL_DYNAMIC_DRAW
     );
 
-    /* =============================================================
+    /*
         Delineate vertex attribute positions within the buffer. 
 
         The largest data type available in GLSL is a vec4 (16 bytes)
@@ -514,7 +749,7 @@ lazarus_result MeshManager::initialiseMesh()
         Use attribute divisors to delineate matrice columns down to 
         4 vec4's. These then occupy locations 4 - 7 in the vertex
         shader layout.
-    ================================================================ */
+    */
     glEnableVertexAttribArray(4);
     glVertexAttribPointer(4, 4, GL_FLOAT, GL_FALSE, (4 * sizeof(glm::vec4)), (void*)0);
     glEnableVertexAttribArray(5);
@@ -524,49 +759,54 @@ lazarus_result MeshManager::initialiseMesh()
     glEnableVertexAttribArray(7);
     glVertexAttribPointer(7, 4, GL_FLOAT, GL_FALSE, (4 * sizeof(glm::vec4)), (void*)(3 * sizeof(glm::vec4)));
 
-    /* ================================================
+    LOG_DEBUG("Setting memory divisors");
+    /*
         Layout positons 4-7 are evaluated for every
         instance. I.e. per iteration of gl_InstanceID
         in the fragment shader.
-    =================================================== */
+    */
     glVertexAttribDivisor(4, 1);
     glVertexAttribDivisor(5, 1);
     glVertexAttribDivisor(6, 1);
     glVertexAttribDivisor(7, 1);
 
-    /* ===============================================
+    LOG_DEBUG("Allocating supplementary instance information");
+    /*
         Additional buffer for storing per-instance 
         information / settings. Matrices are treated
         seperately to preserve alignment, to have them
         mixed up would be very slow.
-    ================================================== */
+    */
     glGenBuffers(1, &meshData.IIBO);
     glBindBuffer(GL_ARRAY_BUFFER, meshData.IIBO);
 
-    /* ==============================================
+    /*
         The GPU is optimised for floating point with 
         less overhead in a large number of cases so
         promote the boolean.
-    ================================================= */
+    */
     std::vector<float> visibility;
     std::transform(
-        this->meshOut.instances.begin(), 
-        this->meshOut.instances.end(), 
+        this->modelOut.instances.begin(), 
+        this->modelOut.instances.end(), 
         std::back_inserter(visibility), 
-        [](const std::pair<uint32_t, MeshManager::Mesh::Instance> &pair){
+        [](const std::pair<uint32_t, ModelManager::Model::Instance> &pair){
             uint32_t v = pair.second.isVisible;
             return static_cast<float>(v);
         }
     );
 
-    //  This could possibly be changed to GL_STREAM_DRAW, as the contents *currently* will
-    //  be updated but not often. Only hesitance is due to the fact that this buffer may 
-    //  be used to store all sorts of other per-instance data and culmilatively this could 
-    //  end up requiring updates every frame in some cases so use GL_DYNAMIC_DRAW.
+    /*
+        NOTE:
+        This could possibly be changed to GL_STREAM_DRAW, as the contents *currently* will
+        be updated but not often. Only hesitance is due to the fact that this buffer may 
+        be used to store all sorts of other per-instance data and culmilatively this could 
+        end up requiring updates every frame in some cases so use GL_DYNAMIC_DRAW.
+    */
 
     glBufferData(
         GL_ARRAY_BUFFER, 
-        this->meshOut.instances.size() * sizeof(float), 
+        this->modelOut.instances.size() * sizeof(float), 
         &visibility[0],
         GL_DYNAMIC_DRAW
     );
@@ -576,57 +816,54 @@ lazarus_result MeshManager::initialiseMesh()
 
     glVertexAttribDivisor(8, 1);
 
+    LOG_DEBUG("Allocating animation buffer object");
+
+    glGenBuffers(1, &meshData.ABO);
+    glBindBuffer(GL_ARRAY_BUFFER, meshData.ABO);
+    glBufferData(
+        GL_ARRAY_BUFFER,
+        meshData.movements.size() * sizeof(glm::vec4),
+        &meshData.movements[0],
+        GL_STATIC_DRAW
+    );
+
+    //  Joints
+    glEnableVertexAttribArray(9);
+    glVertexAttribPointer(9, 4, GL_FLOAT, GL_FALSE, 2 * sizeof(glm::vec4), (void*)0);
+
+    //  Weights
+    glEnableVertexAttribArray(10);
+    glVertexAttribPointer(10, 4, GL_FLOAT, GL_FALSE, 2 * sizeof(glm::vec4), (void*)(1 * sizeof(glm::vec4)));
+
     status = this->checkErrors(__FILE__, __LINE__);
     if(status != lazarus_result::LAZARUS_OK)
     {
         return status;
     };
 
-    /* ===================================================
+    LOG_DEBUG("Finished buffering vertex data to GPU");
+
+    /*
         The id of a mesh and it's respective internal
         data is the same as the id of it's first child 
         instance.
-    ====================================================== */
+    */
 
-    meshOut.id = meshOut.instances.at(0).id;
-    meshData.id = meshOut.id;
-    this->dataStore.insert(std::pair<uint32_t, MeshManager::MeshData>(meshOut.id, meshData));
-    
-    /* ===============================================================
-        Reload the entire texture stack / array if the mesh isn't
-        being used for anything special. I.e. reallocate the space and
-        upload all of the textures again. In the cases where a mesh is 
-        used for some special purpose different texture loaders are 
-        used. 
-    ================================================================== */
-
-    if(this->textureStorage == TextureLoader::StorageType::ARRAY)
-    {
-        for(size_t i = 0; i < meshOut.materials.size(); i++)
-        {
-            if(meshOut.materials[i].type == MaterialType::IMAGE_TEXTURE)
-            {
-                status = this->prepareTextures();
-                if(status != lazarus_result::LAZARUS_OK)
-                {
-                    return status;
-                };
-            };
-        };
-    };
+    modelOut.id = modelOut.instances.at(0).id;
+    meshData.id = this->modelData.size();
 	
     return LAZARUS_OK;
 };
 
-lazarus_result MeshManager::prepareTextures()
+lazarus_result ModelManager::reallocateTextures()
 {
     uint32_t width = 0;
     uint32_t height = 0;
 
-    /* =========================================
+    /*
         Determine the height and width of the 
         texture array and allocate the space.
-    ============================================ */
+    */
 
     if(GlobalsManager::getEnforceImageSanity())
     {
@@ -645,72 +882,85 @@ lazarus_result MeshManager::prepareTextures()
         return status;
     };
 
-    /* ===============================================
+    /*
         Since memory size has been redefined, the
         previous contents now need to be rewritten to
         the new location.
 
-        TODO:
+        RESEARCH:
         Is there some way to invoke a memcpy of the
         VRAM contents from here?
-    ================================================== */
+    */
 
     uint32_t textureCount = 0;
-    for(auto i: this->dataStore)
+    /* Model Container */
+    for(auto i: this->modelStore)
     {
-        glActiveTexture(i.second.texture.unitId);
-
-        if(this->textureStorage == TextureLoader::StorageType::ARRAY)
+        /* Model */
+        for(auto j: i.second)
         {
-            for(size_t j = 0; j < i.second.images.size(); j++)
+            glActiveTexture(j.texture.unitId);
+            if(this->textureStorage == TextureLoader::StorageType::ARRAY)
             {
-                if(i.second.images[j].pixelData != NULL)
+                /* Mesh */
+                for(size_t k = 0; k < j.images.size(); k++)
                 {
-                    status = TextureLoader::loadImageToTextureStack(i.second.images[j], textureCount + j + 1);
-                    if (status != lazarus_result::LAZARUS_OK)
+                    if(j.images[k].pixelData != NULL)
                     {
-                        return status;
+                        textureCount += 1;
+                        status = TextureLoader::loadImageToTextureStack(j.images[k], textureCount);
+                        if (status != lazarus_result::LAZARUS_OK)
+                        {
+                            return status;
+                        };
                     };
                 };
             };
-            textureCount += i.second.images.size();
         };
     };
 
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result MeshManager::clearMeshStorage()
+lazarus_result ModelManager::clearMeshStorage()
 {	
+    LOG_DEBUG("Freeing model store contents");
+    this->errorCode = GL_NO_ERROR;
+    
     this->clearErrors();
-    for(auto i: dataStore)
+    for(auto i: modelStore)
     {
-        glDeleteBuffers         (1, &i.second.VBO);
-        glDeleteBuffers         (1, &i.second.MBO);
-        glDeleteBuffers         (1, &i.second.EBO);
-        glDeleteVertexArrays    (1, &i.second.VAO);
+        for(auto j: i.second)
+        {
+            glDeleteBuffers         (1, &j.VBO);
+            glDeleteBuffers         (1, &j.MBO);
+            glDeleteBuffers         (1, &j.EBO);
+            glDeleteBuffers         (1, &j.ABO);
+            glDeleteBuffers         (1, &j.IIBO);
+            glDeleteVertexArrays    (1, &j.VAO);
+        };
     };
     
-    this->meshOut = {};
+    this->modelOut = {};
     this->meshData = {};
-    this->dataStore = {};
+
+    this->modelData.clear();
+    this->modelStore.clear();
+
     this->childCount = 0;
-	
-	this->errorCode = GL_NO_ERROR;
-    
     AssetLoader::layerCount = 0;
     
     return this->checkErrors(__FILE__, __LINE__);
 };
 
-lazarus_result MeshManager::makeSelectable(bool selectable)
+lazarus_result ModelManager::setSelectable(bool selectable)
 {
     uint32_t numOccupants = GlobalsManager::getNumberOfPickableEntities();
     if(selectable)
     {
         if(numOccupants < UINT8_MAX)
         {
-            /* =============================================
+            /*
                 Items which can be picked from the stencil-
                 depth buffer have their ID's stored in a
                 global vector. The index position is then 
@@ -719,10 +969,14 @@ lazarus_result MeshManager::makeSelectable(bool selectable)
                 rom the GPU after a draw call, it is used to 
                 perform a lookup on the vector for the mesh 
                 ID which; is then returned to userspace.
-            ================================================ */
+            */
 
-            GlobalsManager::setPickableEntity(meshOut.id);
-            dataStore.at(meshOut.id).stencilBufferId = numOccupants + 1;
+            GlobalsManager::setPickableEntity(modelOut.id);
+            ModelManager::ModelData &m = modelStore.at(modelOut.id);
+            for(auto &i: m)
+            {
+                i.stencilBufferId = numOccupants + 1;
+            };
         }
         else
         {
@@ -731,206 +985,611 @@ lazarus_result MeshManager::makeSelectable(bool selectable)
     }
     else
     {
-        dataStore.at(meshOut.id).stencilBufferId = 0;
+        ModelManager::ModelData m = modelStore.at(modelOut.id);
+        for(auto &i: m)
+        {
+            i.stencilBufferId = 0;
+        };
     };
 
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result MeshManager::loadMesh(MeshManager::Mesh &meshIn)
-{
-    MeshManager::MeshData &data = dataStore.at(meshIn.id);
+lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
+{    
+    LOG_DEBUG("Loading model data");
+    ModelManager::ModelData &model = modelStore.at(meshIn.id);
     lazarus_result status = lazarus_result::LAZARUS_OK;
-
-    std::vector<glm::mat4> matrices;
-    std::transform(
-        meshIn.instances.begin(), 
-        meshIn.instances.end(), 
-        std::back_inserter(matrices), 
-        [](const std::pair<uint32_t, MeshManager::Mesh::Instance> &pair){
-            return pair.second.modelMatrix; 
-        }
-    );
-
-    std::vector<float> visibility;
-    std::transform(
-        meshIn.instances.begin(), 
-        meshIn.instances.end(), 
-        std::back_inserter(visibility), 
-        [](const std::pair<uint32_t, MeshManager::Mesh::Instance> &pair){
-            uint32_t v = pair.second.isVisible;
-            return static_cast<float>(v);
-        }
-    );
-
-    /* =========================================================
-        glBufferSubData is preferable here over glBufferData as 
-        the size has been allocated up front on init and won't 
-        change. This allows the data to be updated in-place 
-        without performing a realloc. This per-frame upload is
-        fine as per-instance MBO and IIBO were init'd with 
-        GL_DYNAMIC_DRAW.
-
-        TODO:
-        Update a portion of the buffer in-place
-        rather than the full buffer as is done here. This would 
-        need to happen for every instance that has had any 
-        change.
-    ============================================================ */
-
-    glBindVertexArray(data.VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, data.MBO);
-    glBufferSubData(
-        GL_ARRAY_BUFFER, 
-        0, 
-        meshIn.instances.size() * sizeof(glm::mat4), 
-        &matrices[0][0]
-    );
-
-    glBindBuffer(GL_ARRAY_BUFFER, data.IIBO);
-    glBufferSubData(
-        GL_ARRAY_BUFFER, 
-        0, 
-        meshIn.instances.size() * sizeof(float), 
-        &visibility[0]
-    );
-
-    /* ===================================================
-        Fill the stencil buffer with 0's. 
-        Wherever an entity is occupying screenspace, fill 
-        the buffercwith the mesh's selection.
-    ====================================================== */
-
-    if(GlobalsManager::getManageStencilBuffer())
+    
+    for(size_t i = 0; i < model.size(); i++)
     {
+        ModelManager::MeshData &data = model[i];
+
+        /*
+            Pack instance matrices
+        */
+
+        std::vector<glm::mat4> matrices;
+        std::transform(
+            meshIn.instances.begin(), 
+            meshIn.instances.end(), 
+            std::back_inserter(matrices), 
+            [](const std::pair<uint32_t, ModelManager::Model::Instance> &pair){
+                return pair.second.modelMatrix; 
+            } 
+        );
+    
+        std::vector<float> visibility;
+        std::transform(
+            meshIn.instances.begin(), 
+            meshIn.instances.end(), 
+            std::back_inserter(visibility), 
+            [](const std::pair<uint32_t, ModelManager::Model::Instance> &pair){
+                uint32_t v = pair.second.isVisible;
+                return static_cast<float>(v);
+            }
+        );
+    
+        /*
+            Upload any changes that have been made to matrices.
+            glBufferSubData is preferable here over glBufferData as 
+            the size has been allocated up front on init and won't 
+            change. This allows the data to be updated in-place 
+            without performing a realloc. This per-frame upload is
+            fine as per-instance MBO and IIBO were init'd with 
+            GL_DYNAMIC_DRAW.
+    
+            TODO:
+            Update a portion of the buffer in-place
+            rather than the full buffer as is done here. This would 
+            need to happen for every instance that has had any 
+            change.
+        */
+        LOG_DEBUG("Uploading instance matrices");
+
+        glBindVertexArray(data.VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, data.MBO);
+        glBufferSubData(
+            GL_ARRAY_BUFFER, 
+            0, 
+            meshIn.instances.size() * sizeof(glm::mat4), 
+            &matrices[0][0]
+        );
+    
+        LOG_DEBUG("Uploading instance information");
+        glBindBuffer(GL_ARRAY_BUFFER, data.IIBO);
+        glBufferSubData(
+            GL_ARRAY_BUFFER, 
+            0, 
+            meshIn.instances.size() * sizeof(float), 
+            &visibility[0]
+        );
+    
+        /*
+            Fill the stencil buffer with 0's. 
+            Wherever an entity is occupying screenspace, fill 
+            the buffercwith the mesh's selection.
+        */
+    
+        if(GlobalsManager::getManageStencilBuffer())
+        {
+            LOG_DEBUG("Loading stencil ID");
+            this->clearErrors();
+            
+            glStencilMask(0xFF);
+            glClearStencil(0x00);
+            glStencilFunc(GL_ALWAYS, data.stencilBufferId, 0xFF);
+            
+            status = this->checkErrors(__FILE__, __LINE__);
+            if(status != lazarus_result::LAZARUS_OK)
+            {
+                break;
+            };
+        };
+    
         this->clearErrors();
         
-        glStencilMask(0xFF);
-        glClearStencil(0x00);
-        glStencilFunc(GL_ALWAYS, data.stencilBufferId, 0xFF);
-        
+        glUniform1i(this->meshVariantLocation, this->textureStorage);
+        glUniform1i(this->discardFragsLocation, data.texture.discardAlphaZero);
+        glUniform1i(this->isAnimatedLocation, data.isAnimated);
+
         status = this->checkErrors(__FILE__, __LINE__);
         if(status != lazarus_result::LAZARUS_OK)
         {
-            return status;
+            break;
         };
-    };
 
-    this->clearErrors();
-        
-    glUniform1i(this->meshVariantLocation, this->textureStorage);
-    glUniform1i(this->discardFragsLocation, data.texture.discardAlphaZero);
+        /*
+            Upload animation data if present
+        */
+        if(data.isAnimated)
+        {
+            this->clearErrors();
 
-    status = this->checkErrors(__FILE__, __LINE__);
-    if(status != lazarus_result::LAZARUS_OK)
-    {
-        return status;
+            LOG_DEBUG("Uploading animation data");
+
+            if(data.activeAnimation != -1 && !data.animationPaused)
+            {
+                this->loadAnimation(data);
+            };
+
+            /*
+                Upload updated armature joint matrices to
+                uniform locations.
+            */
+            for(auto joint : data.armature)
+            {
+                this->jointsMatricesLocation = glGetUniformLocation(this->shaderProgram, std::string("jointMatrices[").append(std::to_string(joint.id) + "]").c_str());
+                glUniformMatrix4fv(this->jointsMatricesLocation, 1, GL_FALSE, &joint.jointMatrix[0][0]);
+            };
+
+            status = this->checkErrors(__FILE__, __LINE__);
+            if(status != lazarus_result::LAZARUS_OK)
+            {
+                break;
+            };
+        };
+    
     };
 
     return status;
 };
 
-lazarus_result MeshManager::drawMesh(MeshManager::Mesh &meshIn)
+
+void ModelManager::loadAnimation(ModelManager::MeshData &data)
 {
-    MeshManager::MeshData &data = dataStore.at(meshIn.id);
+    LOG_DEBUG("Loading animation data");
 
-    this->clearErrors();
+    /*
+        Calculate the animation's armature-root position
+        and begin iterative breadth-first descent through
+        the node heirarchy.
+    */
 
-    glBindVertexArray(data.VAO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.EBO);
-
-    glActiveTexture(data.texture.unitId);
-    /* =========================================
-        When a texture is present bind the id 
-        of it's sampler to the texture target, 
-        overwriting what was previously bound.
-
-        Note the textureStoreVariant will be the 
-        same for all materials.
-    ============================================ */
-
-    switch (this->textureStorage)
-    {
-        case TextureLoader::StorageType::ATLAS:
-            glBindTexture(GL_TEXTURE_2D, data.texture.samplerId);
-            break;
-    
-        case TextureLoader::StorageType::CUBEMAP:
-            glBindTexture(GL_TEXTURE_CUBE_MAP, data.texture.samplerId);
-            break;
-        
-        case TextureLoader::StorageType::ARRAY:
-            glBindTexture(GL_TEXTURE_2D_ARRAY, data.texture.samplerId);
-            break;
-    
-        default:
-            break;
-    };
-
-    glDrawElementsInstanced(
-        GL_TRIANGLES, 
-        data.indexes.size(), 
-        GL_UNSIGNED_INT, 
-        nullptr, 
-        data.instanceCount
+    MeshData::MotionPoint &animationRoot = data.armature[data.armatureRoot];
+    animationRoot.globalJointTransform = this->computeLocalJointTransform(animationRoot, data.activeAnimation);
+            
+    animationRoot.jointMatrix = (
+        animationRoot.globalJointTransform * animationRoot.inverseBindMatrix
     );
 
-    glBindVertexArray(0);
+    std::vector<uint32_t> children = animationRoot.children;
+    std::set<uint32_t> visited = {animationRoot.id};
 
-    return this->checkErrors(__FILE__, __LINE__);
+    while(children.size() > 0)
+    {
+        std::vector<uint32_t> nextChildren;
+
+        for(size_t k = 0; k < children.size(); k++)
+        {   
+            uint32_t childID = children[k];
+            /*
+                Colaterally append all children that
+                exist at this depth to the control vector
+                if this joint hasn't already been 
+                inspected.
+            */
+            if(visited.insert(childID).second)
+            {
+                MeshData::MotionPoint &child = data.armature[childID];     // Note: Joint is declared as a reference
+                MeshData::MotionPoint &parent = data.armature[child.parentID];
+
+                nextChildren.insert(
+                    nextChildren.end(), 
+                    child.children.begin(), 
+                    child.children.end()
+                );
+
+                glm::mat4 localTransform = this->computeLocalJointTransform(child, data.activeAnimation);
+                child.globalJointTransform = parent.globalJointTransform * localTransform;
+
+                child.jointMatrix = (
+                    child.globalJointTransform * child.inverseBindMatrix
+                );
+            }
+        };
+            /*
+                Descend into the children of the children
+                which were just processed.
+            */
+            children = nextChildren;
+    };
 };
 
-void MeshManager::setDiscardFragments(MeshManager::Mesh &meshIn, bool shouldDiscard)
+glm::mat4 ModelManager::computeLocalJointTransform(ModelManager::MeshData::MotionPoint &motionPoint, uint32_t animationID)
 {
-    MeshManager::MeshData &data = dataStore.at(meshIn.id);
-    data.texture.discardAlphaZero = shouldDiscard;
+    AssetLoader::AssetData::JointMotion motionData = motionPoint.animationData[animationID];
+    /*
+        Based on the current elapsed ms (time), determine
+        where abouts we are in the animation sequence. Use
+        this to look up and interpolate the relevant TRS 
+        keyframe values for the next draw of the animated
+        asset.
+    */
+
+    uint32_t translateIdx = this->getKeyframeIndex(motionData.translation, motionPoint.playbackPosition, motionPoint.elapsedPlaytime, motionPoint.previousPlaytime);
+    uint32_t rotateIdx = this->getKeyframeIndex(motionData.rotation, motionPoint.playbackPosition, motionPoint.elapsedPlaytime, motionPoint.previousPlaytime);
+    uint32_t scaleIdx = this->getKeyframeIndex(motionData.scale, motionPoint.playbackPosition, motionPoint.elapsedPlaytime, motionPoint.previousPlaytime);
+
+    glm::vec4 translateKey = this->getTransformLerp(motionData.translation, translateIdx, motionPoint.playbackPosition);
+    glm::vec4 rotateKey = this->getTransformLerp(motionData.rotation, rotateIdx, motionPoint.playbackPosition);
+    glm::vec4 scaleKey = this->getTransformLerp(motionData.scale, scaleIdx, motionPoint.playbackPosition);
+
+    glm::mat4 localTransform = (
+        glm::translate(glm::mat4(1.0f), glm::vec3(translateKey)) *
+        glm::mat4_cast(glm::quat(rotateKey.w, rotateKey.x, rotateKey.y, rotateKey.z)) *
+        glm::scale(glm::mat4(1.0f), glm::vec3(scaleKey))
+    );
+
+    return localTransform;
+};
+
+uint32_t ModelManager::getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t &playbackPosition, uint32_t &elapsedMs, uint32_t &previousMs)
+{
+    /*
+        Determine how many ms have passed since this was
+        last called.
+
+        TODO: 
+        Find way to remove divisions here.
+        Refactor time lookup into a function
+
+        FIXME: 
+        This shouldn't need to be recalculated for each
+        motion the way it currently is. Instead this 
+        should be done just once for the whole armature.
+    */
+    std::chrono::system_clock::duration epoch = std::chrono::system_clock::now().time_since_epoch();
+    uint32_t currentMs = epoch / std::chrono::milliseconds(1);
+    uint32_t timeDelta = currentMs - previousMs;
+    previousMs = currentMs;
+    elapsedMs += timeDelta;
+
+    /*
+        Determine motions total duration.
+    */
+    uint32_t durationMax = static_cast<uint32_t>(motion.timesteps.back() * 1000.0f);
+
+    /*
+        Establish current location in the frame 
+        sequence.
+    */
+    uint32_t now = elapsedMs % durationMax;
+    playbackPosition = now;
+
+    std::vector<float>::iterator it = std::find_if(
+        motion.timesteps.begin(), 
+        motion.timesteps.end(), 
+        [now](float time) {
+            /*
+                Convert to ms and compare with current 
+                time.
+            */
+            uint32_t timestep = static_cast<uint32_t>(time * 1000.0f);
+            return now < timestep;
+        }
+    );
+    uint32_t index = it - motion.timesteps.begin();
+
+    return index;
+};
+
+glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t frameBegin, uint32_t playbackPosition)
+{
+    /*
+        Calculate keyframe interpolation. Note that cubicspline is
+        not supported.
+
+        TODO/FIXME:
+        Handle static joints that may not have a JointMotion present at 
+        all, I haven't seen this but it's a thing. In the cases identified so 
+        far, they typically have exactly two keyframe indices with identical
+        values.
+    */
+
+    glm::vec4 keyframe = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f); 
+
+    if(motion.keyframes.size() >= 2)
+    {
+        if(motion.lerp == AssetData::JointMotion::TransformData::InterpolationType::STEP)
+        {
+            /*
+                Use the value as-is
+            ========================================================*/
+            keyframe = motion.keyframes[frameBegin];
+        }
+        else if(motion.lerp == AssetData::JointMotion::TransformData::InterpolationType::LINEAR)
+        {
+            /*
+                Determine lerp factor for keyframes by 
+                interpolating between the timestep values which 
+                correlate to the current keyframe and the 
+                next. 
+            */
+            float timestepStart = motion.timesteps[frameBegin];
+            float timestepEnd = motion.timesteps[frameBegin + 1 != motion.keyframes.size() ? frameBegin + 1 : 0];
+            float interpolatedTimestep = (playbackPosition - timestepStart * 1000.0f) / (timestepEnd * 1000.0f - timestepStart * 1000.0f);
+
+            glm::vec4 keyframeBegin = motion.keyframes[frameBegin];
+            glm::vec4 keyframeEnd = motion.keyframes[frameBegin + 1 != motion.keyframes.size() ? frameBegin + 1 : 0];
+
+            if(motion.transform == AssetData::JointMotion::TransformData::TransformType::ROTATION)
+            {
+                /*
+                    Perform spherical interpolation on rotational quaternion transforms.
+                    As mentioned in previous areas, Blender exports rotations
+                    as quats in wxyz order so they must be swizzled here in  order to 
+                    correctly compute the lerpstep value.
+                */
+
+                glm::quat sphericalLerp = glm::slerp(
+                    glm::quat(keyframeBegin.w, keyframeBegin.x, keyframeBegin.y, keyframeBegin.z), 
+                    glm::quat(keyframeEnd.w, keyframeEnd.x, keyframeEnd.y, keyframeEnd.z), 
+                    interpolatedTimestep
+                );
+                keyframe = glm::vec4(sphericalLerp.x, sphericalLerp.y, sphericalLerp.z, sphericalLerp.w);
+            }
+            else
+            {   
+                /*
+                    Scale and translation cases don't need to be swizzled
+                    so just perform generic linear interpolation upon the 
+                    keyframes using the formula described here:
+
+                    https://en.wikipedia.org/wiki/Linear_interpolation#Programming_language_support
+                */
+                keyframe = (1 - interpolatedTimestep) * keyframeBegin + interpolatedTimestep * keyframeEnd;
+            }
+        };
+    };
+
+    return keyframe;
+};
+
+lazarus_result ModelManager::setActiveAnimation(ModelManager::Model &meshIn, uint32_t animationIndex)
+{
+    lazarus_result status = lazarus_result::LAZARUS_OK;
+    ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
+    for(size_t i = 0; i < model.size(); i++)
+    {
+        ModelManager::MeshData &data = model[i];
+        if(data.isAnimated)
+        {
+            if(animationIndex + 1 <= data.animationCount)
+            {
+                data.activeAnimation = animationIndex;
+        
+                for(size_t j = 0; j < data.armature.size(); j++) 
+                {
+                    ModelManager::MeshData::MotionPoint &motion = data.armature[j];
+                    motion.elapsedPlaytime = 0;
+                    motion.previousPlaytime = 0;
+                }
+            }
+            else
+            {
+                status = lazarus_result::LAZARUS_INVALID_ANIMATION_ID;
+                break;
+            }
+        };
+    };
+
+    /*
+        Animation has changed so begin playing
+        it from the start.
+    */
+    this->playAnimation(meshIn);
+
+    return status;
+};
+
+lazarus_result ModelManager::pauseAnimation(ModelManager::Model &meshIn)
+{
+    uint32_t animatedAssets = 0;
+    ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
+    for(size_t i = 0; i < model.size(); i++)
+    {
+        ModelManager::MeshData &data = model[i];
+        if(data.isAnimated)
+        {
+            data.animationPaused = true;
+            animatedAssets++;
+        }
+    };
+
+    
+    return animatedAssets 
+    ? lazarus_result::LAZARUS_OK 
+    : lazarus_result::LAZARUS_NO_ANIMATION_DATA;
+};
+
+lazarus_result ModelManager::playAnimation(ModelManager::Model &meshIn)
+{
+    /*
+        FIXME:
+        This doesn't quite work as it should. There is 
+        an observable "jump" during playback following
+        a call to pauseAnimation().
+    */
+
+    uint32_t animatedAssets = 0;
+    ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
+    for(size_t i = 0; i < model.size(); i++)
+    {
+        ModelManager::MeshData &data = model[i];
+        if(data.isAnimated)
+        {
+            for(size_t j = 0; j < data.armature.size(); j++) 
+            {
+                ModelManager::MeshData::MotionPoint &motion = data.armature[j];
+                motion.elapsedPlaytime = motion.playbackPosition;
+                motion.previousPlaytime = 0;
+            }
+
+            data.animationPaused = false;
+            animatedAssets++;
+        }
+    };
+
+    return animatedAssets 
+    ? lazarus_result::LAZARUS_OK 
+    : lazarus_result::LAZARUS_NO_ANIMATION_DATA;
+};
+
+lazarus_result ModelManager::setToPosePosition(ModelManager::Model &meshIn)
+{
+    this->pauseAnimation(meshIn);
+
+    uint32_t animatedAssets = 0;
+    ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
+    for(size_t i = 0; i < model.size(); i++)
+    {
+        ModelManager::MeshData &data = model[i];
+        if(data.isAnimated)
+        {
+            data.activeAnimation = -1;
+
+            for(size_t j = 0; j < data.armature.size(); j++)
+            {
+                ModelManager::MeshData::MotionPoint &motion = data.armature[j];
+                motion.playbackPosition = 0;
+                motion.elapsedPlaytime = 0;
+                motion.previousPlaytime = 0;
+                motion.globalJointTransform = motion.posePosition;
+                motion.jointMatrix = motion.globalJointTransform * motion.inverseBindMatrix;
+            };
+            
+            animatedAssets++;
+        }
+    };
+
+    return animatedAssets 
+    ? lazarus_result::LAZARUS_OK 
+    : lazarus_result::LAZARUS_NO_ANIMATION_DATA;
+}
+
+lazarus_result ModelManager::drawModel(ModelManager::Model &meshIn)
+{
+    ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
+    lazarus_result status = lazarus_result::LAZARUS_OK;
+    
+    for(size_t i = 0; i < model.size(); i++)
+    {
+        LOG_DEBUG("Rendering mesh asset");
+        ModelManager::MeshData &data = model[i];
+
+        this->clearErrors();
+    
+        glBindVertexArray(data.VAO);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, data.EBO);
+    
+        glActiveTexture(data.texture.unitId);
+        /*
+            When a texture is present bind the id 
+            of it's sampler to the texture target, 
+            overwriting what was previously bound.
+    
+            Note the textureStoreVariant will be the 
+            same for all materials.
+        */
+    
+        switch (this->textureStorage)
+        {
+            case TextureLoader::StorageType::ATLAS:
+                glBindTexture(GL_TEXTURE_2D, data.texture.samplerId);
+                break;
+        
+            case TextureLoader::StorageType::CUBEMAP:
+                glBindTexture(GL_TEXTURE_CUBE_MAP, data.texture.samplerId);
+                break;
+            
+            case TextureLoader::StorageType::ARRAY:
+                glBindTexture(GL_TEXTURE_2D_ARRAY, data.texture.samplerId);
+                break;
+        
+            default:
+                break;
+        };
+
+        glDrawElementsInstanced(
+            GL_TRIANGLES, 
+            data.indexes.size(), 
+            GL_UNSIGNED_INT, 
+            nullptr, 
+            data.instanceCount
+        );
+    
+        glBindVertexArray(0);
+    
+        status = this->checkErrors(__FILE__, __LINE__);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            break;
+        };
+    };
+
+    return status;
+};
+
+void ModelManager::setDiscardFragments(ModelManager::Model &meshIn, bool shouldDiscard)
+{
+    LOG_DEBUG("Setting fragment-discard flags");
+    ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
+
+    for(size_t i = 0; i < model.size(); i++)
+    {
+        ModelManager::MeshData &data = model[i];
+        data.texture.discardAlphaZero = shouldDiscard;
+    };
 
     return;
 };
 
-lazarus_result MeshManager::setMaterialProperties(std::vector<glm::vec3> diffuse, std::vector<FileLoader::Image> images)
+lazarus_result ModelManager::setMaterials(AssetLoader::AssetData &assetData)
 {
-    if(diffuse.size() != images.size())
+    LOG_DEBUG("Loading material properties");
+    if(assetData.colors.size() != assetData.textures.size())
     {
         LOG_ERROR("Load Error: Invalid materials", __FILE__, __LINE__);
 
         return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
     };
 
-    for(size_t i = 0; i < diffuse.size(); i++)
+    for(size_t i = 0; i < assetData.colors.size(); i++)
     {
-        Material material = {};
-        material.diffuse = diffuse[i];
-        material.texture = images[i];
+        ModelManager::Material material = {};
+        material.diffuse = assetData.colors[i];
+        material.texture = assetData.textures[i];
 
         material.id = i;
 
-        if((material.diffuse.r + material.diffuse.b + material.diffuse.g) < -0.1f)
+        if(((material.diffuse.r + material.diffuse.b + material.diffuse.g) < -0.1f) && 
+             material.texture.pixelData != NULL)
         {
             material.type = MaterialType::IMAGE_TEXTURE;
 
-            /* ===============================================
+            /*
                 The data struct must keep it's own copy of the 
                 non-null images, used when time to upload / 
                 re-upload.
-            ================================================== */
+            */
 
             meshData.images.push_back(material.texture);
         }
         else
         {
-            material.type = MaterialType::BASE_COLOR;
+            material.type = MaterialType::DIFFUSE_COLOR;
     
             meshData.texture.samplerId = 0;
             meshData.texture.unitId = GL_TEXTURE2;
         };
 
-        meshOut.materials.push_back(material);
+        modelOut.materials.push_back(material);
 
-        /* =============================================================
+        /*
             In the case that image sanitisation is not enabled, we must
             track which image in the textureStack is the largest.
-        ================================================================ */
+        */
 
         this->maxTexWidth = std::max(maxTexWidth, material.texture.width);
         this->maxTexHeight = std::max(maxTexHeight, material.texture.height);
@@ -939,18 +1598,31 @@ lazarus_result MeshManager::setMaterialProperties(std::vector<glm::vec3> diffuse
     return lazarus_result::LAZARUS_OK;
 };
 
-void MeshManager::setSharedProperties()
+void ModelManager::setMeshProperties(AssetLoader::AssetData &assetData)
 {
+    LOG_DEBUG("Loading base mesh properties");
+
     meshData.texture.discardAlphaZero = false;
     meshData.texture.samplerId = TextureLoader::textureId;
 
-    meshOut.numOfVertices = meshData.attributes.size() / 4;
-    meshOut.numOfFaces = (meshOut.numOfVertices) / 3;
+    meshData.attributes = assetData.attributes;     //  Positon, Diffuse, normal, uvs
+    meshData.movements = assetData.movements;       //  joints, weights
+    meshData.indexes = assetData.indices;           
+
+    meshData.isAnimated = false;
+    /*
+        Note that these will be evaluated again when 
+        loading from a file (create3DAsset).
+    */
+    meshData.armature = {};
+    
+    modelOut.numOfVertices = meshData.attributes.size() / 4;
+    modelOut.numOfFaces = (modelOut.numOfVertices) / 3;
 
    return;
 }
 
-lazarus_result MeshManager::checkErrors(const char *file, uint32_t line)
+lazarus_result ModelManager::checkErrors(const char *file, uint32_t line)
 {
     this->errorCode = glGetError();
     
@@ -965,9 +1637,9 @@ lazarus_result MeshManager::checkErrors(const char *file, uint32_t line)
     return lazarus_result::LAZARUS_OK;
 };
 
-void MeshManager::clearErrors()
+void ModelManager::clearErrors()
 {
-    /* ============================================================
+    /*
         Reset OpenGL's error state by flushing out all of the 
         internal state flags containing the error value (which may 
         be several). This is so that persistence of an errors 
@@ -978,7 +1650,7 @@ void MeshManager::clearErrors()
         
         Absolutely painful, see:
         https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetError.xhtml#:~:text=glGetError%20should%20always%20be%20called%20in%20a%20loop
-    ================================================================ */
+    */
 
     this->errorCode = glGetError();
 
@@ -990,70 +1662,88 @@ void MeshManager::clearErrors()
     return;
 };
 
-void MeshManager::copyMesh(MeshManager::Mesh &dest, MeshManager::Mesh src)
+void ModelManager::copyModel(ModelManager::Model &dest, ModelManager::Model src)
 {
-    this->meshOut = src;
-    this->meshData = dataStore.at(this->meshOut.id);
-    bool selectable = this->meshOut.instances.at(0).isClickable;
-
-    this->meshOut.instances.clear();
-    this->instantiateMesh(selectable);
-
-    this->meshOut.id = this->meshOut.instances.at(0).id;
-    this->meshData.id = this->meshOut.id;
-    this->dataStore.insert(std::pair<uint32_t, MeshManager::MeshData>(this->meshOut.id, this->meshData));
-
-    this->makeSelectable(selectable);
+    LOG_DEBUG(std::string("Copying model [").append(src.name+ "]").c_str());
+    this->modelOut = src;
+    this->modelData = this->modelStore.at(modelOut.id);
+    bool selectable = this->modelOut.instances.at(0).isClickable;
     
-    dest = this->meshOut;
+    ModelManager::ModelData data = {};
+    for(size_t i = 0; i < this->modelData.size(); i++)
+    {
+        this->meshData = this->modelData[i];
+    
+        this->modelOut.instances.clear();
+        this->instantiateMesh(selectable);
+    
+        this->modelOut.id = this->modelOut.instances.at(0).id;
+        this->meshData.id = this->modelOut.id;
+        data.push_back(this->meshData);
+    };
+    
+    this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, data));
+    this->setSelectable(selectable);
+
+    dest = this->modelOut;
 
     return;
 };
 
-void MeshManager::instantiateMesh(bool selectable)
-{    
+void ModelManager::instantiateMesh(bool selectable)
+{   
+    LOG_DEBUG("Loading mesh instance(s)");
     for(size_t i = 0; i < meshData.instanceCount; i ++)
     {
+        LOG_DEBUG("Mapping mesh instance");
         this->childCount += 1;
 
-        MeshManager::Mesh::Instance instance = {};
+        ModelManager::Model::Instance instance = {};
         instance.id = this->childCount;
         instance.modelMatrix = glm::mat4(1.0f);
         instance.isClickable = selectable;
         instance.isVisible = true;
         
-        /* =========================================
+        /*
             Instances are created at the origin 
             looking down the z-axis at 1:1 scale to 
             that which was specified during VBO
             construction.
-        ============================================ */
+
+            NOTE:
+            Camera starts by looking down +x, why
+            not do the same here? 
+        */
         
         instance.position = glm::vec3(0.0f, 0.0f, 0.0f);
         instance.direction = glm::vec3(0.0f, 0.0f, 1.0f);
         instance.scale = glm::vec3(1.0f, 1.0f, 1.0f);
         
-        std::pair<uint32_t, MeshManager::Mesh::Instance> pair(static_cast<uint32_t>(i), instance);
-        this->meshOut.instances.insert(pair);
+        std::pair<uint32_t, ModelManager::Model::Instance> pair(static_cast<uint32_t>(i), instance);
+        this->modelOut.instances.insert(pair);
     };
     
     return;
 };
 
-MeshManager::~MeshManager()
+ModelManager::~ModelManager()
 {
-    LOG_DEBUG("Destroying Lazarus::MeshManager");
+    LOG_DEBUG("Destroying Lazarus::ModelManager");
     
     this->clearErrors();
 
-    for(auto i: dataStore)
+    for(auto i: this->modelStore)
     {
-        glDeleteBuffers         (1, &i.second.IIBO);
-        glDeleteBuffers         (1, &i.second.MBO);
-        glDeleteBuffers         (1, &i.second.VBO);
-        glDeleteBuffers         (1, &i.second.EBO);
-        glDeleteVertexArrays    (1, &i.second.VAO);
-    };
+        for(auto j: i.second)
+        {
+            glDeleteBuffers         (1, &j.IIBO);
+            glDeleteBuffers         (1, &j.ABO);
+            glDeleteBuffers         (1, &j.MBO);
+            glDeleteBuffers         (1, &j.VBO);
+            glDeleteBuffers         (1, &j.EBO);
+            glDeleteVertexArrays    (1, &j.VAO);
+        };
+    }
 
     this->checkErrors(__FILE__, __LINE__);
 };

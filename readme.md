@@ -182,7 +182,7 @@ Welcome to the examples guide. While the following was written in a Linux enviro
 This guide covers the following:
 1. [The application window](#window-context)
 2. [Configuration](#global-settings)
-3. [Loading mesh](#mesh-assets)
+3. [Loading models](#mesh-assets)
 4. [Shader Workflow](#shaders)
 
 ## Application window:
@@ -384,29 +384,30 @@ int main()
 
     //  Configure camera settings
     Lazarus::CameraManager::CameraConfig cameraSettings = {};
+    cameraSettings.type = Lazarus::CameraManager::CameraConfig::CameraType::ORTHOGRAPHIC;
     cameraSettings.aspectRatioX = globals.getDisplayWidth();
     cameraSettings.aspectRatioY = globals.getDisplayHeight();
 
     //  Generate camera
     Lazarus::CameraManager::Camera camera = {};
-    cameraManager.createOrthoCam(camera, cameraSettings); //  upon success, camera is given a value
+    cameraManager.createCamera(camera, cameraSettings); //  upon success, camera is given a value
 ```
 
 Now lets create our geometry:
 ```cpp
     //  Instantiate a new mesh manager (this can be stack'd or heap'd, here we use the stack).
     //  The ID of the shader that will be used to render this instance's resources must be provided
-    Lazarus::MeshManager meshManager = Lazarus::MeshManager(shaderID);
+    Lazarus::ModelManager modelManager = Lazarus::ModelManager(shaderID);
 
     //  Configure the mesh asset
     //  Note: when orthographically viewed, sizing corresponds to pixel-width
-    Lazarus::MeshManager::QuadConfig quadSettings = {};
+    Lazarus::ModelManager::QuadConfig quadSettings = {};
     quadSettings.width = 500;
     quadSettings.height = 500;
 
     //  Generate asset
-    Lazarus::MeshManager::Quad quad = {};
-    meshManager.createQuad(quad, quadSettings); //  upon success, quad is given a value
+    Lazarus::ModelManager::Quad quad = {};
+    modelManager.createQuad(quad, quadSettings); //  upon success, quad is given a value
 ```
 
 The active shader has been set and our resources are prepared. From here we can begin our render loop, where per-frame we will load our scene's data onto the GPU and use our shader to render the output upon each draw call. Then we present the next frame to observe the outcome.
@@ -422,10 +423,10 @@ The active shader has been set and our resources are prepared. From here we can 
 
         //  Load resources
         cameraManager.loadCamera(camera);
-        meshManager.loadMesh(quad);
+        modelManager.loadModel(quad);
 
         //  Draw next frame
-        lazarus_result engineStatus = meshManager.drawMesh(quad);
+        lazarus_result engineStatus = modelManager.drawModel(quad);
 
         //  Check errors
         //  Note: a lazarus_result shall be returned by most functions in the api
@@ -449,11 +450,11 @@ You should see something like this: congratulations - you've just drawn your fir
 *But why is it all the way down there?* Because under observation of our orthographic camera, metrics are taken in pixel dimensions from the bottom-left corner of the viewport. Although it may be confusing in this context, it might make sense a little later if you are looking to create UI or HUD components. This is the same coordinate system that is used internally for the layout of text and glyphs. \
 To fix the issue; lets center our quad using a transform.
 ```cpp
-    meshManager.createQuad(quad, quadSettings);
+    modelManager.createQuad(quad, quadSettings);
 
     // After creating the quad, move it to the center of the screen
     Lazarus::Transform transformer = Lazarus::Transform();
-    transformer.translateMeshAsset(
+    transformer.translateModel(
         quad, 
         static_cast<float>(globals.getDisplayWidth()) / 2.0, 
         static_cast<float>(globals.getDisplayHeight()) / 2.0, 
@@ -464,7 +465,7 @@ To fix the issue; lets center our quad using a transform.
 Here it is! You'll also observe that the geometry was partially clipped. With the quad centered we can now see it in full. \
 ![helloQuad2](https://drive.google.com/thumbnail?id=1HNdYXlDgjj1AOdB9BZNAjpgJGqTTICwh&sz=w800)
 
-For more on this; see the [Mesh section of the API Reference](#meshmanager).
+For more on this; see the [Model section of the API Reference](#modelmanager).
 
 ## Shaders:
 ### Getting started with shaders:
@@ -478,43 +479,61 @@ When you submit your own fragment and / or vertex shaders with a call to `Lazaru
 #### Vertex shader inputs:
 Note these inputs can be found at `LAZARUS_DEFAULT_VERT_LAYOUT`.
 ```c
-layout(location = 0) in vec3 inVertex;      //  Input Vertex position
-layout(location = 1) in vec3 inDiffuse;     //  Input Vertex color
-layout(location = 2) in vec3 inNormal;      //  Input Vertex normal
-layout(location = 3) in vec3 inTexCoord;    //  Input UV (S/T & stack-index)
+#define MAX_KEYFRAMES 255
 
-uniform int usesPerspective;                //  Which projection type to use, 1 for perspective - otherwise orthographic
-uniform mat4 modelMatrix;                   //  The render subject's modelmatrix
-uniform mat4 viewMatrix;                    //  The camera's viewing matrix
-uniform mat4 perspectiveProjectionMatrix;   //  A 3D projection matrix (if one is present)
-uniform mat4 orthoProjectionMatrix;         //  A 2D projection matrix (if one is present)
+//  Vertex buffer object 1 (attributes)
+layout(location = 0) in vec3 inVertex;              //  Input Vertex position
+layout(location = 1) in vec3 inDiffuse;             //  Input Vertex color
+layout(location = 2) in vec3 inNormal;              //  Input Vertex normal
+layout(location = 3) in vec3 inTexCoord;            //  Input UV (S/T & stack-index)
+//  Vertex buffer object 2 (Instance matrices "MBO")
+layout(location = 4) in mat4 instanceModelMatrix;   //  Input instance matrices, memory divisors occupy 4, 5, 6 & 7
+//  Vertex buffer object 3 (Instance-info "IIBO")
+layout(location = 8) in float visible;              //  Input per-instance data
+//  Vertex buffer object 4 (Armature joints)
+layout(location = 9) in vec4 inJoints;              //  Input animation rigging
+layout(location = 10) in vec4 inWeights;            //  Input vertex weights for rigging
 
-out vec3 fragPosition;                      //  Output position
-out vec3 diffuseColor;                      //  Output color data
-out vec3 normalCoordinate;                  //  Output normal coordinates
-out vec3 textureCoordinate;                 //  Output UV for render subject
-out vec3 skyBoxTextureCoordinate;           //  Output for skybox UV
+uniform int usesPerspective;                        //  Which projection type to use, 1 for perspective - otherwise orthographic
+uniform mat4 viewMatrix;                            //  The camera's viewing matrix
+uniform mat4 perspectiveProjectionMatrix;           //  A 3D projection matrix (if one is present)
+uniform mat4 orthoProjectionMatrix;                 //  A 2D projection matrix (if one is present)
 
-flat out int isUnderPerspective;            //  Output required by default program for rendering text / glyphs
+uniform mat4 jointMatrices[MAX_KEYFRAMES];          //  Raw pre-computed joint matrices
 
-vec3 _lazarusComputeWorldPosition();        //  Determine the output vertex position in worldspace coordinates and calculates the relevant clip-space coordinates
-vec3 _lazarusComputeNormalDirection()       //  Determine the direction vector of the output vertex normals. Ensures preservation of the normal direction over non-uniform surfaces.
+out vec3 fragPosition;                              //  Output position
+out vec3 diffuseColor;                              //  Output color data
+out vec3 normalCoordinate;                          //  Output normal coordinates
+out vec3 textureCoordinate;                         //  Output UV for render subject
+out vec3 skyBoxTextureCoordinate;                   //  Output for skybox UV
+out float keepFragment;                             //  Output for fragment discarding
+
+flat out int isUnderPerspective;                    //  Output required by default program for rendering text / glyphs
+
+vec3 _lazarusComputeWorldPosition();                //  Determine the output vertex position in worldspace coordinates and calculates the relevant clip-space coordinates.
+vec3 _lazarusComputeNormalDirection();              //  Determine the direction vector of the output vertex normals. Ensures preservation of the normal direction over non-uniform surfaces.
+vec3 _lazarusComputeSkinningMatrix();               //  Determine the weighted result of the combined joint matrices which effect the output vertex position. 
 ```
 
 #### Pixel / Fragment shader inputs:
 Note these inputs can be found at `LAZARUS_DEFAULT_FRAG_LAYOUT`. \
 Anything not used from here will be optimised-out when compiled.
 ```c
-    #define MAX_LIGHTS 150                          
+    #define MAX_LIGHTS 255
 
     //  Texture storage types for comparisson with samplerType
-    const int CUBEMAP   = 1;
-    const int ATLAS     = 2;
-    const int ARRAY     = 3;
+    const int CUBEMAP   = 0;
+    const int ATLAS     = 1;
+    const int ARRAY     = 2;
 
     //  Light variants
-    const int DIRECTIONAL_LIGHT = 1;
-    const int POINT_LIGHT       = 2;
+    const int DIRECTIONAL_LIGHT = 0;
+    const int POINT_LIGHT       = 1;
+    const int AMBIENT_LIGHT     = 2;
+
+    //  Camera Variants
+    const int ORTHOGRAPHIC = 0;
+    const int PERSPECTIVE_FLYING = 1;
 
     in vec3 fragPosition;                                   //  Input 3D fragment position
     in vec3 diffuseColor;                                   //  Input fragment color
@@ -552,7 +571,7 @@ Anything not used from here will be optimised-out when compiled.
     vec3 _lazarusComputeLambertianReflection(vec3 color);   //  Calculate the fragment's diffuse lighting
     float _lazarusComputeFogFactor();                       //  Calculate fog attenuation
 ```
-**It should be noted that `_lazarusComputeColor()` will only return a value for a textured mesh when it is called from the program which the `MeshManager` was instantiated with.**
+**It should be noted that `_lazarusComputeColor()` will only return a value for a textured mesh when it is called from the program which the `ModelManager` was instantiated with.**
 
 ------------------------------------------------------------------
 
@@ -654,6 +673,15 @@ params:
 #### int getNumberOfActiveLights()
 Returns the number of lights known accross all `LightManager` instances.
 
+#### void setWireframeMode(bool useWireframe)
+Sets the value of `LAZARUS_WIREFRAME_MODE`. Determines whether the scene should be rendered as the lines between a primitive's vertices. Otherwise triangles are filled in and the scene is rendered normally.
+
+> Params: \
+> **useWireframe:** *Render lines when true, otherwise fill faces.*
+
+#### bool getWireframeMode()
+Returns the current value of `LAZARUS_WIREFRAME_MODE`.
+
 ### Members:
 > **lazarus_result**: Various execution status codes (*type:* `enum`)
 > - **LAZARUS_OK** *The engines default state. No problems. (Code: 0)* 
@@ -687,6 +715,8 @@ Returns the number of lights known accross all `LightManager` instances.
 > - **LAZARUS_FT_INIT_FAILURE** *Lazarus failed to inititialise the freetype2 library. (Code: 701)*
 > - **LAZARUS_FT_LOAD_FAILURE** *Freetype has indicated that it is unable to load the TrueType font from the desired location. (Code: 702)*
 > - **LAZARUS_FT_RENDER_FAILURE** *Despite being able to load the target glyph's splines, freetype was unable to render them into a monochrome bitmap. (Code: 703)*
+> - **LAZARUS_INVALID_ANIMATION_ID** *The indices provided for retrieving animation data are out of range. (Code: 801)*
+> - **LAZARUS_NO_ANIMATION_DATA** *An attempt was made to perform an animation operation on an asset which is not rigged. (Code: 802)*
 
 ## WindowManager:
 A class for making and managing the program's window(s). 
@@ -750,7 +780,7 @@ Bring the back buffer to the front (into user view) and moves the front buffer t
 Clears the back buffer's depth and color bits so that they can be given new values for the next draw.
 
 #### monitorPixelOccupants()
-Enables picking of the window's pixels for objects which have been rendered to the screen following a call to `MeshManager::drawMesh(...)`. The ID's of objects with items with `MeshManager::Mesh::isClickable` set to `true` now become searchable at their pixel coordinates via a call to `CameraManager::getPixelOccupant(...)`.
+Enables picking of the window's pixels for objects which have been rendered to the screen following a call to `ModelManager::drawModel(...)`. The ID's of objects with items with `ModelManager::Model::isClickable` set to `true` now become searchable at their pixel coordinates via a call to `CameraManager::getPixelOccupant(...)`.
 
 ### Members:
 > **isOpen:** *Whether or not the active window is open. See also: `GlobalsManager::getContextWindowOpen()`. (type: `bool`, default: `false`)* \
@@ -909,43 +939,43 @@ Params:
 >	- **pixelData:** *The actual image data / texels tightly packed in RGBA order. (type: `unsigned char *`)* 
 
 ## Transform:
-A class built to handle transformations of different world assets such as mesh, cameras and lights.
+A class built to handle transformations of different world assets such as models, cameras and lights.
 
 ### Functions:
-#### translateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, int matrixId)
-Applies a translation transformation (movement) to a mesh asset along the x, y and z axis from an offset of 0.0. \
-Updates the `locationX`, `locationY` and `locationZ` properties of a `MeshManager::Mesh` object in real time. 
+#### translateModel(ModelManager::Model &model, float x, float y, float z, int instanceID)
+Applies a translation transformation (movement) to a model asset along the x, y and z axis from an offset of 0.0. \
+Updates the `locationX`, `locationY` and `locationZ` properties of a `ModelManager::Model` object in real time. 
 
 Params:
-> **mesh:** *The mesh asset to be acted upon.* \
-> **x:** *A floating point number used to increment / decrement the x-axis locative value of the mesh.* \
-> **y:** *A floating point number used to increment / decrement the y-axis locative value of the mesh.* \
-> **z:** *A floating point number used to increment / decrement the z-axis locative value of the mesh.* \
-> **matrixId:** *The index position / map key of the `MeshManager::Mesh::Instance` to be acted upon. (default: `0`)*
+> **model:** *The model asset to be acted upon.* \
+> **x:** *A floating point number used to increment / decrement the x-axis locative value of the model.* \
+> **y:** *A floating point number used to increment / decrement the y-axis locative value of the model.* \
+> **z:** *A floating point number used to increment / decrement the z-axis locative value of the model.* \
+> **instanceID:** *The index position / map key of the `ModelManager::Model::Instance` to be acted upon. (default: `0`)*
 
-#### rotateMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, int matrixId)
-Applies a rotation transformation to a mesh asset on it's x, y and z axis from an offset of 0.0. \
-This rotation affects the yaw, pitch and roll of the mesh. Not to be confused with an orbital rotation. 
+#### rotateModel(ModelManager::Model &model, float x, float y, float z, int instanceID)
+Applies a rotation transformation to a model asset on it's x, y and z axis from an offset of 0.0. \
+This rotation affects the yaw, pitch and roll of the model. Not to be confused with an orbital rotation. 
 
 Params:
-> **mesh:** *The mesh asset to be acted upon.* \
-> **x:** *A floating point number used to increment / decrement the x-axis (yaw) rotational value of the mesh.* \
-> **y:** *A floating point number used to increment / decrement the y-axis (pitch) rotational value of the mesh.* \
-> **z:** *A floating point number used to increment / decrement the z-axis (roll) rotational value of the mesh.* \
-> **matrixId:** *The index position / map key of the `MeshManager::Mesh::Instance` to be acted upon. (default: `0`)*
+> **model:** *The model asset to be acted upon.* \
+> **x:** *A floating point number used to increment / decrement the x-axis (yaw) rotational value of the model.* \
+> **y:** *A floating point number used to increment / decrement the y-axis (pitch) rotational value of the model.* \
+> **z:** *A floating point number used to increment / decrement the z-axis (roll) rotational value of the model.* \
+> **instanceID:** *The index position / map key of the `ModelManager::Model::Instance` to be acted upon. (default: `0`)*
 
-#### scaleMeshAsset(MeshManager::Mesh &mesh, float x, float y, float z, int matrixId)
-Applies a scaling transformation to a mesh asset on it's x, y, and z axis from and offset of 1.0. \
+#### scaleModel(ModelManager::Model &model, float x, float y, float z, int instanceID)
+Applies a scaling transformation to a model asset on it's x, y, and z axis from and offset of 1.0. \
 Will update the value returned by `GlobalsManager::getExecutionStatus()` to `LAZARUS_INVALID_DIMENSIONS` if any of the values recieved are below `0.0`.
 
 Params:
-> **mesh:** *The mesh asset to be acted upon.* \
-> **x:** *A floating point number used to increment / decrement the x-axis size value of the mesh.* \
-> **y:** *A floating point number used to increment / decrement the y-axis size value of the mesh.* \
-> **z:** *A floating point number used to increment / decrement the z-axis size value of the mesh. \
-> **matrixId:** *The index position / map key of the `MeshManager::Mesh::Instance` to be acted upon. (default: `0`)*
+> **model:** *The model asset to be acted upon.* \
+> **x:** *A floating point number used to increment / decrement the x-axis size value of the model.* \
+> **y:** *A floating point number used to increment / decrement the y-axis size value of the model.* \
+> **z:** *A floating point number used to increment / decrement the z-axis size value of the model. \
+> **instanceID:** *The index position / map key of the `ModelManager::Model::Instance` to be acted upon. (default: `0`)*
 
-#### translateCameraAsset(CameraManager::Camera &camera, float x, float y, float z, float velocity)
+#### translateCamera(CameraManager::Camera &camera, float x, float y, float z, float velocity)
 Applies a translation transformation (movement) to a camera asset along the x, y and z axis from an offset of 0.0. \
 Updates the `locationX`, `locationY` and `locationZ` properties of a `CameraManager::Camera` object in real time. 
 
@@ -956,7 +986,7 @@ Params:
 > **z:** *A floating point number used to increment / decrement the z-axis locative value of the camera.* \
 > **velocity:** *The speed at which the camera should translate through space per update. (default: `0.1`)*
 
-#### rotateCameraAsset(CameraManager::Camera &camera, float x, float y, float z)
+#### rotateCamera(CameraManager::Camera &camera, float x, float y, float z)
 Applies a rotation transformation to a camera asset on it's x, y and z axis from an offset of 0.0. \
 This rotation affects the yaw, pitch and roll of the camera. Not to be confused with an orbital rotation. \
 Will update the value returned by `GlobalsManager::getExecutionStatus()` to `LAZARUS_INVALID_RADIANS` if any of the values recieved are below `-360.0` or above `+360.0`.
@@ -967,7 +997,7 @@ Params:
 > **y:** *A floating point number used to increment / decrement the y-axis locative value of the camera.* \
 > **z:** *A floating point number used to increment / decrement the z-axis locative value of the camera.*
 
-#### orbitCameraAsset(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX, float tarY, float tarZ)
+#### orbitCamera(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX, float tarY, float tarZ)
 Apply arcball / orbital camera transformations to a camera asset; i.e. unit-sphere translation and rotation around a target.
 
 Params:
@@ -979,7 +1009,7 @@ Params:
 > **tarY:** *The y-axis worldspace coordinate of the target location. (default: `0.0`)* \
 > **tarZ:** *The z-axis worldspace coordinate of the target location. (default: `0.0`)*
 
-#### translateLightAsset(LightManager::Light &light, float x, float y, float z)
+#### translateLight(LightManager::Light &light, float x, float y, float z)
 Applies a translation transformation (movement) to a light asset along the x, y and z axis from an offset of 0.0. \
 Updates the `locationX`, `locationY` and `locationZ` properties of a `LightManager::Light` object in real time. 
 
@@ -989,18 +1019,18 @@ Params:
 > **y:** *A floating point number used to increment / decrement the y-axis locative value of the light.* \
 > **z:** *A floating point number used to increment / decrement the z-axis locative value of the light.*
 
-## MeshManager:
+## ModelManager:
 A management class for mesh assets and their properties.
 
 ### Constructor:
-#### MeshManager(GLuint shader, TextureLoader::StorageType textureType)
+#### ModelManager(GLuint shader, TextureLoader::StorageType textureType)
 
 Params:
 > **shader:** *The id of the shader program used to render this mesh. Acquired from the out-parameter of `Shader::compileShaders()`*
 > **textureType:** *Which variant of sampler storage should mesh texture's loaded by this instance be written to. (default: `TextureLoader::StorageType::ARRAY`)*
 
 ### Functions:
-#### create3DAsset(MeshManager::Mesh &out, MeshManager::AssetConfig options)
+#### create3DAsset(ModelManager::Model &out, ModelManager::AssetConfig options)
 Finds and loads the contents of an `.obj` or `.glb` file located at `options.meshPath`. \
 Initialises a `Mesh`.
 
@@ -1008,7 +1038,7 @@ Params:
 > **out:** *An out parameter where load results are stored.* \
 > **options:** *Load settings indicating how the asset should be loaded.*
 
-#### createQuad(MeshManager::Quad &out, MeshManager::QuadConfig options)
+#### createQuad(ModelManager::Quad &out, ModelManager::QuadConfig options)
 Creates a quad (2D plane) to the size of the specified height and width \
 with a texture as specified by `options.texturePath`
 
@@ -1016,55 +1046,80 @@ Params:
 > **out:** *An out parameter where load results are stored.* \
 > **options:** *Load settings indicating how the asset should be loaded.*
 
-#### createCube(MeshManager::Cube &out, MeshManager::CubeConfig options)
+#### createCube(ModelManager::Cube &out, ModelManager::CubeConfig options)
 Creates a cube (equal height, width and depth) of size `options.scale`. Note that without specification of a relative path to a texture asset, this function will assume the cube is to be used for a skybox which; is likely to cause problems in your program without manually setting the required texture data for the cubemap texture.
 
 Params:
 > **out:** *An out parameter where load results are stored.* \
 > **options:** *Load settings indicating how the asset should be loaded.*
 
-#### loadMesh(MeshManager::Mesh &meshIn)
+#### loadModel(ModelManager::Model &modelIn)
 Loads a mesh object's buffer data into their correct GPU uniform positions located inside the shader program that was referenced in the class constructor.
 
 Params:
 > **meshIn:** *The mesh object who's buffer data you wish to pass into the shader program.*
 
-#### drawMesh(MeshManager::Mesh &meshIn)
+#### drawModel(ModelManager::Model &modelIn)
 Draws the mesh object contents of the shader program's uniforms onto the render loops back buffer (see: `WindowManager::presetNextFrame()`). \
 Be sure to bring the back buffer forward to see the draw result.
 
 > Params: \
 > **meshIn:** *The mesh object you wish to draw.*
 
-#### copyMesh(MeshManager::Mesh &dest, MeshManager::Mesh src)
+#### copyModel(ModelManager::Model &dest, ModelManager::Model src)
 Creates a duplicate of `src` at the location of `dest` with updated unique ID for the asset and all its child instances.
 
 > Params: \
 > **dest:** *The pre-allocated destination where the copy should be stored.* \
 > **src:** *The asset to be copied.*
 
-#### setDiscardFragments(MeshManager::Mesh &meshIn, bool shouldDiscard)
+#### setDiscardFragments(ModelManager::Model &modelIn, bool shouldDiscard)
 Toggle for removing the areas of a face prior to rendering where the meshes texture's alpha value is zero. Used for rendering sprites.
 
 > Params: \
-> **meshIn:** *The mesh object you wish to draw.* \
+> **modelIn:** *The target mesh object.* \
 > **shouldDiscard:** *The desired value for the option (T/F).* 
+
+#### setActiveAnimation(ModelManager::Model &modelIn, int animationIndex)
+Determine which of an animated asset's movements should be rendered during playback.
+
+> Params: \
+> **modelIn:** *The target mesh object.* \
+> **animationIndex:** *The indices position of the target animation.*
+
+#### setToPosePosition(ModelManager::Model &modelIn)
+Reset an animated assets armature to it's "pose" / rest position. Stops playback.
+
+> Params: \
+> **modelIn:** *The target mesh object.* 
+
+#### pauseAnimation(ModelManager::Model &modelIn)
+Stop playback of the active animation in-place so that the assets armature does not return to it's rest position.
+
+> Params: \
+> **modelIn:** *The target mesh object.*
+
+#### playAnimation(ModelManager::Model &modelIn)
+Play the assets active animation from the armature's current position.
+
+> Params: \
+> **modelIn:** *The target mesh object.*
 
 ### clearMeshStorage()
 Flushes out the internal state(s) of the manager, including it's list of children; freeing ID's of assets and textures for future use and invalidating any asset handles created prior to calling this function.
 
 ### Members:
-> **Mesh:** *A collection of properties which make up a mesh entity. (type: `struct`)* 
+> **Model:** *A collection of properties which make up a mesh entity. (type: `struct`)* 
 >   - **id:** *The meshes serialised ID. Unique only to the manager instance which created it. (type: `int`)*
->   - **type:** *Which type of asset this mesh is. (type: `MeshManager::MeshType`)*
->   - **materials:** *The materials used by this mesh. (type: `std::vector<MeshManager::Material>`)*
+>   - **type:** *Which type of asset this mesh is. (type: `ModelManager::ModelType`)*
+>   - **materials:** *The materials used by this mesh. (type: `std::vector<ModelManager::Material>`)*
 >	- **numOfFaces:** *The number of faces that make up the mesh. (type: `int`)* 
 >	- **numOfVertices:** *The number of vertices that make up the mesh. (type: `int`)* 
 >	- **meshFilepath:** *The absolute path (from system root) to the wavefront file containing this mesh's vertex data. (type: `std::string`)*
 >	- **materialFilepath:** *The absolute path (from system root) to the wavefront file containing this mesh's material data. (type: `std::string*`)*
->   - **instances:** *A map containing information used for applying transformations to a mesh copy. (type: `std::map<int, MeshManager::Mesh::Instance>`)*
+>   - **instances:** *A map containing information used for applying transformations to a mesh copy. (type: `std::map<int, ModelManager::Model::Instance>`)*
 
-> **Mesh::Instance** *A collection of properties which make up a GPU copy of a mesh entity. (type: `struct`)*
+> **Model::Instance** *A collection of properties which make up a GPU copy of a mesh entity. (type: `struct`)*
 >	- **position:** *Where the instance is positioned in world space. (type: `glm::vec3`)*
 >	- **direction:** *The instance's forward-vector. Where the instance's local coordinate system's z+ is in relation to world space. (type: `glm::vec3`)*
 >	- **scale:** *The size of the instance. (type: `glm::vec3`)*
@@ -1072,9 +1127,9 @@ Flushes out the internal state(s) of the manager, including it's list of childre
 >   - **isClickable:** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (type: `bool`)*
 >   - **isVisible:** *Whether or not this instance should be rendered to the screen during fragment processing or discarded. (type: `bool`)*
 
-> **MeshType:** *Different varieties of meshes (type: `enum`)*
->   - **LOADED_GLB:** *A mesh which has been loaded from a glb file.*
->   - **LOADED_WAVEFRONT:** *A mesh which has been loaded from a wavefront file.*
+> **ModelType:** *Different varieties of meshes (type: `enum`)*
+>   - **GLB:** *A mesh which has been loaded from a glb file.*
+>   - **WAVEFRONT:** *A mesh which has been loaded from a wavefront file.*
 >   - **PLANE:** *A quad, I.e. Two-dimensional, four sides.*
 >   - **CUBE:** *A cuboid / rectangular prism.*
 
@@ -1105,11 +1160,10 @@ Flushes out the internal state(s) of the manager, including it's list of childre
 >   - **instanceCount:** *The number of copies of this mesh to be produced. (type: `int`, default: `1`)*
 
 > **Material:** *The properties which constitute the material that is rendered to a surface. (type: `struct`)*
->   - **id:** *A serialised ID unique to the material's parent `MeshManager::Mesh`. (type: `int`)*
->   - **type:** *Which type of material this is. (type: `MeshManager::MaterialType`)*
->   - **texture:** *If `type` is `MeshManager::MaterialType::IMAGE_TEXTURE`, this struct contains the materials texture data, i.e. width, height and raw bytes. (type: `FileLoader::Image`)*
->   - **diffuse:** *If `type` is `MeshManager::MaterialType::BASE_COLOR`, this struct contains the materials color value.*
->   - **discardsAlphaZero:** *If the contents of `texture.pixelData` contain an `RGBA` value with an alpha of zero, discard the fragment.*
+>   - **id:** *A serialised ID unique to the material's parent `ModelManager::Model`. (type: `int`)*
+>   - **type:** *Which type of material this is. (type: `ModelManager::MaterialType`)*
+>   - **texture:** *If `type` is `ModelManager::MaterialType::IMAGE_TEXTURE`, this struct contains the materials texture data, i.e. width, height and raw bytes. (type: `FileLoader::Image`)*
+>   - **diffuse:** *If `type` is `ModelManager::MaterialType::BASE_COLOR`, this struct contains the materials color value.*
 
 > **MaterialType:** *Different varieties of materials (type: `enum`)*
 >   - **IMAGE_TEXTURE:** *Faces using this material are the rendered using a sample from an image.*
@@ -1125,15 +1179,7 @@ Params:
 > **shader:** *The id of the shader program used to render this camera. Acquired from the out-parameter of `Shader::compileShaders()`*
 
 ### Functions: 
-#### createPerspectiveCam(CameraManager::Camera &out, CameraManager::CameraConfig options)
-Creates a new `Camera` object with a perspective projection matrix located at the scenes origin (x: 0.0, y: 0.0, z: 0.0) which looks directly down the +X axis.
-
-Params:
-> **out:** *An out parameter where load results are stored.* \
-> **options:** *Load settings indicating how the asset should be loaded.*
-
-### Functions: 
-#### createOrthoCam(CameraManager::Camera &out, CameraManager::CameraConfig options)
+#### createCamera(CameraManager::Camera &out, CameraManager::CameraConfig options)
 Creates a new instance of a `Camera`, with an orthographic projection matrix. 
 
 Params:
@@ -1147,7 +1193,7 @@ Params:
 > **cameraData:** *The camera asset you would like to render.*
 
 #### getPixelOccupant(int positionX, int positionY, int &out)
-Retrieves the ID of a pixel occupant in view which has `MeshManager::Mesh::isClickable` set to `true`.
+Retrieves the ID of a pixel occupant in view which has `ModelManager::Model::isClickable` set to `true`.
 
 > **positionX:** *The x-axis pixel coordinate from the bottom left corner of the display (Not the window).*
 > **positionY:** *The y-axis pixel coordinate from the bottom left corner of the display (Not the window).*
@@ -1163,10 +1209,16 @@ Retrieves the ID of a pixel occupant in view which has `MeshManager::Mesh::isCli
 >	- **viewMatrix:** *The view matrix to be passed into the shader program at the uniform location of `viewLocation`. (type: `glm::mat4`)*
 >	- **projectionMatrix:** *The projection matrix to be passed into the shader program at the uniform location of `projectionLocation`. (type: `glm::mat4`)*
 
+> **CameraType:** *Different varieties of camera. (type: `enum`)*
+>   - **ORTHOGRAPHIC:** *A "2D" camera with no depth. Coordinates are relative to the width of the viewing port, i.e. in pixels.*
+>   - **PERSPECTIVE_FLYING:** *A 3D camera with free movement in worldspace using euler angles.*
+
 > **CameraConfig:** *Creation function input-settings. (type: `struct`)*
->   - **name:** *What to call this asset. (type: `std::string`, default: `"CAMERA_" + Camera.id`)*
->   - **aspectRatioX:** *The x-axis aspect ratio / width of the viewport. (Default: `LAZARUS_PRIMARY_DISPLAY_WIDTH`)* \
->   - **aspectRatioY:** *The y-axis aspect ratio / height of the viewport. (Default: `LAZARUS_PRIMARY_DISPLAY_HEIGHT`)* 
+>   - **name:** *What to call this asset. (Type: `std::string`, Default: `"CAMERA_" + Camera.id`)*
+>   - **type:** *Which variant of camera to use. (Type: `CameraType`, Default: `ORTHOGRAPHIC`)*
+>   - **aspectRatioX:** *The x-axis aspect ratio / width of the viewport. (Type `int`, Default: `0`)*
+>   - **aspectRatioY:** *The y-axis aspect ratio / height of the viewport. (Type: `int`, Default: `0`)*
+>   - **clippingDistrance:** *How far the camera can see (Type: `float`, Default: `0.0`)* 
 
 ## LightManager:
 A management class for light assets and their properties. 
@@ -1198,8 +1250,9 @@ Params:
 >   - **config:** *Object settings. (type: `LightManager::LightConfig`)*
 
 > **LightType:** *Diffrent varieties of lights. (type: `enum`)*
->   - **DIRECTIONAL:** *Luminence from a far away point such as the sun. Is treated as constant accross the surface of an object.*
->   - **POINT:** *Light which shines at all angles from a point in space with range-based attenuation, like a lightbulb.*
+>   - **DIRECTIONAL:** *Luminence projected in a direction from a far away point. Is treated as constant accross the surface of an object. Like the sun.* 
+>   - **POINT:** *Light which shines outward from a point in space that attenuates over a distance. Like a lightbulb.*
+>   - **AMBIENT:** *Full illumination of all faces equally with no shading.*
 
 > **LightConfig:** *Creation function input-settings. (type: `struct`)*
 >   - **name:** *What to call this asset. (type: `std::string`, default: `"LIGHT_" + n`)*
@@ -1384,7 +1437,7 @@ Params:
 > **SkyBox**: *A collection of properties which make up a skybox object. (type: `struct`.)*
 >   - **paths:** *The absolute filepaths to the 6 image textures used to construct the skymap. (type: `std::vector<std::string>`)*
 >   - **cubeMap:** *The image data for each of the cubes 6 faces. (type: `std::vector<FileReader::Image>`)*
->   - **cube:** *The skybox's mesh. (type: `MeshManager::Mesh`)*
+>   - **cube:** *The skybox's mesh. (type: `ModelManager::Model`)*
 > **Fog** *A collection of properties which quanitify world fog and it's visibility. (type: `struct`).* 
 >   - **color:** *The fog's RGB color values. (type: `glm::vec3`).*
 >   - **viewpoint:** *The epicenter of the fog's sphere of visibility in worldspace. Defines where the fog can be seen from. (type: `glm::vec3`).*
@@ -1464,16 +1517,21 @@ Free cubemaps: https://www.humus.name/index.php?page=Textures
 ------------------------------------------------------------------
 
 # Known caveats and limitations:
-1. Regarding Wavefront file format: \
-1.A: Your assets must be **triangulated**, this can be done prior to or on export. \
-1.B: Paths must be *stripped*, i.e. exports should include supplementary filenames *only* - with pathing truncated. \
-1.C: Texture files (Those specified by an `.mtl` file's `Map_Kd` property) should be stored in the same directory as the `.mtl` file. \
-1.D: Materials that appear in `.mtl` material files **must** appear in order they were created. A safe way to ensure this is to number any *named* materials during the modeling process (e.g. `1_metal`). This is because named materials are often exported in alphabetical order by modeling software which can lead to undesired loading behaviour.
-2. This project version locks OpenGL to version 4.1 for compatibility with MacOS.
-3. Texture images used in any scene should all have the same pixel width and height. The scene *should* still render but you can expect to find holes in your textures. Use `GlobalsManager::enforceImageSanity` to ensure images are resized on load.
-4. The xy coordinate system of the orthographic camera created by `Camera::createOrthoCam` has `0.0` mapped to the top left corner of the window, while the perspective camera `Camera::createPerspectiveCam` uses the bottom left.
-5. There is no kerning or centering of TrueType fonts loaded by the `TextManager` class. If you need to render perfectly aligned text it may be better to render it directly to a quad as a texture (See: `Mesh::createQuad`). It could then be rendered along with the rest of the text by loading in an orthographic camera (See: `Camera::createOrthoCam`).
-6. The maximum number of lights permitted in any one scene while using the `LAZARUS_DEFAULT_VERT_SHADER` and/or `LAZARUS_DEFAULT_FRAG_SHADER` is limitted to a maximum size of 150.
-7. The maximum number of entities in any one scene who can be picked or looked up using a pixel with `CameraManager::getPixelOccupant` is limmited to a maximum size of 255.
-8. The gdb loader does not yet support animation.
+1. Regarding glb file format: \
+1.A: The gltf variant of the specification isn't supported. Files should be exported as or converted to glb. \
+1.B: Textures images should be baked-in, external uri's are not supported. \
+1.C: Animations which utilise morph targets aren't currently supported. \
+1.D: Animations of armatures which contain multiple roots are not currently supported. \
+1.E: Cubicspline animation interpolation isn't supported.
+2. Regarding Wavefront file format: \
+2.A: Your assets must be **triangulated**, this can be done prior to or on export. \
+2.B: Paths must be *stripped*, i.e. exports should include supplementary filenames *only* - with pathing truncated. \
+2.C: Texture files (Those specified by an `.mtl` file's `Map_Kd` property) should be stored in the same directory as the `.mtl` file. 
+3. This project version locks OpenGL to version 4.1 to ensure compatibility with intel based MacOS systems.
+4. Texture images used in any scene should all have the same pixel width and height. If not, the scene *should* still render but you can expect to find holes in your textures. Use `GlobalsManager::enforceImageSanity` to ensure images are resized on load.
+5. The xy coordinate system of the orthographic camera created by `Camera::createOrthoCam` has `0.0` mapped to the top left corner of the window, while the perspective camera `Camera::createPerspectiveCam` uses the bottom left.
+6. There is no kerning or centering of TrueType fonts loaded by the `TextManager` class. If you need to render perfectly aligned text it may be better to render it directly to a quad as a texture (See: `Mesh::createQuad`). It could then be rendered along with the rest of the text by loading in an orthographic camera (See: `Camera::createOrthoCam`).
+7. The maximum number of lights permitted in any one scene while using the `LAZARUS_DEFAULT_VERT_SHADER` and/or `LAZARUS_DEFAULT_FRAG_SHADER` is limitted to a maximum size of 150.
+8. The maximum number of entities in any one scene who can be picked or looked up using a pixel with `CameraManager::getPixelOccupant` is limmited to a maximum size of 255.
 9. For linux systems using wayland graphical sessions, running in windowed mode will throw an error due to window repositioning (the window is centered so it doesn't just appear in a random place). Run the application in fullscreen with `GlobalsManager::setLaunchInFullscreen(true)`.
+10. All images must be formatted with RGBA 8-bit alignment

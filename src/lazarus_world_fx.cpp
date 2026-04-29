@@ -20,7 +20,7 @@
 #include "../include/lazarus_world_fx.h"
 
 WorldFX::WorldFX(GLuint shaderProgram) 
-    : WorldFX::MeshManager(shaderProgram, TextureLoader::StorageType::CUBEMAP)
+    : WorldFX::ModelManager(shaderProgram, TextureLoader::StorageType::CUBEMAP)
 {
     LOG_DEBUG("Constructing Lazarus::WorldFX");
 
@@ -40,7 +40,7 @@ WorldFX::WorldFX(GLuint shaderProgram)
 lazarus_result WorldFX::createSkyBox(WorldFX::Skybox &out, std::string rightPath, std::string leftPath, std::string downPath, std::string upPath, std::string frontPath, std::string backPath)
 {
     this->skyBoxOut = {};
-    MeshManager::CubeConfig config = {};
+    ModelManager::CubeConfig config = {};
     config.scale = 10.0f;
 
     lazarus_result status = this->createCube(this->skyBoxOut.cube, config);
@@ -62,7 +62,7 @@ lazarus_result WorldFX::createSkyBox(WorldFX::Skybox &out, std::string rightPath
 
 lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox skyboxIn, CameraManager::Camera camera)
 {
-    /* ===========================================================
+    /*
         For the illusion of infinite depth of the skybox  tp work, 
         the translation transform needs to be culled from the
         viewing matrix (the result of the glm::lookAt() operation 
@@ -73,7 +73,7 @@ lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox skyboxIn, CameraManager::Came
         describes the vertex position from the origin and replaces
         it with 0's (essentially back at the origin). It's then
         changed back again afterwards.
-    ============================================================== */
+    */
     glDisable           (GL_CULL_FACE);
 
     glm::mat4 viewFromOrigin = glm::mat4(glm::mat3(camera.viewMatrix)); 
@@ -96,8 +96,8 @@ lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox skyboxIn, CameraManager::Came
 
     glDepthMask(GL_FALSE);
 
-    MeshManager::loadMesh(skyboxIn.cube);
-    MeshManager::drawMesh(skyboxIn.cube);
+    ModelManager::loadModel(skyboxIn.cube);
+    ModelManager::drawModel(skyboxIn.cube);
     
     glDepthMask(GL_TRUE);
 
@@ -198,7 +198,7 @@ lazarus_result WorldFX::loadSkyMap()
             return status;
         };
         
-        /* =======================================================
+        /*
             Validate that the image inputs for the cubemap are 
             each of the same size. 
 
@@ -208,7 +208,7 @@ lazarus_result WorldFX::loadSkyMap()
             func so that this execution state isn't overwritten 
             with 301 (LAZARUS_OPENGL_ERROR) by the textureLoader's 
             checkErrors subroutine.
-        ========================================================== */
+        */
         if(
             this->skyBoxOut.cubeMap.size() > 0 && 
             (image.width != image.height || image.width != this->skyBoxOut.cubeMap[0].width)
@@ -222,20 +222,20 @@ lazarus_result WorldFX::loadSkyMap()
         this->skyBoxOut.cubeMap.push_back(image);
     };
 
-    /* =============================================================
+    /*
         Access the same texture ID values used by the skybox's mesh.
-        Do so by using the MeshManager's TextureManager inherited 
+        Do so by using the ModelManager's TextureManager inherited 
         members to perform texture operations for this skybox.
-    ================================================================ */
+    */
     
-    status = MeshManager::TextureLoader::storeCubeMap(this->skyBoxOut.cubeMap[0].width, this->skyBoxOut.cubeMap[0].height);
+    status = ModelManager::TextureLoader::storeCubeMap(this->skyBoxOut.cubeMap[0].width, this->skyBoxOut.cubeMap[0].height);
     if(status != lazarus_result::LAZARUS_OK)
     {
         return status;
     }
     else
     {
-        return MeshManager::TextureLoader::loadCubeMap(this->skyBoxOut.cubeMap);
+        return ModelManager::TextureLoader::loadCubeMap(this->skyBoxOut.cubeMap);
     }
 };
 
