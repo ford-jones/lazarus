@@ -1139,60 +1139,67 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
 void ModelManager::loadAnimation(ModelManager::MeshData &data)
 {
     LOG_DEBUG("Loading animation data");
-
-    /*
-        Calculate the animation's armature-root position
-        and begin iterative breadth-first descent through
-        the node heirarchy.
-    */
-
+    
     MeshData::MotionPoint &animationRoot = data.armature[data.armatureRoot];
-    animationRoot.globalJointTransform = this->computeLocalJointTransform(animationRoot, data.activeAnimation);
-            
-    animationRoot.jointMatrix = (
-        animationRoot.globalJointTransform * animationRoot.inverseBindMatrix
-    );
-
-    std::vector<uint32_t> children = animationRoot.children;
-    std::set<uint32_t> visited = {animationRoot.id};
-
-    while(children.size() > 0)
+    if(animationRoot.maxLoops == -1 || animationRoot.elapsedLoops < static_cast<uint32_t>(animationRoot.maxLoops))
     {
-        std::vector<uint32_t> nextChildren;
-
-        for(size_t k = 0; k < children.size(); k++)
-        {   
-            uint32_t childID = children[k];
-            /*
-                Colaterally append all children that
-                exist at this depth to the control vector
-                if this joint hasn't already been 
-                inspected.
-            */
-            if(visited.insert(childID).second)
-            {
-                MeshData::MotionPoint &child = data.armature[childID];     // Note: Joint is declared as a reference
-                MeshData::MotionPoint &parent = data.armature[child.parentID];
-
-                nextChildren.insert(
-                    nextChildren.end(), 
-                    child.children.begin(), 
-                    child.children.end()
-                );
-
-                glm::mat4 localTransform = this->computeLocalJointTransform(child, data.activeAnimation);
-                child.globalJointTransform = parent.globalJointTransform * localTransform;
-
-                child.jointMatrix = (
-                    child.globalJointTransform * child.inverseBindMatrix
-                );
-            }
+        
+        /*
+            Calculate the animation's armature-root position
+            and begin iterative breadth-first descent through
+            the node heirarchy.
+        */
+        animationRoot.globalJointTransform = this->computeLocalJointTransform(animationRoot, data.activeAnimation);
+                
+        animationRoot.jointMatrix = (
+            animationRoot.globalJointTransform * animationRoot.inverseBindMatrix
+        );
+    
+        std::vector<uint32_t> children = animationRoot.children;
+        std::set<uint32_t> visited = {animationRoot.id};
+    
+        while(children.size() > 0)
+        {
+            std::vector<uint32_t> nextChildren;
+    
+            for(size_t k = 0; k < children.size(); k++)
+            {   
+                uint32_t childID = children[k];
+                /*
+                    Colaterally append all children that
+                    exist at this depth to the control vector
+                    if this joint hasn't already been 
+                    inspected.
+                */
+                if(visited.insert(childID).second)
+                {
+                    MeshData::MotionPoint &child = data.armature[childID];     // Note: Joint is declared as a reference
+                    MeshData::MotionPoint &parent = data.armature[child.parentID];
+    
+                    nextChildren.insert(
+                        nextChildren.end(), 
+                        child.children.begin(), 
+                        child.children.end()
+                    );
+    
+                    glm::mat4 localTransform = this->computeLocalJointTransform(child, data.activeAnimation);
+                    child.globalJointTransform = parent.globalJointTransform * localTransform;
+    
+                    child.jointMatrix = (
+                        child.globalJointTransform * child.inverseBindMatrix
+                    );
+                }
+            };
+                /*
+                    Descend into the children of the children
+                    which were just processed.
+                */
+                children = nextChildren;
         };
-            /*
-                Descend into the children of the children
-                which were just processed.
-            */
-            children = nextChildren;
+    }
+    else
+    {
+        data.animationPaused = true;
     };
 };
 
@@ -1206,6 +1213,7 @@ glm::mat4 ModelManager::computeLocalJointTransform(ModelManager::MeshData::Motio
         keyframe values for the next draw of the animated
         asset.
     */
+    uint32_t prev = motionPoint.playbackPosition;
 
     uint32_t translateIdx = this->getKeyframeIndex(motionData.translation, motionPoint.playbackPosition, motionPoint.elapsedPlaytime, motionPoint.previousPlaytime);
     uint32_t rotateIdx = this->getKeyframeIndex(motionData.rotation, motionPoint.playbackPosition, motionPoint.elapsedPlaytime, motionPoint.previousPlaytime);
@@ -1220,6 +1228,12 @@ glm::mat4 ModelManager::computeLocalJointTransform(ModelManager::MeshData::Motio
         glm::mat4_cast(glm::quat(rotateKey.w, rotateKey.x, rotateKey.y, rotateKey.z)) *
         glm::scale(glm::mat4(1.0f), glm::vec3(scaleKey))
     );
+
+    if(motionPoint.playbackPosition < prev)
+    {
+        motionPoint.elapsedLoops += 1;
+        std::cout << motionPoint.elapsedLoops << std::endl;
+    };
 
     return localTransform;
 };
@@ -1346,7 +1360,7 @@ glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::Tr
     return keyframe;
 };
 
-lazarus_result ModelManager::setActiveAnimation(ModelManager::Model &meshIn, uint32_t animationIndex)
+lazarus_result ModelManager::setActiveAnimation(ModelManager::Model &meshIn, uint32_t animationIndex, uint32_t loopCount)
 {
     lazarus_result status = lazarus_result::LAZARUS_OK;
     ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
@@ -1363,7 +1377,13 @@ lazarus_result ModelManager::setActiveAnimation(ModelManager::Model &meshIn, uin
                 {
                     ModelManager::MeshData::MotionPoint &motion = data.armature[j];
                     motion.elapsedPlaytime = 0;
+                    motion.playbackPosition = 0;
                     motion.previousPlaytime = 0;
+                    motion.elapsedLoops = 0;
+                    // if(loopCount == -1 || loopCount > 0)
+                    // {
+                        motion.maxLoops = loopCount;
+                    // }
                 }
             }
             else
@@ -1378,6 +1398,7 @@ lazarus_result ModelManager::setActiveAnimation(ModelManager::Model &meshIn, uin
         Animation has changed so begin playing
         it from the start.
     */
+
     this->playAnimation(meshIn);
 
     return status;
@@ -1455,6 +1476,8 @@ lazarus_result ModelManager::setToPosePosition(ModelManager::Model &meshIn)
                 motion.playbackPosition = 0;
                 motion.elapsedPlaytime = 0;
                 motion.previousPlaytime = 0;
+                motion.elapsedLoops = 0;
+                motion.maxLoops = 0;
                 motion.globalJointTransform = motion.posePosition;
                 motion.jointMatrix = motion.globalJointTransform * motion.inverseBindMatrix;
             };

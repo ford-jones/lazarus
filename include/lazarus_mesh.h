@@ -146,7 +146,7 @@ class ModelManager
         //  but ok for now
         
         void setDiscardFragments(Model &meshIn, bool shouldDiscard);
-        lazarus_result setActiveAnimation(Model &meshIn, uint32_t animationIndex);
+        lazarus_result setActiveAnimation(Model &meshIn, uint32_t animationIndex, uint32_t loopCount = 0);
         lazarus_result setToPosePosition(Model &meshIn);
         lazarus_result pauseAnimation(Model &meshIn);
         lazarus_result playAnimation(Model &meshIn);
@@ -174,6 +174,8 @@ class ModelManager
                 std::vector<AssetLoader::AssetData::JointMotion> animationData;
 
                 uint32_t playbackPosition = 0;  //  Animation playback pos relative to duration
+                int32_t maxLoops = 0;
+                uint32_t elapsedLoops = 0;
                 uint32_t elapsedPlaytime = 0;   //  The total amount of time the animation has been playing for
                 uint32_t previousPlaytime = 0;  //  The above ^ value last-tick
             };
