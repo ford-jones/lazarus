@@ -57,7 +57,7 @@ lazarus_result Transform::translateModel(ModelManager::Model &model, float x, fl
 		See: https://learnopengl.com/img/getting-started/coordinate_systems.png
 	*/
 	
-	this->worldCoordinates = instanceMatrix * glm::vec4(this->localCoordinates, 1.0);
+	this->worldCoordinates = instanceMatrix * glm::vec4(0.0f, 0.0f, 0.0f, 1.0);
 
     instance.position.x = this->worldCoordinates.x;
     instance.position.y = this->worldCoordinates.y;
@@ -77,12 +77,12 @@ lazarus_result Transform::rotateModel(ModelManager::Model &model, float pitch, f
 	ModelManager::Model::Instance &instance = model.instances.at(instanceID);
 	glm::mat4 &instanceMatrix = instance.modelMatrix;
 
-	instance.direction = instanceMatrix * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f); 
-
     instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
     instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
 	instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(roll), glm::vec3(0.0f, 0.0f, 1.0f));
 	
+	instance.direction = instanceMatrix * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f); 
+
     return lazarus_result::LAZARUS_OK;
 };
 
