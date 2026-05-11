@@ -26,7 +26,9 @@ Transform::Transform()
 	/*
 		Use low precision (and incorrect) pi value
 		so that things like camera rotation dont 
-		break at the extremities.
+		break at the extremities 
+		
+		(helps with gimbal lock...)
 	*/
 
 	this->pi = 3.1419;
@@ -35,88 +37,90 @@ Transform::Transform()
 	this->accumulateYaw = 0.0f;
 	this->outRadians = 0.0;
 	this->up = 0.0f;
-	this->localCoordinates = glm::vec3(0.0, 0.0, 0.0);
-	this->worldCoordinates = glm::vec4(localCoordinates, 0.0);
 
 	this->rotation = vec3(0.0, 0.0, 0.0);
 };
 
 lazarus_result Transform::translateModel(ModelManager::Model &model, float x, float y, float z, uint32_t instanceID)
 {
-	ModelManager::Model::Instance &instance = model.instances.at(instanceID);
-	glm::mat4 &instanceMatrix = instance.modelMatrix;
+	try
+	{
+		ModelManager::Model::Instance &instance = model.instances.at(instanceID);
+		glm::mat4 &instanceMatrix = instance.modelMatrix;
 
-	this->localCoordinates = glm::vec3(x, y, z);
+    	instanceMatrix = glm::translate(instanceMatrix, glm::vec3(x, y, z));
 
-    instanceMatrix = glm::translate(instanceMatrix, this->localCoordinates);
+		/*
+			Decompose worldspace position from row 4 of the model matrix
+		*/
+		instance.position = instanceMatrix * glm::vec4(0.0f, 0.0f, 0.0f, 1.0);
 
-	/*
-		Find worldspace coordinates by multiplying object-space coordinates by the 
-		entity's modelview matrix.
-
-		See: https://learnopengl.com/img/getting-started/coordinate_systems.png
-	*/
-	
-	this->worldCoordinates = instanceMatrix * glm::vec4(0.0f, 0.0f, 0.0f, 1.0);
-
-    instance.position.x = this->worldCoordinates.x;
-    instance.position.y = this->worldCoordinates.y;
-    instance.position.z = this->worldCoordinates.z;
-
-	return lazarus_result::LAZARUS_OK;
+		return lazarus_result::LAZARUS_OK;
+	}
+	catch(const std::out_of_range& e)
+	{
+		LOG_ERROR(e.what(), __FILE__, __LINE__);
+		return lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
+	}
 };
 
 lazarus_result Transform::rotateModel(ModelManager::Model &model, float pitch, float yaw, float roll, uint32_t instanceID)
 {
-	/*
-		Extract the current z axis rotation values from
-		row 3 of the matrice and then truncate the last 
-		element. This can be treated as the mesh asset's 
-		forward / direction vector.
-	*/
-	ModelManager::Model::Instance &instance = model.instances.at(instanceID);
-	glm::mat4 &instanceMatrix = instance.modelMatrix;
+	try
+	{
+		/*
+			Extract the current z axis rotation values from
+			row 3 of the matrice and then truncate the last 
+			element. This can be treated as the mesh asset's 
+			forward / direction vector.
+		*/
+		ModelManager::Model::Instance &instance = model.instances.at(instanceID);
+		glm::mat4 &instanceMatrix = instance.modelMatrix;
 
-    instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
-    instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
-	instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(roll), glm::vec3(0.0f, 0.0f, 1.0f));
-	
-	instance.direction = instanceMatrix * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f); 
+    	instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
+    	instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
+		instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(roll), glm::vec3(0.0f, 0.0f, 1.0f));
+		
+		instance.direction = instanceMatrix * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f); 
 
-    return lazarus_result::LAZARUS_OK;
+    	return lazarus_result::LAZARUS_OK;
+	}
+	catch(const std::out_of_range& e)
+	{
+		LOG_ERROR(e.what(), __FILE__, __LINE__);
+		return lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
+	}
 };
 
 lazarus_result Transform::scaleModel(ModelManager::Model &model, float x, float y, float z, uint32_t instanceID)
 {
-	/*
-		FIXME:
-		Probably not the place to fix but; for some reason the light that is reflected
-		off of a mesh is applied relative to the items scale. 
-
-		E.g
-		* A mesh is shrunk from 1:1 to 1:10 - it then becomes 10x brighter
-		* A mesh is grown from 1:1 to 10:1 - it then becomes 10x dimmer
-	*/
-
 	float sum = (x + y + z);
 	float max = std::max(0.0f, sum);
 
 	if(max <= 0.0f)
 	{
         LOG_ERROR("Transform Error", __FILE__, __LINE__);
-
-		return lazarus_result::LAZARUS_INVALID_DIMENSIONS;	
+		return lazarus_result::LAZARUS_INVALID_DIMENSIONS;
 	}
 	else
 	{
-		ModelManager::Model::Instance &instance = model.instances.at(instanceID);
-		glm::mat4 &instanceMatrix = instance.modelMatrix;
-
-		instance.scale = glm::vec3(x, y, z);
-
-		instanceMatrix = glm::scale(instanceMatrix, instance.scale);
-
-		return lazarus_result::LAZARUS_OK;
+		try
+		{
+			ModelManager::Model::Instance &instance = model.instances.at(instanceID);
+			glm::mat4 &instanceMatrix = instance.modelMatrix;
+	
+			instance.scale = glm::vec3(x, y, z);
+	
+			instanceMatrix = glm::scale(instanceMatrix, instance.scale);
+	
+			return lazarus_result::LAZARUS_OK;
+		}
+		catch(const std::exception& e)
+		{
+			LOG_ERROR(e.what(), __FILE__, __LINE__);
+			return lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
+		}
+		
 	};
 };
 
@@ -191,9 +195,8 @@ lazarus_result Transform::rotateCamera(CameraManager::Camera &camera, float pitc
 		camera.direction = this->rotation;
 
 		camera.viewMatrix = glm::lookAt(camera.position, (camera.position + camera.direction), camera.upVector);
+		return lazarus_result::LAZARUS_OK;
 	}
-	
-	return lazarus_result::LAZARUS_OK;
 };
 
 lazarus_result Transform::orbitCamera(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX, float tarY, float tarZ)
@@ -266,7 +269,6 @@ float Transform::degreesToRadians(float in, bool enforceLimits)
 		((in > 360.0f) || (in < -360.0f)))	
 	{
         LOG_ERROR("Transform Error", __FILE__, __LINE__);
-
 		return lazarus_result::LAZARUS_INVALID_RADIANS;
 	};
 

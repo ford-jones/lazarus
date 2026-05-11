@@ -71,9 +71,6 @@ class Transform
 		float accumulateRoll;
 		
 		glm::vec3 rotation;
-
-		glm::vec3 localCoordinates;
-		glm::vec4 worldCoordinates;
 };
 
 #endif

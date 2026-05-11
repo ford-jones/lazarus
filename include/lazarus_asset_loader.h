@@ -354,7 +354,7 @@ class AssetLoader
         //  Deduplicate vertex attributes and construct a serial for those that are unique to be 
         //  passed to the renderers IBO. Interleaves attributes in the order that is expected by
         //  the renderers VBO.
-        void constructIndexBuffer(std::vector<glm::vec3> &outAttributes, std::vector<glm::vec4> &outMovements, std::vector<uint32_t> &outIndexes, uint32_t numOfAttributes);
+        lazarus_result constructIndexBuffer(std::vector<glm::vec3> &outAttributes, std::vector<glm::vec4> &outMovements, std::vector<uint32_t> &outIndexes, uint32_t numOfAttributes);
         //  Clears containers of all their contents.
         void resetMembers();
 

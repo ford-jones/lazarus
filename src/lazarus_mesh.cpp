@@ -1232,7 +1232,6 @@ glm::mat4 ModelManager::computeLocalJointTransform(ModelManager::MeshData::Motio
     if(motionPoint.playbackPosition < prev)
     {
         motionPoint.elapsedLoops += 1;
-        std::cout << motionPoint.elapsedLoops << std::endl;
     };
 
     return localTransform;
