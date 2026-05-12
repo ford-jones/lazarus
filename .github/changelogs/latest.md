@@ -1,5 +1,6 @@
-# Version: 2026.05.12022630
+# Version: 2026.05.12022816
 
+* [ecb982e](https://github.com/ford-jones/lazarus/commit/ecb982e4a4ecda052d16c6f971cbd53b03dd9bff): [Changelog CI] Add Changelog for Version 2026.05.12022630
 * [c39ef22](https://github.com/ford-jones/lazarus/commit/c39ef22f084dcbb834d2dc6c095f36c30fac5bee): Docs: Updated readme
 * [53d1a77](https://github.com/ford-jones/lazarus/commit/53d1a77cfefc928d6d4ff93a78e0fac78d0b8707): Fix: Catches standard library exceptions that previously went unchecked
 * [6b773a1](https://github.com/ford-jones/lazarus/commit/6b773a1481988fb1f01a57e0ea6adb146a9be379): Fix: Ensures scale does not effect lighting by normalising a model's normal vector
