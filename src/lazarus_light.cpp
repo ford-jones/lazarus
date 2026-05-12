@@ -47,7 +47,16 @@ lazarus_result LightManager::createLightSource(LightManager::Light &out, LightMa
     lightOut.config = options;
     if(lightOut.config.name == "LIGHT_")
     {
-        lightOut.config.name.append(std::to_string(lightOut.id));
+        try
+        {
+            lightOut.config.name.append(std::to_string(lightOut.id));
+        }
+        catch(const std::exception& e)
+        {
+            LOG_ERROR(e.what(), __FILE__, __LINE__);
+            return lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
+        }
+        
     };
     
     this->lightCount += 1;
@@ -64,30 +73,44 @@ lazarus_result LightManager::createLightSource(LightManager::Light &out, LightMa
         return status;
     };
 
-    lightStore.insert(std::pair<uint32_t, LightManager::LightData>(lightOut.id, lightData));
-    if(GlobalsManager::getNumberOfActiveLights() < UINT8_MAX)
+    try
     {
-        GlobalsManager::setNumberOfActiveLights(this->lightCount);
+        lightStore.insert(std::pair<uint32_t, LightManager::LightData>(lightOut.id, lightData));
+        if(GlobalsManager::getNumberOfActiveLights() < UINT8_MAX)
+        {
+            GlobalsManager::setNumberOfActiveLights(this->lightCount);
+        }
+        else
+        {
+            LOG_ERROR("Light Error: ", __FILE__, __LINE__);
+            return lazarus_result::LAZARUS_LIMIT_REACHED;
+        };
+        out = lightOut;
+        return lazarus_result::LAZARUS_OK;
     }
-    else
+    catch(const std::exception& e)
     {
-        LOG_ERROR("Light Error: ", __FILE__, __LINE__);
-        return lazarus_result::LAZARUS_LIMIT_REACHED;
-    };
-    
-    out = lightOut;
-    return lazarus_result::LAZARUS_OK;
+        LOG_ERROR(e.what(), __FILE__, __LINE__);
+        return lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
+    }
 };
 
 lazarus_result LightManager::loadLightSource(LightManager::Light &lightIn, int32_t shader)
 {
     LOG_DEBUG(std::string("Loading lightsource [" + lightIn.config.name + "]").c_str());
-    this->lightData = lightStore.at(lightIn.id);
+    try
+    {
+        this->lightData = lightStore.at(lightIn.id);
+    }
+    catch(const std::out_of_range& e)
+    {
+        LOG_ERROR(e.what(), __FILE__, __LINE__);
+        return lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
+    }
 
     if(lightIn.config.brightness < 0.0f)
     {
         LOG_ERROR("Light Error: ", __FILE__, __LINE__);
-
         return lazarus_result::LAZARUS_INVALID_INTENSITY;
     }
     

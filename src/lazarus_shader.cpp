@@ -105,7 +105,7 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
         //  Truncate bottom row of matrix for clean multiplication against vec3
         vec3 result = mat3(inverseTranspose) * inNormal;
 
-        return result;
+        return normalize(result);
     };
 )";
 
@@ -373,8 +373,16 @@ lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentSha
         this->vertSource = LAZARUS_DEFAULT_VERT_SHADER;
     };
 
-    this->vertShaderProgram = vertLayout.append(vertSource).c_str();
-    this->fragShaderProgram = fragLayout.append(fragSource).c_str();
+    try
+    {
+        this->vertShaderProgram = vertLayout.append(vertSource).c_str();
+        this->fragShaderProgram = fragLayout.append(fragSource).c_str();
+    }
+    catch(const std::exception& e)
+    {
+        LOG_ERROR(e.what(), __FILE__, __LINE__);
+        return lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
+    }
 
     this->vertShader      =   glCreateShader(GL_VERTEX_SHADER);                                                               //   Create a new instance of a vertex shader program in openGL
     this->fragShader      =   glCreateShader(GL_FRAGMENT_SHADER);                                                             //   Create a new instance of a fragment shader program in openGL

@@ -118,7 +118,10 @@ typedef enum lazarus_result
     //  animation
 
     LAZARUS_INVALID_ANIMATION_ID           = 801,
-    LAZARUS_NO_ANIMATION_DATA              = 802
+    LAZARUS_NO_ANIMATION_DATA              = 802,
+
+    //  other
+    LAZARUS_CAUGHT_EXCEPTION               = 901
 } lazarus_result;
 
 class GlobalsManager

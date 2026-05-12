@@ -361,7 +361,16 @@ lazarus_result TextManager::extendFontStack(uint32_t &fontId, std::string filepa
 
             xOffset += this->glyph.width;
     
-            characters.emplace((i - 33), this->glyph);
+            try
+            {
+                characters.emplace((i - 33), this->glyph);
+            }
+            catch(const std::exception& e)
+            {
+                LOG_ERROR(e.what(), __FILE__, __LINE__);
+                return lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
+            }
+            
         };
         fonts.push_back(characters);
     };
@@ -380,6 +389,17 @@ lazarus_result TextManager::createText(TextManager::Text &out, TextManager::Text
     
     this->layoutEntry = std::pair<int, std::vector<ModelManager::Model>>(this->layoutIndex, {});
     this->layout.insert(this->layoutEntry);
+
+    try
+    {
+        this->layoutEntry = std::pair<int, std::vector<ModelManager::Model>>(this->layoutIndex, {});
+        this->layout.insert(this->layoutEntry);
+    }
+    catch(const std::exception& e)
+    {
+        LOG_ERROR(e.what(), __FILE__, __LINE__);
+        return lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
+    }
 
     lazarus_result status = this->loadText(textOut);
     if(status != lazarus_result::LAZARUS_OK)
