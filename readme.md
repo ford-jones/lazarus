@@ -1,5 +1,5 @@
 # Lazarus Engine
-#### *Version: 0.15.0*
+#### *Version: 0.15.1*
 ## Table of contents:
 
 - [Getting Started](#getting-started)
@@ -717,6 +717,7 @@ Returns the current value of `LAZARUS_WIREFRAME_MODE`.
 > - **LAZARUS_FT_RENDER_FAILURE** *Despite being able to load the target glyph's splines, freetype was unable to render them into a monochrome bitmap. (Code: 703)*
 > - **LAZARUS_INVALID_ANIMATION_ID** *The indices provided for retrieving animation data are out of range. (Code: 801)*
 > - **LAZARUS_NO_ANIMATION_DATA** *An attempt was made to perform an animation operation on an asset which is not rigged. (Code: 802)*
+> - **LAZARUS_CAUGHT_EXCEPTION** *Lazarus observed an exception thrown from the `std` library. (Code: 901)*
 
 ## WindowManager:
 A class for making and managing the program's window(s). 
