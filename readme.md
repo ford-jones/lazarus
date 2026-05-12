@@ -1080,12 +1080,13 @@ Toggle for removing the areas of a face prior to rendering where the meshes text
 > **modelIn:** *The target mesh object.* \
 > **shouldDiscard:** *The desired value for the option (T/F).* 
 
-#### setActiveAnimation(ModelManager::Model &modelIn, int animationIndex)
+#### setActiveAnimation(ModelManager::Model &modelIn, int animationIndex, int loopCount)
 Determine which of an animated asset's movements should be rendered during playback.
 
 > Params: \
 > **modelIn:** *The target mesh object.* \
-> **animationIndex:** *The indices position of the target animation.*
+> **animationIndex:** *The indices position of the target animation.* \
+> **loopCount:** *The total number of times the animation should play back. `-1` loops to infinity. (default: `0`)*
 
 #### setToPosePosition(ModelManager::Model &modelIn)
 Reset an animated assets armature to it's "pose" / rest position. Stops playback.
