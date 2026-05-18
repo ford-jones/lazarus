@@ -347,7 +347,7 @@ lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentSha
     this->vertReader = std::make_unique<FileLoader>();
     this->fragReader = std::make_unique<FileLoader>();
 
-    if(fragmentShader != "")
+    if(!std::empty(fragmentShader))
     {
         lazarus_result status = fragReader->loadText(fragmentShader.c_str(), this->fragSource);
         if(status != lazarus_result::LAZARUS_OK)
@@ -360,7 +360,7 @@ lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentSha
         this->fragSource = LAZARUS_DEFAULT_FRAG_SHADER;
     };
 
-    if(vertexShader != "")
+    if(!std::empty(vertexShader))
     {
         lazarus_result status = vertReader->loadText(vertexShader.c_str(), this->vertSource);
         if(status != lazarus_result::LAZARUS_OK)
@@ -472,7 +472,12 @@ lazarus_result Shader::setActiveShader(uint32_t program)
 lazarus_result Shader::uploadUniform(std::string identifier, void *data)
 {
     const char *uniformName = identifier.c_str();
-
+    /**
+     * These openGL function signatures are a real pain...
+     * I.e. these arguments MUST be of array or pointer type 
+     * windows / MSVC doesn't allow them to be null'd. Very cringe.
+     */
+    
     const GLchar *name[1] = {
         uniformName
     };
@@ -483,7 +488,7 @@ lazarus_result Shader::uploadUniform(std::string identifier, void *data)
     
     GLenum type = 0;
     GLint size = 0;
-    GLchar *n = NULL;
+    GLchar *nameBuffer = new char[identifier.size()];
 
     this->clearErrors();
     
@@ -502,11 +507,11 @@ lazarus_result Shader::uploadUniform(std::string identifier, void *data)
     glGetActiveUniform(
         this->shaderProgram, 
         index[0],
-        100,
+        identifier.size(),
         NULL,
         &size,
         &type,
-        n
+        nameBuffer
     );
     lazarus_result status = this->checkErrors(__FILE__, __LINE__);
     if(status != lazarus_result::LAZARUS_OK)
@@ -567,6 +572,8 @@ lazarus_result Shader::uploadUniform(std::string identifier, void *data)
             return lazarus_result::LAZARUS_SHADER_ERROR;
             // break;
     }
+
+    delete[] nameBuffer;
     return this->checkErrors(__FILE__, __LINE__);
 };
 
