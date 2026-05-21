@@ -37,6 +37,7 @@
 #include "lazarus_file_loader.h"
 #include "lazarus_asset_loader.h"
 #include "lazarus_texture_loader.h"
+#include "lazarus_shader.h"
 
 using std::unique_ptr;
 using std::string;
@@ -130,7 +131,7 @@ class ModelManager
             bool selectable = false;
         };
         
-		ModelManager(GLuint shader, TextureLoader::StorageType textureType = TextureLoader::StorageType::ARRAY);
+		ModelManager(Shader &shader, TextureLoader::StorageType textureType = TextureLoader::StorageType::ARRAY);
 		
         lazarus_result create3DAsset(Model &out, AssetConfig options);
         lazarus_result createQuad(Model &out, QuadConfig options);
@@ -214,6 +215,7 @@ class ModelManager
         lazarus_result setSelectable(bool selectable);
         lazarus_result uploadVertexData();
         lazarus_result uploadTextures();
+        lazarus_result updateUniformLocations();
         lazarus_result reallocateTextures();
         lazarus_result checkErrors(const char *file, uint32_t line);
         
@@ -234,12 +236,13 @@ class ModelManager
         uint32_t maxTexWidth;
         uint32_t maxTexHeight;
 
-		GLuint shaderProgram;
         GLint meshVariantLocation;
         GLint discardFragsLocation;
         GLint isAnimatedLocation;
         GLint jointsMatricesLocation;
+        GLuint activeShaderID;
 
+        Shader *shader;
         std::unique_ptr<FileLoader> finder;
         TextureLoader::StorageType textureStorage;
 
@@ -252,6 +255,7 @@ class ModelManager
         MeshData meshData;
         ModelData modelData;
         std::map<uint32_t, ModelData> modelStore;
+
 };
 
 #endif

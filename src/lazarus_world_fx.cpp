@@ -19,22 +19,19 @@
 
 #include "../include/lazarus_world_fx.h"
 
-WorldFX::WorldFX(GLuint shaderProgram) 
-    : WorldFX::ModelManager(shaderProgram, TextureLoader::StorageType::CUBEMAP)
+WorldFX::WorldFX(Shader &shader) 
+    : WorldFX::ModelManager(shader, TextureLoader::StorageType::CUBEMAP)
 {
     LOG_DEBUG("Constructing Lazarus::WorldFX");
 
     this->error        = 0;
-    this->shader        = shaderProgram;
+    this->shader = &shader;
+    this->updateUniformLocations();
+    this->activeShaderID = shader.activeProgram;
+
     this->imageLoader   = nullptr;
     this->skyBoxOut     = {};
     this->fogOut        = {};
-
-    this->fogColorUniformLocation       = glGetUniformLocation(this->shader, "fogColor");
-    this->fogViewpointUniformLocation   = glGetUniformLocation(this->shader, "fogViewpoint");
-    this->fogMaxDistUniformLocation     = glGetUniformLocation(this->shader, "fogMaxDist");
-    this->fogMinDistUniformLocation     = glGetUniformLocation(this->shader, "fogMinDist");
-    this->fogDensityUniformLocation     = glGetUniformLocation(this->shader, "fogDensity");
 };
 
 lazarus_result WorldFX::createSkyBox(WorldFX::Skybox &out, std::string rightPath, std::string leftPath, std::string downPath, std::string upPath, std::string frontPath, std::string backPath)
@@ -77,7 +74,6 @@ lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox skyboxIn, CameraManager::Came
     glDisable           (GL_CULL_FACE);
 
     glm::mat4 viewFromOrigin = glm::mat4(glm::mat3(camera.viewMatrix)); 
-    GLuint uniform = glGetUniformLocation(this->shader, "viewMatrix");
     
     this->error = glGetError();
     if(this->error != 0)
@@ -86,7 +82,7 @@ lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox skyboxIn, CameraManager::Came
         return lazarus_result::LAZARUS_UNIFORM_NOT_FOUND;
     };
 
-    glUniformMatrix4fv(uniform, 1, GL_FALSE, &viewFromOrigin[0][0]);
+    glUniformMatrix4fv(this->viewMatrixLocation, 1, GL_FALSE, &viewFromOrigin[0][0]);
     this->error = glGetError();
     if(this->error != 0)
     {
@@ -107,7 +103,7 @@ lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox skyboxIn, CameraManager::Came
         glCullFace          (GL_BACK);
     };
 
-    glUniformMatrix4fv(uniform, 1, GL_FALSE, &camera.viewMatrix[0][0]);
+    glUniformMatrix4fv(this->viewMatrixLocation, 1, GL_FALSE, &camera.viewMatrix[0][0]);
     this->error = glGetError();
     if(this->error != 0)
     {
@@ -132,7 +128,7 @@ lazarus_result WorldFX::createFog(WorldFX::Fog &out, float minDistance, float ma
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result WorldFX::loadFog(WorldFX::Fog fogIn, int32_t shader)
+lazarus_result WorldFX::loadFog(WorldFX::Fog fogIn)
 {
     if(fogIn.density < 0.0f)
     {
@@ -141,28 +137,23 @@ lazarus_result WorldFX::loadFog(WorldFX::Fog fogIn, int32_t shader)
         return lazarus_result::LAZARUS_INVALID_INTENSITY;
     };
     
-    if(shader == 0)
+    /**
+     * FIXME:
+     * This shouldn't take a param anymore, instead just check the member value
+     * i.e. this->shader->activeProgram
+     * Same goes for every other load function in this god forsaken place (mesh, cam, light, blahblah)
+     */
+    if(this->activeShaderID != shader->activeProgram)
     {
-        glUniform3fv(this->fogColorUniformLocation, 1, &fogIn.color[0]);
-        glUniform3fv(this->fogViewpointUniformLocation, 1, &fogIn.viewpoint[0]);
-        glUniform1f(this->fogMaxDistUniformLocation, fogIn.maxDistance);
-        glUniform1f(this->fogMinDistUniformLocation, fogIn.minDistance);
-        glUniform1f(this->fogDensityUniformLocation, fogIn.density);
-    }
-    else
-    {
-        GLuint fogColor       = glGetUniformLocation(shader, "fogColor");
-        GLuint fogViewpoint   = glGetUniformLocation(shader, "fogViewpoint");
-        GLuint fogMaxDist     = glGetUniformLocation(shader, "fogMaxDist");
-        GLuint fogMinDist     = glGetUniformLocation(shader, "fogMinDist");
-        GLuint fogDensity     = glGetUniformLocation(shader, "fogDensity");
-
-        glUniform3fv(fogColor, 1, &fogIn.color[0]);
-        glUniform3fv(fogViewpoint, 1, &fogIn.viewpoint[0]);
-        glUniform1f(fogMaxDist, fogIn.maxDistance);
-        glUniform1f(fogMinDist, fogIn.minDistance);
-        glUniform1f(fogDensity, fogIn.density);
+        this->updateUniformLocations();
+        this->activeShaderID = shader->activeProgram;
     };
+    
+    glUniform3fv(this->fogColorUniformLocation, 1, &fogIn.color[0]);
+    glUniform3fv(this->fogViewpointUniformLocation, 1, &fogIn.viewpoint[0]);
+    glUniform1f(this->fogMaxDistUniformLocation, fogIn.maxDistance);
+    glUniform1f(this->fogMinDistUniformLocation, fogIn.minDistance);
+    glUniform1f(this->fogDensityUniformLocation, fogIn.density);
 
     this->error = glGetError();
     if(this->error != 0)
@@ -210,7 +201,7 @@ lazarus_result WorldFX::loadSkyMap()
             checkErrors subroutine.
         */
         if(
-            this->skyBoxOut.cubeMap.size() > 0 && 
+            !std::empty(this->skyBoxOut.cubeMap) && 
             (image.width != image.height || image.width != this->skyBoxOut.cubeMap[0].width)
         )
         {
@@ -237,6 +228,22 @@ lazarus_result WorldFX::loadSkyMap()
     {
         return ModelManager::TextureLoader::loadCubeMap(this->skyBoxOut.cubeMap);
     }
+};
+
+lazarus_result WorldFX::updateUniformLocations()
+{
+    /**
+     * TODO:
+     * Check errors
+     */
+    this->viewMatrixLocation            = glGetUniformLocation(shader->activeProgram, "viewMatrix");
+    this->fogColorUniformLocation       = glGetUniformLocation(shader->activeProgram, "fogColor");
+    this->fogViewpointUniformLocation   = glGetUniformLocation(shader->activeProgram, "fogViewpoint");
+    this->fogMaxDistUniformLocation     = glGetUniformLocation(shader->activeProgram, "fogMaxDist");
+    this->fogMinDistUniformLocation     = glGetUniformLocation(shader->activeProgram, "fogMinDist");
+    this->fogDensityUniformLocation     = glGetUniformLocation(shader->activeProgram, "fogDensity");
+
+    return lazarus_result::LAZARUS_OK;
 };
 
 WorldFX::~WorldFX()

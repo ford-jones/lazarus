@@ -19,7 +19,7 @@
 
 #include "../include/lazarus_mesh.h"
 
-ModelManager::ModelManager(GLuint shader, TextureLoader::StorageType textureType)
+ModelManager::ModelManager(Shader &shader, TextureLoader::StorageType textureType)
     : ModelManager::AssetLoader(), 
       ModelManager::TextureLoader(textureType)
 {
@@ -27,23 +27,21 @@ ModelManager::ModelManager(GLuint shader, TextureLoader::StorageType textureType
 
     this->childCount = 0;
 
-    this->shaderProgram = shader;
+    this->shader = &shader;
+    this->activeShaderID = shader.activeProgram;
     this->finder = std::make_unique<FileLoader>();
 
     this->clearMeshStorage();
-
+    this->updateUniformLocations();
+    
     /*
         Bind samplers to texture units and load locations.
         https://www.khronos.org/opengl/wiki/Sampler_(GLSL)#:~:text=The%20value%20you%20provide%20to%20a%20sampler%20uniform%20is%20the%20texture%20image%20unit%20to%20which%20you%20will%20bind%20the%20texture%20that%20the%20sampler%20will%20access
     */
 
-    glUniform1i(glGetUniformLocation(this->shaderProgram, "textureAtlas"), 1);
-    glUniform1i(glGetUniformLocation(this->shaderProgram, "textureArray"), 2);
-    glUniform1i(glGetUniformLocation(this->shaderProgram, "textureCube"), 3);
-
-    this->meshVariantLocation           = glGetUniformLocation(this->shaderProgram, "samplerType");
-    this->discardFragsLocation          = glGetUniformLocation(this->shaderProgram, "discardFrags");
-    this->isAnimatedLocation            = glGetUniformLocation(this->shaderProgram, "isAnimated");
+    glUniform1i(glGetUniformLocation(shader.activeProgram, "textureAtlas"), 1);
+    glUniform1i(glGetUniformLocation(shader.activeProgram, "textureArray"), 2);
+    glUniform1i(glGetUniformLocation(shader.activeProgram, "textureCube"), 3);
 
     this->maxTexWidth = 0;
     this->maxTexHeight = 0;
@@ -112,10 +110,11 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
         
         this->setMeshProperties(assetData);
         
-        if(assetData.animations.size() > 0)
+        if(!std::empty(assetData.animations))
         {
             meshData.isAnimated = true;
             meshData.animationCount = assetData.animations.size();
+            LOG_DEBUG("Composing armature");
 
             /*
                 Construct joints and transfroms from loaded data. 
@@ -224,7 +223,7 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
             rootJoint.posePosition = rootJoint.globalJointTransform;
             rootJoint.jointMatrix = rootJoint.globalJointTransform * rootJoint.inverseBindMatrix;
             
-            while(children.size() > 0)
+            while(!std::empty(children))
             {
                 std::vector<uint32_t> nextChildren;
                 std::vector<uint32_t> nextParents;
@@ -268,13 +267,13 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
         status = this->setMaterials(assetData);
         if(status != lazarus_result::LAZARUS_OK)
         {
-            break;
+            return status;
         };
 
         status = this->uploadVertexData();
         if(status != lazarus_result::LAZARUS_OK)
         {
-            break;
+            return status;
         };
             
         this->modelData.push_back(this->meshData);
@@ -283,10 +282,24 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
     out = this->modelOut;
     glBindVertexArray(0);
     
-    this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, this->modelData));
-    this->setSelectable(options.selectable);
+    try
+    {
+        LOG_DEBUG("Storing asset");
 
-    return this->uploadTextures();
+        this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, this->modelData));
+        status = this->setSelectable(options.selectable);
+        if (status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        }
+        return this->uploadTextures();
+    }
+    catch (std::exception& e)
+    {
+        LOG_ERROR(e.what(), __FILE__, __LINE__);
+        return lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
+    }
+
 };
 
 lazarus_result ModelManager::uploadTextures()
@@ -300,6 +313,8 @@ lazarus_result ModelManager::uploadTextures()
         upload all of the textures again if the current mesh uses 
         image textures.
     */
+    LOG_DEBUG("Uploading asset textures to GPU");
+
     bool containsTextures = false;
     lazarus_result status = lazarus_result::LAZARUS_OK;
 
@@ -325,6 +340,17 @@ lazarus_result ModelManager::uploadTextures()
 
     return status;
 };
+
+lazarus_result ModelManager::updateUniformLocations()
+{
+    this->clearErrors();
+
+    this->meshVariantLocation           = glGetUniformLocation(shader->activeProgram, "samplerType");
+    this->discardFragsLocation          = glGetUniformLocation(shader->activeProgram, "discardFrags");
+    this->isAnimatedLocation            = glGetUniformLocation(shader->activeProgram, "isAnimated");
+
+    return this->checkErrors(__FILE__, __LINE__);
+}
 
 /*
     Note: There is some strange behaviour with this function.
@@ -374,7 +400,7 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
 
     lazarus_result status = lazarus_result::LAZARUS_OK;
 
-    if(options.texturePath.size() > 0)
+    if(!std::empty(options.texturePath))
     {
         FileLoader::Image image = {};
         status = finder->loadImage(image, options.texturePath.c_str());
@@ -484,18 +510,28 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
     };
 
     this->modelData.push_back(this->meshData);
-    this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, this->modelData));
 
-    status = this->setSelectable(options.selectable);
-    if(status != lazarus_result::LAZARUS_OK)
+    try
     {
-        return status;
-    };
+        LOG_DEBUG("Storing asset");
+        this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, this->modelData));
 
-    out = this->modelOut;
-    glBindVertexArray(0);
+        status = this->setSelectable(options.selectable);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
+        out = this->modelOut;
+        glBindVertexArray(0);
 
-    return this->uploadTextures();
+        return this->uploadTextures();
+    }
+    catch(std::exception &e)
+    {
+        LOG_ERROR(e.what(), __FILE__, __LINE__);
+        return lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
+    }
+
 }
 
 lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::CubeConfig options)
@@ -535,7 +571,7 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
     }
     else
     {
-        if(options.texturePath.size() > 0)
+        if(!std::empty(options.texturePath))
         {
             FileLoader::Image image = {};
             status = finder->loadImage(image, options.texturePath.c_str());
@@ -643,20 +679,29 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
     {
         return status;
     };
-    
     this->modelData.push_back(this->meshData);
-    this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, this->modelData));
 
-    status = this->setSelectable(options.selectable);
-    if(status != lazarus_result::LAZARUS_OK)
+    try
     {
-        return status;
-    };
+        LOG_DEBUG("Storing asset");
+        this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, this->modelData));
 
-    out = this->modelOut;
-    glBindVertexArray(0);
+        status = this->setSelectable(options.selectable);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
+        out = this->modelOut;
+        glBindVertexArray(0);
 
-    return this->uploadTextures();
+        return this->uploadTextures();
+    }
+    catch (std::exception& e)
+    {
+        LOG_ERROR(e.what(), __FILE__, __LINE__);
+        return lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
+    }
+
 };
 
 lazarus_result ModelManager::uploadVertexData()
@@ -849,14 +894,26 @@ lazarus_result ModelManager::uploadVertexData()
         instance.
     */
 
-    modelOut.id = modelOut.instances.at(0).id;
-    meshData.id = this->modelData.size();
+    try
+    {
+        LOG_DEBUG("Inheretting parent ID");
+
+        modelOut.id = modelOut.instances.at(0).id;
+        meshData.id = this->modelData.size();
+
+        return LAZARUS_OK;
+    }
+    catch (std::exception& e)
+    {
+        LOG_ERROR(e.what(), __FILE__, __LINE__);
+        return lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
+    };
 	
-    return LAZARUS_OK;
 };
 
 lazarus_result ModelManager::reallocateTextures()
 {
+    LOG_DEBUG("Allocating additional texture storage");
     uint32_t width = 0;
     uint32_t height = 0;
 
@@ -911,15 +968,15 @@ lazarus_result ModelManager::reallocateTextures()
                         status = TextureLoader::loadImageToTextureStack(j.images[k], textureCount);
                         if (status != lazarus_result::LAZARUS_OK)
                         {
-                            return status;
+                            break;
                         };
                     };
                 };
             };
         };
     };
-
-    return lazarus_result::LAZARUS_OK;
+    
+    return status;
 };
 
 lazarus_result ModelManager::clearMeshStorage()
@@ -955,48 +1012,65 @@ lazarus_result ModelManager::clearMeshStorage()
 
 lazarus_result ModelManager::setSelectable(bool selectable)
 {
-    uint32_t numOccupants = GlobalsManager::getNumberOfPickableEntities();
-    if(selectable)
+    try
     {
-        if(numOccupants < UINT8_MAX)
+        uint32_t numOccupants = GlobalsManager::getNumberOfPickableEntities();
+        if (selectable)
         {
-            /*
-                Items which can be picked from the stencil-
-                depth buffer have their ID's stored in a
-                global vector. The index position is then 
-                used as the stencil function's reference 
-                parameter. When that ID is then downloaded f
-                rom the GPU after a draw call, it is used to 
-                perform a lookup on the vector for the mesh 
-                ID which; is then returned to userspace.
-            */
-
-            GlobalsManager::setPickableEntity(modelOut.id);
-            ModelManager::ModelData &m = modelStore.at(modelOut.id);
-            for(auto &i: m)
+            LOG_DEBUG("Determining a pickable ID for the asset");
+            if (numOccupants < UINT8_MAX)
             {
-                i.stencilBufferId = numOccupants + 1;
-            };
+                /*
+                    Items which can be picked from the stencil-
+                    depth buffer have their ID's stored in a
+                    global vector. The index position is then
+                    used as the stencil function's reference
+                    parameter. When that ID is then downloaded f
+                    rom the GPU after a draw call, it is used to
+                    perform a lookup on the vector for the mesh
+                    ID which; is then returned to userspace.
+                */
+
+                GlobalsManager::setPickableEntity(modelOut.id);
+                ModelManager::ModelData& m = modelStore.at(modelOut.id);
+                for (auto& i : m)
+                {
+                    i.stencilBufferId = numOccupants + 1;
+                };
+            }
+            else
+            {
+                return lazarus_result::LAZARUS_LIMIT_REACHED;
+            }
         }
         else
         {
-            return lazarus_result::LAZARUS_LIMIT_REACHED;
-        }
-    }
-    else
-    {
-        ModelManager::ModelData m = modelStore.at(modelOut.id);
-        for(auto &i: m)
-        {
-            i.stencilBufferId = 0;
+            LOG_DEBUG("Flagging asset as non-pickable");
+            ModelManager::ModelData m = modelStore.at(modelOut.id);
+            for (auto& i : m)
+            {
+                i.stencilBufferId = 0;
+            };
         };
-    };
 
-    return lazarus_result::LAZARUS_OK;
+        return lazarus_result::LAZARUS_OK;
+
+    }
+    catch (std::exception& e)
+    {
+        LOG_ERROR(e.what(), __FILE__, __LINE__);
+        return lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
+    }
 };
 
 lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
 {    
+    if(this->activeShaderID != shader->activeProgram)
+    {
+        this->updateUniformLocations();
+        this->activeShaderID = shader->activeProgram;
+    };
+
     LOG_DEBUG("Loading model data");
     ModelManager::ModelData &model = modelStore.at(meshIn.id);
     lazarus_result status = lazarus_result::LAZARUS_OK;
@@ -1119,7 +1193,7 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
             */
             for(auto joint : data.armature)
             {
-                this->jointsMatricesLocation = glGetUniformLocation(this->shaderProgram, std::string("jointMatrices[").append(std::to_string(joint.id) + "]").c_str());
+                this->jointsMatricesLocation = glGetUniformLocation(shader->activeProgram, std::string("jointMatrices[").append(std::to_string(joint.id) + "]").c_str());
                 glUniformMatrix4fv(this->jointsMatricesLocation, 1, GL_FALSE, &joint.jointMatrix[0][0]);
             };
 
@@ -1143,7 +1217,6 @@ void ModelManager::loadAnimation(ModelManager::MeshData &data)
     MeshData::MotionPoint &animationRoot = data.armature[data.armatureRoot];
     if(animationRoot.maxLoops == -1 || animationRoot.elapsedLoops < static_cast<uint32_t>(animationRoot.maxLoops))
     {
-        
         /*
             Calculate the animation's armature-root position
             and begin iterative breadth-first descent through
@@ -1158,7 +1231,7 @@ void ModelManager::loadAnimation(ModelManager::MeshData &data)
         std::vector<uint32_t> children = animationRoot.children;
         std::set<uint32_t> visited = {animationRoot.id};
     
-        while(children.size() > 0)
+        while(!std::empty(children))
         {
             std::vector<uint32_t> nextChildren;
     

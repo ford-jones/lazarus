@@ -1715,7 +1715,7 @@ lazarus_result AssetLoader::constructIndexBuffer(std::vector<glm::vec3> &outAttr
 
             uint64_t hash = positionHash ^ ((jointHash << 1) >> 1) ^ ((normalHash << 1) >> 1) ^ (uvHash << 1); 
 
-            if(outAttributes.size() == 0)
+            if(std::empty(outAttributes))
             {
                 outAttributes.push_back(position);
                 outAttributes.push_back(diffuseColor);

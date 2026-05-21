@@ -51,6 +51,8 @@ class Shader
         lazarus_result setActiveShader(uint32_t program);
         virtual ~Shader();
 
+        GLuint activeProgram;
+
     private: 
         lazarus_result verifyProgram(uint32_t program);
         void reset();
@@ -68,7 +70,6 @@ class Shader
         const char *vertShaderProgram;
         const char *fragShaderProgram;
 
-        GLuint shaderProgram;
         GLuint vertShader;
         GLuint fragShader;
 

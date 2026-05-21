@@ -204,15 +204,17 @@ FontLoader::~FontLoader()
     FT_Done_FreeType(this->lib);
 };
 
-TextManager::TextManager(GLuint shader) 
+TextManager::TextManager(Shader &shader) 
     : TextManager::FontLoader(),
       TextManager::ModelManager(shader, TextureLoader::StorageType::ATLAS)
 {
     LOG_DEBUG("Constructing Lazarus::TextManager");
 
-    this->shaderProgram = shader;
-    this->textColorUniformLocation = glGetUniformLocation(this->shaderProgram, "textColor");
-    this->cameraBuilder = std::make_unique<CameraManager>(this->shaderProgram);
+    this->shader = &shader;
+    this->updateUniformLocations();
+    this->activeShaderID = shader.activeProgram;
+
+    this->cameraBuilder = std::make_unique<CameraManager>(shader);
     
     this->textOut = {};
     this->word = {};
@@ -436,8 +438,14 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
         */
         
         ModelManager::clearMeshStorage();
+
+        if(this->activeShaderID != shader->activeProgram)
+        {
+            this->updateUniformLocations();
+            this->activeShaderID = shader->activeProgram;
+        };
         
-        if(word.size() > 0)
+        if(!std::empty(word))
         {
             this->word.clear();
         };
@@ -567,6 +575,16 @@ lazarus_result TextManager::identifyAlphabetDimensions(uint32_t fontId)
         };
     };
 
+    return lazarus_result::LAZARUS_OK;
+};
+
+lazarus_result TextManager::updateUniformLocations()
+{
+    /**
+     * TODO:
+     * Check GL errors
+     */
+    this->textColorUniformLocation = glGetUniformLocation(shader->activeProgram, "textColor");
     return lazarus_result::LAZARUS_OK;
 };
 

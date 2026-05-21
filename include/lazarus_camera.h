@@ -25,6 +25,8 @@
     #include "lazarus_common.h"
 #endif
 
+#include "lazarus_shader.h"
+
 #include <iostream>
 #include <stdlib.h>
 #include <memory>
@@ -40,7 +42,7 @@ using glm::mat4;
 class CameraManager
 {
     public:
-        CameraManager(GLuint shader);
+        CameraManager(Shader &shader);
         enum CameraType
         {
             ORTHOGRAPHIC,
@@ -78,6 +80,7 @@ class CameraManager
 
     private:
         void setAspectRatio(uint32_t x, uint32_t y);
+        lazarus_result updateUniformLocations();
         lazarus_result checkErrors(const char *file, uint32_t line);
         lazarus_result clearErrors();
 
@@ -88,12 +91,14 @@ class CameraManager
         
         GLint pixel;
         
-        GLuint shader;
+        // GLuint shader;
         GLuint viewLocation;
         GLuint perspectiveProjectionLocation;
         GLuint orthographicProjectionLocation;
         GLuint projectionTypeLocation;
+        GLuint activeShaderID;
         
+        Shader *shader;
         Camera camera;
 };
 

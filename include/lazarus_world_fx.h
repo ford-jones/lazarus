@@ -31,6 +31,7 @@
 #include "lazarus_file_loader.h"
 #include "lazarus_mesh.h"
 #include "lazarus_camera.h"
+#include "lazarus_shader.h"
 
 #ifndef LAZARUS_WORLD_FX_H
 #define LAZARUS_WORLD_FX_H
@@ -38,7 +39,7 @@
 class WorldFX : private ModelManager
 {
     public:
-        WorldFX(GLuint shaderProgram);
+        WorldFX(Shader &shader);
         struct Skybox
         {
             std::vector<string> paths;
@@ -68,15 +69,17 @@ class WorldFX : private ModelManager
             glm::vec3 color,
             glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f)
         );
-        lazarus_result loadFog(Fog fogIn, int32_t shader = 0);
+        lazarus_result loadFog(Fog fogIn);
 
         virtual ~WorldFX();
 
     private:
+        lazarus_result updateUniformLocations();
         lazarus_result loadSkyMap();
 
-        GLuint shader;
-
+        GLuint activeShaderID;
+        
+        GLint viewMatrixLocation;
         GLint fogColorUniformLocation;
         GLint fogViewpointUniformLocation;
         GLint fogMaxDistUniformLocation;
@@ -85,7 +88,7 @@ class WorldFX : private ModelManager
 
         Skybox skyBoxOut;
         Fog fogOut;
-
+        Shader *shader;
         std::unique_ptr<FileLoader> imageLoader;
 
         int32_t error;
