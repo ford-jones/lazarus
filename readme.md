@@ -82,7 +82,7 @@ You should now be able to use Lazarus with your project like so:
 
 int main()
 {
-    Lazarus::WindowManager window = Lazarus::WindowManager("Game Window", nullptr, nullptr);
+    Lazarus::WindowManager window = Lazarus::WindowManager("Game Window");
     window.initialise();
 
     return 0;
@@ -887,7 +887,13 @@ Params:
 Set the shader id in state that should be used to render subsequent draw calls. 
 
 Params:
-> **program:** *The ID of a shader program returned from `Shader::compileShaders()`*
+> **program:** *The ID of a shader program generated using `Shader::compileShaders()`*
+
+#### void getActiveShader(int &program)
+Returns the ID of the program currently being to used to render the subjects of load and draw calls.
+
+params:
+> **program:** *An out parameter to store the active shader ID*
 
 #### uploadUniform(std::string identifier, void *data)
 Uploads a value to the to the most recently activated shader program. If no uniform by the name of `identifier` is present, the execution state will be set to `LAZARUS_SHADER_ERROR`. 
