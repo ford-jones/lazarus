@@ -38,6 +38,7 @@ FontLoader::FontLoader()
 
 lazarus_result FontLoader::loaderInit()
 {
+    LOG_DEBUG("Initialising FreeType2");
     result = FT_Init_FreeType(&lib);
 
     if(result != FT_Err_Ok)
@@ -73,6 +74,7 @@ lazarus_result FontLoader::loadTrueTypeFont(uint32_t &index, std::string filepat
     } 
     else 
     {
+        LOG_DEBUG("Adding new set of truetype glyphs to font stack");
         FT_Set_Pixel_Sizes(fontFace, 0, ptSize);
 
         fontStack.push_back(fontFace);
@@ -210,10 +212,11 @@ TextManager::TextManager(Shader &shader)
 {
     LOG_DEBUG("Constructing Lazarus::TextManager");
 
+    this->activeShaderID = 0;
     this->shader = &shader;
-    this->updateUniformLocations();
-    this->activeShaderID = shader.activeProgram;
 
+    shader.getActiveShader(activeShaderID);
+    this->updateUniformLocations();
     this->cameraBuilder = std::make_unique<CameraManager>(shader);
     
     this->textOut = {};
@@ -242,6 +245,7 @@ TextManager::TextManager(Shader &shader)
 
 lazarus_result TextManager::initialise()
 {
+    LOG_DEBUG("Initialising text manager");
     this->camera = {};
     CameraManager::CameraConfig config = {};
 
@@ -288,14 +292,15 @@ lazarus_result TextManager::extendFontStack(uint32_t &fontId, std::string filepa
         glyph associated with them. e.g. shift / ctrl).
     */
 
-    rowWidth = 0;
-    rowHeight = 0;
+   rowWidth = 0;
+   rowHeight = 0;
     atlasWidth = 0;
     atlasHeight = 0;
 
     uint32_t yOffset = 0;
     uint32_t xOffset = 0;
     
+    LOG_DEBUG("Uploading alphabets");
     /*
         Provision storage for known aphabets.
         
@@ -338,6 +343,7 @@ lazarus_result TextManager::extendFontStack(uint32_t &fontId, std::string filepa
     */
     for(size_t n = 0; n < this->fontIndex; n++)
     {
+        LOG_DEBUG(std::string("Loading font [" + std::to_string(n) + "] to GPU").c_str());
         characters.clear();
 
         yOffset = alphabetHeights[n * 2];
@@ -439,10 +445,12 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
         
         ModelManager::clearMeshStorage();
 
-        if(this->activeShaderID != shader->activeProgram)
+        uint32_t program = 0;
+        shader->getActiveShader(program);
+        if(this->activeShaderID != program)
         {
+            this->activeShaderID = program;
             this->updateUniformLocations();
-            this->activeShaderID = shader->activeProgram;
         };
         
         if(!std::empty(word))
@@ -560,6 +568,8 @@ lazarus_result TextManager::identifyAlphabetDimensions(uint32_t fontId)
     this->rowWidth = 0;
     this->rowHeight = 0;
 
+    LOG_DEBUG(std::string("Determining texture atlas dimensions for font [" + std::to_string(fontId) + "]").c_str());
+
     for(uint8_t i = 33; i < INT8_MAX + 1; i++)
     {
         lazarus_result status = FontLoader::loadCharacter(this->glyph, static_cast<char>(i), fontId);
@@ -580,11 +590,12 @@ lazarus_result TextManager::identifyAlphabetDimensions(uint32_t fontId)
 
 lazarus_result TextManager::updateUniformLocations()
 {
+    LOG_DEBUG("Setting updated text uniform locations");
     /**
      * TODO:
      * Check GL errors
      */
-    this->textColorUniformLocation = glGetUniformLocation(shader->activeProgram, "textColor");
+    this->textColorUniformLocation = glGetUniformLocation(this->activeShaderID, "textColor");
     return lazarus_result::LAZARUS_OK;
 };
 

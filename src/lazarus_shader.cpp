@@ -453,22 +453,6 @@ lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentSha
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result Shader::setActiveShader(uint32_t program)
-{
-    lazarus_result status = this->verifyProgram(program);
-    if(status != lazarus_result::LAZARUS_OK)
-    {
-        return status;
-    };
-    
-    this->clearErrors();
-    glUseProgram(this->activeProgram);
-    
-    //  TODO:
-    //  Things like this should probably use the shaderError code
-    return this->checkErrors(__FILE__, __LINE__);
-};
-
 lazarus_result Shader::uploadUniform(std::string identifier, void *data)
 {
     const char *uniformName = identifier.c_str();
@@ -577,6 +561,27 @@ lazarus_result Shader::uploadUniform(std::string identifier, void *data)
     return this->checkErrors(__FILE__, __LINE__);
 };
 
+lazarus_result Shader::setActiveShader(uint32_t program)
+{
+    lazarus_result status = this->verifyProgram(program);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+    
+    this->clearErrors();
+    glUseProgram(this->activeProgram);
+    
+    //  TODO:
+    //  Things like this should probably use the shaderError code
+    return this->checkErrors(__FILE__, __LINE__);
+};
+
+void Shader::getActiveShader(uint32_t &program)
+{
+    program = this->activeProgram;
+};
+
 lazarus_result Shader::verifyProgram(uint32_t program)
 {
     //  Validate existence of the program
@@ -592,29 +597,6 @@ lazarus_result Shader::verifyProgram(uint32_t program)
     };
 
     return lazarus_result::LAZARUS_OK;
-};
-
-void Shader::reset()
-{
-    this->vertLayout = LAZARUS_DEFAULT_VERT_LAYOUT;
-    this->fragLayout = LAZARUS_DEFAULT_FRAG_LAYOUT;
-
-    this->vertSource = "";
-    this->fragSource = "";
-
-	this->vertReader = nullptr;
-	this->fragReader = nullptr;
-	this->vertShaderProgram = NULL;
-	this->fragShaderProgram = NULL;
-    this->message = NULL;
-	
-	this->accepted = 0;
-	
-	this->vertShader = 0;
-	this->fragShader = 0;
-	this->activeProgram = 0;	
-
-    return;
 };
 
 lazarus_result Shader::checkErrors(const char *file, uint32_t line)
@@ -653,6 +635,29 @@ void Shader::clearErrors()
     {
         this->errorCode = glGetError();
     };
+
+    return;
+};
+
+void Shader::reset()
+{
+    this->vertLayout = LAZARUS_DEFAULT_VERT_LAYOUT;
+    this->fragLayout = LAZARUS_DEFAULT_FRAG_LAYOUT;
+
+    this->vertSource = "";
+    this->fragSource = "";
+
+	this->vertReader = nullptr;
+	this->fragReader = nullptr;
+	this->vertShaderProgram = NULL;
+	this->fragShaderProgram = NULL;
+    this->message = NULL;
+	
+	this->accepted = 0;
+	
+	this->vertShader = 0;
+	this->fragShader = 0;
+	this->activeProgram = 0;	
 
     return;
 };

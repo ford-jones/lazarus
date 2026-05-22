@@ -65,7 +65,6 @@ class LightManager
         virtual ~LightManager();
 
         lazarus_result createLightSource(Light &out, LightConfig options);
-        // lazarus_result loadLightSource(Light &lightIn, int32_t shader = 0);
         lazarus_result loadLightSource(Light &lightIn);
 
     private:

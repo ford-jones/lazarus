@@ -28,7 +28,9 @@ CameraManager::CameraManager(Shader &shader)
     this->pixelWidth                        = GlobalsManager::getDisplayHeight();
 
     this->shader = &shader;
-    this->activeShaderID = shader.activeProgram;
+    this->activeShaderID = 0;
+
+    shader.getActiveShader(this->activeShaderID);
     this->updateUniformLocations();
 
     this->pixel                             = 0;
@@ -54,6 +56,8 @@ lazarus_result CameraManager::createCamera(CameraManager::Camera &out, CameraMan
     {
         case CameraType::ORTHOGRAPHIC:
         {
+            LOG_DEBUG("Creating orthographic camera projection matrix");
+
             camera.position         = vec3(0.0f, 0.0f, -1.0f);
             camera.direction        = glm::normalize(camera.position);
             camera.upVector         = vec3(0.0f, 1.0f, 0.0f);
@@ -64,6 +68,8 @@ lazarus_result CameraManager::createCamera(CameraManager::Camera &out, CameraMan
         }
         case CameraType::PERSPECTIVE_FLYING:
         {
+            LOG_DEBUG("Creating perspective camera projection matrix");
+
             /*
                 The direction of the back of the camera, so
                 the camera is actually looking down +X
@@ -94,10 +100,12 @@ lazarus_result CameraManager::loadCamera(CameraManager::Camera &cameraIn)
     /*
         Ensure that the correct shader program is in use otherwise rediscover uniform locations
     */
-    if(this->activeShaderID != shader->activeProgram)
+    uint32_t program = 0;
+    shader->getActiveShader(program);
+    if(this->activeShaderID != program)
     {
+        this->activeShaderID = program;
         this->updateUniformLocations();
-        this->activeShaderID = shader->activeProgram;
     };
 
     this->clearErrors();
@@ -138,6 +146,8 @@ lazarus_result CameraManager::loadCamera(CameraManager::Camera &cameraIn)
 
 lazarus_result CameraManager::getPixelOccupant(uint32_t positionX, uint32_t positionY, uint8_t &out)
 {
+    LOG_DEBUG("Checking for screenspce occupant");
+
     if(GlobalsManager::getManageStencilBuffer())
     {
         this->pixel = 0;
@@ -212,10 +222,12 @@ void CameraManager::setAspectRatio(uint32_t x, uint32_t y)
     */
     if((x + y) > 0)
     {
+        LOG_DEBUG("Using user defined aspect ratio");
         this->aspectRatio      = static_cast<float>(x) / static_cast<float>(y);
     }
     else
     {
+        LOG_DEBUG("Using aspect ratio defined by monitor dimensions");
         this->aspectRatio      = static_cast<float>(this->pixelHeight) / static_cast<float>(this->pixelWidth);
     };   
 
@@ -224,12 +236,13 @@ void CameraManager::setAspectRatio(uint32_t x, uint32_t y)
 
 lazarus_result CameraManager::updateUniformLocations()
 {
+    LOG_DEBUG("Setting updated camera uniform locations");
     this->clearErrors();
     
-    this->viewLocation                      = glGetUniformLocation(shader->activeProgram, "viewMatrix");
-    this->perspectiveProjectionLocation     = glGetUniformLocation(shader->activeProgram, "perspectiveProjectionMatrix");
-    this->orthographicProjectionLocation    = glGetUniformLocation(shader->activeProgram, "orthoProjectionMatrix");
-    this->projectionTypeLocation            = glGetUniformLocation(shader->activeProgram, "usesPerspective");
+    this->viewLocation                      = glGetUniformLocation(this->activeShaderID, "viewMatrix");
+    this->perspectiveProjectionLocation     = glGetUniformLocation(this->activeShaderID, "perspectiveProjectionMatrix");
+    this->orthographicProjectionLocation    = glGetUniformLocation(this->activeShaderID, "orthoProjectionMatrix");
+    this->projectionTypeLocation            = glGetUniformLocation(this->activeShaderID, "usesPerspective");
 
     return this->checkErrors(__FILE__, __LINE__);
 };

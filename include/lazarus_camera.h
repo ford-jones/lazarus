@@ -91,13 +91,12 @@ class CameraManager
         
         GLint pixel;
         
-        // GLuint shader;
         GLuint viewLocation;
         GLuint perspectiveProjectionLocation;
         GLuint orthographicProjectionLocation;
         GLuint projectionTypeLocation;
         GLuint activeShaderID;
-        
+
         Shader *shader;
         Camera camera;
 };

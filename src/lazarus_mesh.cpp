@@ -26,12 +26,13 @@ ModelManager::ModelManager(Shader &shader, TextureLoader::StorageType textureTyp
 	LOG_DEBUG("Constructing Lazarus::ModelManager");
 
     this->childCount = 0;
-
-    this->shader = &shader;
-    this->activeShaderID = shader.activeProgram;
+    this->activeShaderID = 0;
     this->finder = std::make_unique<FileLoader>();
+    this->shader = &shader;
 
     this->clearMeshStorage();
+
+    shader.getActiveShader(this->activeShaderID);
     this->updateUniformLocations();
     
     /*
@@ -39,9 +40,9 @@ ModelManager::ModelManager(Shader &shader, TextureLoader::StorageType textureTyp
         https://www.khronos.org/opengl/wiki/Sampler_(GLSL)#:~:text=The%20value%20you%20provide%20to%20a%20sampler%20uniform%20is%20the%20texture%20image%20unit%20to%20which%20you%20will%20bind%20the%20texture%20that%20the%20sampler%20will%20access
     */
 
-    glUniform1i(glGetUniformLocation(shader.activeProgram, "textureAtlas"), 1);
-    glUniform1i(glGetUniformLocation(shader.activeProgram, "textureArray"), 2);
-    glUniform1i(glGetUniformLocation(shader.activeProgram, "textureCube"), 3);
+    glUniform1i(glGetUniformLocation(this->activeShaderID, "textureAtlas"), 1);
+    glUniform1i(glGetUniformLocation(this->activeShaderID, "textureArray"), 2);
+    glUniform1i(glGetUniformLocation(this->activeShaderID, "textureCube"), 3);
 
     this->maxTexWidth = 0;
     this->maxTexHeight = 0;
@@ -279,12 +280,13 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
         this->modelData.push_back(this->meshData);
     };
     
-    out = this->modelOut;
-    glBindVertexArray(0);
     
     try
     {
         LOG_DEBUG("Storing asset");
+
+        out = this->modelOut;
+        glBindVertexArray(0);
 
         this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, this->modelData));
         status = this->setSelectable(options.selectable);
@@ -343,11 +345,12 @@ lazarus_result ModelManager::uploadTextures()
 
 lazarus_result ModelManager::updateUniformLocations()
 {
+    LOG_DEBUG("Setting updated model uniform locations");
     this->clearErrors();
 
-    this->meshVariantLocation           = glGetUniformLocation(shader->activeProgram, "samplerType");
-    this->discardFragsLocation          = glGetUniformLocation(shader->activeProgram, "discardFrags");
-    this->isAnimatedLocation            = glGetUniformLocation(shader->activeProgram, "isAnimated");
+    this->meshVariantLocation           = glGetUniformLocation(this->activeShaderID, "samplerType");
+    this->discardFragsLocation          = glGetUniformLocation(this->activeShaderID, "discardFrags");
+    this->isAnimatedLocation            = glGetUniformLocation(this->activeShaderID, "isAnimated");
 
     return this->checkErrors(__FILE__, __LINE__);
 }
@@ -1064,11 +1067,13 @@ lazarus_result ModelManager::setSelectable(bool selectable)
 };
 
 lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
-{    
-    if(this->activeShaderID != shader->activeProgram)
+{   
+    uint32_t program = 0;
+    shader->getActiveShader(program);
+    if(this->activeShaderID != program)
     {
+        this->activeShaderID = program;
         this->updateUniformLocations();
-        this->activeShaderID = shader->activeProgram;
     };
 
     LOG_DEBUG("Loading model data");
@@ -1193,7 +1198,7 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
             */
             for(auto joint : data.armature)
             {
-                this->jointsMatricesLocation = glGetUniformLocation(shader->activeProgram, std::string("jointMatrices[").append(std::to_string(joint.id) + "]").c_str());
+                this->jointsMatricesLocation = glGetUniformLocation(this->activeShaderID, std::string("jointMatrices[").append(std::to_string(joint.id) + "]").c_str());
                 glUniformMatrix4fv(this->jointsMatricesLocation, 1, GL_FALSE, &joint.jointMatrix[0][0]);
             };
 

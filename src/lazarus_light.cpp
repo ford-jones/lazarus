@@ -22,15 +22,16 @@
 LightManager::LightManager(Shader &shader)
 {
     LOG_DEBUG("Constructing Lazarus::LightManager");
+
     this->shader = &shader;
-    this->activeShaderID = shader.activeProgram;
+    this->activeShaderID = 0;
+    shader.getActiveShader(this->activeShaderID);
     this->updateUniformLocations();
 
     this->lightOut = {};
     this->lightData = {};
     this->lightStore = {};
 
-    this->lightCountLocation = glGetUniformLocation(shader.activeProgram, "lightCount");
     this->lightCount = GlobalsManager::getNumberOfActiveLights();
 
     this->errorCode = 0;
@@ -63,11 +64,11 @@ lazarus_result LightManager::createLightSource(LightManager::Light &out, LightMa
     
     this->lightCount += 1;
     lightData.uniformIndex                   =   (this->lightCount - 1);
-    lightData.lightTypeUniformLocation       =   glGetUniformLocation(shader->activeProgram, (std::string("lightTypes[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
-    lightData.lightPositionUniformLocation   =   glGetUniformLocation(shader->activeProgram, (std::string("lightPositions[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
-    lightData.lightColorUniformLocation      =   glGetUniformLocation(shader->activeProgram, (std::string("lightColors[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
-    lightData.brightnessUniformLocation      =   glGetUniformLocation(shader->activeProgram, (std::string("lightBrightness[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
-    lightData.lightDirectionUniformLocation  =   glGetUniformLocation(shader->activeProgram, (std::string("lightDirections[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+    lightData.lightTypeUniformLocation       =   glGetUniformLocation(this->activeShaderID, (std::string("lightTypes[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+    lightData.lightPositionUniformLocation   =   glGetUniformLocation(this->activeShaderID, (std::string("lightPositions[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+    lightData.lightColorUniformLocation      =   glGetUniformLocation(this->activeShaderID, (std::string("lightColors[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+    lightData.brightnessUniformLocation      =   glGetUniformLocation(this->activeShaderID, (std::string("lightBrightness[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+    lightData.lightDirectionUniformLocation  =   glGetUniformLocation(this->activeShaderID, (std::string("lightDirections[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
 
     lazarus_result status = this->checkErrors(__FILE__, __LINE__);
     if(status != lazarus_result::LAZARUS_OK)
@@ -105,10 +106,12 @@ lazarus_result LightManager::loadLightSource(LightManager::Light &lightIn)
         Rediscover GPU uniform location(s) for every light in the store if the active
         shader program has been changed since this was last called.
     */
-    if(this->activeShaderID != shader->activeProgram)
+    uint32_t program = 0;
+    shader->getActiveShader(program);
+    if(this->activeShaderID != program)
     {
+        this->activeShaderID = program;
         this->updateUniformLocations();
-        this->activeShaderID = shader->activeProgram;
     };
 
     /*
@@ -145,18 +148,20 @@ lazarus_result LightManager::loadLightSource(LightManager::Light &lightIn)
 
 lazarus_result LightManager::updateUniformLocations()
 {
+    LOG_DEBUG("Setting updated light uniform locations");
+    
     this->clearErrors();
-    this->lightCountLocation = glGetUniformLocation(shader->activeProgram, "lightCount");
+    this->lightCountLocation = glGetUniformLocation(this->activeShaderID, "lightCount");
 
     for(auto &light : lightStore)
     {
         this->lightData = light.second;
         
-        lightData.lightTypeUniformLocation       =   glGetUniformLocation(shader->activeProgram, (std::string("lightTypes[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
-        lightData.lightPositionUniformLocation   =   glGetUniformLocation(shader->activeProgram, (std::string("lightPositions[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
-        lightData.lightColorUniformLocation      =   glGetUniformLocation(shader->activeProgram, (std::string("lightColors[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
-        lightData.brightnessUniformLocation      =   glGetUniformLocation(shader->activeProgram, (std::string("lightBrightness[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
-        lightData.lightDirectionUniformLocation  =   glGetUniformLocation(shader->activeProgram, (std::string("lightDirections[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());    
+        lightData.lightTypeUniformLocation       =   glGetUniformLocation(this->activeShaderID, (std::string("lightTypes[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+        lightData.lightPositionUniformLocation   =   glGetUniformLocation(this->activeShaderID, (std::string("lightPositions[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+        lightData.lightColorUniformLocation      =   glGetUniformLocation(this->activeShaderID, (std::string("lightColors[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+        lightData.brightnessUniformLocation      =   glGetUniformLocation(this->activeShaderID, (std::string("lightBrightness[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+        lightData.lightDirectionUniformLocation  =   glGetUniformLocation(this->activeShaderID, (std::string("lightDirections[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());    
     }
 
     return this->checkErrors(__FILE__, __LINE__);
