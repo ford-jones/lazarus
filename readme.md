@@ -473,7 +473,7 @@ When you submit your own fragment and / or vertex shaders with a call to `Lazaru
 #### Vertex shader inputs:
 Note these inputs can be found at `LAZARUS_DEFAULT_VERT_LAYOUT`.
 ```c
-#define MAX_KEYFRAMES 255
+#define MAX_JOINTS 64
 
 //  Vertex buffer object 1 (attributes)
 layout(location = 0) in vec3 inVertex;              //  Input Vertex position
@@ -493,7 +493,7 @@ uniform mat4 viewMatrix;                            //  The camera's viewing mat
 uniform mat4 perspectiveProjectionMatrix;           //  A 3D projection matrix (if one is present)
 uniform mat4 orthoProjectionMatrix;                 //  A 2D projection matrix (if one is present)
 
-uniform mat4 jointMatrices[MAX_KEYFRAMES];          //  Raw pre-computed joint matrices
+uniform mat4 jointMatrices[MAX_JOINTS];          //  Raw pre-computed joint matrices
 
 out vec3 fragPosition;                              //  Output position
 out vec3 diffuseColor;                              //  Output color data
@@ -513,7 +513,7 @@ vec3 _lazarusComputeSkinningMatrix();               //  Determine the weighted r
 Note these inputs can be found at `LAZARUS_DEFAULT_FRAG_LAYOUT`. \
 Anything not used from here will be optimised-out when compiled.
 ```c
-    #define MAX_LIGHTS 255
+    #define MAX_LIGHTS 64
 
     //  Texture storage types for comparisson with samplerType
     const int CUBEMAP   = 0;
