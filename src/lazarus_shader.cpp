@@ -65,7 +65,7 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
         inWeights.w * jointMatrices[int(inJoints.w)];
         
         return skinningMatrix;
-    };
+    }
 
     vec3 _lazarusComputeWorldPosition()
     {
@@ -91,7 +91,7 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
         vec3 result = vec3(worldPosition);
 
         return result;
-    };
+    }
 
     vec3 _lazarusComputeNormalDirection()
     {
@@ -106,7 +106,7 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
         vec3 result = mat3(inverseTranspose) * inNormal;
 
         return normalize(result);
-    };
+    }
 )";
 
 const char *LAZARUS_DEFAULT_VERT_SHADER =  R"(
@@ -125,7 +125,7 @@ const char *LAZARUS_DEFAULT_VERT_SHADER =  R"(
        skyBoxTextureCoordinate = -inVertex;
 
        return;
-    };
+    }
 )";
 
 const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
