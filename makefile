@@ -1,6 +1,6 @@
 TARGET :=
 
-LDFLAGS := -lGLEW -lglfw -lfmod -lfreetype
+LDFLAGS := -lGLEW -lglfw3 -lfmod -lfreetype
 
 CXX = g++
 
@@ -18,7 +18,7 @@ ifeq ($(shell uname),Linux)
 	BUILDSTEPS += && sudo ldconfig
 else ifeq ($(shell uname),Darwin)
 	CXXFLAGS += -dynamiclib
-	LDFLAGS += -framework OpenGL
+	LDFLAGS += -framework OpenGL -framework Cocoa -framework IOKit
 	TARGET += liblazarus.dylib
 endif
 

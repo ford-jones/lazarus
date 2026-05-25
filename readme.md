@@ -59,8 +59,8 @@ make clean
 ```
 
 ### Windows:
-If using windows you will need to install Microsoft Visual Studio and use it's compiler. This hasn't been tested on versions below 2022. \
-In the project root use Powershell or the Developer Command Prompt for VS 2022 to run the batchfile:
+If using windows you will need to install Microsoft Visual Studio in order to build the project from source. This has been tested with VS2019, VS2022 and VS2026. \
+Run the batchfile from the project root using the x64 Visual Studio terminal to compile with MSVC. To generate a 32-bit binary the x86 terminal should be used instead.
 ```
 build.bat
 ```
@@ -93,8 +93,11 @@ See [here](#lazarus-by-example) for further usage guides.
 When compiling your project you will need to pass the following linker flags:
 #### Unix (Linux / Mac):
 ```
-g++ main.cpp -o run -lGL -lGLEW -lglfw -lfmod -freetype -llazarus
+g++ main.cpp -o run -lGLEW -lglfw3 -lfmod -lfreetype -lliblazarus
 ```
+Note:
+- When compiling on Linux, be sure to link OpenGL like so: `-lGL`
+- On some macs you may need to explicitly specify the c++ standard using: `-std=c++17`
 
 #### Windows:
 ```
