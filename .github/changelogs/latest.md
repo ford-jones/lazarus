@@ -1,5 +1,6 @@
-# Version: 2026.05.25130327
+# Version: 2026.05.25225018
 
+* [2770396](https://github.com/ford-jones/lazarus/commit/277039651534ba555b0ee3fc4d728aa01fa16549): [Changelog CI] Add Changelog for Version 2026.05.25130327
 * [2e644e0](https://github.com/ford-jones/lazarus/commit/2e644e0cf984ed0f837bf2dd138ef9afc7442d01): Fix: Removes trailing semicolons from glsl functions definitions
 * [fddf5dd](https://github.com/ford-jones/lazarus/commit/fddf5dd9f20f94b1b2f7f206d4971acdc824c3b1): Fix: Explicitly specify Cocoa OOP framework for MacOS systems
 * [e97c3c3](https://github.com/ford-jones/lazarus/commit/e97c3c3a4309935cc3d705bc6f66decbe1a35b7c): Fix: Reduce the numerical limit for uniform blocks to accomidate lightweight hardware
