@@ -21,7 +21,7 @@
 const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
     #version 410 core
 
-    #define MAX_KEYFRAMES 255
+    #define MAX_JOINTS 64
 
     //  VBO 1
     layout(location = 0) in vec3 inVertex;
@@ -45,7 +45,7 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
     uniform mat4 perspectiveProjectionMatrix;
     uniform mat4 orthoProjectionMatrix;
 
-    uniform mat4 jointMatrices[MAX_KEYFRAMES];
+    uniform mat4 jointMatrices[MAX_JOINTS];
 
     out vec3 fragPosition;
     out vec3 diffuseColor;
@@ -65,7 +65,7 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
         inWeights.w * jointMatrices[int(inJoints.w)];
         
         return skinningMatrix;
-    };
+    }
 
     vec3 _lazarusComputeWorldPosition()
     {
@@ -91,7 +91,7 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
         vec3 result = vec3(worldPosition);
 
         return result;
-    };
+    }
 
     vec3 _lazarusComputeNormalDirection()
     {
@@ -106,7 +106,7 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
         vec3 result = mat3(inverseTranspose) * inNormal;
 
         return normalize(result);
-    };
+    }
 )";
 
 const char *LAZARUS_DEFAULT_VERT_SHADER =  R"(
@@ -125,13 +125,13 @@ const char *LAZARUS_DEFAULT_VERT_SHADER =  R"(
        skyBoxTextureCoordinate = -inVertex;
 
        return;
-    };
+    }
 )";
 
 const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     #version 410 core
 
-    #define MAX_LIGHTS 255
+    #define MAX_LIGHTS 64
     
     //  Texture storage types
 	const int CUBEMAP = 0;
@@ -342,13 +342,18 @@ Shader::Shader()
 
 lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentShader, std::string vertexShader)
 {
+    /*GLint max_uniforms = 0;
+    glGetIntegerv(GL_MAX_UNIFORM_LOCATIONS, &max_uniforms);
+    std::cout << static_cast<int32_t>(max_uniforms) << std::endl;*/
+
     this->reset();
     this->clearErrors();
     this->vertReader = std::make_unique<FileLoader>();
     this->fragReader = std::make_unique<FileLoader>();
 
-    if(fragmentShader != "")
+    if(!std::empty(fragmentShader))
     {
+        LOG_DEBUG("Loading custom fragment shader...");
         lazarus_result status = fragReader->loadText(fragmentShader.c_str(), this->fragSource);
         if(status != lazarus_result::LAZARUS_OK)
         {
@@ -357,11 +362,13 @@ lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentSha
     }
     else
     {
+        LOG_DEBUG("Loading default lazarus fragment shader...");
         this->fragSource = LAZARUS_DEFAULT_FRAG_SHADER;
     };
 
-    if(vertexShader != "")
+    if(!std::empty(vertexShader))
     {
+        LOG_DEBUG("Loading custom vertex shader...");
         lazarus_result status = vertReader->loadText(vertexShader.c_str(), this->vertSource);
         if(status != lazarus_result::LAZARUS_OK)
         {
@@ -370,6 +377,7 @@ lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentSha
     }
     else
     {
+        LOG_DEBUG("Loading default lazarus vertex shader...");
         this->vertSource = LAZARUS_DEFAULT_VERT_SHADER;
     };
 
@@ -386,7 +394,7 @@ lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentSha
 
     this->vertShader      =   glCreateShader(GL_VERTEX_SHADER);                                                               //   Create a new instance of a vertex shader program in openGL
     this->fragShader      =   glCreateShader(GL_FRAGMENT_SHADER);                                                             //   Create a new instance of a fragment shader program in openGL
-    this->shaderProgram   =   glCreateProgram();                                                                              //   Instantiate a new shader program
+    this->activeProgram   =   glCreateProgram();                                                                              //   Instantiate a new shader program
 
     glShaderSource      (this->vertShader, 1, &this->vertShaderProgram, NULL);                                                      //   Link the shader.vert file contents to the newly created OpenGL vertex shader instance
     glCompileShader     (this->vertShader);                                                                                   //   Compile the shader
@@ -416,15 +424,16 @@ lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentSha
 
         return lazarus_result::LAZARUS_FSHADER_COMPILE_FAILURE;
     };
-
-    glAttachShader      (this->shaderProgram, this->vertShader);                                                                    //   Attatch the compiled vert shader to the shader program
-    glAttachShader      (this->shaderProgram, this->fragShader);                                                                    //   Attatch the compiled frag shader to the shader program
-    glLinkProgram       (this->shaderProgram);                                                                                //   Link the shader program to this OpenGL context
-    glGetProgramiv(this->shaderProgram, GL_LINK_STATUS, &this->accepted);                                                           //   Check the link status
+    
+    LOG_DEBUG("Linking shaders to new shader program");
+    glAttachShader      (this->activeProgram, this->vertShader);                                                                    //   Attatch the compiled vert shader to the shader program
+    glAttachShader      (this->activeProgram, this->fragShader);                                                                    //   Attatch the compiled frag shader to the shader program
+    glLinkProgram       (this->activeProgram);                                                                                //   Link the shader program to this OpenGL context
+    glGetProgramiv(this->activeProgram, GL_LINK_STATUS, &this->accepted);                                                           //   Check the link status
     if(!accepted)                                                                                                       //   If it failed
     {
         this->message = new char[512];
-        glGetProgramInfoLog(this->shaderProgram, 512, NULL, this->message);                                                         //   Retrieve the OpenGL shader logs if there are any and print them to the console
+        glGetProgramInfoLog(this->activeProgram, 512, NULL, this->message);                                                         //   Retrieve the OpenGL shader logs if there are any and print them to the console
 
         std::string message = std::string("Shader Error: ").append(this->message);
         LOG_ERROR(message.c_str(), __FILE__, __LINE__);
@@ -439,40 +448,29 @@ lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentSha
         return status;
     };
 
-    status = this->verifyProgram(this->shaderProgram);
+    status = this->verifyProgram(this->activeProgram);
     if(status != lazarus_result::LAZARUS_OK)
     {
         return status;
     };
     
-    this->linkedPrograms.push_back(this->shaderProgram);
+    this->linkedPrograms.push_back(this->activeProgram);
     this->shaderSources.push_back(this->vertShader);
     this->shaderSources.push_back(this->fragShader);
     
-    program = this->shaderProgram;
+    program = this->activeProgram;
     return lazarus_result::LAZARUS_OK;
-};
-
-lazarus_result Shader::setActiveShader(uint32_t program)
-{
-    lazarus_result status = this->verifyProgram(program);
-    if(status != lazarus_result::LAZARUS_OK)
-    {
-        return status;
-    };
-    
-    this->clearErrors();
-    glUseProgram(this->shaderProgram);
-    
-    //  TODO:
-    //  Things like this should probably use the shaderError code
-    return this->checkErrors(__FILE__, __LINE__);
 };
 
 lazarus_result Shader::uploadUniform(std::string identifier, void *data)
 {
     const char *uniformName = identifier.c_str();
-
+    /**
+     * These openGL function signatures are a real pain...
+     * I.e. these arguments MUST be of array or pointer type 
+     * windows / MSVC doesn't allow them to be null'd. Very cringe.
+     */
+    
     const GLchar *name[1] = {
         uniformName
     };
@@ -483,16 +481,16 @@ lazarus_result Shader::uploadUniform(std::string identifier, void *data)
     
     GLenum type = 0;
     GLint size = 0;
-    GLchar *n = NULL;
+    GLchar *nameBuffer = new char[identifier.size()];
 
     this->clearErrors();
     
     //  Lookup uniform location
-    GLuint uniformLocation = glGetUniformLocation(this->shaderProgram, uniformName);
+    GLuint uniformLocation = glGetUniformLocation(this->activeProgram, uniformName);
     
     //  Lookup uniform index by name
     glGetUniformIndices(
-        this->shaderProgram,
+        this->activeProgram,
         1,
         name,
         index
@@ -500,13 +498,13 @@ lazarus_result Shader::uploadUniform(std::string identifier, void *data)
 
     //  Lookup uniform data by index
     glGetActiveUniform(
-        this->shaderProgram, 
+        this->activeProgram, 
         index[0],
-        100,
+        identifier.size(),
         NULL,
         &size,
         &type,
-        n
+        nameBuffer
     );
     lazarus_result status = this->checkErrors(__FILE__, __LINE__);
     if(status != lazarus_result::LAZARUS_OK)
@@ -567,7 +565,31 @@ lazarus_result Shader::uploadUniform(std::string identifier, void *data)
             return lazarus_result::LAZARUS_SHADER_ERROR;
             // break;
     }
+
+    delete[] nameBuffer;
     return this->checkErrors(__FILE__, __LINE__);
+};
+
+lazarus_result Shader::setActiveShader(uint32_t program)
+{
+    LOG_DEBUG(std::string("Activating shader [" + std::to_string(program) +"]").c_str());
+    lazarus_result status = this->verifyProgram(program);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+    
+    this->clearErrors();
+    glUseProgram(this->activeProgram);
+    
+    //  TODO:
+    //  Things like this should probably use the shaderError code
+    return this->checkErrors(__FILE__, __LINE__);
+};
+
+void Shader::getActiveShader(uint32_t &program)
+{
+    program = this->activeProgram;
 };
 
 lazarus_result Shader::verifyProgram(uint32_t program)
@@ -581,33 +603,10 @@ lazarus_result Shader::verifyProgram(uint32_t program)
     }
     else
     {
-        this->shaderProgram = program;
+        this->activeProgram = program;
     };
 
     return lazarus_result::LAZARUS_OK;
-};
-
-void Shader::reset()
-{
-    this->vertLayout = LAZARUS_DEFAULT_VERT_LAYOUT;
-    this->fragLayout = LAZARUS_DEFAULT_FRAG_LAYOUT;
-
-    this->vertSource = "";
-    this->fragSource = "";
-
-	this->vertReader = nullptr;
-	this->fragReader = nullptr;
-	this->vertShaderProgram = NULL;
-	this->fragShaderProgram = NULL;
-    this->message = NULL;
-	
-	this->accepted = 0;
-	
-	this->vertShader = 0;
-	this->fragShader = 0;
-	this->shaderProgram = 0;	
-
-    return;
 };
 
 lazarus_result Shader::checkErrors(const char *file, uint32_t line)
@@ -646,6 +645,29 @@ void Shader::clearErrors()
     {
         this->errorCode = glGetError();
     };
+
+    return;
+};
+
+void Shader::reset()
+{
+    this->vertLayout = LAZARUS_DEFAULT_VERT_LAYOUT;
+    this->fragLayout = LAZARUS_DEFAULT_FRAG_LAYOUT;
+
+    this->vertSource = "";
+    this->fragSource = "";
+
+	this->vertReader = nullptr;
+	this->fragReader = nullptr;
+	this->vertShaderProgram = NULL;
+	this->fragShaderProgram = NULL;
+    this->message = NULL;
+	
+	this->accepted = 0;
+	
+	this->vertShader = 0;
+	this->fragShader = 0;
+	this->activeProgram = 0;	
 
     return;
 };

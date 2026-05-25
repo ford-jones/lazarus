@@ -1,5 +1,5 @@
 # Lazarus Engine
-#### *Version: 0.15.1*
+#### *Version: 0.15.2*
 ## Table of contents:
 
 - [Getting Started](#getting-started)
@@ -59,8 +59,8 @@ make clean
 ```
 
 ### Windows:
-If using windows you will need to install Microsoft Visual Studio and use it's compiler. This hasn't been tested on versions below 2022. \
-In the project root use Powershell or the Developer Command Prompt for VS 2022 to run the batchfile:
+If using windows you will need to install Microsoft Visual Studio in order to build the project from source. This has been tested with VS2019, VS2022 and VS2026. \
+Run the batchfile from the project root using the x64 Visual Studio terminal to compile with MSVC. To generate a 32-bit binary the x86 terminal should be used instead.
 ```
 build.bat
 ```
@@ -82,7 +82,7 @@ You should now be able to use Lazarus with your project like so:
 
 int main()
 {
-    Lazarus::WindowManager window = Lazarus::WindowManager("Game Window", nullptr, nullptr);
+    Lazarus::WindowManager window = Lazarus::WindowManager("Game Window");
     window.initialise();
 
     return 0;
@@ -93,8 +93,11 @@ See [here](#lazarus-by-example) for further usage guides.
 When compiling your project you will need to pass the following linker flags:
 #### Unix (Linux / Mac):
 ```
-g++ main.cpp -o run -lGL -lGLEW -lglfw -lfmod -freetype -llazarus
+g++ main.cpp -o run -lGLEW -lglfw3 -lfmod -lfreetype -lliblazarus
 ```
+Note:
+- When compiling on Linux, be sure to link OpenGL like so: `-lGL`
+- On some macs you may need to explicitly specify the c++ standard using: `-std=c++17`
 
 #### Windows:
 ```
@@ -144,12 +147,6 @@ Before `FMOD` can be used, you need to register an account on their website here
 Once that's done, navigate to https://www.fmod.com/download#fmodengine and download version `2.02.21` for your target OS.
 
 Once the download is complete, extract the packages from the `.zip`.
-
-`FMOD` libraries are available for a number of different architectures. Check which architecture your OS is running with:
-```
-lscpu
-```
-The first line should print the system's architecture, for me it's `x86_64`.
 
 Move the *contents* of the FMOD architecture sub-directory to your `lib` folder, e.g:
 ```
@@ -375,12 +372,12 @@ int main()
 
     //  Default shader
     Lazarus::Shader shader = Lazarus::Shader();
-    int shaderID = -1;
+    int shaderID = 0;
     shader.compileShaders(shaderID);    //  shaderID assumes the index of the newly linked shader
     shader.setActiveShader(shaderID);   //  activate the shader found at shaderID
 
     //  Camera
-    Lazarus::CameraManager cameraManager = Lazarus::CameraManager(shaderID);
+    Lazarus::CameraManager cameraManager = Lazarus::CameraManager(shader);
 
     //  Configure camera settings
     Lazarus::CameraManager::CameraConfig cameraSettings = {};
@@ -397,7 +394,7 @@ Now lets create our geometry:
 ```cpp
     //  Instantiate a new mesh manager (this can be stack'd or heap'd, here we use the stack).
     //  The ID of the shader that will be used to render this instance's resources must be provided
-    Lazarus::ModelManager modelManager = Lazarus::ModelManager(shaderID);
+    Lazarus::ModelManager modelManager = Lazarus::ModelManager(shader);
 
     //  Configure the mesh asset
     //  Note: when orthographically viewed, sizing corresponds to pixel-width
@@ -479,7 +476,7 @@ When you submit your own fragment and / or vertex shaders with a call to `Lazaru
 #### Vertex shader inputs:
 Note these inputs can be found at `LAZARUS_DEFAULT_VERT_LAYOUT`.
 ```c
-#define MAX_KEYFRAMES 255
+#define MAX_JOINTS 64
 
 //  Vertex buffer object 1 (attributes)
 layout(location = 0) in vec3 inVertex;              //  Input Vertex position
@@ -499,7 +496,7 @@ uniform mat4 viewMatrix;                            //  The camera's viewing mat
 uniform mat4 perspectiveProjectionMatrix;           //  A 3D projection matrix (if one is present)
 uniform mat4 orthoProjectionMatrix;                 //  A 2D projection matrix (if one is present)
 
-uniform mat4 jointMatrices[MAX_KEYFRAMES];          //  Raw pre-computed joint matrices
+uniform mat4 jointMatrices[MAX_JOINTS];          //  Raw pre-computed joint matrices
 
 out vec3 fragPosition;                              //  Output position
 out vec3 diffuseColor;                              //  Output color data
@@ -512,14 +509,14 @@ flat out int isUnderPerspective;                    //  Output required by defau
 
 vec3 _lazarusComputeWorldPosition();                //  Determine the output vertex position in worldspace coordinates and calculates the relevant clip-space coordinates.
 vec3 _lazarusComputeNormalDirection();              //  Determine the direction vector of the output vertex normals. Ensures preservation of the normal direction over non-uniform surfaces.
-vec3 _lazarusComputeSkinningMatrix();               //  Determine the weighted result of the combined joint matrices which effect the output vertex position. 
+vec3 _lazarusComputeSkinningMatrix();               //  Determine the weighted result of the combined joint matrices which effect the output vertex position (required for animating assets). 
 ```
 
 #### Pixel / Fragment shader inputs:
 Note these inputs can be found at `LAZARUS_DEFAULT_FRAG_LAYOUT`. \
 Anything not used from here will be optimised-out when compiled.
 ```c
-    #define MAX_LIGHTS 255
+    #define MAX_LIGHTS 64
 
     //  Texture storage types for comparisson with samplerType
     const int CUBEMAP   = 0;
@@ -893,7 +890,13 @@ Params:
 Set the shader id in state that should be used to render subsequent draw calls. 
 
 Params:
-> **program:** *The ID of a shader program returned from `Shader::compileShaders()`*
+> **program:** *The ID of a shader program generated using `Shader::compileShaders()`*
+
+#### void getActiveShader(int &program)
+Returns the ID of the program currently being to used to render the subjects of load and draw calls.
+
+params:
+> **program:** *An out parameter to store the active shader ID*
 
 #### uploadUniform(std::string identifier, void *data)
 Uploads a value to the to the most recently activated shader program. If no uniform by the name of `identifier` is present, the execution state will be set to `LAZARUS_SHADER_ERROR`. 
@@ -1024,10 +1027,10 @@ Params:
 A management class for mesh assets and their properties.
 
 ### Constructor:
-#### ModelManager(GLuint shader, TextureLoader::StorageType textureType)
+#### ModelManager(Shader &shader, TextureLoader::StorageType textureType)
 
 Params:
-> **shader:** *The id of the shader program used to render this mesh. Acquired from the out-parameter of `Shader::compileShaders()`*
+> **shader:** *The shader program used to render this mesh.
 > **textureType:** *Which variant of sampler storage should mesh texture's loaded by this instance be written to. (default: `TextureLoader::StorageType::ARRAY`)*
 
 ### Functions:
@@ -1175,10 +1178,10 @@ Flushes out the internal state(s) of the manager, including it's list of childre
 ### Constructor:
 Default initialises this class's members.
 
-#### CameraManager(GLuint shader)
+#### CameraManager(Shader &shader)
 
 Params:
-> **shader:** *The id of the shader program used to render this camera. Acquired from the out-parameter of `Shader::compileShaders()`*
+> **shader:** *The shader program used to render this mesh.
 
 ### Functions: 
 #### createCamera(CameraManager::Camera &out, CameraManager::CameraConfig options)
@@ -1226,10 +1229,10 @@ Retrieves the ID of a pixel occupant in view which has `ModelManager::Model::isC
 A management class for light assets and their properties. 
 
 ### Constructor:
-#### LightManager(int shader)
+#### LightManager(Shader &shader)
 
 Params:
-> **shader:** *The id of the shader program used to render this light. Acquired from the out-parameter of `Shader::compileShaders()`*
+> **shader:** *The shader program used to render this mesh.
 
 ### Functions: 
 #### createLightSource(LightManager::Light &out, LightManager::LightConfig options)
@@ -1239,12 +1242,11 @@ Params:
 > **out:** *An out parameter where load results are stored.* \
 > **options:** *Load settings indicating how the asset should be loaded.*
 
-#### loadLightSource(LightManager::Light &lightData, int shader)
+#### loadLightSource(LightManager::Light &lightData)
 Passes the light object's locative (x,y,z) values into the vertex shader and its' colour (r,g,b) values into the fragment shader.
 
 Params:
 > **lightData:** *A reference to the light asset you would like to render.*
-> **shader:** *Alternative shader destination to upload light properties rather than that which this `LightManager` was instantiated with. Note that usage of this option has performance expenses. (optional)*
 
 ### Members:
 > **Light:** *A collection of properties which make up a light entity. (type: `struct`)*
@@ -1337,10 +1339,10 @@ Params:
 A management class for rendering and laying out text on the screen.
 
 ### Constructor:
-#### TextManager(GLuint shader)
+#### TextManager(Shader &shader)
 
 Params:
-> **shader:** *The id of the shader program used to render this camera. Acquired from the out-parameter of `Shader::compileShaders()`*
+> **shader:** *The shader program used to render this mesh.
 
 ### Functions:
 #### extendFontStack(int &fontId, std::string filepath, int ptSize)
@@ -1391,10 +1393,10 @@ Params:
 A management class for handling environmental effects such as skyboxes and soon; particles.
 
 ### Constructor:
-#### WorldFX(GLuint shader)
+#### WorldFX(Shader &shader)
 
 Params:
-> **shader:** *The id of the shader program used to render the subject's of this classes tooling. Acquired from the out-parameter of `Shader::compileShaders()`*
+> **shader:** *The shader program used to render this mesh.
 
 ### Functions:
 
@@ -1428,12 +1430,11 @@ Params:
 > **color:** *The fog's RGB color values.*
 > **position:** *The worldspace coordinates of the viewpoint. (default: `{0.0, 0.0, 0.0} (origin)`).*
 
-#### loadFog(WorldFx::Fog &fogIn, int shader)
+#### loadFog(WorldFx::Fog &fogIn)
 Load fog properties to the GPU to be used in subsequent draw calls.
 
 Params:
-> **fogIn:** *The fog to be uploaded.* \
-> **shader:** *The destination shader program which fog properties should be uploaded to instead of that which was specified during instantiation. Note that usage of this function has performance expenses. (optional)*
+> **fogIn:** *The fog to be uploaded.*
 
 ### Members:
 > **SkyBox**: *A collection of properties which make up a skybox object. (type: `struct`.)*

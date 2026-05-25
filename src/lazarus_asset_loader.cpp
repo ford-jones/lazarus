@@ -297,9 +297,11 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                     /*
                         Wavefront does not support bone animation so zero the buffers.
                         Any value could be set here it's completely arbitrary.
+
+                        Cast so that MSVC doesn't have a whinge...
                     */
-                    this->tempJoints.insert(std::pair<uint32_t, glm::vec4>(j, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
-                    this->tempWeights.insert(std::pair<uint32_t, glm::vec4>(j, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
+                    this->tempJoints.insert(std::pair<uint32_t, glm::vec4>(static_cast<uint32_t>(j), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
+                    this->tempWeights.insert(std::pair<uint32_t, glm::vec4>(static_cast<uint32_t>(j), glm::vec4(0.0f, 0.0f, 0.0f, 0.0f)));
                     this->jointIndices.push_back(1);
                     this->weightIndices.push_back(1);
                 };
@@ -1713,7 +1715,7 @@ lazarus_result AssetLoader::constructIndexBuffer(std::vector<glm::vec3> &outAttr
 
             uint64_t hash = positionHash ^ ((jointHash << 1) >> 1) ^ ((normalHash << 1) >> 1) ^ (uvHash << 1); 
 
-            if(outAttributes.size() == 0)
+            if(std::empty(outAttributes))
             {
                 outAttributes.push_back(position);
                 outAttributes.push_back(diffuseColor);

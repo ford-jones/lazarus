@@ -44,14 +44,17 @@ TextureLoader::TextureLoader(TextureLoader::StorageType storageVariant)
 	switch (this->storageType)
 	{
 		case TextureLoader::StorageType::ARRAY:
+			LOG_DEBUG("Employs 2D sampler arrays for storage of asset textures");
 			glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureId);
 			break;
 		
 		case TextureLoader::StorageType::ATLAS:
+			LOG_DEBUG("Employs texture atlases for storage of truetype text glyphs");
 			glBindTexture(GL_TEXTURE_2D, this->textureId);			
 			break;
 
 		case TextureLoader::StorageType::CUBEMAP:
+			LOG_DEBUG("Employs cubemaps for storage of skymap textures");
 			glBindTexture(GL_TEXTURE_CUBE_MAP, this->textureId);
 			break;
 	
@@ -63,6 +66,7 @@ TextureLoader::TextureLoader(TextureLoader::StorageType storageVariant)
 lazarus_result TextureLoader::extendTextureStack(uint32_t maxWidth, uint32_t maxHeight, uint32_t textureLayers)
 {
 	this->clearErrors();
+	LOG_DEBUG("Extending 2D texture storage array");
 
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureId);
@@ -95,6 +99,7 @@ lazarus_result TextureLoader::loadImageToTextureStack(FileLoader::Image imageDat
 	this->image.height = imageData.height;
 	this->image.pixelData = imageData.pixelData;
 
+	LOG_DEBUG("Buffering sampler data to GPU texture array storage");
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D_ARRAY, this->textureId);
 
@@ -123,14 +128,15 @@ lazarus_result TextureLoader::loadImageToTextureStack(FileLoader::Image imageDat
 		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);	
 	}
-
+	
 	return this->checkErrors(__FILE__, __LINE__);
 };
 
 lazarus_result TextureLoader::storeCubeMap(uint32_t width, uint32_t height)
 {
 	this->clearErrors();
-
+	
+	LOG_DEBUG("Allocating cubemap texture storage");
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, this->textureId);
 	
@@ -175,6 +181,7 @@ lazarus_result TextureLoader::loadCubeMap(std::vector<FileLoader::Image> faces)
 	{
 		for(uint8_t i = 0; i < 6; i++)
 		{
+			LOG_DEBUG("Buffering sampler data to GPU cubemap storage");
 			this->clearErrors();
 
 			/*
@@ -225,6 +232,7 @@ lazarus_result TextureLoader::storeBitmapTexture(uint32_t maxWidth, uint32_t max
 		made dynamic. See other similar 
 		glActiveTexture calls.
 	*/
+	LOG_DEBUG("Allocating sampler storage for GPU texture atlas");
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, this->textureId);
 
@@ -266,6 +274,7 @@ lazarus_result TextureLoader::loadBitmapToTexture(FileLoader::Image imageData, u
 		texture at an offset equal to the current width of the texture
 		atlas and the culmilative height of previous alphabet sets.
 	*/
+	LOG_DEBUG("Buffering glyph data to texture atlas");
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, this->textureId);
 	
@@ -304,6 +313,7 @@ lazarus_result TextureLoader::loadBitmapToTexture(FileLoader::Image imageData, u
 
 void TextureLoader::calculateMipLevels(uint32_t &mipCount, uint32_t width, uint32_t height)
 {
+	LOG_DEBUG("Determining the total number of mip levels");
 	uint32_t loopCount = 0;
 
 	uint32_t mipWidth = width;

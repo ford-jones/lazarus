@@ -49,17 +49,19 @@ class Shader
         lazarus_result compileShaders(uint32_t &program, std::string fragmentShader = "", std::string vertexShader = "");
         lazarus_result uploadUniform(std::string identifier, void *data);
         lazarus_result setActiveShader(uint32_t program);
+        void getActiveShader(uint32_t &program);
         virtual ~Shader();
 
+        
     private: 
         lazarus_result verifyProgram(uint32_t program);
-        void reset();
         lazarus_result checkErrors(const char *file, uint32_t line);
         void clearErrors();
+        void reset();
 
         unique_ptr<FileLoader> vertReader;
         unique_ptr<FileLoader> fragReader;
-
+        
         std::string vertLayout; 
         std::string vertSource; 
         std::string fragLayout; 
@@ -67,8 +69,8 @@ class Shader
 
         const char *vertShaderProgram;
         const char *fragShaderProgram;
-
-        GLuint shaderProgram;
+        
+        GLuint activeProgram;
         GLuint vertShader;
         GLuint fragShader;
 

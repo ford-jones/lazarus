@@ -24,6 +24,8 @@
     #include "lazarus_common.h"
 #endif
 
+#include "lazarus_shader.h"
+
 #include <iostream>
 #include <vector>
 #include <map>
@@ -59,13 +61,14 @@ class LightManager
             LightConfig config;
         };
         
-        LightManager(GLuint shader);
+        LightManager(Shader &shader);
         virtual ~LightManager();
 
         lazarus_result createLightSource(Light &out, LightConfig options);
-        lazarus_result loadLightSource(Light &lightIn, int32_t shader = 0);
+        lazarus_result loadLightSource(Light &lightIn);
 
     private:
+        lazarus_result updateUniformLocations();
         lazarus_result checkErrors(const char *file, uint32_t line);
         void clearErrors();
         struct LightData
@@ -85,13 +88,14 @@ class LightManager
 
         uint32_t lightCount;
         GLint lightCountLocation;
-    	GLint shaderProgram;
+        GLuint activeShaderID;
 
-        int32_t errorCode;
-
+        Shader *shader;
         Light lightOut;
         LightData lightData;
         std::map<uint32_t, LightData> lightStore;
+
+        int32_t errorCode;
 };
 
 #endif

@@ -82,7 +82,7 @@ class FontLoader
 class TextManager : private FontLoader, private ModelManager
 {
     public:
-        TextManager(GLuint shader);
+        TextManager(Shader &shader);
 
         struct TextConfig
         {
@@ -113,6 +113,7 @@ class TextManager : private FontLoader, private ModelManager
         private: 
         Text textOut;
         lazarus_result identifyAlphabetDimensions(uint32_t fontId);
+        lazarus_result updateUniformLocations();
         void setActiveGlyph(char target, uint32_t fontId, uint32_t spacing);
         void lookUpUVs(uint8_t keyCode, uint32_t fontId);
         
@@ -136,7 +137,8 @@ class TextManager : private FontLoader, private ModelManager
         GLuint textColorUniformLocation;
 
         GLuint textureId;
-        GLuint shaderProgram;
+        GLuint activeShaderID;
+        Shader *shader;
         
         Transform transformer;
         FileLoader::Image glyph;

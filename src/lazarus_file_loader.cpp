@@ -113,6 +113,13 @@ lazarus_result FileLoader::loadImage(FileLoader::Image &out, const char *filenam
     this->imageData = {};
     this->outResize = {};
     
+    /**
+     * TODO/FIXME:
+     * There must be some errors going unchecked here...
+     * Images which appear "busted up" when loaded (crazy aritacts / aliasing / scan lines) tend to display on unix systems with such artifacts present.
+     * On windows however, the compiled executable simply won't run. The asset loader will silently crash out during texture reallocation with no warnings or errors from opengl.
+     */
+
     if(raw == NULL && filename)
     {   
         /*

@@ -19,16 +19,19 @@
 
 #include "../include/lazarus_light.h"
 
-LightManager::LightManager(GLuint shader)
+LightManager::LightManager(Shader &shader)
 {
     LOG_DEBUG("Constructing Lazarus::LightManager");
-	this->shaderProgram = shader;
+
+    this->shader = &shader;
+    this->activeShaderID = 0;
+    shader.getActiveShader(this->activeShaderID);
+    this->updateUniformLocations();
 
     this->lightOut = {};
     this->lightData = {};
     this->lightStore = {};
 
-    this->lightCountLocation = glGetUniformLocation(this->shaderProgram, "lightCount");
     this->lightCount = GlobalsManager::getNumberOfActiveLights();
 
     this->errorCode = 0;
@@ -61,11 +64,11 @@ lazarus_result LightManager::createLightSource(LightManager::Light &out, LightMa
     
     this->lightCount += 1;
     lightData.uniformIndex                   =   (this->lightCount - 1);
-    lightData.lightTypeUniformLocation       =   glGetUniformLocation(this->shaderProgram, (std::string("lightTypes[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
-    lightData.lightPositionUniformLocation   =   glGetUniformLocation(this->shaderProgram, (std::string("lightPositions[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
-    lightData.lightColorUniformLocation      =   glGetUniformLocation(this->shaderProgram, (std::string("lightColors[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
-    lightData.brightnessUniformLocation      =   glGetUniformLocation(this->shaderProgram, (std::string("lightBrightness[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
-    lightData.lightDirectionUniformLocation  =   glGetUniformLocation(this->shaderProgram, (std::string("lightDirections[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+    lightData.lightTypeUniformLocation       =   glGetUniformLocation(this->activeShaderID, (std::string("lightTypes[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+    lightData.lightPositionUniformLocation   =   glGetUniformLocation(this->activeShaderID, (std::string("lightPositions[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+    lightData.lightColorUniformLocation      =   glGetUniformLocation(this->activeShaderID, (std::string("lightColors[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+    lightData.brightnessUniformLocation      =   glGetUniformLocation(this->activeShaderID, (std::string("lightBrightness[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+    lightData.lightDirectionUniformLocation  =   glGetUniformLocation(this->activeShaderID, (std::string("lightDirections[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
 
     lazarus_result status = this->checkErrors(__FILE__, __LINE__);
     if(status != lazarus_result::LAZARUS_OK)
@@ -95,91 +98,73 @@ lazarus_result LightManager::createLightSource(LightManager::Light &out, LightMa
     }
 };
 
-lazarus_result LightManager::loadLightSource(LightManager::Light &lightIn, int32_t shader)
+lazarus_result LightManager::loadLightSource(LightManager::Light &lightIn)
 {
     LOG_DEBUG(std::string("Loading lightsource [" + lightIn.config.name + "]").c_str());
+
+    /*
+        Rediscover GPU uniform location(s) for every light in the store if the active
+        shader program has been changed since this was last called.
+    */
+    uint32_t program = 0;
+    shader->getActiveShader(program);
+    if(this->activeShaderID != program)
+    {
+        this->activeShaderID = program;
+        this->updateUniformLocations();
+    };
+
+    /*
+        Ensure that the user hasn't set a negative brightness value 
+    */
+    if(lightIn.config.brightness < 0.0f)
+    {
+        LOG_ERROR("Light Error: ", __FILE__, __LINE__);
+        return lazarus_result::LAZARUS_INVALID_INTENSITY;
+    }
+
+    /*
+        Perform light store lookup and upload uniforms
+    */
     try
     {
         this->lightData = lightStore.at(lightIn.id);
+
+        glUniform1i         (this->lightCountLocation, this->lightCount);
+        glUniform1i         (lightData.lightTypeUniformLocation, lightIn.config.type);
+        glUniform1f         (lightData.brightnessUniformLocation, lightIn.config.brightness);
+        glUniform3fv        (lightData.lightPositionUniformLocation, 1, &lightIn.config.position[0]);
+        glUniform3fv        (lightData.lightColorUniformLocation, 1, &lightIn.config.color[0]);
+        glUniform3fv        (lightData.lightDirectionUniformLocation, 1, &lightIn.config.direction[0]);
+    
+        return this->checkErrors(__FILE__, __LINE__);
     }
     catch(const std::out_of_range& e)
     {
         LOG_ERROR(e.what(), __FILE__, __LINE__);
         return lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
     }
+};
 
-    if(lightIn.config.brightness < 0.0f)
+lazarus_result LightManager::updateUniformLocations()
+{
+    LOG_DEBUG("Setting updated light uniform locations");
+    
+    this->clearErrors();
+    this->lightCountLocation = glGetUniformLocation(this->activeShaderID, "lightCount");
+
+    for(auto &light : lightStore)
     {
-        LOG_ERROR("Light Error: ", __FILE__, __LINE__);
-        return lazarus_result::LAZARUS_INVALID_INTENSITY;
+        this->lightData = light.second;
+        
+        lightData.lightTypeUniformLocation       =   glGetUniformLocation(this->activeShaderID, (std::string("lightTypes[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+        lightData.lightPositionUniformLocation   =   glGetUniformLocation(this->activeShaderID, (std::string("lightPositions[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+        lightData.lightColorUniformLocation      =   glGetUniformLocation(this->activeShaderID, (std::string("lightColors[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+        lightData.brightnessUniformLocation      =   glGetUniformLocation(this->activeShaderID, (std::string("lightBrightness[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
+        lightData.lightDirectionUniformLocation  =   glGetUniformLocation(this->activeShaderID, (std::string("lightDirections[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());    
     }
-    
-    if(shader == 0)
-    {
-        if(
-            lightData.brightnessUniformLocation     >= 0 &&
-            lightData.lightColorUniformLocation     >= 0 &&
-            lightData.lightPositionUniformLocation  >= 0 &&
-            lightData.lightDirectionUniformLocation >= 0
-        )
-        {
-            LOG_DEBUG("Uploading light uniforms");
-            this->clearErrors();
-    
-            glUniform1i         (this->lightCountLocation, this->lightCount);
-            glUniform1i         (lightData.lightTypeUniformLocation, lightIn.config.type);
-            glUniform1f         (lightData.brightnessUniformLocation, lightIn.config.brightness);
-            glUniform3fv        (lightData.lightPositionUniformLocation, 1, &lightIn.config.position[0]);
-            glUniform3fv        (lightData.lightColorUniformLocation, 1, &lightIn.config.color[0]);
-            glUniform3fv        (lightData.lightDirectionUniformLocation, 1, &lightIn.config.direction[0]);
-    
-            return this->checkErrors(__FILE__, __LINE__);
-        }
-        else
-        {
-            LOG_ERROR("Light Error: ", __FILE__, __LINE__);
 
-            return lazarus_result::LAZARUS_UNIFORM_NOT_FOUND;
-        };
-    }
-    else
-    {
-        LOG_DEBUG("Uploading light data to alternate shader program");
-        /*
-            When using a shader other than that which this light manager
-            was initialised with, we need to rediscover and reset the 
-            values of the uniform arrays. This is an expensive opperation
-            which could be better handled in userspace by creating a 
-            manager instance for each shader which needs the lights.
-
-            Another noteworthy performance reduction is that regardless
-            of how many lights have been loaded with 'shader', the entire
-            lightCount is sent and iterated over.
-
-            Ideally managers should inheret some base class that contains a shader relocation function
-            amongst other potentialy useful things such as error checkers etc.
-        */
-
-        this->clearErrors();
-
-        GLuint countLocation        = glGetUniformLocation(shader, "lightCount");
-        GLuint typeLocation         = glGetUniformLocation(shader, (std::string("lightTypes[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
-        GLuint positionLocation     = glGetUniformLocation(shader, (std::string("lightPositions[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
-        GLuint colorLocation        = glGetUniformLocation(shader, (std::string("lightColors[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
-        GLuint brightnessLocation   = glGetUniformLocation(shader, (std::string("lightBrightness[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
-        GLuint directionLocation    = glGetUniformLocation(shader, (std::string("lightDirections[").append(std::to_string(lightData.uniformIndex)) + "]").c_str());
-
-        glUniform1i         (countLocation, this->lightCount);
-        glUniform1i         (typeLocation, lightIn.config.type);
-        glUniform1f         (brightnessLocation, lightIn.config.brightness);
-        glUniform3fv        (positionLocation, 1, &lightIn.config.position[0]);
-        glUniform3fv        (colorLocation, 1, &lightIn.config.color[0]);
-        glUniform3fv        (directionLocation, 1, &lightIn.config.direction[0]);
-    
-        return this->checkErrors(__FILE__, __LINE__);
-    };
-
-    return lazarus_result::LAZARUS_OK;
+    return this->checkErrors(__FILE__, __LINE__);
 };
 
 lazarus_result LightManager::checkErrors(const char *file, uint32_t line)
