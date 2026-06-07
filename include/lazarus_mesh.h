@@ -213,6 +213,7 @@ class ModelManager
 
         lazarus_result setMaterials(AssetLoader::AssetData &assetData);
         lazarus_result setSelectable(bool selectable);
+        lazarus_result syncShader();
         lazarus_result uploadVertexData();
         lazarus_result uploadTextures();
         lazarus_result updateUniformLocations();

@@ -52,6 +52,8 @@ ModelManager::ModelManager(Shader &shader, TextureLoader::StorageType textureTyp
 
 lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManager::AssetConfig options)
 {
+    this->syncShader();
+
     this->modelOut = {};
     this->modelData = {};
     
@@ -304,17 +306,12 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
 
 };
 
+/**
+ * Determines if any of the materials used by the meshes that compose `this->modelOut` contain 
+ * textures and engages the allocator.
+ */
 lazarus_result ModelManager::uploadTextures()
 {
-    /*
-        Reload the entire texture stack / array if the mesh isn't
-        being used for anything special like glyphs or skyboxes, which
-        use different loaders. 
-        
-        I.e. reallocate the existing memory size + the new amount and 
-        upload all of the textures again if the current mesh uses 
-        image textures.
-    */
     LOG_DEBUG("Uploading asset textures to GPU");
 
     bool containsTextures = false;
@@ -343,8 +340,14 @@ lazarus_result ModelManager::uploadTextures()
     return status;
 };
 
+/**
+ * Finds and sets the values of shader uniforms which are required for `this` to function correctly.
+ * 
+ * Most likely the active program in the Lazarus::Shader used to instantiate `this` has changed.
+ */
 lazarus_result ModelManager::updateUniformLocations()
 {
+    
     LOG_DEBUG("Setting updated model uniform locations");
     this->clearErrors();
 
@@ -373,6 +376,8 @@ lazarus_result ModelManager::updateUniformLocations()
 
 lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::QuadConfig options)
 {
+    this->syncShader();
+
     LOG_DEBUG("Generating quad");
     
     if(options.width < 0.0f || options.height < 0.0f)
@@ -539,6 +544,8 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
 
 lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::CubeConfig options)
 {
+    this->syncShader();
+    
     LOG_DEBUG("Generating cube");
     float vertexPosition = options.scale / 2.0f; 
     
@@ -914,6 +921,15 @@ lazarus_result ModelManager::uploadVertexData()
 	
 };
 
+/*
+    Reallocates the current texture stack's memory size + 
+    the new amount and reUploads all of the textures again in-order
+    if the current mesh uses image textures.
+
+    I.e. Reloads the entire texture stack / array if `this->modelOut` isn't
+    being used for anything special like glyphs or skyboxes, which
+    use different loaders. 
+*/
 lazarus_result ModelManager::reallocateTextures()
 {
     LOG_DEBUG("Allocating additional texture storage");
@@ -1066,15 +1082,33 @@ lazarus_result ModelManager::setSelectable(bool selectable)
     }
 };
 
-lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
-{   
+/**
+ * Determine whether the active shader program used by `this->shader` has changed and updates
+ * the reference if so.
+ */
+lazarus_result ModelManager::syncShader()
+{
+    lazarus_result status = lazarus_result::LAZARUS_OK;
     uint32_t program = 0;
+    /**
+     * TODO:
+     * During creation, uploadTextures needs to be called for each known program - not just the active one.
+     * The implications of the current behaviour mean that _lazarusComputeColor() cannot be called from any shader 
+     * other than that which was active during creation for models whose meshes use textures.
+     */
     shader->getActiveShader(program);
     if(this->activeShaderID != program)
     {
         this->activeShaderID = program;
-        this->updateUniformLocations();
+        status = this->updateUniformLocations();
     };
+    
+    return status;
+};
+
+lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
+{   
+    this->syncShader();
 
     LOG_DEBUG("Loading model data");
     ModelManager::ModelData &model = modelStore.at(meshIn.id);
@@ -1281,16 +1315,16 @@ void ModelManager::loadAnimation(ModelManager::MeshData &data)
     };
 };
 
+/*
+    Based on the current elapsed ms (time), determine
+    where abouts we are in the animation sequence. Use
+    this to look up and interpolate the relevant TRS 
+    keyframe values for the next draw of the animated
+    asset.
+*/
 glm::mat4 ModelManager::computeLocalJointTransform(ModelManager::MeshData::MotionPoint &motionPoint, uint32_t animationID)
 {
     AssetLoader::AssetData::JointMotion motionData = motionPoint.animationData[animationID];
-    /*
-        Based on the current elapsed ms (time), determine
-        where abouts we are in the animation sequence. Use
-        this to look up and interpolate the relevant TRS 
-        keyframe values for the next draw of the animated
-        asset.
-    */
     uint32_t prev = motionPoint.playbackPosition;
 
     uint32_t translateIdx = this->getKeyframeIndex(motionData.translation, motionPoint.playbackPosition, motionPoint.elapsedPlaytime, motionPoint.previousPlaytime);
