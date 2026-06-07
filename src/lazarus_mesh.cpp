@@ -714,6 +714,10 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
 
 };
 
+/**
+ * Generates the models main Vertex attribute object amongst other VBO's, packs them with vertex
+ * data and desribes to OpenGL how all of this should be interpretted on the GPU. 
+ */
 lazarus_result ModelManager::uploadVertexData()
 {	
     LOG_DEBUG("Allocating vertex array object");
@@ -1029,6 +1033,12 @@ lazarus_result ModelManager::clearMeshStorage()
     return this->checkErrors(__FILE__, __LINE__);
 };
 
+/**
+ * Checks for room in the stencil buffer. If room is found a stencil buffer ID is assigned to the 
+ * model and each of its composite meshes, as well as their GPU instances. This allows
+ * an item to be located on-screen while amongst others by doing a pixel lookup and comparing with 
+ * the stencil buffer.
+ */
 lazarus_result ModelManager::setSelectable(bool selectable)
 {
     try
@@ -1327,14 +1337,17 @@ glm::mat4 ModelManager::computeLocalJointTransform(ModelManager::MeshData::Motio
     AssetLoader::AssetData::JointMotion motionData = motionPoint.animationData[animationID];
     uint32_t prev = motionPoint.playbackPosition;
 
+    //  Locate keyframes    
     uint32_t translateIdx = this->getKeyframeIndex(motionData.translation, motionPoint.playbackPosition, motionPoint.elapsedPlaytime, motionPoint.previousPlaytime);
     uint32_t rotateIdx = this->getKeyframeIndex(motionData.rotation, motionPoint.playbackPosition, motionPoint.elapsedPlaytime, motionPoint.previousPlaytime);
     uint32_t scaleIdx = this->getKeyframeIndex(motionData.scale, motionPoint.playbackPosition, motionPoint.elapsedPlaytime, motionPoint.previousPlaytime);
 
+    //  Extract keyframe transform values
     glm::vec4 translateKey = this->getTransformLerp(motionData.translation, translateIdx, motionPoint.playbackPosition);
     glm::vec4 rotateKey = this->getTransformLerp(motionData.rotation, rotateIdx, motionPoint.playbackPosition);
     glm::vec4 scaleKey = this->getTransformLerp(motionData.scale, scaleIdx, motionPoint.playbackPosition);
 
+    //  construct a joint transform matrix using keyframe values
     glm::mat4 localTransform = (
         glm::translate(glm::mat4(1.0f), glm::vec3(translateKey)) *
         glm::mat4_cast(glm::quat(rotateKey.w, rotateKey.x, rotateKey.y, rotateKey.z)) *
@@ -1349,9 +1362,13 @@ glm::mat4 ModelManager::computeLocalJointTransform(ModelManager::MeshData::Motio
     return localTransform;
 };
 
+/**
+ * Uses the current elapsed time to locate the indices of the keyframe that should 
+ * next be iterated to and interpolated against the current frame.
+ */
 uint32_t ModelManager::getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t &playbackPosition, uint32_t &elapsedMs, uint32_t &previousMs)
 {
-    /*
+    /**
         Determine how many ms have passed since this was
         last called.
 
@@ -1399,13 +1416,14 @@ uint32_t ModelManager::getKeyframeIndex(AssetLoader::AssetData::JointMotion::Tra
     return index;
 };
 
+/*
+    Calculate the linear interpolation between keyframe values. Note that 
+    cubicspline interpolation is not supported.
+*/
 glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t frameBegin, uint32_t playbackPosition)
 {
-    /*
-        Calculate keyframe interpolation. Note that cubicspline is
-        not supported.
-
-        TODO/FIXME:
+    /**
+        TODO:
         Handle static joints that may not have a JointMotion present at 
         all, I haven't seen this but it's a thing. In the cases identified so 
         far, they typically have exactly two keyframe indices with identical
@@ -1537,7 +1555,7 @@ lazarus_result ModelManager::pauseAnimation(ModelManager::Model &meshIn)
 
 lazarus_result ModelManager::playAnimation(ModelManager::Model &meshIn)
 {
-    /*
+    /**
         FIXME:
         This doesn't quite work as it should. There is 
         an observable "jump" during playback following
@@ -1679,6 +1697,10 @@ void ModelManager::setDiscardFragments(ModelManager::Model &meshIn, bool shouldD
     return;
 };
 
+/**
+ * Determines whether the model's meshes contain primitives that use image textures 
+ * or instead are composed by defined properties.
+ */
 lazarus_result ModelManager::setMaterials(AssetLoader::AssetData &assetData)
 {
     LOG_DEBUG("Loading material properties");
@@ -1732,6 +1754,9 @@ lazarus_result ModelManager::setMaterials(AssetLoader::AssetData &assetData)
     return lazarus_result::LAZARUS_OK;
 };
 
+/**
+ * Initialises `this->modelOut`'s default properties
+*/
 void ModelManager::setMeshProperties(AssetLoader::AssetData &assetData)
 {
     LOG_DEBUG("Loading base mesh properties");
@@ -1756,6 +1781,9 @@ void ModelManager::setMeshProperties(AssetLoader::AssetData &assetData)
    return;
 }
 
+/**
+ * Identifies and reports on issues with OpenGL
+*/
 lazarus_result ModelManager::checkErrors(const char *file, uint32_t line)
 {
     this->errorCode = glGetError();
@@ -1771,21 +1799,20 @@ lazarus_result ModelManager::checkErrors(const char *file, uint32_t line)
     return lazarus_result::LAZARUS_OK;
 };
 
+/**
+    Resets OpenGL's error state by flushing out all of the 
+    internal state flags containing the error value (which may 
+    be several). This is so that persistence of an errors 
+    life span is limitted to that function which caused it. 
+    By doing so, subsequent glGetError calls made from a function
+    other than that which actually caused the error will NOT 
+    throw. 
+    
+    Absolutely painful, see:
+    https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetError.xhtml#:~:text=glGetError%20should%20always%20be%20called%20in%20a%20loop
+ */
 void ModelManager::clearErrors()
 {
-    /*
-        Reset OpenGL's error state by flushing out all of the 
-        internal state flags containing the error value (which may 
-        be several). This is so that persistence of an errors 
-        life span is limitted to that function which caused it. 
-        By doing so, subsequent glGetError calls made from a function
-        other than that which actually caused the error will NOT 
-        throw. 
-        
-        Absolutely painful, see:
-        https://registry.khronos.org/OpenGL-Refpages/gl4/html/glGetError.xhtml#:~:text=glGetError%20should%20always%20be%20called%20in%20a%20loop
-    */
-
     this->errorCode = glGetError();
 
     while(this->errorCode != GL_NO_ERROR)
@@ -1824,6 +1851,9 @@ void ModelManager::copyModel(ModelManager::Model &dest, ModelManager::Model src)
     return;
 };
 
+/**
+ * Generates a buffer used to handle a meshes GPU instance data
+*/
 void ModelManager::instantiateMesh(bool selectable)
 {   
     LOG_DEBUG("Loading mesh instance(s)");
