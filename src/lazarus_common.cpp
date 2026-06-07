@@ -42,7 +42,7 @@ uint32_t                 LAZARUS_PRIMARY_DISPLAY_WIDTH          = 0;
 uint32_t                 LAZARUS_PRIMARY_DISPLAY_HEIGHT         = 0;
 uint32_t                 LAZARUS_LIGHT_COUNT                    = 0;
 std::vector<uint32_t>    LAZARUS_SELECTABLE_ENTITIES            = {};
-const uint32_t           LAZARUS_MAX_LIGHTS                     = 150;
+const uint32_t           LAZARUS_MAX_LIGHTS                     = 64;
 const uint32_t           LAZARUS_MAX_SELECTABLE_ENTITIES        = 254;
 
 uint32_t                 LAZARUS_MAX_IMAGE_WIDTH                = 0;
