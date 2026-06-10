@@ -568,7 +568,6 @@ Anything not used from here will be optimised-out when compiled.
     vec3 _lazarusComputeLambertianReflection(vec3 color);   //  Calculate the fragment's diffuse lighting
     float _lazarusComputeFogFactor();                       //  Calculate fog attenuation
 ```
-**It should be noted that `_lazarusComputeColor()` will only return a value for a textured mesh when it is called from the program which the `ModelManager` was instantiated with.**
 
 ------------------------------------------------------------------
 
