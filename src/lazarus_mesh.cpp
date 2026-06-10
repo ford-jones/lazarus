@@ -34,15 +34,6 @@ ModelManager::ModelManager(Shader &shader, TextureLoader::StorageType textureTyp
 
     shader.getActiveShader(this->activeShaderID);
     this->updateUniformLocations();
-    
-    /*
-        Bind samplers to texture units and load locations.
-        https://www.khronos.org/opengl/wiki/Sampler_(GLSL)#:~:text=The%20value%20you%20provide%20to%20a%20sampler%20uniform%20is%20the%20texture%20image%20unit%20to%20which%20you%20will%20bind%20the%20texture%20that%20the%20sampler%20will%20access
-    */
-
-    glUniform1i(glGetUniformLocation(this->activeShaderID, "textureAtlas"), 1);
-    glUniform1i(glGetUniformLocation(this->activeShaderID, "textureArray"), 2);
-    glUniform1i(glGetUniformLocation(this->activeShaderID, "textureCube"), 3);
 
     this->maxTexWidth = 0;
     this->maxTexHeight = 0;
@@ -354,6 +345,14 @@ lazarus_result ModelManager::updateUniformLocations()
     this->meshVariantLocation           = glGetUniformLocation(this->activeShaderID, "samplerType");
     this->discardFragsLocation          = glGetUniformLocation(this->activeShaderID, "discardFrags");
     this->isAnimatedLocation            = glGetUniformLocation(this->activeShaderID, "isAnimated");
+
+    /*
+        Bind samplers to texture units and load locations.
+        https://www.khronos.org/opengl/wiki/Sampler_(GLSL)#:~:text=The%20value%20you%20provide%20to%20a%20sampler%20uniform%20is%20the%20texture%20image%20unit%20to%20which%20you%20will%20bind%20the%20texture%20that%20the%20sampler%20will%20access
+    */
+    glUniform1i(glGetUniformLocation(this->activeShaderID, "textureAtlas"), 1);
+    glUniform1i(glGetUniformLocation(this->activeShaderID, "textureArray"), 2);
+    glUniform1i(glGetUniformLocation(this->activeShaderID, "textureCube"), 3);
 
     return this->checkErrors(__FILE__, __LINE__);
 }
@@ -1102,9 +1101,9 @@ lazarus_result ModelManager::syncShader()
     uint32_t program = 0;
     /**
      * TODO:
-     * During creation, uploadTextures needs to be called for each known program - not just the active one.
-     * The implications of the current behaviour mean that _lazarusComputeColor() cannot be called from any shader 
-     * other than that which was active during creation for models whose meshes use textures.
+     * updateUniformLocations is expensive, the result should be cached on-create
+     * that way; all that needs to be done here is a simple lookup in memory 
+     * followed by glUniform* (i.e. remove glGetUniformLocation)
      */
     shader->getActiveShader(program);
     if(this->activeShaderID != program)
@@ -1112,7 +1111,7 @@ lazarus_result ModelManager::syncShader()
         this->activeShaderID = program;
         status = this->updateUniformLocations();
     };
-    
+
     return status;
 };
 
