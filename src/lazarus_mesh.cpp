@@ -115,147 +115,156 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
                 Flatten out this map and resolve indices 
                 corrections.
             */
-            std::map<uint32_t, AssetLoader::AssetData::JointData> rig = assetData.armature;
-
-            std::set<uint32_t> heirachy;
-            for(auto pair : rig)
+            if(assetData.armature.size() > LAZARUS_MAX_MOTIONPOINTS)
             {
-                MeshData::MotionPoint motionPoint = {};
-                AssetLoader::AssetData::JointData jointData = pair.second;
+                LOG_ERROR("Asset Error:", __FILE__, __LINE__);
 
-                motionPoint.id = jointData.id;
-                motionPoint.inverseBindMatrix = jointData.inverseBindMatrix;
-
-                /*
-                    Obtain the movement data for this joint for each 
-                    animation that can be enacted by the armature.
-                */
-                for(size_t j = 0; j < assetData.animations.size(); j++)
-                {
-                    AssetLoader::AssetData::JointMotion jointMotion = assetData.animations[j].at(jointData.id);
-                    motionPoint.animationData.push_back(jointMotion);
-                };
-
-                /*
-                    Compute the transformation matrix required
-                    for moving into the bind-pose. 
-                    
-                    Note: Blender exports its' quats with 'w' on 
-                    the wrong side.
-                */
-                motionPoint.localJointTransform = (
-                    glm::translate(glm::mat4(1.0f), jointData.translation) *
-                    glm::mat4_cast(glm::quat(jointData.rotation.w, jointData.rotation.x, jointData.rotation.y, jointData.rotation.z)) * 
-                    glm::scale(glm::mat4(1.0f), jointData.scale)
-                );
-                motionPoint.globalJointTransform = motionPoint.localJointTransform;
-                motionPoint.jointMatrix = glm::mat4(0.0f);
-                
-                /*
-                    Look up the children of the joints actual 
-                    IDs relative to the flattened armature.
-                */
-                for(size_t k = 0; k < jointData.children.size(); k++)
-                {
-                    uint32_t childID = jointData.children[k];
-                    uint32_t index = assetData.armature.at(childID).id;
-                    motionPoint.children.push_back(index);
-
-                    heirachy.insert(index);
-                };
-                
-                meshData.armature.push_back(motionPoint);
-            };
-            
-            /*
-                Ensure flattened armature is indexed in
-                the same order of appearance as the glb 
-                'skins' vector.
-            */
-            std::sort(
-                meshData.armature.begin(), 
-                meshData.armature.end(), 
-                [](MeshData::MotionPoint &jointA, MeshData::MotionPoint &jointB) {
-                    return jointA.id < jointB.id;
-                }
-            );
-            
-
-            /*
-                Determine the armature's root joint (The only node 
-                in the tree which is never referred to as a child of 
-                another node).
-
-                TODO:
-                This should be extended to be more inclusive of 
-                armatures with multiple roots (forests).
-            */
-            for(size_t j = 0; j < meshData.armature.size(); j++)
+                return lazarus_result::LAZARUS_LIMIT_REACHED;
+            }
+            else
             {
-                if(heirachy.insert(j).second)
-                {
-                    meshData.armatureRoot = j;
-                    break;
-                };
-            };
-
-            /*
-                Traverse joint structure from root and apply 
-                transforms forward to children as the tree is 
-                descended.
-
-                I.e. Breadth-first search begin.
-            */
-            MeshData::MotionPoint &rootJoint = meshData.armature[meshData.armatureRoot];
-            std::vector<uint32_t> children = rootJoint.children;
-            std::vector<uint32_t> parents;
-
-            parents.resize(rootJoint.children.size(), meshData.armatureRoot);
-            std::set<uint32_t> visited = {rootJoint.id};
-
-            rootJoint.parentID = -1;
-            rootJoint.posePosition = rootJoint.globalJointTransform;
-            rootJoint.jointMatrix = rootJoint.globalJointTransform * rootJoint.inverseBindMatrix;
-            
-            while(!std::empty(children))
-            {
-                std::vector<uint32_t> nextChildren;
-                std::vector<uint32_t> nextParents;
-
-                for(size_t k = 0; k < children.size(); k++)
-                {
-                    uint32_t childID = children[k];
-                    uint32_t parentID = parents[k];
-
-                    if(visited.insert(childID).second)
-                    {
-                        MeshData::MotionPoint &child = meshData.armature[childID];
-                        MeshData::MotionPoint &parent = meshData.armature[parentID];
-                        nextChildren.insert(
-                            nextChildren.end(), 
-                            child.children.begin(), 
-                            child.children.end()
-                        );
-                        nextParents.resize(nextParents.size() + child.children.size(), childID);
+                std::map<uint32_t, AssetLoader::AssetData::JointData> rig = assetData.armature;
     
-                        /*
-                            Compute the pose and set it as the joint 
-                            matrix value required for vertex skinning
-                            by editting the rig in-place.
-                        */
-                        glm::mat4 localTransform = child.globalJointTransform;
-                        child.parentID = parentID;
-                        child.globalJointTransform = parent.globalJointTransform * localTransform;
-                        child.posePosition = child.globalJointTransform;
-                        child.jointMatrix = child.globalJointTransform * child.inverseBindMatrix;
+                std::set<uint32_t> heirachy;
+                for(auto pair : rig)
+                {
+                    MeshData::MotionPoint motionPoint = {};
+                    AssetLoader::AssetData::JointData jointData = pair.second;
+    
+                    motionPoint.id = jointData.id;
+                    motionPoint.inverseBindMatrix = jointData.inverseBindMatrix;
+    
+                    /*
+                        Obtain the movement data for this joint for each 
+                        animation that can be enacted by the armature.
+                    */
+                    for(size_t j = 0; j < assetData.animations.size(); j++)
+                    {
+                        AssetLoader::AssetData::JointMotion jointMotion = assetData.animations[j].at(jointData.id);
+                        motionPoint.animationData.push_back(jointMotion);
+                    };
+    
+                    /*
+                        Compute the transformation matrix required
+                        for moving into the bind-pose. 
+                        
+                        Note: Blender exports its' quats with 'w' on 
+                        the wrong side.
+                    */
+                    motionPoint.localJointTransform = (
+                        glm::translate(glm::mat4(1.0f), jointData.translation) *
+                        glm::mat4_cast(glm::quat(jointData.rotation.w, jointData.rotation.x, jointData.rotation.y, jointData.rotation.z)) * 
+                        glm::scale(glm::mat4(1.0f), jointData.scale)
+                    );
+                    motionPoint.globalJointTransform = motionPoint.localJointTransform;
+                    motionPoint.jointMatrix = glm::mat4(0.0f);
+                    
+                    /*
+                        Look up the children of the joints actual 
+                        IDs relative to the flattened armature.
+                    */
+                    for(size_t k = 0; k < jointData.children.size(); k++)
+                    {
+                        uint32_t childID = jointData.children[k];
+                        uint32_t index = assetData.armature.at(childID).id;
+                        motionPoint.children.push_back(index);
+    
+                        heirachy.insert(index);
+                    };
+                    
+                    meshData.armature.push_back(motionPoint);
+                };
+                
+                /*
+                    Ensure flattened armature is indexed in
+                    the same order of appearance as the glb 
+                    'skins' vector.
+                */
+                std::sort(
+                    meshData.armature.begin(), 
+                    meshData.armature.end(), 
+                    [](MeshData::MotionPoint &jointA, MeshData::MotionPoint &jointB) {
+                        return jointA.id < jointB.id;
+                    }
+                );
+                
+    
+                /*
+                    Determine the armature's root joint (The only node 
+                    in the tree which is never referred to as a child of 
+                    another node).
+    
+                    TODO:
+                    This should be extended to be more inclusive of 
+                    armatures with multiple roots (forests).
+                */
+                for(size_t j = 0; j < meshData.armature.size(); j++)
+                {
+                    if(heirachy.insert(j).second)
+                    {
+                        meshData.armatureRoot = j;
+                        break;
                     };
                 };
-
-                children = nextChildren;
-                parents = nextParents;
+    
+                /*
+                    Traverse joint structure from root and apply 
+                    transforms forward to children as the tree is 
+                    descended.
+    
+                    I.e. Breadth-first search begin.
+                */
+                MeshData::MotionPoint &rootJoint = meshData.armature[meshData.armatureRoot];
+                std::vector<uint32_t> children = rootJoint.children;
+                std::vector<uint32_t> parents;
+    
+                parents.resize(rootJoint.children.size(), meshData.armatureRoot);
+                std::set<uint32_t> visited = {rootJoint.id};
+    
+                rootJoint.parentID = -1;
+                rootJoint.posePosition = rootJoint.globalJointTransform;
+                rootJoint.jointMatrix = rootJoint.globalJointTransform * rootJoint.inverseBindMatrix;
+                
+                while(!std::empty(children))
+                {
+                    std::vector<uint32_t> nextChildren;
+                    std::vector<uint32_t> nextParents;
+    
+                    for(size_t k = 0; k < children.size(); k++)
+                    {
+                        uint32_t childID = children[k];
+                        uint32_t parentID = parents[k];
+    
+                        if(visited.insert(childID).second)
+                        {
+                            MeshData::MotionPoint &child = meshData.armature[childID];
+                            MeshData::MotionPoint &parent = meshData.armature[parentID];
+                            nextChildren.insert(
+                                nextChildren.end(), 
+                                child.children.begin(), 
+                                child.children.end()
+                            );
+                            nextParents.resize(nextParents.size() + child.children.size(), childID);
+        
+                            /*
+                                Compute the pose and set it as the joint 
+                                matrix value required for vertex skinning
+                                by editting the rig in-place.
+                            */
+                            glm::mat4 localTransform = child.globalJointTransform;
+                            child.parentID = parentID;
+                            child.globalJointTransform = parent.globalJointTransform * localTransform;
+                            child.posePosition = child.globalJointTransform;
+                            child.jointMatrix = child.globalJointTransform * child.inverseBindMatrix;
+                        };
+                    };
+    
+                    children = nextChildren;
+                    parents = nextParents;
+                };
             };
-        };
-
+    
+        };   
         this->instantiateMesh(options.selectable);
         
         status = this->setMaterials(assetData);
@@ -271,8 +280,7 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
         };
             
         this->modelData.push_back(this->meshData);
-    };
-    
+    }
     
     try
     {
@@ -327,7 +335,7 @@ lazarus_result ModelManager::uploadTextures()
             };
         };
     };
-
+    
     return status;
 };
 
@@ -1046,7 +1054,7 @@ lazarus_result ModelManager::setSelectable(bool selectable)
         if (selectable)
         {
             LOG_DEBUG("Determining a pickable ID for the asset");
-            if (numOccupants < UINT8_MAX)
+            if (numOccupants < LAZARUS_MAX_SELECTABLE_ENTITIES)
             {
                 /*
                     Items which can be picked from the stencil-
@@ -1068,6 +1076,7 @@ lazarus_result ModelManager::setSelectable(bool selectable)
             }
             else
             {
+                LOG_ERROR("Asset Error: ", __FILE__, __LINE__);
                 return lazarus_result::LAZARUS_LIMIT_REACHED;
             }
         }

@@ -28,6 +28,10 @@
 #define RESET_TEXT "\x1b[37m"
 #define RED_TEXT  "\x1b[31m"
 
+#define LAZARUS_MAX_LIGHTS (64)
+#define LAZARUS_MAX_MOTIONPOINTS (64)
+#define LAZARUS_MAX_SELECTABLE_ENTITIES (255)
+
 extern void LOG_DEBUG(const char *DEBUG_MESSAGE);
 extern void LOG_ERROR(const char *ERR_MESSAGE, const char *ERR_FILENAME, uint32_t ERR_LINE);
 
