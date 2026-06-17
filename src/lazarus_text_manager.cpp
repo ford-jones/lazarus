@@ -501,8 +501,8 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
             */
             status = transformer.translateModel(
                 quad, 
-                static_cast<float>((settings.location.x + (this->glyph.width / 2.0f)) + this->translationStride), 
-                static_cast<float>((settings.location.y + (this->rowHeight / 2.0f))), 
+                static_cast<float>((settings.location.x + (this->glyph.width * 0.5f)) + this->translationStride), 
+                static_cast<float>((settings.location.y + (this->rowHeight * 0.5f))), 
                 0.0f
             );
             if(status != lazarus_result::LAZARUS_OK)

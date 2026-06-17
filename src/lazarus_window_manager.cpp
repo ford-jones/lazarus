@@ -880,8 +880,8 @@ lazarus_result WindowManager::checkErrors(const char *file, int line)
 
 lazarus_result WindowManager::centerWindow()
 {
-	int32_t windowLocationX = floor((videoMode->width - this->frame.width) / 2);
-	int32_t windowLocationY = floor((videoMode->height - this->frame.height) / 2);
+	int32_t windowLocationX = floor((videoMode->width - this->frame.width) * 0.5f);
+	int32_t windowLocationY = floor((videoMode->height - this->frame.height) * 0.5f);
     glfwSetWindowPos(this->window, windowLocationX, windowLocationY);
 
 	return this->checkErrors(__FILE__, __LINE__);

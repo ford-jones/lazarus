@@ -443,10 +443,10 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
         (E.g. width 2.0f, height 2.0f becomes 
         width -1.0f, height +1.0f) 
     */
-    float xMin = -(options.width / 2.0f);
-    float xMax = options.width / 2.0f;
-    float yMax = options.height / 2.0f;
-    float yMin = -(options.height / 2.0f);
+    float xMin = -(options.width * 0.5f);
+    float xMax = options.width * 0.5f;
+    float yMax = options.height * 0.5f;
+    float yMin = -(options.height * 0.5f);
     /*
         If the UV params aren't their default values (0.0) then
         this mesh is being created for a glyph which needs to be 
@@ -554,7 +554,7 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
     this->syncShader();
     
     LOG_DEBUG("Generating cube");
-    float vertexPosition = options.scale / 2.0f; 
+    float vertexPosition = options.scale * 0.5f; 
     
     AssetLoader::AssetData assetData = {};
     this->modelOut = {};
@@ -676,7 +676,7 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
         Zero-out movement / animation buf
     */
     assetData.movements.clear();
-    assetData.movements.resize(assetData.attributes.size() / 2, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
+    assetData.movements.resize(assetData.attributes.size() * 0.5f, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
 
     this->meshData = {};
     this->meshData.texture.unitId = textureUnit;

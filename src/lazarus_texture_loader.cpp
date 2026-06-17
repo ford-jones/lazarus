@@ -332,13 +332,13 @@ void TextureLoader::calculateMipLevels(uint32_t &mipCount, uint32_t width, uint3
 
 		if(mipWidth != 1)
 		{
-			uint32_t xResult = static_cast<uint32_t>(floor(mipWidth / 2));
+			uint32_t xResult = static_cast<uint32_t>(floor(mipWidth * 0.5f));
 			mipWidth = xResult;
 		}
 
 		if (mipHeight != 1)
 		{
-			uint32_t yResult = static_cast<uint32_t>(floor(mipHeight / 2));
+			uint32_t yResult = static_cast<uint32_t>(floor(mipHeight * 0.5f));
 			mipHeight = yResult;
 		}
 
