@@ -119,17 +119,22 @@ lazarus_result EventManager::eventsInit()
 	if(win != NULL)
 	{
 		glfwSetKeyCallback(win, [](GLFWwindow *win, int key, int scancode, int action, int mods){ 
-			int32_t code = 0;
-			int32_t scan = 0;
+			// int32_t code = 0;
+			// int32_t scan = 0;
 			
-			if(action != GLFW_RELEASE)
-			{
-				code = key;
-				scan = scancode;
-			};
+			// if(action != GLFW_RELEASE)
+			// {
+			// 	code = key;
+			// 	scan = scancode;
+			// };
+
+			EventType type = action != GLFW_RELEASE
+			? EventType::KEY_DOWN
+			: EventType::KEY_UP;
 			
 			WindowManager *window = (WindowManager *) glfwGetWindowUserPointer(win);
-			window->dispatchEvent(EventType::KEY_PRESS, code, scan);
+			window->dispatchEvent(type, key, scancode);
+			// window->dispatchEvent(EventType::KEY_PRESS, code, scan);
 
 			return;
 		});
@@ -189,8 +194,24 @@ lazarus_result EventManager::monitorEvents()
 		at the time of the previous call to poll and 
 		replace them with any events processed via
 		callbacks inbetween.
+
+		Keys which are held down between press and
+		release and seeded at the head of the queue.
 	*/
 	this->eventQueue.clear();
+	/**
+	 * TODO:
+	 * Add the scancode in here or do away with it altogether.
+	 */
+	for(int32_t keyCode : heldKeys)
+	{
+		Event e = {};
+		e.type = EventType::KEY_HOLD;
+		e.key = keyCode;
+		
+		eventQueue.push_back(e);
+	}
+
 	/*
 		The glfw scroll state when monitored can only be on or
 		off - there is no scroll "neutral" state, so one is 
@@ -389,8 +410,11 @@ void EventManager::dispatchEvent(EventManager::EventType variant, int32_t aValue
 	*/
 	switch (event.type)
 	{
-		case EventType::KEY_PRESS:
-			if(this->latestKeyState != aValue)
+		case EventType::KEY_DOWN:
+		{
+			/* Check that the queue contains no instances of this key already */
+			auto it = heldKeys.insert(aValue);
+			if(it.second)
 			{
 				event.key = aValue;
 				event.keyVariant = bValue;
@@ -399,8 +423,23 @@ void EventManager::dispatchEvent(EventManager::EventType variant, int32_t aValue
 				this->latestScanState = bValue;
 
 				this->eventQueue.push_back(event);
-			};
+			}
 			break;
+		}
+
+		case EventType::KEY_UP:
+		{
+			heldKeys.erase(aValue);
+
+			event.key = aValue;
+			event.keyVariant = bValue;
+
+			this->latestKeyState = 0;
+			this->latestScanState = 0;
+
+			this->eventQueue.push_back(event);
+			break;
+		}
 
 		case EventType::CLICK:
 			if(this->latestClickState != aValue)
