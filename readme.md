@@ -403,7 +403,7 @@ Now lets create our geometry:
     quadSettings.height = 500;
 
     //  Generate asset
-    Lazarus::ModelManager::Quad quad = {};
+    Lazarus::ModelManager::Model quad = {};
     modelManager.createQuad(quad, quadSettings); //  upon success, quad is given a value
 ```
 
@@ -833,7 +833,9 @@ Params:
 ### Members:
 > **eventQueue:** *All meaningful changes that occured in event state since the last call to `monitorEvents()`. (type: `std::vector<WindowManager::EventManager::Event>`)* \
 > **EventType:** *Different event varieties. (type: `enum`)* 
->	- **KEY_PRESS:** *A keyboard button, pressed or released.* 
+>	- **KEY_DOWN:** *A keyboard button has been pressed.* 
+>	- **KEY_UP:** *A Held or pressed keyboard button has been released.* 
+>	- **KEY_HOLD** *A keyboard button is being held down.* 
 >	- **CLICK:** *A mouse button, pressed or released.* 
 >	- **MOUSE_MOVE:** *The cursor position on either the x or y axis (or both).*  
 >   - **SCROLL:** *The scroll / mouse wheel, up, down or neutral.*
