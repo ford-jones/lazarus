@@ -109,6 +109,7 @@ class EventManager
          * while simultaniously deduplicating key events from the queue. 
          */
         std::set<int32_t> heldKeys;
+        std::vector<Event> events;
 
         int32_t latestKeyState;
 		int32_t latestScanState;

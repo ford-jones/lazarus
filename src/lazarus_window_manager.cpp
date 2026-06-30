@@ -119,22 +119,12 @@ lazarus_result EventManager::eventsInit()
 	if(win != NULL)
 	{
 		glfwSetKeyCallback(win, [](GLFWwindow *win, int key, int scancode, int action, int mods){ 
-			// int32_t code = 0;
-			// int32_t scan = 0;
-			
-			// if(action != GLFW_RELEASE)
-			// {
-			// 	code = key;
-			// 	scan = scancode;
-			// };
-
 			EventType type = action != GLFW_RELEASE
 			? EventType::KEY_DOWN
 			: EventType::KEY_UP;
 			
 			WindowManager *window = (WindowManager *) glfwGetWindowUserPointer(win);
 			window->dispatchEvent(type, key, scancode);
-			// window->dispatchEvent(EventType::KEY_PRESS, code, scan);
 
 			return;
 		});
@@ -197,8 +187,13 @@ lazarus_result EventManager::monitorEvents()
 
 		Keys which are held down between press and
 		release and seeded at the head of the queue.
+
+		Copy snapshot of the private queue (that could be updated
+		by a callback mid-frame) to the public queue to be
+		used as a single source of truth for the user.
 	*/
-	this->eventQueue.clear();
+	this->eventQueue = this->events;
+	this->events.clear();
 	/**
 	 * TODO:
 	 * Add the scancode in here or do away with it altogether.
@@ -209,7 +204,7 @@ lazarus_result EventManager::monitorEvents()
 		e.type = EventType::KEY_HOLD;
 		e.key = keyCode;
 		
-		eventQueue.push_back(e);
+		events.push_back(e);
 	}
 
 	/*
@@ -422,7 +417,7 @@ void EventManager::dispatchEvent(EventManager::EventType variant, int32_t aValue
 				this->latestKeyState = aValue;
 				this->latestScanState = bValue;
 
-				this->eventQueue.push_back(event);
+				this->events.push_back(event);
 			}
 			break;
 		}
@@ -437,7 +432,7 @@ void EventManager::dispatchEvent(EventManager::EventType variant, int32_t aValue
 			this->latestKeyState = 0;
 			this->latestScanState = 0;
 
-			this->eventQueue.push_back(event);
+			this->events.push_back(event);
 			break;
 		}
 
@@ -447,7 +442,7 @@ void EventManager::dispatchEvent(EventManager::EventType variant, int32_t aValue
 				event.click = aValue;
 				this->latestClickState = aValue;
 
-				this->eventQueue.push_back(event);
+				this->events.push_back(event);
 			};
 			break;
 
@@ -461,7 +456,7 @@ void EventManager::dispatchEvent(EventManager::EventType variant, int32_t aValue
 				this->latestMouseXState = aValue;
 				this->latestMouseYState = bValue;
 
-				this->eventQueue.push_back(event);
+				this->events.push_back(event);
 			};
 			break;
 
@@ -471,7 +466,7 @@ void EventManager::dispatchEvent(EventManager::EventType variant, int32_t aValue
 				event.scroll = aValue;
 				this->latestScrollState = aValue;
 
-				this->eventQueue.push_back(event);
+				this->events.push_back(event);
 			};
 			break;
 		
