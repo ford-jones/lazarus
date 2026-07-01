@@ -1,12 +1,15 @@
-# Version: 2026.05.25130327
+# Version: 2026.07.01011628
 
-* [2e644e0](https://github.com/ford-jones/lazarus/commit/2e644e0cf984ed0f837bf2dd138ef9afc7442d01): Fix: Removes trailing semicolons from glsl functions definitions
-* [fddf5dd](https://github.com/ford-jones/lazarus/commit/fddf5dd9f20f94b1b2f7f206d4971acdc824c3b1): Fix: Explicitly specify Cocoa OOP framework for MacOS systems
-* [e97c3c3](https://github.com/ford-jones/lazarus/commit/e97c3c3a4309935cc3d705bc6f66decbe1a35b7c): Fix: Reduce the numerical limit for uniform blocks to accomidate lightweight hardware
-* [10f045f](https://github.com/ford-jones/lazarus/commit/10f045fc960a2c0fe8e9c80ac53852fbe42703a9): Docs: Added new functions to documentation
-* [d01da2c](https://github.com/ford-jones/lazarus/commit/d01da2c9ad82d6d55ecff777452d1d06b12a5a64): Docs: Updated api reference and examples guide
-* [1c33bf5](https://github.com/ford-jones/lazarus/commit/1c33bf537101f5ea0deaa8990c3991e89ebd5f20): Update: Improvements to shader management using get/set operations
-* [36a8650](https://github.com/ford-jones/lazarus/commit/36a86507eed475f9a47e905e90fbd514d64f3b09): Update: Improved shader pipeline architecture for x-platform usage cohesion
-* [d75a97c](https://github.com/ford-jones/lazarus/commit/d75a97c96e4feaf8fd382a0a617318d9f55c7420): Fix: MSVC compliant initialisation of OpenGL out-parameter arguments
-* [5a7ae14](https://github.com/ford-jones/lazarus/commit/5a7ae1437a3c5b9804e1eaacc9de7af780c3c519): Fix: Cleaned up MSVC asset loader warnings
-* [cd2a7a3](https://github.com/ford-jones/lazarus/commit/cd2a7a313da40ffda306e0a5e1999d1340170c9f): Docs: Updated patch release number
+* [24734c3](https://github.com/ford-jones/lazarus/commit/24734c3520a8e448b3de27c504a3202b64cef324): Fix: Ensures that event queue snapshots persist unchanged between frame presentations
+* [5d47cf0](https://github.com/ford-jones/lazarus/commit/5d47cf0d6908bd75931b572ad28e38c82d6e5d89): Fix: Resolved issue with alphabet clipping during glyph rendering
+* [118130e](https://github.com/ford-jones/lazarus/commit/118130e68b213860027c4623a1e0d74dba8bf5f9): Docs: Cleaned up example and added new event types
+* [419bb0e](https://github.com/ford-jones/lazarus/commit/419bb0e2e689c96510d9a8b60e625abd746206a7): Fix: Correctly expresses key events in held and released states
+* [90d9369](https://github.com/ford-jones/lazarus/commit/90d9369c236c5d1bb72a2b7d4d80e65e24cc8f6f): Docs: Updated documented caveats
+* [afb82c0](https://github.com/ford-jones/lazarus/commit/afb82c03fee0c906151570172bd21bc46c05f2fc): Update: Uses floating point multipication in place of division operations
+* [34995c0](https://github.com/ford-jones/lazarus/commit/34995c069f1239ac52357a19a239bcda37a2931d): Docs: Bump version number
+* [2f2d3d3](https://github.com/ford-jones/lazarus/commit/2f2d3d39abf827a6841b7c870b20bce6a32c0dc4): Update: Enforces numeric limits for shader uniform buffer sizes
+* [0d85806](https://github.com/ford-jones/lazarus/commit/0d8580622247d779641ffdfc57949e1973514d60): Docs: Remove outdated shader information
+* [af24600](https://github.com/ford-jones/lazarus/commit/af24600345dab8b06176e7613513a333ecbf9084): Fix: Ensures texture units are re-bound following the activation of a shader program
+* [b08e39b](https://github.com/ford-jones/lazarus/commit/b08e39ba534478a2a8d1a8609d2c44947e26878f): Docs: Updated code comments for private functions
+* [3fe2750](https://github.com/ford-jones/lazarus/commit/3fe2750f054145a2f85fd830bb3bf0411dbad147): Clean: Refactored mesh shader synchronisation
+* [6bfb820](https://github.com/ford-jones/lazarus/commit/6bfb8206ce83cd92f2bd826c685569840039a6a9): Fix: Ensures gpu's max values are correctly reflected in global constants
