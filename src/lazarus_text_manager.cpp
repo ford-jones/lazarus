@@ -501,8 +501,8 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
             */
             status = transformer.translateModel(
                 quad, 
-                static_cast<float>((settings.location.x + (this->glyph.width / 2.0f)) + this->translationStride), 
-                static_cast<float>((settings.location.y + (this->rowHeight / 2.0f))), 
+                static_cast<float>((settings.location.x + (this->glyph.width * 0.5f)) + this->translationStride), 
+                static_cast<float>((settings.location.y + (this->rowHeight * 0.5f))), 
                 0.0f
             );
             if(status != lazarus_result::LAZARUS_OK)
@@ -657,10 +657,17 @@ void TextManager::lookUpUVs(uint8_t keyCode, uint32_t fontId)
     /*
         Normalise the values of the pixel locations within
         the dimensions of the texture atlas.
+        
+        NOTE: 
+        1.0f is minused from uvR and 2.0f from uvU to stop an
+        issue with clipping parts of other letters from other
+        alphabets, an issue introduced at the same time as
+        multi-font support. This is could be better solved by
+        performing this offset in the actual atlas but OK for now.
     */
-    this->uvL = static_cast<float>(targetXL) / uvRangeX;
-    this->uvR = static_cast<float>(targetXR) / uvRangeX;
-    this->uvU = static_cast<float>(this->alphabetHeights[(fontId * 2) + 1]) / uvRangeY;
+    this->uvL = static_cast<float>(targetXL + 1.0f) / uvRangeX;
+    this->uvR = static_cast<float>(targetXR - 1.0f) / uvRangeX;
+    this->uvU = static_cast<float>((this->alphabetHeights[(fontId * 2) + 1]) - 2.0f) / uvRangeY;
     this->uvD = static_cast<float>(this->alphabetHeights[(fontId * 2)]) / uvRangeY;
 
     return;

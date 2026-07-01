@@ -27,6 +27,7 @@
 #include <iostream>
 #include <string>
 #include <memory>
+#include <set>
 
 #include "lazarus_file_loader.h"
 
@@ -58,7 +59,9 @@ class EventManager
     public:
         enum EventType
         {
-            KEY_PRESS,
+            KEY_DOWN,
+            KEY_HOLD,
+            KEY_UP,
             CLICK,
             MOUSE_MOVE,
             SCROLL
@@ -88,14 +91,25 @@ class EventManager
         void getLatestScroll(int32_t &out);
         
         std::vector<Event> eventQueue;
-            
+
         virtual ~EventManager();
 		
     protected:
+        /**
+         * used by glfw callback handlers to handle pushing incoming user window interactions into the event queue.
+         */
         void dispatchEvent(EventType variant, int32_t aValue, int32_t bValue);
         
     private:
         Event event;
+        
+        /**
+         * NOTE:
+         * Used for tracking keypresses between frames and promoting them to "KEY_HOLD" 
+         * while simultaniously deduplicating key events from the queue. 
+         */
+        std::set<int32_t> heldKeys;
+        std::vector<Event> events;
 
         int32_t latestKeyState;
 		int32_t latestScanState;
@@ -138,7 +152,13 @@ class WindowManager : public EventManager, public Time
         virtual ~WindowManager();
         
 	private:
+        /**
+         * Starts up the gl extension wrangler
+         */
         void initialiseGLEW();
+        /**
+         * Moves the window to the center of the monitor.
+         */
         lazarus_result centerWindow();
         lazarus_result checkErrors(const char *file, int line);
 
