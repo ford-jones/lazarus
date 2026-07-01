@@ -1,5 +1,6 @@
-# Version: 2026.07.01011628
+# Version: 2026.07.01011916
 
+* [d800b65](https://github.com/ford-jones/lazarus/commit/d800b655f3492abda33034d2de8f2a0140ce7926): [Changelog CI] Add Changelog for Version 2026.07.01011628
 * [24734c3](https://github.com/ford-jones/lazarus/commit/24734c3520a8e448b3de27c504a3202b64cef324): Fix: Ensures that event queue snapshots persist unchanged between frame presentations
 * [5d47cf0](https://github.com/ford-jones/lazarus/commit/5d47cf0d6908bd75931b572ad28e38c82d6e5d89): Fix: Resolved issue with alphabet clipping during glyph rendering
 * [118130e](https://github.com/ford-jones/lazarus/commit/118130e68b213860027c4623a1e0d74dba8bf5f9): Docs: Cleaned up example and added new event types
