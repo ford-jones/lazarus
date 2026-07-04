@@ -273,7 +273,7 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
             } 
             else if(lightTypes[i] == AMBIENT_LIGHT) 
             {
-                result += colorData;
+                result += (colorData * lightBrightness[i]);
             };
         };
 
