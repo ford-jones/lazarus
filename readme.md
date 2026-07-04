@@ -479,37 +479,39 @@ Note these inputs can be found at `LAZARUS_DEFAULT_VERT_LAYOUT`.
 #define MAX_JOINTS 64
 
 //  Vertex buffer object 1 (attributes)
-layout(location = 0) in vec3 inVertex;              //  Input Vertex position
-layout(location = 1) in vec3 inDiffuse;             //  Input Vertex color
-layout(location = 2) in vec3 inNormal;              //  Input Vertex normal
-layout(location = 3) in vec3 inTexCoord;            //  Input UV (S/T & stack-index)
+layout(location = 0) in vec3 inVertex;                  //  Input Vertex position
+layout(location = 1) in vec3 inDiffuse;                 //  Input Vertex color
+layout(location = 2) in vec3 inNormal;                  //  Input Vertex normal
+layout(location = 3) in vec3 inTexCoord;                //  Input UV (S/T & stack-index)
 //  Vertex buffer object 2 (Instance matrices "MBO")
-layout(location = 4) in mat4 instanceModelMatrix;   //  Input instance matrices, memory divisors occupy 4, 5, 6 & 7
+layout(location = 4) in mat4 instanceModelMatrix;       //  Input instance matrices, memory divisors occupy 4, 5, 6 & 7
 //  Vertex buffer object 3 (Instance-info "IIBO")
-layout(location = 8) in float visible;              //  Input per-instance data
+layout(location = 8) in float visible;                  //  Input per-instance data
 //  Vertex buffer object 4 (Armature joints)
-layout(location = 9) in vec4 inJoints;              //  Input animation rigging
-layout(location = 10) in vec4 inWeights;            //  Input vertex weights for rigging
+layout(location = 9) in vec4 inJoints;                  //  Input animation rigging
+layout(location = 10) in vec4 inWeights;                //  Input vertex weights for rigging
 
-uniform int usesPerspective;                        //  Which projection type to use, 1 for perspective - otherwise orthographic
-uniform mat4 viewMatrix;                            //  The camera's viewing matrix
-uniform mat4 perspectiveProjectionMatrix;           //  A 3D projection matrix (if one is present)
-uniform mat4 orthoProjectionMatrix;                 //  A 2D projection matrix (if one is present)
+uniform int usesPerspective;                            //  Which projection type to use, 1 for perspective - otherwise orthographic
+uniform mat4 viewMatrix;                                //  The camera's viewing matrix
+uniform mat4 perspectiveProjectionMatrix;               //  A 3D projection matrix (if one is present)
+uniform mat4 orthoProjectionMatrix;                     //  A 2D projection matrix (if one is present)
 
-uniform mat4 jointMatrices[MAX_JOINTS];          //  Raw pre-computed joint matrices
+uniform mat4 jointMatrices[MAX_JOINTS];                 //  Raw pre-computed joint matrices
 
-out vec3 fragPosition;                              //  Output position
-out vec3 diffuseColor;                              //  Output color data
-out vec3 normalCoordinate;                          //  Output normal coordinates
-out vec3 textureCoordinate;                         //  Output UV for render subject
-out vec3 skyBoxTextureCoordinate;                   //  Output for skybox UV
-out float keepFragment;                             //  Output for fragment discarding
+out vec3 fragPosition;                                  //  Output position
+out vec3 diffuseColor;                                  //  Output color data
+out vec3 normalCoordinate;                              //  Output normal coordinates
+out vec3 textureCoordinate;                             //  Output UV for render subject
+out vec3 skyBoxTextureCoordinate;                       //  Output for skybox UV
+out float keepFragment;                                 //  Output for fragment discarding
 
-flat out int isUnderPerspective;                    //  Output required by default program for rendering text / glyphs
+flat out int isUnderPerspective;                        //  Output required by default program for rendering text / glyphs
 
-vec3 _lazarusComputeWorldPosition();                //  Determine the output vertex position in worldspace coordinates and calculates the relevant clip-space coordinates.
-vec3 _lazarusComputeNormalDirection();              //  Determine the direction vector of the output vertex normals. Ensures preservation of the normal direction over non-uniform surfaces.
-vec3 _lazarusComputeSkinningMatrix();               //  Determine the weighted result of the combined joint matrices which effect the output vertex position (required for animating assets). 
+void _lazarusForwardInputs();                           //  Hands over vertex inputs that are required by the default fragment shader.
+mat4 _lazarusComputeSkinningMatrix();                   //  Determine the weighted result of the combined joint matrices which effect the output vertex position (required for animating assets).
+mat4 _lazarusComputeModelViewProjection(vec4 position)  //  Determine the mvp matrix used for clipping and culling.
+vec4 _lazarusComputeWorldPosition();                    //  Determines the output vertex position in worldspace coordinates.
+vec3 _lazarusComputeNormalDirection();                  //  Determine the direction vector of the output vertex normals. Ensures preservation of the normal direction over non-uniform surfaces.
 ```
 
 #### Pixel / Fragment shader inputs:

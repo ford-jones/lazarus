@@ -56,8 +56,29 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
 
     flat out int isUnderPerspective;
 
+    void _lazarusForwardInputs()
+    {
+        //  Required for determining the lighting outcome
+        isUnderPerspective = usesPerspective;
+        diffuseColor = inDiffuse;
+        textureCoordinate = inTexCoord;
+        
+        keepFragment = visible;
+
+        //   Cubemap textures are sampled in 3D (xyz). So the
+        //   the skybox cube's vertex positions are used forthe 
+        //   UV coords. Note; using the inverse coordinates 
+        //   instead so the textures are flipped correctly for
+        //   mapping to the interior faces.
+        skyBoxTextureCoordinate = -inVertex;
+    }
+
     mat4 _lazarusComputeSkinningMatrix()
     {
+        //  Construct a matrix from a weighted combination of
+        //  animated armature joints which effect the position of
+        //  this vertex while in motion
+
         mat4 skinningMatrix = 
         inWeights.x * jointMatrices[int(inJoints.x)] +
         inWeights.y * jointMatrices[int(inJoints.y)] +
@@ -67,35 +88,32 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
         return skinningMatrix;
     }
 
-    vec3 _lazarusComputeWorldPosition()
+    vec4 _lazarusComputeModelViewProjection(vec4 position)
     {
+        //  Determine whether the vertex is perceived in 2D or 3D and 
+        //  find its location relative to the viewing frustum
+
+        vec4 mvpMatrix = usesPerspective != 0
+        ? perspectiveProjectionMatrix * viewMatrix * position
+        : orthoProjectionMatrix * viewMatrix * position;
+        
+        return mvpMatrix;
+    }
+
+    vec4 _lazarusComputeWorldPosition()
+    {
+        //  Find the location of the vertex in relation to where the mesh is positioned
+        
         vec4 worldPosition = isAnimated != 0
         ? instanceModelMatrix * _lazarusComputeSkinningMatrix() * vec4(inVertex, 1.0)
         : instanceModelMatrix * vec4(inVertex, 1.0);
 
-        //  Determine the vertex's clip-space position
-        if(usesPerspective != 0)
-        {
-            gl_Position = perspectiveProjectionMatrix * viewMatrix * worldPosition;   
-        }
-        else
-        {
-            gl_Position = orthoProjectionMatrix * viewMatrix * worldPosition;
-        }
-
-        //  Required by fragment shader to determine lighting outcome
-        isUnderPerspective = usesPerspective;
-
-        //  Truncate w value, we don't need it now that clipping
-        //  output (gl_Position) has been calculated.
-        vec3 result = vec3(worldPosition);
-
-        return result;
+        return worldPosition;
     }
 
     vec3 _lazarusComputeNormalDirection()
     {
-        //  Invert the matrix and swap it's rows and columns.
+        //  Invert the model matrix and swap it's rows and columns.
         //  This is required for preservation of the normal direction, which must remain
         //  perpendicular to the surface and would otherwise fail to when the 
         //  scale of the surface is non uniform.
@@ -112,19 +130,20 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
 const char *LAZARUS_DEFAULT_VERT_SHADER =  R"(
     void main ()
     {
-       vec3 worldPosition = _lazarusComputeWorldPosition();
-       vec3 normalDirection = _lazarusComputeNormalDirection();
+        vec4 worldPosition = _lazarusComputeWorldPosition();
+        vec3 normalDirection = _lazarusComputeNormalDirection();
 
-       fragPosition = worldPosition;
-       diffuseColor = inDiffuse;
-       normalCoordinate = normalDirection;
-       textureCoordinate = inTexCoord;
+        //  Perform clipping / culling check
+        gl_Position = _lazarusComputeModelViewProjection(worldPosition);
 
-       keepFragment = visible;
+        //  Truncate w value, we don't need it now that the 
+        //  clipping output (gl_Position) has been calculated.
+        fragPosition = vec3(worldPosition);
+        normalCoordinate = normalDirection;
 
-       skyBoxTextureCoordinate = -inVertex;
+        _lazarusForwardInputs();
 
-       return;
+        return;
     }
 )";
 
@@ -247,7 +266,7 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
 
         //  Calculate the fragment's diffuse lighting for each light in the scene.
         for(int i = 0; i < lightCount; i++)
-        {            
+        {
             if(lightTypes[i] == DIRECTIONAL_LIGHT)
             {
                 vec3 direction = lightDirections[i];
