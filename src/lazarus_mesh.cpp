@@ -98,9 +98,11 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
     for(size_t i = 0; i < assets.size(); i++)
     {
         AssetLoader::AssetData &assetData = assets[i];
+
         this->meshData = {};
-        this->meshData.texture.unitId = GL_TEXTURE2;
         this->meshData.instanceCount = options.instanceCount;
+        this->meshData.texture.discardAlphaZero = options.textureTransparency;
+        this->meshData.texture.unitId = GL_TEXTURE2;
         
         this->setMeshProperties(assetData);
         
@@ -507,6 +509,7 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
 
     this->meshData = {};
     this->meshData.texture.unitId = textureUnit;
+    this->meshData.texture.discardAlphaZero = options.textureTransparency;
     this->meshData.instanceCount = options.instanceCount;
 
     this->setMeshProperties(assetData);
@@ -680,6 +683,7 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
 
     this->meshData = {};
     this->meshData.texture.unitId = textureUnit;
+    this->meshData.texture.discardAlphaZero = options.textureTransparency;
     this->meshData.instanceCount = options.instanceCount;
 
     this->setMeshProperties(assetData);
@@ -1691,20 +1695,6 @@ lazarus_result ModelManager::drawModel(ModelManager::Model &meshIn)
     return status;
 };
 
-void ModelManager::setDiscardFragments(ModelManager::Model &meshIn, bool shouldDiscard)
-{
-    LOG_DEBUG("Setting fragment-discard flags");
-    ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
-
-    for(size_t i = 0; i < model.size(); i++)
-    {
-        ModelManager::MeshData &data = model[i];
-        data.texture.discardAlphaZero = shouldDiscard;
-    };
-
-    return;
-};
-
 /**
  * Determines whether the model's meshes contain primitives that use image textures 
  * or instead are composed by defined properties.
@@ -1769,7 +1759,6 @@ void ModelManager::setMeshProperties(AssetLoader::AssetData &assetData)
 {
     LOG_DEBUG("Loading base mesh properties");
 
-    meshData.texture.discardAlphaZero = false;
     meshData.texture.samplerId = TextureLoader::textureId;
 
     meshData.attributes = assetData.attributes;     //  Positon, Diffuse, normal, uvs

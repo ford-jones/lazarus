@@ -1080,13 +1080,6 @@ Creates a duplicate of `src` at the location of `dest` with updated unique ID fo
 > **dest:** *The pre-allocated destination where the copy should be stored.* \
 > **src:** *The asset to be copied.*
 
-#### setDiscardFragments(ModelManager::Model &modelIn, bool shouldDiscard)
-Toggle for removing the areas of a face prior to rendering where the meshes texture's alpha value is zero. Used for rendering sprites.
-
-> Params: \
-> **modelIn:** *The target mesh object.* \
-> **shouldDiscard:** *The desired value for the option (T/F).* 
-
 #### setActiveAnimation(ModelManager::Model &modelIn, int animationIndex, int loopCount)
 Determine which of an animated asset's movements should be rendered during playback.
 
@@ -1145,6 +1138,7 @@ Flushes out the internal state(s) of the manager, including it's list of childre
 >   - **name:** *What to call this asset. (type: `std::string`)*
 >   - **meshPath:** *The relative path to the `.obj` or `.glb` asset to be loaded. (type: `std::string`)*
 >   - **materialPath:** *The relative path to the asset's material-file (`.mtl`) if `meshPath` is directed toward an `.obj` file. Leave blank otherwise. (type: `std::string`)*
+>   - **textureTransparency:** *Remove areas of a face when rendering a mesh fragment where the alpha value of one of the meshes textures is zero. Used for rendering sprites. Not to be confused with a meshes transparency. (type: `bool`)*
 >   - **selectable:** *Whether to assign a stencil ID to this asset for cursor-picking while visible in-frame. (type: `bool`)*
 >   - **instanceCount:** *The number of copies of this mesh to be produced. (type: `int`, default: `1`)*
 
@@ -1153,6 +1147,7 @@ Flushes out the internal state(s) of the manager, including it's list of childre
 >   - **texturePath:** *The relative path to a texture image used to render to the quad's surface. (type: `std::string`)*
 >   - **width:** *The quad's horizontal span. (type: `float`)*
 >   - **height:** *The quad's vertical span. (type: `float`)*
+>   - **textureTransparency:** *Remove areas of a face when rendering a mesh fragment where the alpha value of one of the meshes textures is zero. Used for rendering sprites. Not to be confused with a meshes transparency. (type: `bool`)*
 >   - **selectable:** *Whether to assign a stencil ID to this asset for cursor-picking while visible in-frame. (type: `bool`)*
 >   - **uvXL:** *The left-most extremity of the x-axis UV / ST coordinates. (type: `float`, optional)*
 >   - **uvXR:** *The right-most extremity of the x-axis UV / ST coordinates. (type: `float`, optional)*
@@ -1163,6 +1158,7 @@ Flushes out the internal state(s) of the manager, including it's list of childre
 > **CubeConfig:** *Creation function input-settings. (type: `struct`)*
 >   - **name:** *What to call this asset. (type: `std::string`, default: `"CUBE_" + n`)*
 >   - **texturePath:** *The relative path to a texture image used to render to the quad's surface. (type: `std::string`)*
+>   - **textureTransparency:** *Remove areas of a face when rendering a mesh fragment where the alpha value of one of the meshes textures is zero. Used for rendering sprites. Not to be confused with a meshes transparency. (type: `bool`)*
 >   - **selectable:** *Whether to assign a stencil ID to this asset for cursor-picking while visible in-frame. (type: `bool`)*
 >   - **scale:** *The multiplier by which to increase the size of the cube by. (type: `float`, default: `1.0f`)*
 >   - **instanceCount:** *The number of copies of this mesh to be produced. (type: `int`, default: `1`)*

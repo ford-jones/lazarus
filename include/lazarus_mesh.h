@@ -108,6 +108,7 @@ class ModelManager
             std::string name = "";
             uint32_t instanceCount = 1;
             bool selectable = false;
+            bool textureTransparency = false;
         };
         struct QuadConfig
         {
@@ -121,6 +122,7 @@ class ModelManager
             float uvYD = 0.0f;
             uint32_t instanceCount = 1;
             bool selectable = false;
+            bool textureTransparency = false;
         };
         struct CubeConfig
         {
@@ -129,6 +131,7 @@ class ModelManager
             float scale = 1.0f;
             uint32_t instanceCount = 1;
             bool selectable = false;
+            bool textureTransparency = false;
         };
         
 		ModelManager(Shader &shader, TextureLoader::StorageType textureType = TextureLoader::StorageType::ARRAY);
@@ -146,7 +149,6 @@ class ModelManager
         //  Move these; This isn't quite the appropriate place to do this
         //  but ok for now
         
-        void setDiscardFragments(Model &meshIn, bool shouldDiscard);
         lazarus_result setActiveAnimation(Model &meshIn, uint32_t animationIndex, uint32_t loopCount = 0);
         lazarus_result setToPosePosition(Model &meshIn);
         lazarus_result pauseAnimation(Model &meshIn);
