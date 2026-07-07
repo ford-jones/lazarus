@@ -41,8 +41,8 @@ lazarus_result WorldFX::createSkyBox(WorldFX::Skybox &out, std::string rightPath
     LOG_DEBUG("Creating skybox");
 
     this->skyBoxOut = {};
-    ModelManager::CubeConfig config = {};
-    config.scale = 10.0f;
+    ModelManager::AssetConfig config = {};
+    config.scale = glm::vec3(10.0f);
 
     lazarus_result status = this->createCube(this->skyBoxOut.cube, config);
     if(status != lazarus_result::LAZARUS_OK)

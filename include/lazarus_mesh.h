@@ -109,6 +109,9 @@ class ModelManager
             uint32_t instanceCount = 1;
             bool selectable = false;
             bool textureTransparency = false;
+            glm::vec3 translation = glm::vec3(0.0f, 0.0f, 0.0f);
+            glm::vec3 rotation = glm::vec3(0.0f, 0.0f, 0.0f);
+            glm::vec3 scale = glm::vec3(1.0f, 1.0f, 1.0f);
         };
         struct QuadConfig
         {
@@ -124,21 +127,21 @@ class ModelManager
             bool selectable = false;
             bool textureTransparency = false;
         };
-        struct CubeConfig
-        {
-            std::string name = "CUBE_";
-            std::string texturePath = "";
-            float scale = 1.0f;
-            uint32_t instanceCount = 1;
-            bool selectable = false;
-            bool textureTransparency = false;
-        };
+        // struct CubeConfig
+        // {
+        //     std::string name = "CUBE_";
+        //     std::string texturePath = "";
+        //     float scale = 1.0f;
+        //     uint32_t instanceCount = 1;
+        //     bool selectable = false;
+        //     bool textureTransparency = false;
+        // };
         
 		ModelManager(Shader &shader, TextureLoader::StorageType textureType = TextureLoader::StorageType::ARRAY);
 		
         lazarus_result create3DAsset(Model &out, AssetConfig options);
         lazarus_result createQuad(Model &out, QuadConfig options);
-        lazarus_result createCube(Model &out, CubeConfig options);
+        lazarus_result createCube(Model &out, AssetConfig options);
 
         lazarus_result loadModel(Model &meshIn);
         lazarus_result drawModel(Model &meshIn);

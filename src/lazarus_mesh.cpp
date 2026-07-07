@@ -465,21 +465,19 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
             vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(options.uvXL, options.uvYD, 0.0f),
             vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(options.uvXR, options.uvYD, 0.0f), 
             vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(options.uvXL, options.uvYU, 0.0f),
-            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(options.uvXR, options.uvYU, 0.0f),
+            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(options.uvXR, options.uvYU, 0.0f)
+        };
 
-            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(options.uvXR, options.uvYU, 0.0f),
-            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(options.uvXR, options.uvYD, 0.0f),
-            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(options.uvXL, options.uvYU, 0.0f),
-            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(options.uvXL, options.uvYD, 0.0f),
+        assetData.indices = {
+            0, 1, 2, 
+            2, 1, 3
         };
     }
     else
     {
         /*
-            For some reason Mac requires two sets of the 
-            vertices for what at a glance looks like an
-            unwinding / culling type of issue. Note the sign
-            of the normals.
+            If the quad is meant for observation in worldspace ensure it has two
+            "outward" facing sides. Note the sign of the normals.
         */
         assetData.attributes = {
             vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 0.0f, layer),
@@ -492,14 +490,15 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
             vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(0.0f, 1.0f, layer),
             vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(0.0f, 0.0f, layer),
         };
+
+        assetData.indices = {
+            0, 1, 2, 
+            2, 1, 3, 
+            4, 5, 6, 
+            6, 5, 7
+        };
     };
 
-    assetData.indices = {
-        0, 1, 2, 
-        2, 1, 3, 
-        4, 5, 6, 
-        6, 5, 7
-    };
 
     /*
         Zero-out movement / animation buf
@@ -552,12 +551,12 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
 
 }
 
-lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::CubeConfig options)
+lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::AssetConfig options)
 {
     this->syncShader();
     
     LOG_DEBUG("Generating cube");
-    float vertexPosition = options.scale * 0.5f; 
+    glm::vec3 vertexPosition = options.scale * 0.5f;
     
     AssetLoader::AssetData assetData = {};
     this->modelOut = {};
@@ -570,7 +569,7 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
 
     this->modelOut.name = options.name.size() 
     ? options.name 
-    : this->modelOut.name.append(std::to_string(this->modelStore.size()));
+    : std::string("CUBE_").append(std::to_string(this->modelStore.size()));
     
     int32_t textureUnit = this->textureStorage == TextureLoader::StorageType::CUBEMAP
     ? GL_TEXTURE3
@@ -587,14 +586,14 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
         image.width = 0;
         image.pixelData = NULL;
 
-        assetData.textures.push_back(image);   
+        assetData.textures.push_back(image);  
     }
     else
     {
-        if(!std::empty(options.texturePath))
+        if(!std::empty(options.materialPath))
         {
             FileLoader::Image image = {};
-            status = finder->loadImage(image, options.texturePath.c_str());
+            status = finder->loadImage(image, options.materialPath.c_str());
             if(status != lazarus_result::LAZARUS_OK)
             {
                 return status;
@@ -609,7 +608,16 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
             */
             
             AssetLoader::layerCount += 1;
-        };
+        }
+        else
+        {
+            /**
+             * TODO:
+             * Find some way that this can be not an error. I.e. set a color or something
+             */
+            LOG_ERROR("Attempting to load a cube without a texture", __FILE__, __LINE__);
+            return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
+        }
         layer = static_cast<float>(AssetLoader::layerCount);
     };
     
@@ -630,40 +638,40 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
         */
         
         // Top face
-        vec3(-vertexPosition, vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(0.0f, 0.0f, layer),
-        vec3(vertexPosition, vertexPosition,  vertexPosition),      vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(1.0f, 1.0f, layer),
-        vec3(vertexPosition,  vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(1.0f, 0.0f, layer),
-        vec3(-vertexPosition,  vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(0.0f, 1.0f, layer),
+        vec3(-vertexPosition.x, vertexPosition.y,  -vertexPosition.z),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(0.0f, 0.0f, layer),
+        vec3(vertexPosition.x, vertexPosition.y,  vertexPosition.z),      vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(1.0f, 1.0f, layer),
+        vec3(vertexPosition.x,  vertexPosition.y,  -vertexPosition.z),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(1.0f, 0.0f, layer),
+        vec3(-vertexPosition.x,  vertexPosition.y,  vertexPosition.z),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(0.0f, 1.0f, layer),
 
         // Back face
-        vec3(-vertexPosition, vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 0.0f, layer),
-        vec3(vertexPosition, -vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 1.0f, layer),
-        vec3(-vertexPosition,  -vertexPosition, -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 0.0f, layer),
-        vec3(vertexPosition,  vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 1.0f, layer),
+        vec3(-vertexPosition.x, vertexPosition.y,  -vertexPosition.z),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 0.0f, layer),
+        vec3(vertexPosition.x, -vertexPosition.y, -vertexPosition.z),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 1.0f, layer),
+        vec3(-vertexPosition.x,  -vertexPosition.y, -vertexPosition.z),   vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 0.0f, layer),
+        vec3(vertexPosition.x,  vertexPosition.y, -vertexPosition.z),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 1.0f, layer),
 
         // Right face
-        vec3(vertexPosition, vertexPosition, -vertexPosition),      vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(0.0f, 0.0f, layer),
-        vec3(vertexPosition, -vertexPosition,  vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(1.0f, 1.0f, layer),
-        vec3(vertexPosition,  -vertexPosition,  -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(1.0f, 0.0f, layer),
-        vec3(vertexPosition,  vertexPosition,  vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(0.0f, 1.0f, layer),
+        vec3(vertexPosition.x, vertexPosition.y, -vertexPosition.z),      vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(0.0f, 0.0f, layer),
+        vec3(vertexPosition.x, -vertexPosition.y,  vertexPosition.z),     vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(1.0f, 1.0f, layer),
+        vec3(vertexPosition.x,  -vertexPosition.y,  -vertexPosition.z),   vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(1.0f, 0.0f, layer),
+        vec3(vertexPosition.x,  vertexPosition.y,  vertexPosition.z),     vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(0.0f, 1.0f, layer),
 
         // Front face
-        vec3(vertexPosition, vertexPosition, vertexPosition),       vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(0.0f, 0.0f, layer),
-        vec3(-vertexPosition, -vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(1.0f, 1.0f, layer),
-        vec3(vertexPosition,  -vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(1.0f, 0.0f, layer),
-        vec3(-vertexPosition,  vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(0.0f, 1.0f, layer),
+        vec3(vertexPosition.x, vertexPosition.y, vertexPosition.z),       vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(0.0f, 0.0f, layer),
+        vec3(-vertexPosition.x, -vertexPosition.y,  vertexPosition.z),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(1.0f, 1.0f, layer),
+        vec3(vertexPosition.x,  -vertexPosition.y,  vertexPosition.z),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(1.0f, 0.0f, layer),
+        vec3(-vertexPosition.x,  vertexPosition.y,  vertexPosition.z),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(0.0f, 1.0f, layer),
 
         // Left face
-        vec3(-vertexPosition,  vertexPosition, vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, layer),
-        vec3(-vertexPosition,  -vertexPosition, -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, layer),
-        vec3(-vertexPosition,  -vertexPosition,  vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 0.0f, layer),
-        vec3(-vertexPosition,  vertexPosition,  -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, layer),
+        vec3(-vertexPosition.x,  vertexPosition.y, vertexPosition.z),     vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, layer),
+        vec3(-vertexPosition.x,  -vertexPosition.y, -vertexPosition.z),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, layer),
+        vec3(-vertexPosition.x,  -vertexPosition.y,  vertexPosition.z),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 0.0f, layer),
+        vec3(-vertexPosition.x,  vertexPosition.y,  -vertexPosition.z),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, layer),
 
         // Bottom face
-        vec3(vertexPosition, -vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 0.0f, layer),
-        vec3(-vertexPosition, -vertexPosition, vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 1.0f, layer),
-        vec3(-vertexPosition, -vertexPosition,  -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 0.0f, layer),
-        vec3(vertexPosition, -vertexPosition,  vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 1.0f, layer),
+        vec3(vertexPosition.x, -vertexPosition.y, -vertexPosition.z),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 0.0f, layer),
+        vec3(-vertexPosition.x, -vertexPosition.y, vertexPosition.z),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 1.0f, layer),
+        vec3(-vertexPosition.x, -vertexPosition.y,  -vertexPosition.z),   vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 0.0f, layer),
+        vec3(vertexPosition.x, -vertexPosition.y,  vertexPosition.z),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 1.0f, layer),
     };
 
     assetData.indices = {

@@ -480,16 +480,13 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
             this->setActiveGlyph(settings.targetString[i], settings.fontIndex, settings.letterSpacing);
             
             LOG_DEBUG("Loading glyph tile");
-            ModelManager::QuadConfig quadSettings = {};
-            quadSettings.width = this->glyph.width;
-            quadSettings.height = this->glyph.height;
-            quadSettings.texturePath = "";
-            quadSettings.uvXL = this->uvL;
-            quadSettings.uvXR = this->uvR;
-            quadSettings.uvYU = this->uvU;
-            quadSettings.uvYD = this->uvD;
-            quadSettings.instanceCount = 1;
-    
+
+            ModelManager::AssetConfig quadSettings = {};
+            quadSettings.scale.x = this->glyph.width;
+            quadSettings.scale.y = this->glyph.height;
+            quadSettings.scale.z = 0.0f;
+
+            ModelManager::setUvOffset(uvL, uvR, uvU, uvD);
             status = ModelManager::createQuad(this->quad, quadSettings);
             if(status != lazarus_result::LAZARUS_OK)
             {
