@@ -16,6 +16,7 @@
 //               (.           .,,,,,                                                                                        .*#%%(                      
 //                                                                                                      .***,.   . .,/##%###(/.  ...,,.      
 /*  LAZARUS ENGINE */
+
 #ifndef LAZARUS_GL_INCLUDES_H
     #include "lazarus_gl_includes.h"
 #endif
@@ -47,6 +48,7 @@ using glm::vec3;
 
 #ifndef LAZARUS_MESH_H
 #define LAZARUS_MESH_H
+
 
 class ModelManager 
     : private AssetLoader, protected TextureLoader
@@ -110,37 +112,14 @@ class ModelManager
             bool selectable = false;
             bool textureTransparency = false;
             glm::vec3 translation = glm::vec3(0.0f, 0.0f, 0.0f);
-            glm::vec3 rotation = glm::vec3(0.0f, 0.0f, 0.0f);
+            // glm::vec3 rotation = glm::vec3(0.0f, 0.0f, 0.0f);
             glm::vec3 scale = glm::vec3(1.0f, 1.0f, 1.0f);
         };
-        struct QuadConfig
-        {
-            std::string name = "QUAD_";
-            std::string texturePath = "";
-            float width = 0.0f;
-            float height = 0.0f;
-            float uvXL = 0.0f;
-            float uvXR = 0.0f;
-            float uvYU = 0.0f;
-            float uvYD = 0.0f;
-            uint32_t instanceCount = 1;
-            bool selectable = false;
-            bool textureTransparency = false;
-        };
-        // struct CubeConfig
-        // {
-        //     std::string name = "CUBE_";
-        //     std::string texturePath = "";
-        //     float scale = 1.0f;
-        //     uint32_t instanceCount = 1;
-        //     bool selectable = false;
-        //     bool textureTransparency = false;
-        // };
         
 		ModelManager(Shader &shader, TextureLoader::StorageType textureType = TextureLoader::StorageType::ARRAY);
 		
         lazarus_result create3DAsset(Model &out, AssetConfig options);
-        lazarus_result createQuad(Model &out, QuadConfig options);
+        lazarus_result createQuad(Model &out, AssetConfig options);
         lazarus_result createCube(Model &out, AssetConfig options);
 
         lazarus_result loadModel(Model &meshIn);
@@ -148,10 +127,6 @@ class ModelManager
         
         void copyModel(Model &dest, Model src);
 
-        //  TODO:
-        //  Move these; This isn't quite the appropriate place to do this
-        //  but ok for now
-        
         lazarus_result setActiveAnimation(Model &meshIn, uint32_t animationIndex, uint32_t loopCount = 0);
         lazarus_result setToPosePosition(Model &meshIn);
         lazarus_result pauseAnimation(Model &meshIn);
@@ -161,6 +136,8 @@ class ModelManager
         
         // protected:
         lazarus_result clearMeshStorage();
+        protected:
+            void setUvOffset(float xL, float xR, float yU, float yD);
         
     private:
         struct MeshData
@@ -216,23 +193,116 @@ class ModelManager
         };
         typedef std::vector<MeshData> ModelData;
 
+        /**
+         * Set the hang / "pose" position of an animated assets' rigging / armature by establishing
+         * a heirachy of joints branching out from a root position.
+        */
+        lazarus_result composeArmature(AssetLoader::AssetData assetData);
+
+        /**
+         * Determines whether the model's meshes contain primitives that use image textures 
+         * or instead are composed by defined properties.
+        */
         lazarus_result setMaterials(AssetLoader::AssetData &assetData);
+
+        /**
+         * Checks for room in the stencil buffer. If room is found a stencil buffer ID is assigned to the 
+         * model and each of its composite meshes, as well as their GPU instances. This allows
+         * an item to be located on-screen while amongst others by doing a pixel lookup and comparing with 
+         * the stencil buffer.
+        */
         lazarus_result setSelectable(bool selectable);
+
+        /**
+         * Determine whether the active shader program used by `this->shader` has changed and updates
+         * the reference if so.
+        */
         lazarus_result syncShader();
+
+        /**
+         * Generates the models main Vertex attribute object amongst other VBO's, packs them with vertex
+         * data and desribes to OpenGL how all of this should be interpretted on the GPU. 
+        */
         lazarus_result uploadVertexData();
+
+        /**
+         * Determines if any of the materials used by the meshes that compose `this->modelOut` contain 
+         * textures and engages the allocator.
+        */
         lazarus_result uploadTextures();
+
+        /**
+         * Finds and sets the values of shader uniforms which are required for `this` to function correctly.
+         * Most likely the active program in the Lazarus::Shader used to instantiate `this` has changed.
+        */
         lazarus_result updateUniformLocations();
+
+        /**
+         * Reallocates the current texture stack's memory size + 
+         * the new amount and reUploads all of the textures again in-order
+         * if the current mesh uses image textures.
+         * 
+         * I.e. Reloads the entire texture stack / array if `this->modelOut` isn't
+         * being used for anything special like glyphs or skyboxes, which
+         * use different loaders. 
+        */
         lazarus_result reallocateTextures();
+
+        /**
+         * Identifies and reports on issues with OpenGL
+        */
         lazarus_result checkErrors(const char *file, uint32_t line);
-        
+
+        /**
+         * Flushes out openGL's error state
+        */
         void clearErrors();
+
+        /**
+         * Generates a buffer used to handle a meshes GPU instance data
+        */
         void instantiateMesh(bool selectable);
+
+        /**
+         * Initialises `this->modelOut`'s default properties
+        */
         void setMeshProperties(AssetLoader::AssetData &assetData);
+
+        /**
+         * Transforms all meshes that make up a models composition to their respectful starting
+         * places, directions and size.
+         * 
+         * TODO:
+         * handle rotation
+         * do the same for camera / light configs
+        */
+        void setStartingOrientation(Model &meshIn, glm::vec3 translation, glm::vec3 scale);
         
+        /**
+         * Based on the current elapsed ms (time), determine
+         * where abouts we are in the animation sequence. Use
+         * this to look up and interpolate the relevant TRS 
+         * keyframe values for the next draw of the animated
+         * asset.
+        */
         glm::mat4 computeLocalJointTransform(MeshData::MotionPoint &motionPoint, uint32_t animationID);
 
+        /**
+         * Applies an animations keyframe data to the the joint of an asset's 
+         * armature to modify the location of its' effected vertices.
+         */
         void loadAnimation(MeshData &data);
+
+        /**
+         * Uses the current elapsed time to locate the indices of the keyframe that should 
+         * next be iterated to and interpolated against the current frame.
+        */
         uint32_t getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t &playbackPosition, uint32_t &elapsedMs, uint32_t &previousMs);
+
+        /**
+         * Calculate the linear interpolation between keyframe values. Note that 
+         * cubicspline interpolation is not supported.
+        */
         glm::vec4 getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t frameBegin, uint32_t sequenceCursor);
         
         uint32_t childCount;
@@ -262,6 +332,25 @@ class ModelManager
         ModelData modelData;
         std::map<uint32_t, ModelData> modelStore;
 
+        /**
+         * TODO:
+         * There used to be variants for each "create*()" function e.g. createQuad(Quad, QuadConfig)
+         * prior to consolidation of it all into "Model" and "AssetConfig".
+         * 
+         * These floats were the only params that weren't marshalled to the new pattern because
+         * they are weird and shouldn't be a part of general config anyway. They were previously in
+         * QuadConfig.
+         * 
+         * Supporting animated textures for sprites would provide the necessary tooling to make
+         * changes to uv's dynamically; ideally that same tooling could be used in-place of this... 
+         * OR offload glyph stuff from here entirely but that would require duplicating parts
+         * of the openGL code in the TextManager like VBO / EBO setup etc which seems... exhausting.
+        */
+
+        float uvYD = 0.0f;
+        float uvYU = 0.0f;
+        float uvXL = 0.0f;
+        float uvXR = 0.0f;
 };
 
 #endif

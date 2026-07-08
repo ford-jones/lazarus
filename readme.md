@@ -1,5 +1,5 @@
 # Lazarus Engine
-#### *Version: 0.15.3*
+#### *Version: 0.15.4*
 ## Table of contents:
 
 - [Getting Started](#getting-started)
@@ -398,9 +398,9 @@ Now lets create our geometry:
 
     //  Configure the mesh asset
     //  Note: when orthographically viewed, sizing corresponds to pixel-width
-    Lazarus::ModelManager::QuadConfig quadSettings = {};
-    quadSettings.width = 500;
-    quadSettings.height = 500;
+    Lazarus::ModelManager::AssetConfig quadSettings = {};
+    quadSettings.scale.x = 500;
+    quadSettings.scale.y = 500;
 
     //  Generate asset
     Lazarus::ModelManager::Model quad = {};
@@ -1045,16 +1045,16 @@ Params:
 > **out:** *An out parameter where load results are stored.* \
 > **options:** *Load settings indicating how the asset should be loaded.*
 
-#### createQuad(ModelManager::Quad &out, ModelManager::QuadConfig options)
-Creates a quad (2D plane) to the size of the specified height and width \
-with a texture as specified by `options.texturePath`
+#### createQuad(ModelManager::Model &out, ModelManager::AssetConfig options)
+Creates a quad (2D plane) to the size of the specified `options.scale.x` and `options.scale.y` 
+Note that without specifying of a relative path to a texture asset, this function will assume the quad is to be used for a glyph which; is likely to cause problems in your program without manually setting the required texture data for the texture atlas of alphabet glyphs.
 
 Params:
 > **out:** *An out parameter where load results are stored.* \
 > **options:** *Load settings indicating how the asset should be loaded.*
 
-#### createCube(ModelManager::Cube &out, ModelManager::CubeConfig options)
-Creates a cube (equal height, width and depth) of size `options.scale`. Note that without specification of a relative path to a texture asset, this function will assume the cube is to be used for a skybox which; is likely to cause problems in your program without manually setting the required texture data for the cubemap texture.
+#### createCube(ModelManager::Model &out, ModelManager::AssetConfig options)
+Creates a 3D rectangle of dimensions `options.scale.xyz`. Note that without specifying of a relative path to a texture asset, this function will assume the cube is to be used for a skybox which; is likely to cause problems in your program without manually setting the required texture data for the cubemap texture.
 
 Params:
 > **out:** *An out parameter where load results are stored.* \
@@ -1141,27 +1141,8 @@ Flushes out the internal state(s) of the manager, including it's list of childre
 >   - **textureTransparency:** *Remove areas of a face when rendering a mesh fragment where the alpha value of one of the meshes textures is zero. Used for rendering sprites. Not to be confused with a meshes transparency. (type: `bool`)*
 >   - **selectable:** *Whether to assign a stencil ID to this asset for cursor-picking while visible in-frame. (type: `bool`)*
 >   - **instanceCount:** *The number of copies of this mesh to be produced. (type: `int`, default: `1`)*
-
-> **QuadConfig:** *Creation function input-settings. (type: `struct`)*
->   - **name:** *What to call this asset. (type: `std::string`, default: `"QUAD_" + n`)*
->   - **texturePath:** *The relative path to a texture image used to render to the quad's surface. (type: `std::string`)*
->   - **width:** *The quad's horizontal span. (type: `float`)*
->   - **height:** *The quad's vertical span. (type: `float`)*
->   - **textureTransparency:** *Remove areas of a face when rendering a mesh fragment where the alpha value of one of the meshes textures is zero. Used for rendering sprites. Not to be confused with a meshes transparency. (type: `bool`)*
->   - **selectable:** *Whether to assign a stencil ID to this asset for cursor-picking while visible in-frame. (type: `bool`)*
->   - **uvXL:** *The left-most extremity of the x-axis UV / ST coordinates. (type: `float`, optional)*
->   - **uvXR:** *The right-most extremity of the x-axis UV / ST coordinates. (type: `float`, optional)*
->   - **uvYU:** *The upper-most extremity of the y-axis UV / ST coordinates. (type: `float`, optional)*
->   - **uvYD:** *The lower-most extremity of the y-axis UV / ST coordinates. (type: `float`, optional)*
->   - **instanceCount:** *The number of copies of this mesh to be produced. (type: `int`, default: `1`)*
-
-> **CubeConfig:** *Creation function input-settings. (type: `struct`)*
->   - **name:** *What to call this asset. (type: `std::string`, default: `"CUBE_" + n`)*
->   - **texturePath:** *The relative path to a texture image used to render to the quad's surface. (type: `std::string`)*
->   - **textureTransparency:** *Remove areas of a face when rendering a mesh fragment where the alpha value of one of the meshes textures is zero. Used for rendering sprites. Not to be confused with a meshes transparency. (type: `bool`)*
->   - **selectable:** *Whether to assign a stencil ID to this asset for cursor-picking while visible in-frame. (type: `bool`)*
->   - **scale:** *The multiplier by which to increase the size of the cube by. (type: `float`, default: `1.0f`)*
->   - **instanceCount:** *The number of copies of this mesh to be produced. (type: `int`, default: `1`)*
+>   - **scale:** *A multiplier applied as the magnitude of the meshes overall topological size. (type: `glm::vec3`, default: `glm::vec3(1.0f)`)*
+>   - **translation:** *A location relative to the origin that this mesh should be moved to. (type: `glm::vec3`, default: `glm::vec3(0.0f)`)*
 
 > **Material:** *The properties which constitute the material that is rendered to a surface. (type: `struct`)*
 >   - **id:** *A serialised ID unique to the material's parent `ModelManager::Model`. (type: `int`)*
