@@ -269,8 +269,7 @@ class ModelManager
         void setMeshProperties(AssetLoader::AssetData &assetData);
 
         /**
-         * Transforms all meshes that make up a models composition to their respectful starting
-         * places, directions and size.
+         * Transforms each of the meshes that compose a model to their respective starting positions, directions and size.
          * 
          * TODO:
          * handle rotation
@@ -345,6 +344,7 @@ class ModelManager
          * changes to uv's dynamically; ideally that same tooling could be used in-place of this... 
          * OR offload glyph stuff from here entirely but that would require duplicating parts
          * of the openGL code in the TextManager like VBO / EBO setup etc which seems... exhausting.
+         * OR introduce a createRawGeometry function that could make custom rectangles
         */
 
         float uvYD = 0.0f;

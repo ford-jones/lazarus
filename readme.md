@@ -556,9 +556,11 @@ Anything not used from here will be optimised-out when compiled.
 
     out vec4 outFragment;                                   //  The output fragment color
 
-    vec4 _lazarusComputeColor();                            //  Evaluate inputs and determine fragment's rgba values
-    vec3 _lazarusComputeLambertianReflection(vec3 color);   //  Calculate the fragment's diffuse lighting
-    float _lazarusComputeFogFactor();                       //  Calculate fog attenuation
+    float _lazarusComputeFogFactor();                           //  Calculate fog attenuation
+    vec4 _lazarusComputeColor();                                //  Evaluate inputs and determine fragment's rgba values
+    vec3 _lazarusComputeAmbientReflection(vec3 color, vec3 lightColor, float brightness) // Calculates a lighting result as if the effected models were all evenly illuminated from every angle
+    vec3 _lazarusComputeLambertianReflection(vec3 color, vec3 direction);   //  Calculate the attenuation of a light accross a models surface but without the specular highlights.
+    vec3 _lazarusDefaultLighting(vec3 color);                   //  Apply the default lazarus lighting model to the fragment. Acculates a result from each light in the scene. Applys ambient lighting evenly accross the surface of every primitive, lambertian illumination for directional lights and phong illumination for point lights.
 ```
 
 ------------------------------------------------------------------

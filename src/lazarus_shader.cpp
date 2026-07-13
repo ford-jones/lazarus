@@ -200,7 +200,7 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
 
     out vec4 outFragment;
 
-    //  Determine the rgba values of the incoming fragment
+    //  Determine the rgba values of the fragment
     vec4 _lazarusComputeColor ()
     {
         vec4 result = vec4(0.0, 0.0, 0.0, 0.0);
@@ -259,46 +259,66 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
         return result;
     }
 
-    //  Illuminate the fragment using the lambertian lighting model
-    vec3 _lazarusComputeLambertianReflection (vec3 colorData) 
-    {
-        vec3 result = vec3(0.0, 0.0, 0.0);
 
-        //  Calculate the fragment's diffuse lighting for each light in the scene.
+    //  Evenly distribute lighting with a brightness multiplier. i.e. a completely unshaded and fully lit material
+    vec3 _lazarusComputeAmbientReflection(vec3 colorData, vec3 lightColor, float brightness)
+    {
+        vec3 ambientResult = colorData * brightness * lightColor;
+        return ambientResult;
+    }
+    
+    //  Apply shading to the diffuse colour but without highlights
+    vec3 _lazarusComputeLambertianReflection(vec3 color, vec3 lightDirection)
+    {
+        float diffuseFactor = (max(0.0f, dot(normalCoordinate, lightDirection)));
+        vec3 lambertianResult = color * diffuseFactor;
+
+        return lambertianResult;
+    }
+
+    //  Illuminates the fragment accumulating each of the scenes lights
+    vec3 _lazarusDefaultLighting(vec3 colorData) 
+    {
+        vec3 result = vec3(0.0f, 0.0f, 0.0f);
+
+        //  Accumulate the lighting result for each light in the scene
         for(int i = 0; i < lightCount; i++)
         {
             switch(lightTypes[i])
             {
                 case DIRECTIONAL_LIGHT:
                 {
-                    vec3 direction = lightDirections[i];
-                    vec3 color = lightColors[i] * lightBrightness[i];
-
-                    result += (colorData + color) * (max(0.0, dot(normalCoordinate, direction)));
+                    vec3 ambientResult = _lazarusComputeAmbientReflection(colorData, lightColors[i], lightBrightness[i]);
+                    result += _lazarusComputeLambertianReflection(ambientResult, lightDirections[i]);
                     break;
                 }
                 
                 case POINT_LIGHT:
                 {
+                    vec3 ambientResult = _lazarusComputeAmbientReflection(colorData, lightColors[i], lightBrightness[i]);
+
                     vec3 displacement = lightPositions[i] - fragPosition;
-
                     vec3 direction = normalize(displacement);
-                    float diffusion = max(dot(normalCoordinate, direction), 0.0);
-
-                    vec3 illuminatedFrag = (colorData * lightColors[i] * diffusion);
+                    vec3 lambertianResult = _lazarusComputeLambertianReflection(ambientResult, direction);
 
                     //  Apply inverse square law to illumination result
-                    //  Note: Don't apply for directional lights when they are added
-                    //  This is better maybe: return illuminatedFrag * min(1.0 / pow(dot(displacement, displacement), 0.5), 1.0);
-                    vec3 reflection = illuminatedFrag / (dot(displacement, displacement));
+                    //  Note: Don't apply this for directional lights
+                    //  This is better maybe: lambertianResult * min(1.0 / pow(dot(displacement, displacement), 0.5), 1.0);
+                    //
+                    //  TODO:
+                    //  This implementation of phong is incomplete, it should take an intensity multiplier (mtl Ns | glb pbrMetallicRoughnessFactor)
+                    //  and have its own function, similar to lambertian and ambient
 
-                    result += (reflection * lightBrightness[i]);
+                    vec3 reflection = lambertianResult / (dot(displacement, displacement));
+                    vec3 specularResult = (reflection * lightBrightness[i]);
+
+                    result += specularResult;
                     break;
                 }
 
                 case AMBIENT_LIGHT:
                 {
-                    result += (colorData * lightBrightness[i]);
+                    result += _lazarusComputeAmbientReflection(colorData, lightColors[i], lightBrightness[i]);
                 }
                 default:
                     break;
@@ -308,7 +328,7 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
         return result;
     }
 
-    //  Determines the factor by which fragments should be blended with the fog color by
+    //  Determines the factor by which the fragment should be blended with the fog color
     float _lazarusComputeFogFactor()
     {
         //  Establish distance between fragment and visibility epicenter
@@ -344,7 +364,7 @@ const char *LAZARUS_DEFAULT_FRAG_SHADER = R"(
         else
         {
             vec3 lighting = 0.1 * fragColor.rgb;
-            lighting += _lazarusComputeLambertianReflection(fragColor.rgb);
+            lighting += _lazarusDefaultLighting(fragColor.rgb);
 
             outFragment = vec4(lighting, 1.0);
 
