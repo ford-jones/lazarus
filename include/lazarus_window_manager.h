@@ -131,11 +131,25 @@ class EventManager
 class WindowManager : public EventManager, public Time
 {
     public:
-        WindowManager(const char *title, uint32_t width = 800, uint32_t height = 600);
+        struct WindowConfig
+        {
+            uint32_t height = 600;
+            uint32_t width = 800;
+            const char *title;
+            glm::vec3 backgroundColor = glm::vec3(1.0f, 1.0f, 1.0f);
 
-        lazarus_result createWindow();
+            bool fullscreen = false;
+            bool disableCursor = false;
+            bool cullFaces = true;
+            bool testDepth = true;
+            bool disableVsync = false;
+            bool wireframeMode = false;
+        };
+
+        WindowManager();
+
+        lazarus_result create(WindowConfig config);
         lazarus_result setBackgroundColor(float r, float g, float b);
-		lazarus_result loadConfig();
         lazarus_result toggleFullscreen();
         lazarus_result resize(uint32_t width, uint32_t height);
         lazarus_result open();
@@ -156,32 +170,48 @@ class WindowManager : public EventManager, public Time
          * Starts up the gl extension wrangler
          */
         void initialiseGLEW();
+
         /**
          * Moves the window to the center of the monitor.
+         * NOTE:
+         * This function causes issue with wayland graphical sessions
          */
         lazarus_result centerWindow();
-        lazarus_result checkErrors(const char *file, int line);
 
-        //  Dont know why I made this private
-        struct Window
-        {
-            uint32_t height;
-            uint32_t width;
-            const char *title;
-            glm::vec3 backgroundColor;
-        };
+        /**
+         * Set up OpenGL state and apply user settings
+         * (backface culling, depth-testing, vsync, winding-order etc)
+         */
+        lazarus_result loadConfig();
+
+        /**
+         * Queries GLFW error state
+         */
+        lazarus_result checkErrors(const char *file, int line);
 
         std::unique_ptr<FileLoader> fileReader;
         FileLoader::Image image;
 
-        Window frame;
+        WindowConfig config;
 
-        bool isFullscreen;
-        bool enableCursor;
-        bool cullFaces;
-        bool testDepth;
-        bool disableVsync;
-        bool wireframeMode;
+        /**
+         * TODO:
+         * These should be moved into the window struct or maybe some WindowConfig which would
+         * be nice in public space and would help reduce the number of weird `GlobalsManager` 
+         * functions...
+         * 
+         * Same goes for isOpen
+         * 
+         * Also these could be expressed privately with a bitmask
+        */
+
+        uint8_t configFlags;
+        // bool isFullscreen;
+        // bool enableCursor;
+        // bool cullFaces;
+        // bool testDepth;
+        // bool disableVsync;
+        // bool wireframeMode;
         
         int32_t originalWidth;
         int32_t originalHeight;

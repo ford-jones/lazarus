@@ -46,13 +46,7 @@ std::vector<uint32_t>    LAZARUS_SELECTABLE_ENTITIES            = {};
 uint32_t                 LAZARUS_MAX_IMAGE_WIDTH                = 0;
 uint32_t                 LAZARUS_MAX_IMAGE_HEIGHT               = 0;
 bool                     LAZARUS_ENFORCE_IMAGE_SANITY           = false;
-bool                     LAZARUS_DISABLE_CURSOR_VISIBILITY      = false;
-bool                     LAZARUS_LAUNCH_IN_FULLSCREEN           = false;
-bool                     LAZARUS_DISABLE_VSYNC                  = false;
 bool                     LAZARUS_DO_STENCIL_BUFFER              = false;
-bool                     LAZARUS_CULL_BACK_FACES                = true;
-bool                     LAZARUS_DEPTH_TEST_FRAGS               = true;
-bool                     LAZARUS_WIREFRAME_MODE                 = false;
 
 void GlobalsManager::setEnforceImageSanity(bool shouldEnforce)
 {
@@ -102,66 +96,6 @@ uint32_t GlobalsManager::getMaxImageHeight()
     return LAZARUS_MAX_IMAGE_HEIGHT;
 };
 
-void GlobalsManager::setCursorHidden(bool shouldHide)
-{
-    LAZARUS_DISABLE_CURSOR_VISIBILITY = shouldHide;
-
-    return;
-};
-
-bool GlobalsManager::getCursorHidden()
-{
-    return LAZARUS_DISABLE_CURSOR_VISIBILITY;
-};
-
-void GlobalsManager::setBackFaceCulling(bool shouldCull)
-{
-    LAZARUS_CULL_BACK_FACES = shouldCull;
-
-    return;
-};
-
-bool GlobalsManager::getBackFaceCulling()
-{
-    return LAZARUS_CULL_BACK_FACES;
-};
-
-void GlobalsManager::setDepthTest(bool shouldTest)
-{
-    LAZARUS_DEPTH_TEST_FRAGS = shouldTest;
-
-    return;
-};
-
-bool GlobalsManager::getDepthTest()
-{
-    return LAZARUS_DEPTH_TEST_FRAGS;
-};
-
-void GlobalsManager::setLaunchInFullscreen(bool shouldEnlarge)
-{
-    LAZARUS_LAUNCH_IN_FULLSCREEN = shouldEnlarge;
-
-    return;
-};
-
-bool GlobalsManager::getLaunchInFullscreen()
-{
-    return LAZARUS_LAUNCH_IN_FULLSCREEN;
-};
-
-void GlobalsManager::setVsyncDisabled(bool shouldDisable)
-{
-    LAZARUS_DISABLE_VSYNC = shouldDisable;
-
-    return;
-};
-
-bool GlobalsManager::getVsyncDisabled()
-{
-    return LAZARUS_DISABLE_VSYNC;
-};
-
 void GlobalsManager::setNumberOfActiveLights(uint8_t count)
 {
     LAZARUS_LIGHT_COUNT = count;
@@ -201,16 +135,4 @@ void GlobalsManager::setPickableEntity(uint32_t entityId)
 uint8_t GlobalsManager::getPickableEntity(uint8_t index)
 {
     return LAZARUS_SELECTABLE_ENTITIES[index - 1];
-};
-
-void GlobalsManager::setWireframeMode(bool useWireframe)
-{
-    LAZARUS_WIREFRAME_MODE = useWireframe;
-
-    return;
-};
-
-bool GlobalsManager::getWireframeMode()
-{
-    return LAZARUS_WIREFRAME_MODE;
 };

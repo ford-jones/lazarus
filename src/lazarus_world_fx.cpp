@@ -94,18 +94,15 @@ lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox skyboxIn, CameraManager::Came
         return lazarus_result::LAZARUS_MATRIX_LOCATION_ERROR;
     };
 
+    /**
+     * Temporarily toggle depth-testing during rendering
+     */
     glDepthMask(GL_FALSE);
 
     ModelManager::loadModel(skyboxIn.cube);
     ModelManager::drawModel(skyboxIn.cube);
     
     glDepthMask(GL_TRUE);
-
-    if(GlobalsManager::getBackFaceCulling())
-    {
-        glEnable            (GL_CULL_FACE);
-        glCullFace          (GL_BACK);
-    };
 
     glUniformMatrix4fv(this->viewMatrixLocation, 1, GL_FALSE, &camera.viewMatrix[0][0]);
     this->error = glGetError();

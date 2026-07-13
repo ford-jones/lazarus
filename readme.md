@@ -190,12 +190,15 @@ Before we can start drawing any graphics, we need somewhere to draw to. Generall
 
 int main()
 {
-    //  Instantiate the window object
-    Lazarus::WindowManager window("Lazarus Tutorial", 800, 600);
-    window.createWindow();
+    //  Instantiate the window management interface
+    Lazarus::WindowManager window();
 
-    //  Load user settings from global state
-    window.loadConfig();
+    //  Create and configure application window
+    Lazarus::WindowManager::WindowConfig windowConfig;
+    windowConfig.title = "Hello Quad!";
+    windowConfig.width = 500;
+    windowConfig.height = 500;
+    window.create(windowConfig);
 
     // Invoke render loop
     window.open();
@@ -336,20 +339,6 @@ while(window.isOpen)
 
 See the [Window API Reference](#windowmanager) for more information.
 
-## Global Settings:
-### Modifying the Lazarus state:
-Lazarus keeps track of user settings via the `Lazarus::GlobalsManager` class. This class provides functionality to get and set the state of internally tracked and externally declared Lazarus configuration variables. User settings *must* be specified prior to calling `Lazarus::WindowManager::loadConfig()`. For example:
-```cpp
-Lazarus::GlobalsManager globals = Lazarus::GlobalsManager();
-
-//  Correct usage: the program will render frames as quickly as possible despite the monitor's maximum refresh rate.
-globals.setVsyncDisabled(true);
-window.loadConfig();
-//  Incorrect usage: The value returned by globals.getLaunchInFullScreen() will reflect your selection, but will be inefective.
-globals.setLaunchInFullscreen(true);
-```
-
-Find a full list of settings functions [here](#globalsmanager).
 
 ## Mesh assets:
 ### Hello Quad!
@@ -361,14 +350,15 @@ For now we'll use an orthographic camera which projects the scene into two dimen
 
 int main()
 {
-    //  Engine state interface
-    Lazarus::GlobalsManager globals = Lazarus::GlobalsManager();    
+    //  Instantiate the window management interface
+    Lazarus::WindowManager window();
 
-    //  Window
-    Lazarus::WindowManager window("Lazarus Tutorial");
-    window.createWindow();
-    window.setBackgroundColor(1.0, 0.0, 0.0);
-    window.loadConfig();
+    //  Create and configure application window
+    Lazarus::WindowManager::WindowConfig windowConfig;
+    windowConfig.title = "Hello Quad!";
+    windowConfig.width = 500;
+    windowConfig.height = 500;
+    window.create(windowConfig);
 
     //  Default shader
     Lazarus::Shader shader = Lazarus::Shader();
@@ -382,8 +372,8 @@ int main()
     //  Configure camera settings
     Lazarus::CameraManager::CameraConfig cameraSettings = {};
     cameraSettings.type = Lazarus::CameraManager::CameraConfig::CameraType::ORTHOGRAPHIC;
-    cameraSettings.aspectRatioX = globals.getDisplayWidth();
-    cameraSettings.aspectRatioY = globals.getDisplayHeight();
+    cameraSettings.aspectRatioX = windowConfig.width;
+    cameraSettings.aspectRatioY = windowConfig.height;
 
     //  Generate camera
     Lazarus::CameraManager::Camera camera = {};
@@ -611,57 +601,6 @@ Params:
 #### bool getEnforceImageSanity()
 Returns the current value of `LAZARUS_ENFORCE_IMAGE_SANITY`.
 
-#### void setCursorHidden(bool shouldHide)
-Sets the value of `LAZARUS_DISABLE_CURSOR_VISIBILITY`. When `true` the cursor pointer will become transparent when hovered over the active game window.
-
-*Notes:*
-- *Must be set prior to creation of a window with `WindowManager::initialise()`*
-- *Cursor X and Y coordinates continue to update following a call to `EventManager::monitorEvents()` as if it were opaque.*
-
-params:
->**shouldHide:** *Whether or not cursor opacity should be set to 0.*
-
-#### bool getCursorHidden()
-Returns the current value of `LAZARUS_DISABLE_CURSOR_VISIBILITY`.
-
-#### void setLaunchInFullScreen(bool shouldEnlarge)
-Sets the value of `LAZARUS_LAUNCH_IN_FULLSCREEN`. When `true` the application will launch at the maximum height and width values of the primary monitor.
-
-parms:
->**shouldEnlarge** *Whether or not the application should launch in fullscreen by default.*
-
-#### bool getLaunchInFullScreen()
-Returns the current value of `LAZARUS_DISABLE_CURSOR_VISIBILITY`.
-
-#### void setVsyncDisabled(bool shouldDisable)
-Sets the value of `LAZARUS_VSYNC_DISABLED`. If true, the render pipeline will be allowed to render at it's maximum framerate. When false the interval between rendering and processing is set to 1 frame.
-
-#### bool getVsyncDisabled()
-Returns the current value of `LAZARUS_VSYNC_DISABLED`.
-
-#### void setBackFaceCulling(bool shouldCull)
-Sets the value of `LAZARUS_CULL_BACK_FACES`. I don't reccomend disabling this optimisation but if you want to you can... Ensures that faces opposite to the camera aren't rendered. Front face culling is currently unsupported through lazarus but you can enable it yourself using OpenGL (prior to window creation) like so:
-
-```cpp
-glEnable(GL_CULL_FACE);
-glCullFace(GL_FRONT);
-```
-
-params:
->**shouldCull:** *Whether or not to disable the rendering of faces that are currently out of sight.*
-
-#### bool getBackFaceCulling()
-Returns the current value of `LAZARUS_CULL_BACK_FACES`.
-
-#### void setDepthTest(bool shouldTest)
-Sets the value of `LAZARUS_DEPTH_TEST_FRAGS`. Again, I don't reccomend disabling this setting. Informs OpenGL that we want it to perform a depth test on the current fragment that is being drawn against the rest of the frame buffers contents. Determines what is in-front or behind. Turning this off can have a disastrous effect on the render result.
-
-params:
->**shouldTest:** *Whether or not OpenGL should should check which fragments are in-front or behind of eachother.*
-
-#### getDepthTest()
-Returns the current value of `LAZARUS_DEPTH_TEST_FRAGS`.
-
 #### void setNumberOfActiveLights(int count)
 Sets the value of `LAZARUS_LIGHT_COUNT`. Updates the total number of lightsources known to the render context. Don't do this.
 
@@ -670,15 +609,6 @@ params:
 
 #### int getNumberOfActiveLights()
 Returns the number of lights known accross all `LightManager` instances.
-
-#### void setWireframeMode(bool useWireframe)
-Sets the value of `LAZARUS_WIREFRAME_MODE`. Determines whether the scene should be rendered as the lines between a primitive's vertices. Otherwise triangles are filled in and the scene is rendered normally.
-
-> Params: \
-> **useWireframe:** *Render lines when true, otherwise fill faces.*
-
-#### bool getWireframeMode()
-Returns the current value of `LAZARUS_WIREFRAME_MODE`.
 
 ### Members:
 > **lazarus_result**: Various execution status codes (*type:* `enum`)
@@ -721,19 +651,15 @@ Returns the current value of `LAZARUS_WIREFRAME_MODE`.
 A class for making and managing the program's window(s). 
 
 ### Constructor:
-#### WindowManager(const char *title, int width, int height)
-
-Params:
-> **title**: *The window's title* \
-> **width**: *The width of the window. (default: `800`)* \
-> **height**: *The height of the window. (default: `600`)* \
+#### WindowManager()
+Default-initialises this classes members.
 
 ### Functions:
-#### createWindow()
+#### create(WindowConfig config)
 Initialises OpenGL and supplementary libraries. Creates a window and rendering context.
 
-#### loadConfig()
-Binds a shader program to the current active window's OpenGL Context and loads a render configuration based on values set in the global scope (see: `GlobalsManager`).
+Params:
+> **config:** *A configuration object holding information about how the window and it's context should be set up.*
 
 #### resize(int width, int height)
 Sets the window to the specified `width` and `height`.
@@ -743,7 +669,7 @@ Params:
 > **height:** *The desired window height.*
 
 #### toggleFullscreen()
-Sets the viewport to the size of the monitor / display if it's currently in windowed-mode. If fullscreen is already active, converts the viewport to windowed-mode. When switching out of fullscreen the new frame will be what it was prior to resize. If the size was never specified (*e.g. because the application was launched with `GlobalsManager::setLaunchInFullscreen(true)`*) then the window will take up the full size of the monitor / display.
+Sets the viewport to the size of the monitor / display if it's currently in windowed-mode. If fullscreen is already active, converts the viewport to windowed-mode. When switching out of fullscreen the new frame will be what it was prior to resize. If the size was never specified (*e.g. because the application was launched with `WindowManager::WindowConfig::fullscreen` set to `true`*) then the window will take up the full size of the monitor / display.
 
 #### open()
 Opens the active window.
@@ -782,7 +708,18 @@ Clears the back buffer's depth and color bits so that they can be given new valu
 Enables picking of the window's pixels for objects which have been rendered to the screen following a call to `ModelManager::drawModel(...)`. The ID's of objects with items with `ModelManager::Model::isClickable` set to `true` now become searchable at their pixel coordinates via a call to `CameraManager::getPixelOccupant(...)`.
 
 ### Members:
-> **isOpen:** *Whether or not the active window is open. See also: `GlobalsManager::getContextWindowOpen()`. (type: `bool`, default: `false`)* \
+> **isOpen:** *Whether or not the active window is open. See also: `WindowManager::open()` or `WindowManager::close()`. (type: `bool`, default: `false`)* \
+> **WindowConfig:** *Configuration object for setting up a window. (type: `struct`)*
+>   - **height:** *How much y-axis screenspace in pixels is occupied by the window. (type: `int`, optional, default: `600`)*
+>   - **width:** *How much x-axis screenspace in pixels is occupied by the window. (type: `int`, optional, default: `800`)*
+>   - **title:** *The window name. (type: `const char*`)*
+>   - **backgroundColor:** *The RBG value used to paint unnocupied screenspace. (type: `glm::vec3`, optional, default: `(1.0f, 1.0f, 1.0f)`)*
+>   - **fullscreen:** *Whether the window should be maximised on launch. (type: `bool`, optional, default: `false`)*
+>   - **disableCursor:** *Toggles the visibility of the mouse pointer. (type: `bool`, optional, default: `false`)*
+>   - **cullFaces:** *Whether or not the "back" faces of a `ModelManager::Model` should be rendered. (type: `bool`, optional, default: `true`)*
+>   - **testDepth:** *Toggles whether the subject of a `ModelManager::drawModel` call should have its z-depth checked against z-depth of other geometry in the scene (The scene being `Model`'s that have been drawn prior to a call to `WindowManager:presentNextFrame()`).*
+>   - **disableVsync:** *Toggle vertical-sync on or off. Responsible for locking the framerate to the monitor's refresh rate, instead of "as fast as we can". E.g. A 60khz monitor will render at 60 frames-per-second. (type: `bool`, optional, default: `false`)*
+>   - **wireframeMode:** *Determines if the surface of a face should be rasterised. (type: `bool`, optional, default: `false`)*
 
 ## WindowManager::EventManager
 A class for tracking, storing and managing window events as well as their values.
@@ -1517,6 +1454,6 @@ Free cubemaps: https://www.humus.name/index.php?page=Textures
 7. The maximum number of lights permitted in any one scene while using the `LAZARUS_DEFAULT_VERT_SHADER` and/or `LAZARUS_DEFAULT_FRAG_SHADER` is limitted to a maximum size of 64.
 8. The maximum number of joints allowed for any one animated armature is currently limitted to a maximum size of 64.
 9. The maximum number of entities in any one scene who can be picked or looked up using a pixel with `CameraManager::getPixelOccupant` is limmited to a maximum size of 255.
-10. For linux systems using wayland graphical sessions, running in windowed mode will throw an error due to window repositioning (the window is centered so it doesn't just appear in a random place). Run the application in fullscreen with `GlobalsManager::setLaunchInFullscreen(true)`.
+10. For linux systems using wayland graphical sessions, running in windowed mode will throw an error due to window repositioning (the window is centered so it doesn't just appear in a random place). Run the application in fullscreen with `WindowManager::WindowConfig::fullscreen` set to true or using `WindowManager::toggleFullscreen()`.
 11. All images must be formatted with RGBA 8-bit alignment
 12. Ensure that every vertex in an animated mesh that has been exported to glb format is assigned a weight. If some are missed, common modeling programs will add an extra bone to your rig at export-time to compensate for floating geometry -- this has a negative impact on the parser and will likely not load.
