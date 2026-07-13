@@ -565,6 +565,11 @@ lazarus_result WindowManager::create(WindowManager::WindowConfig config)
     int32_t targetWidth = 0;
     int32_t targetHeight = 0;
 
+	if(config.disableResize)
+	{
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	}
+
     config.fullscreen
     ? (((targetWidth = videoMode->width) && (targetHeight = videoMode->height)) 
         &&  (
@@ -622,6 +627,10 @@ lazarus_result WindowManager::create(WindowManager::WindowConfig config)
         return;
     });
 
+	/**
+	 * This callback will do nothing in scenarios where the WindowConfig::disableResize 
+	 * setting is true
+	*/
 	glfwSetFramebufferSizeCallback(this->window, [](GLFWwindow *win, int width, int height){
 		WindowManager *window = (WindowManager *) glfwGetWindowUserPointer(win);
 		window->resize(width, height);

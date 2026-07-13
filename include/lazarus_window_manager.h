@@ -144,6 +144,7 @@ class WindowManager : public EventManager, public Time
             bool testDepth = true;
             bool disableVsync = false;
             bool wireframeMode = false;
+            bool disableResize = false;
         };
 
         WindowManager();
@@ -193,25 +194,6 @@ class WindowManager : public EventManager, public Time
         FileLoader::Image image;
 
         WindowConfig config;
-
-        /**
-         * TODO:
-         * These should be moved into the window struct or maybe some WindowConfig which would
-         * be nice in public space and would help reduce the number of weird `GlobalsManager` 
-         * functions...
-         * 
-         * Same goes for isOpen
-         * 
-         * Also these could be expressed privately with a bitmask
-        */
-
-        uint8_t configFlags;
-        // bool isFullscreen;
-        // bool enableCursor;
-        // bool cullFaces;
-        // bool testDepth;
-        // bool disableVsync;
-        // bool wireframeMode;
         
         int32_t originalWidth;
         int32_t originalHeight;

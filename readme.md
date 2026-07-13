@@ -720,6 +720,7 @@ Enables picking of the window's pixels for objects which have been rendered to t
 >   - **testDepth:** *Toggles whether the subject of a `ModelManager::drawModel` call should have its z-depth checked against z-depth of other geometry in the scene (The scene being `Model`'s that have been drawn prior to a call to `WindowManager:presentNextFrame()`).*
 >   - **disableVsync:** *Toggle vertical-sync on or off. Responsible for locking the framerate to the monitor's refresh rate, instead of "as fast as we can". E.g. A 60khz monitor will render at 60 frames-per-second. (type: `bool`, optional, default: `false`)*
 >   - **wireframeMode:** *Determines if the surface of a face should be rasterised. (type: `bool`, optional, default: `false`)*
+>   - **disableResize:** *Controls if the window size is allowed to be changed by the user. (type `bool`, default: `false`)*
 
 ## WindowManager::EventManager
 A class for tracking, storing and managing window events as well as their values.
