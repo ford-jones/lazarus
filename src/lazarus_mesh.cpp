@@ -124,6 +124,14 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
             }
             else
             {
+                /**
+                 * TODO:
+                 * Note that models exported from blender will include what
+                 * blender calls a "neutral_bone" in cases where a mesh is rigged
+                 * but some vertices do not contain joint weights.
+                 * 
+                 * Consider identifying and culling neutral bones here, or throw an err
+                 */
                 this->composeArmature(assetData);
             };
     
@@ -1418,23 +1426,19 @@ uint32_t ModelManager::getKeyframeIndex(AssetLoader::AssetData::JointMotion::Tra
         Determine how many ms have passed since this was
         last called.
 
-        TODO: 
-        Find way to remove divisions here.
-        Refactor time lookup into a function
-
-        FIXME: 
-        This shouldn't need to be recalculated for each
-        motion the way it currently is. Instead this 
-        should be done just once for the whole armature.
+            FIXME: 
+            This shouldn't need to be recalculated for each
+            motion the way it currently is. Instead this 
+            should be done just once for the whole armature.
     */
-    std::chrono::system_clock::duration epoch = std::chrono::system_clock::now().time_since_epoch();
-    uint32_t currentMs = epoch / std::chrono::milliseconds(1);
+    uint32_t currentMs = LAZARUS_UPTIME;
     uint32_t timeDelta = currentMs - previousMs;
     previousMs = currentMs;
     elapsedMs += timeDelta;
-
-    /*
+    /**
         Determine motions total duration.
+            TODO:
+            Store this instead of calculating it each time <.<
     */
     uint32_t durationMax = static_cast<uint32_t>(motion.timesteps.back() * 1000.0f);
 
@@ -1480,7 +1484,7 @@ glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::Tr
         {
             /*
                 Use the value as-is
-            ========================================================*/
+            */
             keyframe = motion.keyframes[frameBegin];
         }
         else if(motion.lerp == AssetData::JointMotion::TransformData::InterpolationType::LINEAR)
@@ -1544,18 +1548,20 @@ lazarus_result ModelManager::setActiveAnimation(ModelManager::Model &meshIn, uin
             {
                 data.activeAnimation = animationIndex;
         
+                /*
+                    Animation has changed so begin playing it from the 
+                    start (the current elapsed uptime of the engine)
+                */
                 for(size_t j = 0; j < data.armature.size(); j++) 
                 {
                     ModelManager::MeshData::MotionPoint &motion = data.armature[j];
+                    motion.previousPlaytime = LAZARUS_UPTIME;
                     motion.elapsedPlaytime = 0;
                     motion.playbackPosition = 0;
-                    motion.previousPlaytime = 0;
                     motion.elapsedLoops = 0;
-                    // if(loopCount == -1 || loopCount > 0)
-                    // {
-                        motion.maxLoops = loopCount;
-                    // }
+                    motion.maxLoops = loopCount;    
                 }
+                data.animationPaused = false;
             }
             else
             {
@@ -1564,13 +1570,6 @@ lazarus_result ModelManager::setActiveAnimation(ModelManager::Model &meshIn, uin
             }
         };
     };
-
-    /*
-        Animation has changed so begin playing
-        it from the start.
-    */
-
-    this->playAnimation(meshIn);
 
     return status;
 };
@@ -1613,9 +1612,14 @@ lazarus_result ModelManager::playAnimation(ModelManager::Model &meshIn)
         {
             for(size_t j = 0; j < data.armature.size(); j++) 
             {
+                /**
+                 * TODO:
+                 * This should really be a map or something with equivalent
+                 * lookup speed
+                 */
                 ModelManager::MeshData::MotionPoint &motion = data.armature[j];
                 motion.elapsedPlaytime = motion.playbackPosition;
-                motion.previousPlaytime = 0;
+                motion.previousPlaytime = LAZARUS_UPTIME;
             }
 
             data.animationPaused = false;

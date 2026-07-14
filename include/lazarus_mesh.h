@@ -25,14 +25,11 @@
 	#include "lazarus_common.h"
 #endif
 
-#include <iostream>
-#include <vector>
 #include <map>
 #include <set>
-#include <string>
 #include <stdlib.h>
-#include <memory>
 #include <cstring>
+#include <memory>
 #include <algorithm>
 
 #include "lazarus_file_loader.h"

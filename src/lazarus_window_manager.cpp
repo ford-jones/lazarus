@@ -56,6 +56,11 @@ lazarus_result Time::monitorTimeDelta()
 		LOG_ERROR("Time Error: ", __FILE__, __LINE__);
 		return lazarus_result::LAZARUS_TIME_ERROR;
 	};
+	/**
+	 * Statically update global state so that the engine and
+	 * its user share the same perception of time
+	 */
+	LAZARUS_UPTIME += timeDelta;
 
 	return lazarus_result::LAZARUS_OK;
 };

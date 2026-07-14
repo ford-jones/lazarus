@@ -22,11 +22,7 @@
 void LOG_DEBUG(const char *DEBUG_MESSAGE)
 {
     #ifdef _LAZARUS_DEBUG_BUILD
-    
-        std::chrono::system_clock::duration epoch = std::chrono::system_clock::now().time_since_epoch();
-        uint64_t ms = epoch / std::chrono::milliseconds(1);
-        
-        std::cout << BLUE_TEXT << "["<< ms << "] " << RESET_TEXT << DEBUG_MESSAGE << std::endl;
+        std::cout << BLUE_TEXT << "["<< LAZARUS_UPTIME << "] " << RESET_TEXT << DEBUG_MESSAGE << std::endl;
     #endif
 
     return;
@@ -42,6 +38,7 @@ uint32_t                 LAZARUS_PRIMARY_DISPLAY_WIDTH          = 0;
 uint32_t                 LAZARUS_PRIMARY_DISPLAY_HEIGHT         = 0;
 uint32_t                 LAZARUS_LIGHT_COUNT                    = 0;
 std::vector<uint32_t>    LAZARUS_SELECTABLE_ENTITIES            = {};
+uint32_t                 LAZARUS_UPTIME                         = 0;
 
 uint32_t                 LAZARUS_MAX_IMAGE_WIDTH                = 0;
 uint32_t                 LAZARUS_MAX_IMAGE_HEIGHT               = 0;

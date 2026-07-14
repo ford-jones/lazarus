@@ -42,6 +42,7 @@ extern uint32_t                  LAZARUS_PRIMARY_DISPLAY_WIDTH;
 extern uint32_t                  LAZARUS_PRIMARY_DISPLAY_HEIGHT;
 extern uint32_t                  LAZARUS_LIGHT_COUNT;
 extern std::vector<uint32_t>     LAZARUS_SELECTABLE_ENTITIES;
+extern uint32_t                  LAZARUS_UPTIME;
 
 /* User Settings */
 
@@ -49,7 +50,6 @@ extern bool                      LAZARUS_ENFORCE_IMAGE_SANITY;
 extern bool                      LAZARUS_DO_STENCIL_BUFFER;
 extern uint32_t                  LAZARUS_MAX_IMAGE_WIDTH;
 extern uint32_t                  LAZARUS_MAX_IMAGE_HEIGHT;
-
 
 typedef enum lazarus_result
 {
