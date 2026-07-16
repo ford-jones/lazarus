@@ -38,19 +38,27 @@ class Time
 {
 	public:
 		Time();
-        lazarus_result monitorElapsedUptime();
         lazarus_result monitorTimeDelta();
 		lazarus_result monitorFPS();
 		
-		float framesPerSecond;
 		float timeDelta;
-		float elapsedTime;
-
+		float framesPerSecond;
+		float uptimeMs;
+        
         virtual ~Time();
-		
-	private:
-		float msSinceLastRender;
-		float internalSeconds;
+	
+    protected:
+        /**
+         * Accumulates ms between frame presentations. Required for calculating FPS 
+         * and frame delta.
+         */
+        lazarus_result getTimeUpdate();
+
+    private:
+        
+		double previousMs;
+        double currentMs;
+		double msSinceLastRender;
 		float frameCount;		
 };
 

@@ -26,22 +26,47 @@ Time::Time()
 	this->frameCount 			= 0;
 	this->framesPerSecond 		= 0;
 
-	this->elapsedTime 			= 0.0f;
-	this->internalSeconds 		= 0.0f;
+	this->uptimeMs		 		= 0.0f;
+	this->previousMs	 		= 0.0f;
+	this->currentMs		 		= 0.0f;
 	this->msSinceLastRender 	= 0.0f;
 	this->timeDelta 			= 0.0f;
 };
 
-lazarus_result Time::monitorElapsedUptime()
+lazarus_result Time::getTimeUpdate()
 {
-	this->elapsedTime = glfwGetTime();
-	if(elapsedTime <= 0.0f)
+	std::chrono::high_resolution_clock::duration epoch = std::chrono::high_resolution_clock().now().time_since_epoch();
+	auto time = std::chrono::duration_cast<std::chrono::milliseconds>(epoch);
+	this->currentMs = time.count();
+
+	if(currentMs <= 0.0f)
 	{
 		LOG_ERROR("Time Error: ", __FILE__, __LINE__);
  		return lazarus_result::LAZARUS_TIME_ERROR;
 	};
 
-	this->msSinceLastRender = (this->elapsedTime - this->internalSeconds);
+	this->msSinceLastRender = (this->currentMs - this->previousMs);
+
+	return lazarus_result::LAZARUS_OK;
+};
+
+lazarus_result Time::monitorFPS()
+{
+	this->frameCount++;	
+	this->getTimeUpdate();
+
+	if(this->msSinceLastRender >= 1000.0f)
+	{
+		this->framesPerSecond = this->frameCount;
+		if(this->framesPerSecond <= 0.0f) 
+		{
+			LOG_ERROR("Time Error: ", __FILE__, __LINE__);
+			return lazarus_result::LAZARUS_TIME_ERROR;
+		};
+
+		this->frameCount = 0;
+		this->previousMs = this->currentMs;
+	};
 
 	return lazarus_result::LAZARUS_OK;
 };
@@ -50,38 +75,18 @@ lazarus_result Time::monitorTimeDelta()
 {
 	this->monitorFPS();
 
-	this->timeDelta = (1000 / this->framesPerSecond);
+	this->timeDelta = (1000.0f / this->framesPerSecond);
 	if(timeDelta <= 0.0f)
 	{
 		LOG_ERROR("Time Error: ", __FILE__, __LINE__);
 		return lazarus_result::LAZARUS_TIME_ERROR;
 	};
+	this->uptimeMs += timeDelta;
 	/**
 	 * Statically update global state so that the engine and
 	 * its user share the same perception of time
 	 */
-	LAZARUS_UPTIME += timeDelta;
-
-	return lazarus_result::LAZARUS_OK;
-};
-
-lazarus_result Time::monitorFPS()
-{
-	this->frameCount++;	
-	this->monitorElapsedUptime();
-
-	if(this->msSinceLastRender >= 1.0f)
-	{
-		this->framesPerSecond = this->frameCount;
-		if(this->framesPerSecond <= 0) 
-		{
-			LOG_ERROR("Time Error: ", __FILE__, __LINE__);
-			return lazarus_result::LAZARUS_TIME_ERROR;
-		};
-
-		this->frameCount = 0;
-		this->internalSeconds += 1.0f;
-	};
+	LAZARUS_UPTIME = this->uptimeMs;
 
 	return lazarus_result::LAZARUS_OK;
 };
@@ -856,6 +861,7 @@ lazarus_result WindowManager::presentNextFrame()
 	glfwSwapBuffers(this->window);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
+	this->getTimeUpdate();
     return this->checkErrors(__FILE__, __LINE__);
 };
 

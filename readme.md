@@ -802,14 +802,10 @@ Access the result(s) via `WindowManager::Time::framesPerSecond`.
 Calculate the time taken in milliseconds to draw and present a single frame. \
 Access the result(s) via `WindowManager::Time::timeDelta`.
 
-#### monitorElapsedTime()
-Begin active monitoring of the total number of seconds passed since the time of calling. \
-Access the result(s) via `WindowManager::Time::elapsedTime`.
-
 ### Members:
 > **framesPerSecond:** *Current number of frames being drawn per second. (type: `int`)* \
 > **timeDelta:** *The duration of time taken in milliseconds to draw a single frame. (type: `float`)* 
-> **elapsedTime:** *The amount of seconds passed since `WindowManager::Time::monitorElapsedTime()` was first called. (type: `float`)*
+> **uptimeMs:** *Accumulates uptime since the window was opened in ms.*
 
 ## Shader:
 A class for the lazarus default shader program which, simply maps vertex positions to their coordinates and draws the fragments; following the lambertian lighting model.
