@@ -24,14 +24,13 @@ ModelManager::ModelManager(Shader &shader, TextureLoader::StorageType textureTyp
       ModelManager::TextureLoader(textureType)
 {
 	LOG_DEBUG("Constructing Lazarus::ModelManager");
-
     this->childCount = 0;
     this->activeShaderID = 0;
     this->finder = std::make_unique<FileLoader>();
     this->shader = &shader;
-
+    
     this->clearMeshStorage();
-
+    
     shader.getActiveShader(this->activeShaderID);
     this->updateUniformLocations();
 
@@ -47,8 +46,6 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
 
     this->modelOut = {};
     this->modelData = {};
-    
-    glActiveTexture(GL_TEXTURE2);
 
     modelOut.meshFilepath = options.meshPath;
     modelOut.materialFilepath = options.materialPath;
@@ -58,6 +55,8 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
     this->modelOut.name = options.name.size()
     ? options.name
     : modelOut.meshFilepath + "_" + std::to_string(this->modelStore.size());
+
+    glActiveTexture(GL_TEXTURE2);
 
     /*
         Determine whether the file is wavefront
@@ -98,17 +97,19 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
     for(size_t i = 0; i < assets.size(); i++)
     {
         AssetLoader::AssetData &assetData = assets[i];
+
         this->meshData = {};
-        this->meshData.texture.unitId = GL_TEXTURE2;
         this->meshData.instanceCount = options.instanceCount;
+        this->meshData.texture.discardAlphaZero = options.textureTransparency;
+        this->meshData.texture.unitId = GL_TEXTURE2;
         
         this->setMeshProperties(assetData);
         
         if(!std::empty(assetData.animations))
         {
+            LOG_DEBUG("Asset contains animations");
             meshData.isAnimated = true;
             meshData.animationCount = assetData.animations.size();
-            LOG_DEBUG("Composing armature");
 
             /*
                 Construct joints and transfroms from loaded data. 
@@ -123,145 +124,15 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
             }
             else
             {
-                std::map<uint32_t, AssetLoader::AssetData::JointData> rig = assetData.armature;
-    
-                std::set<uint32_t> heirachy;
-                for(auto pair : rig)
-                {
-                    MeshData::MotionPoint motionPoint = {};
-                    AssetLoader::AssetData::JointData jointData = pair.second;
-    
-                    motionPoint.id = jointData.id;
-                    motionPoint.inverseBindMatrix = jointData.inverseBindMatrix;
-    
-                    /*
-                        Obtain the movement data for this joint for each 
-                        animation that can be enacted by the armature.
-                    */
-                    for(size_t j = 0; j < assetData.animations.size(); j++)
-                    {
-                        AssetLoader::AssetData::JointMotion jointMotion = assetData.animations[j].at(jointData.id);
-                        motionPoint.animationData.push_back(jointMotion);
-                    };
-    
-                    /*
-                        Compute the transformation matrix required
-                        for moving into the bind-pose. 
-                        
-                        Note: Blender exports its' quats with 'w' on 
-                        the wrong side.
-                    */
-                    motionPoint.localJointTransform = (
-                        glm::translate(glm::mat4(1.0f), jointData.translation) *
-                        glm::mat4_cast(glm::quat(jointData.rotation.w, jointData.rotation.x, jointData.rotation.y, jointData.rotation.z)) * 
-                        glm::scale(glm::mat4(1.0f), jointData.scale)
-                    );
-                    motionPoint.globalJointTransform = motionPoint.localJointTransform;
-                    motionPoint.jointMatrix = glm::mat4(0.0f);
-                    
-                    /*
-                        Look up the children of the joints actual 
-                        IDs relative to the flattened armature.
-                    */
-                    for(size_t k = 0; k < jointData.children.size(); k++)
-                    {
-                        uint32_t childID = jointData.children[k];
-                        uint32_t index = assetData.armature.at(childID).id;
-                        motionPoint.children.push_back(index);
-    
-                        heirachy.insert(index);
-                    };
-                    
-                    meshData.armature.push_back(motionPoint);
-                };
-                
-                /*
-                    Ensure flattened armature is indexed in
-                    the same order of appearance as the glb 
-                    'skins' vector.
-                */
-                std::sort(
-                    meshData.armature.begin(), 
-                    meshData.armature.end(), 
-                    [](MeshData::MotionPoint &jointA, MeshData::MotionPoint &jointB) {
-                        return jointA.id < jointB.id;
-                    }
-                );
-                
-    
-                /*
-                    Determine the armature's root joint (The only node 
-                    in the tree which is never referred to as a child of 
-                    another node).
-    
-                    TODO:
-                    This should be extended to be more inclusive of 
-                    armatures with multiple roots (forests).
-                */
-                for(size_t j = 0; j < meshData.armature.size(); j++)
-                {
-                    if(heirachy.insert(j).second)
-                    {
-                        meshData.armatureRoot = j;
-                        break;
-                    };
-                };
-    
-                /*
-                    Traverse joint structure from root and apply 
-                    transforms forward to children as the tree is 
-                    descended.
-    
-                    I.e. Breadth-first search begin.
-                */
-                MeshData::MotionPoint &rootJoint = meshData.armature[meshData.armatureRoot];
-                std::vector<uint32_t> children = rootJoint.children;
-                std::vector<uint32_t> parents;
-    
-                parents.resize(rootJoint.children.size(), meshData.armatureRoot);
-                std::set<uint32_t> visited = {rootJoint.id};
-    
-                rootJoint.parentID = -1;
-                rootJoint.posePosition = rootJoint.globalJointTransform;
-                rootJoint.jointMatrix = rootJoint.globalJointTransform * rootJoint.inverseBindMatrix;
-                
-                while(!std::empty(children))
-                {
-                    std::vector<uint32_t> nextChildren;
-                    std::vector<uint32_t> nextParents;
-    
-                    for(size_t k = 0; k < children.size(); k++)
-                    {
-                        uint32_t childID = children[k];
-                        uint32_t parentID = parents[k];
-    
-                        if(visited.insert(childID).second)
-                        {
-                            MeshData::MotionPoint &child = meshData.armature[childID];
-                            MeshData::MotionPoint &parent = meshData.armature[parentID];
-                            nextChildren.insert(
-                                nextChildren.end(), 
-                                child.children.begin(), 
-                                child.children.end()
-                            );
-                            nextParents.resize(nextParents.size() + child.children.size(), childID);
-        
-                            /*
-                                Compute the pose and set it as the joint 
-                                matrix value required for vertex skinning
-                                by editting the rig in-place.
-                            */
-                            glm::mat4 localTransform = child.globalJointTransform;
-                            child.parentID = parentID;
-                            child.globalJointTransform = parent.globalJointTransform * localTransform;
-                            child.posePosition = child.globalJointTransform;
-                            child.jointMatrix = child.globalJointTransform * child.inverseBindMatrix;
-                        };
-                    };
-    
-                    children = nextChildren;
-                    parents = nextParents;
-                };
+                /**
+                 * TODO:
+                 * Note that models exported from blender will include what
+                 * blender calls a "neutral_bone" in cases where a mesh is rigged
+                 * but some vertices do not contain joint weights.
+                 * 
+                 * Consider identifying and culling neutral bones here, or throw an err
+                 */
+                this->composeArmature(assetData);
             };
     
         };   
@@ -295,6 +166,8 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
         {
             return status;
         }
+        this->setStartingOrientation(out, options.translation, options.scale);
+        
         return this->uploadTextures();
     }
     catch (std::exception& e)
@@ -305,10 +178,552 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
 
 };
 
-/**
- * Determines if any of the materials used by the meshes that compose `this->modelOut` contain 
- * textures and engages the allocator.
- */
+/*
+    Note: There is some strange behaviour with this function.
+    If a single instance of *this* class is responsible for creating quads as well as 3D
+    assets - a texturing artifact will present itself when the user *creates* the quad 
+    prior to creating the 3D assets. (i.e. createQuad is called before create3DAsset).
+
+    At the quads origin in worldspace, a "shadow" of the quad will render using texture 
+    number 1 off of the xyzTextureStack. Not sure why.
+
+    This is *very* similar to the behaviour seen on MacOS and is possibly related. It 
+    doesn't present itself on linux.
+
+    Worth mentioning that this doesn't seem to happen with glyphs - which are wrapped over
+    a quad under the hood.
+*/
+
+// lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::QuadConfig options)
+lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::AssetConfig options)
+{
+    this->syncShader();
+
+    LOG_DEBUG("Generating quad");
+    
+    float xMin = 0.0f;
+    float xMax = 0.0f;
+    float yMax = 0.0f;
+    float yMin = 0.0f;
+    if(options.scale.x < 0.0f || options.scale.y < 0.0f)
+    {
+        LOG_ERROR("Asset Error:", __FILE__, __LINE__);
+
+        return lazarus_result::LAZARUS_INVALID_DIMENSIONS;
+    }
+    else
+    {
+        /*
+            Ensure that the origin is centered.
+            (E.g. width 2.0f, height 2.0f becomes 
+            width -1.0f, height +1.0f) 
+        */
+        xMin = -(options.scale.x * 0.5f);
+        xMax = options.scale.x * 0.5f;
+        yMax = options.scale.y * 0.5f;
+        yMin = -(options.scale.y * 0.5f);
+    }
+
+    AssetLoader::AssetData assetData = {};
+    this->modelOut = {};
+    this->modelData = {};
+
+    modelOut.type = ModelManager::ModelType::PLANE;
+
+    modelOut.meshFilepath = "";
+    modelOut.materialFilepath = "";
+
+    this->modelOut.name = options.name.size() 
+    ? options.name 
+    : std::string("QUAD_").append(std::to_string(this->modelStore.size()));
+    
+    int32_t textureUnit = this->textureStorage == TextureLoader::StorageType::ATLAS
+    ? GL_TEXTURE1
+    : GL_TEXTURE2;
+
+    glActiveTexture(textureUnit);
+
+    lazarus_result status = lazarus_result::LAZARUS_OK;
+    float layer = 0.0f;
+    if(this->textureStorage!= StorageType::ATLAS)
+    {
+        if(!std::empty(options.materialPath))
+        {
+            FileLoader::Image image = {};
+            status = finder->loadImage(image, options.materialPath.c_str());
+            if(status != lazarus_result::LAZARUS_OK)
+            {
+                return status;
+            };
+    
+            assetData.textures.push_back(image);
+            assetData.colors.push_back(vec3(-0.1f, -0.1f, -0.1f));
+    
+            /*
+                Increment the loaders texture array slice 
+                count to stay in sync with future loads of
+                other assets.
+            */
+    
+            AssetLoader::layerCount += 1;
+            layer = static_cast<float>(AssetLoader::layerCount - 1);
+        }
+        else
+        {
+            LOG_ERROR("Attempting to load a quad without a texture", __FILE__, __LINE__);
+            return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
+        }
+    
+    }
+
+    /*
+        If the UV params aren't their default values (0.0) then
+        this mesh is being created for a glyph which needs to be 
+        looked up in the texture atlas.
+
+        Otherwise it's a generic sprite.
+    */
+    if(this->textureStorage == StorageType::ATLAS)
+    {
+        /*
+                Vertex positions,           Diffuse colors,             Normals,                    UVs 
+        */
+        assetData.attributes = {                                                                                          
+            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(this->uvXL, this->uvYD, 0.0f),
+            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(this->uvXR, this->uvYD, 0.0f), 
+            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(this->uvXL, this->uvYU, 0.0f),
+            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(this->uvXR, this->uvYU, 0.0f)
+        };
+
+        assetData.indices = {
+            0, 1, 2, 
+            2, 1, 3
+        };
+    }
+    else
+    {
+        /*
+            If the quad is meant for observation in worldspace ensure it has two
+            "outward" facing sides. Note the sign of the normals.
+        */
+        assetData.attributes = {
+            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 0.0f, layer),
+            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 0.0f, layer),
+            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 1.0f, layer),
+            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 1.0f, layer),
+
+            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(1.0f, 1.0f, layer),
+            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(1.0f, 0.0f, layer),
+            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(0.0f, 1.0f, layer),
+            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(0.0f, 0.0f, layer),
+        };
+
+        assetData.indices = {
+            0, 1, 2, 
+            2, 1, 3, 
+            4, 5, 6, 
+            6, 5, 7
+        };
+    };
+
+
+    /*
+        Zero-out movement / animation buf
+    */
+    assetData.movements.clear();
+    assetData.movements.resize(assetData.attributes.size() / 2, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
+
+    this->meshData = {};
+    this->meshData.texture.unitId = textureUnit;
+    this->meshData.texture.discardAlphaZero = options.textureTransparency;
+    this->meshData.instanceCount = options.instanceCount;
+
+    this->setMeshProperties(assetData);
+    this->instantiateMesh(options.selectable);
+    
+    status = this->setMaterials(assetData);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+
+    status = this->uploadVertexData();
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+
+    this->modelData.push_back(this->meshData);
+
+    try
+    {
+        LOG_DEBUG("Storing asset");
+        this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, this->modelData));
+
+        status = this->setSelectable(options.selectable);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
+        out = this->modelOut;
+        glBindVertexArray(0);
+
+        this->setStartingOrientation(out, options.translation, options.scale);
+        return this->uploadTextures();
+    }
+    catch(std::exception &e)
+    {
+        LOG_ERROR(e.what(), __FILE__, __LINE__);
+        return lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
+    }
+
+}
+
+lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::AssetConfig options)
+{
+    this->syncShader();
+    
+    LOG_DEBUG("Generating cube");
+    glm::vec3 vertexPosition = options.scale * 0.5f;
+    
+    AssetLoader::AssetData assetData = {};
+    this->modelOut = {};
+    this->modelData = {};
+
+    modelOut.type = ModelManager::ModelType::CUBE;
+
+    modelOut.meshFilepath = "";
+    modelOut.materialFilepath = "";
+
+    this->modelOut.name = options.name.size() 
+    ? options.name 
+    : std::string("CUBE_").append(std::to_string(this->modelStore.size()));
+    
+    int32_t textureUnit = this->textureStorage == TextureLoader::StorageType::CUBEMAP
+    ? GL_TEXTURE3
+    : GL_TEXTURE2;
+
+    float layer = 0.0f;
+    
+    lazarus_result status = lazarus_result::LAZARUS_OK;
+
+    if(this->textureStorage == TextureLoader::StorageType::CUBEMAP)
+    {
+        FileLoader::Image image = {};
+        image.height = 0;
+        image.width = 0;
+        image.pixelData = NULL;
+
+        assetData.textures.push_back(image);  
+    }
+    else
+    {
+        if(!std::empty(options.materialPath))
+        {
+            FileLoader::Image image = {};
+            status = finder->loadImage(image, options.materialPath.c_str());
+            if(status != lazarus_result::LAZARUS_OK)
+            {
+                return status;
+            };
+
+            assetData.textures.push_back(image);   
+
+            /*
+                Increment the loaders texture array slice 
+                count to stay in sync with future loads of
+                other assets.
+            */
+            
+            AssetLoader::layerCount += 1;
+            layer = static_cast<float>(AssetLoader::layerCount);
+        }
+        else
+        {
+            /**
+             * TODO:
+             * Find some way that this can be not an error. I.e. set a color or something
+             * same goes for the quad implementation
+             */
+            LOG_ERROR("Attempting to load a cube without a texture", __FILE__, __LINE__);
+            return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
+        }
+    };
+    
+    assetData.colors.push_back(vec3(-0.1f, -0.1f, -0.1f));
+
+    assetData.attributes = {                                                                                          
+        /*
+
+               POS                      ST
+
+          (5)_____(2, 6)           0:1 _______1:1
+            \      /\               |          |
+             \    /  \              |          |
+              \  /    \             |          |
+               \/______\            |__________|
+            (1, 4)     (3)         0:0        1:0
+
+        */
+        
+        // Top face
+        vec3(-vertexPosition.x, vertexPosition.y,  -vertexPosition.z),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(0.0f, 0.0f, layer),
+        vec3(vertexPosition.x, vertexPosition.y,  vertexPosition.z),      vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(1.0f, 1.0f, layer),
+        vec3(vertexPosition.x,  vertexPosition.y,  -vertexPosition.z),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(1.0f, 0.0f, layer),
+        vec3(-vertexPosition.x,  vertexPosition.y,  vertexPosition.z),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(0.0f, 1.0f, layer),
+
+        // Back face
+        vec3(-vertexPosition.x, vertexPosition.y,  -vertexPosition.z),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 0.0f, layer),
+        vec3(vertexPosition.x, -vertexPosition.y, -vertexPosition.z),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 1.0f, layer),
+        vec3(-vertexPosition.x,  -vertexPosition.y, -vertexPosition.z),   vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 0.0f, layer),
+        vec3(vertexPosition.x,  vertexPosition.y, -vertexPosition.z),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 1.0f, layer),
+
+        // Right face
+        vec3(vertexPosition.x, vertexPosition.y, -vertexPosition.z),      vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(0.0f, 0.0f, layer),
+        vec3(vertexPosition.x, -vertexPosition.y,  vertexPosition.z),     vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(1.0f, 1.0f, layer),
+        vec3(vertexPosition.x,  -vertexPosition.y,  -vertexPosition.z),   vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(1.0f, 0.0f, layer),
+        vec3(vertexPosition.x,  vertexPosition.y,  vertexPosition.z),     vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(0.0f, 1.0f, layer),
+
+        // Front face
+        vec3(vertexPosition.x, vertexPosition.y, vertexPosition.z),       vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(0.0f, 0.0f, layer),
+        vec3(-vertexPosition.x, -vertexPosition.y,  vertexPosition.z),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(1.0f, 1.0f, layer),
+        vec3(vertexPosition.x,  -vertexPosition.y,  vertexPosition.z),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(1.0f, 0.0f, layer),
+        vec3(-vertexPosition.x,  vertexPosition.y,  vertexPosition.z),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(0.0f, 1.0f, layer),
+
+        // Left face
+        vec3(-vertexPosition.x,  vertexPosition.y, vertexPosition.z),     vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, layer),
+        vec3(-vertexPosition.x,  -vertexPosition.y, -vertexPosition.z),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, layer),
+        vec3(-vertexPosition.x,  -vertexPosition.y,  vertexPosition.z),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 0.0f, layer),
+        vec3(-vertexPosition.x,  vertexPosition.y,  -vertexPosition.z),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, layer),
+
+        // Bottom face
+        vec3(vertexPosition.x, -vertexPosition.y, -vertexPosition.z),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 0.0f, layer),
+        vec3(-vertexPosition.x, -vertexPosition.y, vertexPosition.z),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 1.0f, layer),
+        vec3(-vertexPosition.x, -vertexPosition.y,  -vertexPosition.z),   vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 0.0f, layer),
+        vec3(vertexPosition.x, -vertexPosition.y,  vertexPosition.z),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 1.0f, layer),
+    };
+
+    assetData.indices = {
+        0, 1, 2, 0, 3, 1,
+        4, 5, 6, 4, 7, 5, 
+        8, 9, 10, 8, 11, 9,
+        12, 13, 14, 12, 15, 13,
+        16, 17, 18, 16, 19, 17,
+        20, 21, 22, 20, 23, 21
+    };
+    
+    /*
+        Zero-out movement / animation buf
+    */
+    assetData.movements.clear();
+    assetData.movements.resize(assetData.attributes.size() * 0.5f, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
+
+    this->meshData = {};
+    this->meshData.texture.unitId = textureUnit;
+    this->meshData.texture.discardAlphaZero = options.textureTransparency;
+    this->meshData.instanceCount = options.instanceCount;
+
+    this->setMeshProperties(assetData);
+    this->instantiateMesh(options.selectable);
+    
+    status = this->setMaterials(assetData);
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+    
+    status = this->uploadVertexData();
+    if(status != lazarus_result::LAZARUS_OK)
+    {
+        return status;
+    };
+    this->modelData.push_back(this->meshData);
+
+    try
+    {
+        LOG_DEBUG("Storing asset");
+        this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, this->modelData));
+
+        status = this->setSelectable(options.selectable);
+        if(status != lazarus_result::LAZARUS_OK)
+        {
+            return status;
+        };
+        out = this->modelOut;
+        glBindVertexArray(0);
+
+        this->setStartingOrientation(out, options.translation, options.scale);
+        return this->uploadTextures();
+    }
+    catch (std::exception& e)
+    {
+        LOG_ERROR(e.what(), __FILE__, __LINE__);
+        return lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
+    }
+
+};
+
+void ModelManager::setUvOffset(float xL, float xR, float yU, float yD)
+{
+    this->uvYD = yD;
+    this->uvYU = yU;
+    this->uvXL = xL;
+    this->uvXR = xR;
+
+    return;
+};
+
+lazarus_result ModelManager::composeArmature(AssetLoader::AssetData assetData)
+{
+    LOG_DEBUG("Composing armature");
+
+    std::map<uint32_t, AssetLoader::AssetData::JointData> rig = assetData.armature;
+    
+    std::set<uint32_t> heirachy;
+    for(auto pair : rig)
+    {
+        MeshData::MotionPoint motionPoint = {};
+        AssetLoader::AssetData::JointData jointData = pair.second;
+    
+        motionPoint.id = jointData.id;
+        motionPoint.inverseBindMatrix = jointData.inverseBindMatrix;
+    
+        /*
+            Obtain the movement data for this joint for each 
+            animation that can be enacted by the armature.
+        */
+        for(size_t j = 0; j < assetData.animations.size(); j++)
+        {
+            AssetLoader::AssetData::JointMotion jointMotion = assetData.animations[j].at(jointData.id);
+            motionPoint.animationData.push_back(jointMotion);
+        };
+    
+        /*
+            Compute the transformation matrix required
+            for moving into the bind-pose. 
+                        
+            Note: Blender exports its' quats with 'w' on 
+            the wrong side.
+        */
+        motionPoint.localJointTransform = (
+            glm::translate(glm::mat4(1.0f), jointData.translation) *
+            glm::mat4_cast(glm::quat(jointData.rotation.w, jointData.rotation.x, jointData.rotation.y, jointData.rotation.z)) * 
+            glm::scale(glm::mat4(1.0f), jointData.scale)
+        );
+        motionPoint.globalJointTransform = motionPoint.localJointTransform;
+        motionPoint.jointMatrix = glm::mat4(0.0f);
+                    
+        /*
+            Look up the children of the joints actual 
+            IDs relative to the flattened armature.
+        */
+        for(size_t k = 0; k < jointData.children.size(); k++)
+        {
+            uint32_t childID = jointData.children[k];
+            uint32_t index = assetData.armature.at(childID).id;
+            motionPoint.children.push_back(index);
+    
+            heirachy.insert(index);
+        };
+                    
+        meshData.armature.push_back(motionPoint);
+    };
+                
+    /*
+        Ensure flattened armature is indexed in
+        the same order of appearance as the glb 
+        'skins' vector.
+    */
+    std::sort(
+        meshData.armature.begin(), 
+        meshData.armature.end(), 
+        [](MeshData::MotionPoint &jointA, MeshData::MotionPoint &jointB) {
+            return jointA.id < jointB.id;
+        }
+    );
+                
+    
+    /*
+        Determine the armature's root joint (The only node 
+        in the tree which is never referred to as a child of 
+        another node).
+    
+        TODO:
+        This should be extended to be more inclusive of 
+        armatures with multiple roots (forests).
+    */
+    for(size_t j = 0; j < meshData.armature.size(); j++)
+    {
+        if(heirachy.insert(j).second)
+        {
+            meshData.armatureRoot = j;
+            break;
+        };
+    };
+    
+    /*
+        Traverse joint structure from root and apply 
+        transforms forward to children as the tree is 
+        descended.
+    
+        I.e. Breadth-first search begin.
+    */
+    MeshData::MotionPoint &rootJoint = meshData.armature[meshData.armatureRoot];
+    std::vector<uint32_t> children = rootJoint.children;
+    std::vector<uint32_t> parents;
+    
+    parents.resize(rootJoint.children.size(), meshData.armatureRoot);
+    std::set<uint32_t> visited = {rootJoint.id};
+    
+    rootJoint.parentID = -1;
+    rootJoint.posePosition = rootJoint.globalJointTransform;
+    rootJoint.jointMatrix = rootJoint.globalJointTransform * rootJoint.inverseBindMatrix;
+                
+    while(!std::empty(children))
+    {
+        std::vector<uint32_t> nextChildren;
+        std::vector<uint32_t> nextParents;
+    
+        for(size_t k = 0; k < children.size(); k++)
+        {
+            uint32_t childID = children[k];
+            uint32_t parentID = parents[k];
+    
+            if(visited.insert(childID).second)
+            {
+                MeshData::MotionPoint &child = meshData.armature[childID];
+                MeshData::MotionPoint &parent = meshData.armature[parentID];
+                nextChildren.insert(
+                    nextChildren.end(), 
+                    child.children.begin(), 
+                    child.children.end()
+                );
+                nextParents.resize(nextParents.size() + child.children.size(), childID);
+        
+                /*
+                    Compute the pose and set it as the joint 
+                    matrix value required for vertex skinning
+                    by editting the rig in-place.
+                */
+                glm::mat4 localTransform = child.globalJointTransform;
+                child.parentID = parentID;
+                child.globalJointTransform = parent.globalJointTransform * localTransform;
+                child.posePosition = child.globalJointTransform;
+                child.jointMatrix = child.globalJointTransform * child.inverseBindMatrix;
+            };
+        };
+    
+        children = nextChildren;
+        parents = nextParents;
+    };
+
+    /**
+     * TODO:
+     * handle exceptions
+     */
+    return lazarus_result::LAZARUS_OK;
+};
+
 lazarus_result ModelManager::uploadTextures()
 {
     LOG_DEBUG("Uploading asset textures to GPU");
@@ -339,11 +754,6 @@ lazarus_result ModelManager::uploadTextures()
     return status;
 };
 
-/**
- * Finds and sets the values of shader uniforms which are required for `this` to function correctly.
- * 
- * Most likely the active program in the Lazarus::Shader used to instantiate `this` has changed.
- */
 lazarus_result ModelManager::updateUniformLocations()
 {
     
@@ -365,366 +775,6 @@ lazarus_result ModelManager::updateUniformLocations()
     return this->checkErrors(__FILE__, __LINE__);
 }
 
-/*
-    Note: There is some strange behaviour with this function.
-    If a single instance of *this* class is responsible for creating quads as well as 3D
-    assets - a texturing artifact will present itself when the user *creates* the quad 
-    prior to creating the 3D assets. (i.e. createQuad is called before create3DAsset).
-
-    At the quads origin in worldspace, a "shadow" of the quad will render using texture 
-    number 1 off of the xyzTextureStack. Not sure why.
-
-    This is *very* similar to the behaviour seen on MacOS and is possibly related. It 
-    doesn't present itself on linux.
-
-    Worth mentioning that this doesn't seem to happen with glyphs - which are wrapped over
-    a quad under the hood.
-*/
-
-lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::QuadConfig options)
-{
-    this->syncShader();
-
-    LOG_DEBUG("Generating quad");
-    
-    if(options.width < 0.0f || options.height < 0.0f)
-    {
-        LOG_ERROR("Asset Error:", __FILE__, __LINE__);
-
-        return lazarus_result::LAZARUS_INVALID_DIMENSIONS;
-    };
-
-    AssetLoader::AssetData assetData = {};
-    this->modelOut = {};
-    this->modelData = {};
-
-    modelOut.type = ModelManager::ModelType::PLANE;
-
-    modelOut.meshFilepath = "";
-    modelOut.materialFilepath = "";
-
-    this->modelOut.name = options.name.size() 
-    ? options.name 
-    : this->modelOut.name.append(std::to_string(this->modelStore.size()));
-    
-    int32_t textureUnit = this->textureStorage == TextureLoader::StorageType::ATLAS
-    ? GL_TEXTURE1
-    : GL_TEXTURE2;
-
-    glActiveTexture(textureUnit);
-
-    lazarus_result status = lazarus_result::LAZARUS_OK;
-
-    if(!std::empty(options.texturePath))
-    {
-        FileLoader::Image image = {};
-        status = finder->loadImage(image, options.texturePath.c_str());
-        if(status != lazarus_result::LAZARUS_OK)
-        {
-            return status;
-        };
-
-        assetData.textures.push_back(image);
-        assetData.colors.push_back(vec3(-0.1f, -0.1f, -0.1f));
-
-        /*
-            Increment the loaders texture array slice 
-            count to stay in sync with future loads of
-            other assets.
-        */
-
-        AssetLoader::layerCount += 1;
-    };
-
-    float layer = static_cast<float>(AssetLoader::layerCount - 1);
-
-    /*
-        Ensure that the origin is centered.
-        (E.g. width 2.0f, height 2.0f becomes 
-        width -1.0f, height +1.0f) 
-    */
-    float xMin = -(options.width * 0.5f);
-    float xMax = options.width * 0.5f;
-    float yMax = options.height * 0.5f;
-    float yMin = -(options.height * 0.5f);
-    /*
-        If the UV params aren't their default values (0.0) then
-        this mesh is being created for a glyph which needs to be 
-        looked up in the texture atlas.
-
-        Otherwise it's a generic sprite.
-    */
-    if(options.uvXL || options.uvXR || options.uvYU || options.uvYD > 0.0f)
-    {
-    /*
-            Vertex positions,           Diffuse colors,             Normals,                    UVs 
-    */
-        assetData.attributes = {                                                                                          
-            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(options.uvXL, options.uvYD, 0.0f),
-            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(options.uvXR, options.uvYD, 0.0f), 
-            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(options.uvXL, options.uvYU, 0.0f),
-            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(options.uvXR, options.uvYU, 0.0f),
-
-            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(options.uvXR, options.uvYU, 0.0f),
-            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(options.uvXR, options.uvYD, 0.0f),
-            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(options.uvXL, options.uvYU, 0.0f),
-            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(options.uvXL, options.uvYD, 0.0f),
-        };
-    }
-    else
-    {
-        /*
-            For some reason Mac requires two sets of the 
-            vertices for what at a glance looks like an
-            unwinding / culling type of issue. Note the sign
-            of the normals.
-        */
-        assetData.attributes = {
-            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 0.0f, layer),
-            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 0.0f, layer),
-            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(0.0f, 1.0f, layer),
-            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, 1.0f),     vec3(1.0f, 1.0f, layer),
-
-            vec3(xMax, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(1.0f, 1.0f, layer),
-            vec3(xMax, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(1.0f, 0.0f, layer),
-            vec3(xMin, yMax, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(0.0f, 1.0f, layer),
-            vec3(xMin, yMin, 0.0f), vec3(-0.1f, -0.1f, -0.1f),     vec3(0.0f, 0.0f, -1.0f),     vec3(0.0f, 0.0f, layer),
-        };
-    };
-
-    assetData.indices = {
-        0, 1, 2, 
-        2, 1, 3, 
-        4, 5, 6, 
-        6, 5, 7
-    };
-
-    /*
-        Zero-out movement / animation buf
-    */
-    assetData.movements.clear();
-    assetData.movements.resize(assetData.attributes.size() / 2, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
-
-    this->meshData = {};
-    this->meshData.texture.unitId = textureUnit;
-    this->meshData.instanceCount = options.instanceCount;
-
-    this->setMeshProperties(assetData);
-    this->instantiateMesh(options.selectable);
-    
-    status = this->setMaterials(assetData);
-    if(status != lazarus_result::LAZARUS_OK)
-    {
-        return status;
-    };
-
-    status = this->uploadVertexData();
-    if(status != lazarus_result::LAZARUS_OK)
-    {
-        return status;
-    };
-
-    this->modelData.push_back(this->meshData);
-
-    try
-    {
-        LOG_DEBUG("Storing asset");
-        this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, this->modelData));
-
-        status = this->setSelectable(options.selectable);
-        if(status != lazarus_result::LAZARUS_OK)
-        {
-            return status;
-        };
-        out = this->modelOut;
-        glBindVertexArray(0);
-
-        return this->uploadTextures();
-    }
-    catch(std::exception &e)
-    {
-        LOG_ERROR(e.what(), __FILE__, __LINE__);
-        return lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
-    }
-
-}
-
-lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::CubeConfig options)
-{
-    this->syncShader();
-    
-    LOG_DEBUG("Generating cube");
-    float vertexPosition = options.scale * 0.5f; 
-    
-    AssetLoader::AssetData assetData = {};
-    this->modelOut = {};
-    this->modelData = {};
-
-    modelOut.type = ModelManager::ModelType::CUBE;
-
-    modelOut.meshFilepath = "";
-    modelOut.materialFilepath = "";
-
-    this->modelOut.name = options.name.size() 
-    ? options.name 
-    : this->modelOut.name.append(std::to_string(this->modelStore.size()));
-    
-    int32_t textureUnit = this->textureStorage == TextureLoader::StorageType::CUBEMAP
-    ? GL_TEXTURE3
-    : GL_TEXTURE2;
-
-    float layer = 0.0;
-    
-    lazarus_result status = lazarus_result::LAZARUS_OK;
-
-    if(this->textureStorage == TextureLoader::StorageType::CUBEMAP)
-    {
-        FileLoader::Image image = {};
-        image.height = 0;
-        image.width = 0;
-        image.pixelData = NULL;
-
-        assetData.textures.push_back(image);   
-    }
-    else
-    {
-        if(!std::empty(options.texturePath))
-        {
-            FileLoader::Image image = {};
-            status = finder->loadImage(image, options.texturePath.c_str());
-            if(status != lazarus_result::LAZARUS_OK)
-            {
-                return status;
-            };
-
-            assetData.textures.push_back(image);   
-
-            /*
-                Increment the loaders texture array slice 
-                count to stay in sync with future loads of
-                other assets.
-            */
-            
-            AssetLoader::layerCount += 1;
-        };
-        layer = static_cast<float>(AssetLoader::layerCount);
-    };
-    
-    assetData.colors.push_back(vec3(-0.1f, -0.1f, -0.1f));
-
-    assetData.attributes = {                                                                                          
-        /*
-
-               POS                      ST
-
-          (5)_____(2, 6)           0:1 _______1:1
-            \      /\               |          |
-             \    /  \              |          |
-              \  /    \             |          |
-               \/______\            |__________|
-            (1, 4)     (3)         0:0        1:0
-
-        */
-        
-        // Top face
-        vec3(-vertexPosition, vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(0.0f, 0.0f, layer),
-        vec3(vertexPosition, vertexPosition,  vertexPosition),      vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(1.0f, 1.0f, layer),
-        vec3(vertexPosition,  vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(1.0f, 0.0f, layer),
-        vec3(-vertexPosition,  vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 1.0f, 0.0f),  vec3(0.0f, 1.0f, layer),
-
-        // Back face
-        vec3(-vertexPosition, vertexPosition,  -vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 0.0f, layer),
-        vec3(vertexPosition, -vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 1.0f, layer),
-        vec3(-vertexPosition,  -vertexPosition, -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 0.0f, layer),
-        vec3(vertexPosition,  vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, -1.0f), vec3(0.0f, 1.0f, layer),
-
-        // Right face
-        vec3(vertexPosition, vertexPosition, -vertexPosition),      vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(0.0f, 0.0f, layer),
-        vec3(vertexPosition, -vertexPosition,  vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(1.0f, 1.0f, layer),
-        vec3(vertexPosition,  -vertexPosition,  -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(1.0f, 0.0f, layer),
-        vec3(vertexPosition,  vertexPosition,  vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(1.0f, 0.0f, 0.0f),  vec3(0.0f, 1.0f, layer),
-
-        // Front face
-        vec3(vertexPosition, vertexPosition, vertexPosition),       vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(0.0f, 0.0f, layer),
-        vec3(-vertexPosition, -vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(1.0f, 1.0f, layer),
-        vec3(vertexPosition,  -vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(1.0f, 0.0f, layer),
-        vec3(-vertexPosition,  vertexPosition,  vertexPosition),    vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, 0.0f, 1.0f),  vec3(0.0f, 1.0f, layer),
-
-        // Left face
-        vec3(-vertexPosition,  vertexPosition, vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, layer),
-        vec3(-vertexPosition,  -vertexPosition, -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 1.0f, layer),
-        vec3(-vertexPosition,  -vertexPosition,  vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(1.0f, 0.0f, layer),
-        vec3(-vertexPosition,  vertexPosition,  -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(-1.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, layer),
-
-        // Bottom face
-        vec3(vertexPosition, -vertexPosition, -vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 0.0f, layer),
-        vec3(-vertexPosition, -vertexPosition, vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 1.0f, layer),
-        vec3(-vertexPosition, -vertexPosition,  -vertexPosition),   vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(1.0f, 0.0f, layer),
-        vec3(vertexPosition, -vertexPosition,  vertexPosition),     vec3(-0.1f, -0.1f, -0.1f),  vec3(0.0f, -1.0f, 0.0f), vec3(0.0f, 1.0f, layer),
-    };
-
-    assetData.indices = {
-        0, 1, 2, 0, 3, 1,
-        4, 5, 6, 4, 7, 5, 
-        8, 9, 10, 8, 11, 9,
-        12, 13, 14, 12, 15, 13,
-        16, 17, 18, 16, 19, 17,
-        20, 21, 22, 20, 23, 21
-    };
-    
-    /*
-        Zero-out movement / animation buf
-    */
-    assetData.movements.clear();
-    assetData.movements.resize(assetData.attributes.size() * 0.5f, glm::vec4(0.0f, 0.0f, 0.0f, 0.0f));
-
-    this->meshData = {};
-    this->meshData.texture.unitId = textureUnit;
-    this->meshData.instanceCount = options.instanceCount;
-
-    this->setMeshProperties(assetData);
-    this->instantiateMesh(options.selectable);
-    
-    status = this->setMaterials(assetData);
-    if(status != lazarus_result::LAZARUS_OK)
-    {
-        return status;
-    };
-    
-    status = this->uploadVertexData();
-    if(status != lazarus_result::LAZARUS_OK)
-    {
-        return status;
-    };
-    this->modelData.push_back(this->meshData);
-
-    try
-    {
-        LOG_DEBUG("Storing asset");
-        this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, this->modelData));
-
-        status = this->setSelectable(options.selectable);
-        if(status != lazarus_result::LAZARUS_OK)
-        {
-            return status;
-        };
-        out = this->modelOut;
-        glBindVertexArray(0);
-
-        return this->uploadTextures();
-    }
-    catch (std::exception& e)
-    {
-        LOG_ERROR(e.what(), __FILE__, __LINE__);
-        return lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
-    }
-
-};
-
-/**
- * Generates the models main Vertex attribute object amongst other VBO's, packs them with vertex
- * data and desribes to OpenGL how all of this should be interpretted on the GPU. 
- */
 lazarus_result ModelManager::uploadVertexData()
 {	
     LOG_DEBUG("Allocating vertex array object");
@@ -932,15 +982,6 @@ lazarus_result ModelManager::uploadVertexData()
 	
 };
 
-/*
-    Reallocates the current texture stack's memory size + 
-    the new amount and reUploads all of the textures again in-order
-    if the current mesh uses image textures.
-
-    I.e. Reloads the entire texture stack / array if `this->modelOut` isn't
-    being used for anything special like glyphs or skyboxes, which
-    use different loaders. 
-*/
 lazarus_result ModelManager::reallocateTextures()
 {
     LOG_DEBUG("Allocating additional texture storage");
@@ -1040,12 +1081,6 @@ lazarus_result ModelManager::clearMeshStorage()
     return this->checkErrors(__FILE__, __LINE__);
 };
 
-/**
- * Checks for room in the stencil buffer. If room is found a stencil buffer ID is assigned to the 
- * model and each of its composite meshes, as well as their GPU instances. This allows
- * an item to be located on-screen while amongst others by doing a pixel lookup and comparing with 
- * the stencil buffer.
- */
 lazarus_result ModelManager::setSelectable(bool selectable)
 {
     try
@@ -1100,10 +1135,6 @@ lazarus_result ModelManager::setSelectable(bool selectable)
     }
 };
 
-/**
- * Determine whether the active shader program used by `this->shader` has changed and updates
- * the reference if so.
- */
 lazarus_result ModelManager::syncShader()
 {
     lazarus_result status = lazarus_result::LAZARUS_OK;
@@ -1320,11 +1351,11 @@ void ModelManager::loadAnimation(ModelManager::MeshData &data)
                     );
                 }
             };
-                /*
-                    Descend into the children of the children
-                    which were just processed.
-                */
-                children = nextChildren;
+            /*
+                Descend into the children of the children
+                which were just processed.
+            */
+            children = nextChildren;
         };
     }
     else
@@ -1333,13 +1364,32 @@ void ModelManager::loadAnimation(ModelManager::MeshData &data)
     };
 };
 
-/*
-    Based on the current elapsed ms (time), determine
-    where abouts we are in the animation sequence. Use
-    this to look up and interpolate the relevant TRS 
-    keyframe values for the next draw of the animated
-    asset.
-*/
+void ModelManager::setStartingOrientation(Model &meshIn, glm::vec3 translation, glm::vec3 scale)
+{
+    LOG_DEBUG("Setting model to start location");
+
+    for(size_t i = 0; i < meshIn.instances.size(); i++)
+    {
+        ModelManager::Model::Instance &instance = meshIn.instances[i];
+        glm::mat4 &instanceMatrix = instance.modelMatrix;
+
+        instanceMatrix = glm::translate(instanceMatrix, translation);
+        //  This is a naive implementation in that it expects the geometry is at the origin -
+        //  because it is, because the mesh was just created. Compare with Lazarus::Transform for 
+        //  reference.
+        instance.position = translation;
+
+        //  Note: Planes and cubes use scale to determine the raw vertex positions laid out in the VBO
+        //  rather than a modification to the modelmatrix, as occurs here.    
+        if( meshIn.type == ModelType::GLB || 
+            meshIn.type == ModelType::WAVEFRONT )
+        {
+            instanceMatrix = glm::scale(instanceMatrix, scale);
+            instance.scale = scale;
+        };
+    }
+};
+
 glm::mat4 ModelManager::computeLocalJointTransform(ModelManager::MeshData::MotionPoint &motionPoint, uint32_t animationID)
 {
     AssetLoader::AssetData::JointMotion motionData = motionPoint.animationData[animationID];
@@ -1370,33 +1420,25 @@ glm::mat4 ModelManager::computeLocalJointTransform(ModelManager::MeshData::Motio
     return localTransform;
 };
 
-/**
- * Uses the current elapsed time to locate the indices of the keyframe that should 
- * next be iterated to and interpolated against the current frame.
- */
 uint32_t ModelManager::getKeyframeIndex(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t &playbackPosition, uint32_t &elapsedMs, uint32_t &previousMs)
 {
     /**
         Determine how many ms have passed since this was
         last called.
 
-        TODO: 
-        Find way to remove divisions here.
-        Refactor time lookup into a function
-
-        FIXME: 
-        This shouldn't need to be recalculated for each
-        motion the way it currently is. Instead this 
-        should be done just once for the whole armature.
+            FIXME: 
+            This shouldn't need to be recalculated for each
+            motion the way it currently is. Instead this 
+            should be done just once for the whole armature.
     */
-    std::chrono::system_clock::duration epoch = std::chrono::system_clock::now().time_since_epoch();
-    uint32_t currentMs = epoch / std::chrono::milliseconds(1);
+    uint32_t currentMs = LAZARUS_UPTIME;
     uint32_t timeDelta = currentMs - previousMs;
     previousMs = currentMs;
     elapsedMs += timeDelta;
-
-    /*
+    /**
         Determine motions total duration.
+            TODO:
+            Store this instead of calculating it each time <.<
     */
     uint32_t durationMax = static_cast<uint32_t>(motion.timesteps.back() * 1000.0f);
 
@@ -1424,10 +1466,6 @@ uint32_t ModelManager::getKeyframeIndex(AssetLoader::AssetData::JointMotion::Tra
     return index;
 };
 
-/*
-    Calculate the linear interpolation between keyframe values. Note that 
-    cubicspline interpolation is not supported.
-*/
 glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::TransformData motion, uint32_t frameBegin, uint32_t playbackPosition)
 {
     /**
@@ -1446,7 +1484,7 @@ glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::Tr
         {
             /*
                 Use the value as-is
-            ========================================================*/
+            */
             keyframe = motion.keyframes[frameBegin];
         }
         else if(motion.lerp == AssetData::JointMotion::TransformData::InterpolationType::LINEAR)
@@ -1510,18 +1548,20 @@ lazarus_result ModelManager::setActiveAnimation(ModelManager::Model &meshIn, uin
             {
                 data.activeAnimation = animationIndex;
         
+                /*
+                    Animation has changed so begin playing it from the 
+                    start (the current elapsed uptime of the engine)
+                */
                 for(size_t j = 0; j < data.armature.size(); j++) 
                 {
                     ModelManager::MeshData::MotionPoint &motion = data.armature[j];
+                    motion.previousPlaytime = LAZARUS_UPTIME;
                     motion.elapsedPlaytime = 0;
                     motion.playbackPosition = 0;
-                    motion.previousPlaytime = 0;
                     motion.elapsedLoops = 0;
-                    // if(loopCount == -1 || loopCount > 0)
-                    // {
-                        motion.maxLoops = loopCount;
-                    // }
+                    motion.maxLoops = loopCount;    
                 }
+                data.animationPaused = false;
             }
             else
             {
@@ -1530,13 +1570,6 @@ lazarus_result ModelManager::setActiveAnimation(ModelManager::Model &meshIn, uin
             }
         };
     };
-
-    /*
-        Animation has changed so begin playing
-        it from the start.
-    */
-
-    this->playAnimation(meshIn);
 
     return status;
 };
@@ -1579,9 +1612,14 @@ lazarus_result ModelManager::playAnimation(ModelManager::Model &meshIn)
         {
             for(size_t j = 0; j < data.armature.size(); j++) 
             {
+                /**
+                 * TODO:
+                 * This should really be a map or something with equivalent
+                 * lookup speed
+                 */
                 ModelManager::MeshData::MotionPoint &motion = data.armature[j];
                 motion.elapsedPlaytime = motion.playbackPosition;
-                motion.previousPlaytime = 0;
+                motion.previousPlaytime = LAZARUS_UPTIME;
             }
 
             data.animationPaused = false;
@@ -1691,24 +1729,6 @@ lazarus_result ModelManager::drawModel(ModelManager::Model &meshIn)
     return status;
 };
 
-void ModelManager::setDiscardFragments(ModelManager::Model &meshIn, bool shouldDiscard)
-{
-    LOG_DEBUG("Setting fragment-discard flags");
-    ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
-
-    for(size_t i = 0; i < model.size(); i++)
-    {
-        ModelManager::MeshData &data = model[i];
-        data.texture.discardAlphaZero = shouldDiscard;
-    };
-
-    return;
-};
-
-/**
- * Determines whether the model's meshes contain primitives that use image textures 
- * or instead are composed by defined properties.
- */
 lazarus_result ModelManager::setMaterials(AssetLoader::AssetData &assetData)
 {
     LOG_DEBUG("Loading material properties");
@@ -1762,14 +1782,10 @@ lazarus_result ModelManager::setMaterials(AssetLoader::AssetData &assetData)
     return lazarus_result::LAZARUS_OK;
 };
 
-/**
- * Initialises `this->modelOut`'s default properties
-*/
 void ModelManager::setMeshProperties(AssetLoader::AssetData &assetData)
 {
     LOG_DEBUG("Loading base mesh properties");
 
-    meshData.texture.discardAlphaZero = false;
     meshData.texture.samplerId = TextureLoader::textureId;
 
     meshData.attributes = assetData.attributes;     //  Positon, Diffuse, normal, uvs
@@ -1789,9 +1805,6 @@ void ModelManager::setMeshProperties(AssetLoader::AssetData &assetData)
    return;
 }
 
-/**
- * Identifies and reports on issues with OpenGL
-*/
 lazarus_result ModelManager::checkErrors(const char *file, uint32_t line)
 {
     this->errorCode = glGetError();
@@ -1859,9 +1872,7 @@ void ModelManager::copyModel(ModelManager::Model &dest, ModelManager::Model src)
     return;
 };
 
-/**
- * Generates a buffer used to handle a meshes GPU instance data
-*/
+
 void ModelManager::instantiateMesh(bool selectable)
 {   
     LOG_DEBUG("Loading mesh instance(s)");

@@ -56,8 +56,29 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
 
     flat out int isUnderPerspective;
 
+    void _lazarusForwardInputs()
+    {
+        //  Required for determining the lighting outcome
+        isUnderPerspective = usesPerspective;
+        diffuseColor = inDiffuse;
+        textureCoordinate = inTexCoord;
+        
+        keepFragment = visible;
+
+        //   Cubemap textures are sampled in 3D (xyz). So the
+        //   the skybox cube's vertex positions are used forthe 
+        //   UV coords. Note; using the inverse coordinates 
+        //   instead so the textures are flipped correctly for
+        //   mapping to the interior faces.
+        skyBoxTextureCoordinate = -inVertex;
+    }
+
     mat4 _lazarusComputeSkinningMatrix()
     {
+        //  Construct a matrix from a weighted combination of
+        //  animated armature joints which effect the position of
+        //  this vertex while in motion
+
         mat4 skinningMatrix = 
         inWeights.x * jointMatrices[int(inJoints.x)] +
         inWeights.y * jointMatrices[int(inJoints.y)] +
@@ -67,35 +88,32 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
         return skinningMatrix;
     }
 
-    vec3 _lazarusComputeWorldPosition()
+    vec4 _lazarusComputeModelViewProjection(vec4 position)
     {
+        //  Determine whether the vertex is perceived in 2D or 3D and 
+        //  find its location relative to the viewing frustum
+
+        vec4 mvpMatrix = usesPerspective != 0
+        ? perspectiveProjectionMatrix * viewMatrix * position
+        : orthoProjectionMatrix * viewMatrix * position;
+        
+        return mvpMatrix;
+    }
+
+    vec4 _lazarusComputeWorldPosition()
+    {
+        //  Find the location of the vertex in relation to where the mesh is positioned
+        
         vec4 worldPosition = isAnimated != 0
         ? instanceModelMatrix * _lazarusComputeSkinningMatrix() * vec4(inVertex, 1.0)
         : instanceModelMatrix * vec4(inVertex, 1.0);
 
-        //  Determine the vertex's clip-space position
-        if(usesPerspective != 0)
-        {
-            gl_Position = perspectiveProjectionMatrix * viewMatrix * worldPosition;   
-        }
-        else
-        {
-            gl_Position = orthoProjectionMatrix * viewMatrix * worldPosition;
-        }
-
-        //  Required by fragment shader to determine lighting outcome
-        isUnderPerspective = usesPerspective;
-
-        //  Truncate w value, we don't need it now that clipping
-        //  output (gl_Position) has been calculated.
-        vec3 result = vec3(worldPosition);
-
-        return result;
+        return worldPosition;
     }
 
     vec3 _lazarusComputeNormalDirection()
     {
-        //  Invert the matrix and swap it's rows and columns.
+        //  Invert the model matrix and swap it's rows and columns.
         //  This is required for preservation of the normal direction, which must remain
         //  perpendicular to the surface and would otherwise fail to when the 
         //  scale of the surface is non uniform.
@@ -112,19 +130,20 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
 const char *LAZARUS_DEFAULT_VERT_SHADER =  R"(
     void main ()
     {
-       vec3 worldPosition = _lazarusComputeWorldPosition();
-       vec3 normalDirection = _lazarusComputeNormalDirection();
+        vec4 worldPosition = _lazarusComputeWorldPosition();
+        vec3 normalDirection = _lazarusComputeNormalDirection();
 
-       fragPosition = worldPosition;
-       diffuseColor = inDiffuse;
-       normalCoordinate = normalDirection;
-       textureCoordinate = inTexCoord;
+        //  Perform clipping / culling check
+        gl_Position = _lazarusComputeModelViewProjection(worldPosition);
 
-       keepFragment = visible;
+        //  Truncate w value, we don't need it now that the 
+        //  clipping output (gl_Position) has been calculated.
+        fragPosition = vec3(worldPosition);
+        normalCoordinate = normalDirection;
 
-       skyBoxTextureCoordinate = -inVertex;
+        _lazarusForwardInputs();
 
-       return;
+        return;
     }
 )";
 
@@ -181,7 +200,7 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
 
     out vec4 outFragment;
 
-    //  Determine the rgba values of the incoming fragment
+    //  Determine the rgba values of the fragment
     vec4 _lazarusComputeColor ()
     {
         vec4 result = vec4(0.0, 0.0, 0.0, 0.0);
@@ -240,47 +259,76 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
         return result;
     }
 
-    //  Illuminate the fragment using the lambertian lighting model
-    vec3 _lazarusComputeLambertianReflection (vec3 colorData) 
+
+    //  Evenly distribute lighting with a brightness multiplier. i.e. a completely unshaded and fully lit material
+    vec3 _lazarusComputeAmbientReflection(vec3 colorData, vec3 lightColor, float brightness)
     {
-        vec3 result = vec3(0.0, 0.0, 0.0);
+        vec3 ambientResult = colorData * brightness * lightColor;
+        return ambientResult;
+    }
+    
+    //  Apply shading to the diffuse colour but without highlights
+    vec3 _lazarusComputeLambertianReflection(vec3 color, vec3 lightDirection)
+    {
+        float diffuseFactor = (max(0.0f, dot(normalCoordinate, lightDirection)));
+        vec3 lambertianResult = color * diffuseFactor;
 
-        //  Calculate the fragment's diffuse lighting for each light in the scene.
+        return lambertianResult;
+    }
+
+    //  Illuminates the fragment accumulating each of the scenes lights
+    vec3 _lazarusDefaultLighting(vec3 colorData) 
+    {
+        vec3 result = vec3(0.0f, 0.0f, 0.0f);
+
+        //  Accumulate the lighting result for each light in the scene
         for(int i = 0; i < lightCount; i++)
-        {            
-            if(lightTypes[i] == DIRECTIONAL_LIGHT)
+        {
+            switch(lightTypes[i])
             {
-                vec3 direction = lightDirections[i];
-                vec3 color = lightColors[i] * lightBrightness[i];
+                case DIRECTIONAL_LIGHT:
+                {
+                    vec3 ambientResult = _lazarusComputeAmbientReflection(colorData, lightColors[i], lightBrightness[i]);
+                    result += _lazarusComputeLambertianReflection(ambientResult, lightDirections[i]);
+                    break;
+                }
+                
+                case POINT_LIGHT:
+                {
+                    vec3 ambientResult = _lazarusComputeAmbientReflection(colorData, lightColors[i], lightBrightness[i]);
 
-                result += (colorData + color) * (max(0.0, dot(normalCoordinate, direction)));
+                    vec3 displacement = lightPositions[i] - fragPosition;
+                    vec3 direction = normalize(displacement);
+                    vec3 lambertianResult = _lazarusComputeLambertianReflection(ambientResult, direction);
+
+                    //  Apply inverse square law to illumination result
+                    //  Note: Don't apply this for directional lights
+                    //  This is better maybe: lambertianResult * min(1.0 / pow(dot(displacement, displacement), 0.5), 1.0);
+                    //
+                    //  TODO:
+                    //  This implementation of phong is incomplete, it should take an intensity multiplier (mtl Ns | glb pbrMetallicRoughnessFactor)
+                    //  and have its own function, similar to lambertian and ambient
+
+                    vec3 reflection = lambertianResult / (dot(displacement, displacement));
+                    vec3 specularResult = (reflection * lightBrightness[i]);
+
+                    result += specularResult;
+                    break;
+                }
+
+                case AMBIENT_LIGHT:
+                {
+                    result += _lazarusComputeAmbientReflection(colorData, lightColors[i], lightBrightness[i]);
+                }
+                default:
+                    break;
             }
-            else if(lightTypes[i] == POINT_LIGHT)
-            {
-                vec3 displacement = lightPositions[i] - fragPosition;
-
-                vec3 direction = normalize(displacement);
-                float diffusion = max(dot(normalCoordinate, direction), 0.0);
-
-                vec3 illuminatedFrag = (colorData * lightColors[i] * diffusion);
-
-                //  Apply inverse square law to illumination result
-                //  Note: Don't apply for directional lights when they are added
-                //  This is better maybe: return illuminatedFrag * min(1.0 / pow(dot(displacement, displacement), 0.5), 1.0);
-                vec3 reflection = illuminatedFrag / (dot(displacement, displacement));
-
-                result += (reflection * lightBrightness[i]);
-            } 
-            else if(lightTypes[i] == AMBIENT_LIGHT) 
-            {
-                result += colorData;
-            };
         };
 
         return result;
     }
 
-    //  Determines the factor by which fragments should be blended with the fog color by
+    //  Determines the factor by which the fragment should be blended with the fog color
     float _lazarusComputeFogFactor()
     {
         //  Establish distance between fragment and visibility epicenter
@@ -316,7 +364,7 @@ const char *LAZARUS_DEFAULT_FRAG_SHADER = R"(
         else
         {
             vec3 lighting = 0.1 * fragColor.rgb;
-            lighting += _lazarusComputeLambertianReflection(fragColor.rgb);
+            lighting += _lazarusDefaultLighting(fragColor.rgb);
 
             outFragment = vec4(lighting, 1.0);
 
@@ -342,9 +390,14 @@ Shader::Shader()
 
 lazarus_result Shader::compileShaders(uint32_t &program, std::string fragmentShader, std::string vertexShader)
 {
-    /*GLint max_uniforms = 0;
-    glGetIntegerv(GL_MAX_UNIFORM_LOCATIONS, &max_uniforms);
-    std::cout << static_cast<int32_t>(max_uniforms) << std::endl;*/
+    /*
+        TODO:
+        Query this stuff and print on load, not here but probs during context creation
+        
+        GLint max_uniforms = 0;
+        glGetIntegerv(GL_MAX_UNIFORM_LOCATIONS, &max_uniforms);
+        std::cout << static_cast<int32_t>(max_uniforms) << std::endl;
+    */
 
     this->reset();
     this->clearErrors();

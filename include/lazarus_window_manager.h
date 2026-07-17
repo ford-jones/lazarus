@@ -38,19 +38,27 @@ class Time
 {
 	public:
 		Time();
-        lazarus_result monitorElapsedUptime();
         lazarus_result monitorTimeDelta();
 		lazarus_result monitorFPS();
 		
-		float framesPerSecond;
 		float timeDelta;
-		float elapsedTime;
-
+		float framesPerSecond;
+		float uptimeMs;
+        
         virtual ~Time();
-		
-	private:
-		float msSinceLastRender;
-		float internalSeconds;
+	
+    protected:
+        /**
+         * Accumulates ms between frame presentations. Required for calculating FPS 
+         * and frame delta.
+         */
+        lazarus_result getTimeUpdate();
+
+    private:
+        
+		double previousMs;
+        double currentMs;
+		double msSinceLastRender;
 		float frameCount;		
 };
 
@@ -131,11 +139,26 @@ class EventManager
 class WindowManager : public EventManager, public Time
 {
     public:
-        WindowManager(const char *title, uint32_t width = 800, uint32_t height = 600);
+        struct WindowConfig
+        {
+            uint32_t height = 600;
+            uint32_t width = 800;
+            const char *title;
+            glm::vec3 backgroundColor = glm::vec3(1.0f, 1.0f, 1.0f);
 
-        lazarus_result createWindow();
+            bool fullscreen = false;
+            bool disableCursor = false;
+            bool cullFaces = true;
+            bool testDepth = true;
+            bool disableVsync = false;
+            bool wireframeMode = false;
+            bool disableResize = false;
+        };
+
+        WindowManager();
+
+        lazarus_result create(WindowConfig config);
         lazarus_result setBackgroundColor(float r, float g, float b);
-		lazarus_result loadConfig();
         lazarus_result toggleFullscreen();
         lazarus_result resize(uint32_t width, uint32_t height);
         lazarus_result open();
@@ -156,32 +179,29 @@ class WindowManager : public EventManager, public Time
          * Starts up the gl extension wrangler
          */
         void initialiseGLEW();
+
         /**
          * Moves the window to the center of the monitor.
+         * NOTE:
+         * This function causes issue with wayland graphical sessions
          */
         lazarus_result centerWindow();
-        lazarus_result checkErrors(const char *file, int line);
 
-        //  Dont know why I made this private
-        struct Window
-        {
-            uint32_t height;
-            uint32_t width;
-            const char *title;
-            glm::vec3 backgroundColor;
-        };
+        /**
+         * Set up OpenGL state and apply user settings
+         * (backface culling, depth-testing, vsync, winding-order etc)
+         */
+        lazarus_result loadConfig();
+
+        /**
+         * Queries GLFW error state
+         */
+        lazarus_result checkErrors(const char *file, int line);
 
         std::unique_ptr<FileLoader> fileReader;
         FileLoader::Image image;
 
-        Window frame;
-
-        bool isFullscreen;
-        bool enableCursor;
-        bool cullFaces;
-        bool testDepth;
-        bool disableVsync;
-        bool wireframeMode;
+        WindowConfig config;
         
         int32_t originalWidth;
         int32_t originalHeight;

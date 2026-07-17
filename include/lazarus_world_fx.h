@@ -20,10 +20,6 @@
     #include "lazarus_gl_includes.h"
 #endif
 
-#ifndef LAZARUS_COMMON_H
-	#include "lazarus_common.h"
-#endif
-
 #include <iostream>
 #include <memory>
 #include <string>

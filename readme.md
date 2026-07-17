@@ -1,5 +1,5 @@
 # Lazarus Engine
-#### *Version: 0.15.3*
+#### *Version: 0.15.4*
 ## Table of contents:
 
 - [Getting Started](#getting-started)
@@ -190,12 +190,15 @@ Before we can start drawing any graphics, we need somewhere to draw to. Generall
 
 int main()
 {
-    //  Instantiate the window object
-    Lazarus::WindowManager window("Lazarus Tutorial", 800, 600);
-    window.createWindow();
+    //  Instantiate the window management interface
+    Lazarus::WindowManager window();
 
-    //  Load user settings from global state
-    window.loadConfig();
+    //  Create and configure application window
+    Lazarus::WindowManager::WindowConfig windowConfig;
+    windowConfig.title = "Hello Quad!";
+    windowConfig.width = 500;
+    windowConfig.height = 500;
+    window.create(windowConfig);
 
     // Invoke render loop
     window.open();
@@ -336,20 +339,6 @@ while(window.isOpen)
 
 See the [Window API Reference](#windowmanager) for more information.
 
-## Global Settings:
-### Modifying the Lazarus state:
-Lazarus keeps track of user settings via the `Lazarus::GlobalsManager` class. This class provides functionality to get and set the state of internally tracked and externally declared Lazarus configuration variables. User settings *must* be specified prior to calling `Lazarus::WindowManager::loadConfig()`. For example:
-```cpp
-Lazarus::GlobalsManager globals = Lazarus::GlobalsManager();
-
-//  Correct usage: the program will render frames as quickly as possible despite the monitor's maximum refresh rate.
-globals.setVsyncDisabled(true);
-window.loadConfig();
-//  Incorrect usage: The value returned by globals.getLaunchInFullScreen() will reflect your selection, but will be inefective.
-globals.setLaunchInFullscreen(true);
-```
-
-Find a full list of settings functions [here](#globalsmanager).
 
 ## Mesh assets:
 ### Hello Quad!
@@ -361,14 +350,15 @@ For now we'll use an orthographic camera which projects the scene into two dimen
 
 int main()
 {
-    //  Engine state interface
-    Lazarus::GlobalsManager globals = Lazarus::GlobalsManager();    
+    //  Instantiate the window management interface
+    Lazarus::WindowManager window();
 
-    //  Window
-    Lazarus::WindowManager window("Lazarus Tutorial");
-    window.createWindow();
-    window.setBackgroundColor(1.0, 0.0, 0.0);
-    window.loadConfig();
+    //  Create and configure application window
+    Lazarus::WindowManager::WindowConfig windowConfig;
+    windowConfig.title = "Hello Quad!";
+    windowConfig.width = 500;
+    windowConfig.height = 500;
+    window.create(windowConfig);
 
     //  Default shader
     Lazarus::Shader shader = Lazarus::Shader();
@@ -382,8 +372,8 @@ int main()
     //  Configure camera settings
     Lazarus::CameraManager::CameraConfig cameraSettings = {};
     cameraSettings.type = Lazarus::CameraManager::CameraConfig::CameraType::ORTHOGRAPHIC;
-    cameraSettings.aspectRatioX = globals.getDisplayWidth();
-    cameraSettings.aspectRatioY = globals.getDisplayHeight();
+    cameraSettings.aspectRatioX = windowConfig.width;
+    cameraSettings.aspectRatioY = windowConfig.height;
 
     //  Generate camera
     Lazarus::CameraManager::Camera camera = {};
@@ -398,9 +388,9 @@ Now lets create our geometry:
 
     //  Configure the mesh asset
     //  Note: when orthographically viewed, sizing corresponds to pixel-width
-    Lazarus::ModelManager::QuadConfig quadSettings = {};
-    quadSettings.width = 500;
-    quadSettings.height = 500;
+    Lazarus::ModelManager::AssetConfig quadSettings = {};
+    quadSettings.scale.x = 500;
+    quadSettings.scale.y = 500;
 
     //  Generate asset
     Lazarus::ModelManager::Model quad = {};
@@ -479,37 +469,39 @@ Note these inputs can be found at `LAZARUS_DEFAULT_VERT_LAYOUT`.
 #define MAX_JOINTS 64
 
 //  Vertex buffer object 1 (attributes)
-layout(location = 0) in vec3 inVertex;              //  Input Vertex position
-layout(location = 1) in vec3 inDiffuse;             //  Input Vertex color
-layout(location = 2) in vec3 inNormal;              //  Input Vertex normal
-layout(location = 3) in vec3 inTexCoord;            //  Input UV (S/T & stack-index)
+layout(location = 0) in vec3 inVertex;                  //  Input Vertex position
+layout(location = 1) in vec3 inDiffuse;                 //  Input Vertex color
+layout(location = 2) in vec3 inNormal;                  //  Input Vertex normal
+layout(location = 3) in vec3 inTexCoord;                //  Input UV (S/T & stack-index)
 //  Vertex buffer object 2 (Instance matrices "MBO")
-layout(location = 4) in mat4 instanceModelMatrix;   //  Input instance matrices, memory divisors occupy 4, 5, 6 & 7
+layout(location = 4) in mat4 instanceModelMatrix;       //  Input instance matrices, memory divisors occupy 4, 5, 6 & 7
 //  Vertex buffer object 3 (Instance-info "IIBO")
-layout(location = 8) in float visible;              //  Input per-instance data
+layout(location = 8) in float visible;                  //  Input per-instance data
 //  Vertex buffer object 4 (Armature joints)
-layout(location = 9) in vec4 inJoints;              //  Input animation rigging
-layout(location = 10) in vec4 inWeights;            //  Input vertex weights for rigging
+layout(location = 9) in vec4 inJoints;                  //  Input animation rigging
+layout(location = 10) in vec4 inWeights;                //  Input vertex weights for rigging
 
-uniform int usesPerspective;                        //  Which projection type to use, 1 for perspective - otherwise orthographic
-uniform mat4 viewMatrix;                            //  The camera's viewing matrix
-uniform mat4 perspectiveProjectionMatrix;           //  A 3D projection matrix (if one is present)
-uniform mat4 orthoProjectionMatrix;                 //  A 2D projection matrix (if one is present)
+uniform int usesPerspective;                            //  Which projection type to use, 1 for perspective - otherwise orthographic
+uniform mat4 viewMatrix;                                //  The camera's viewing matrix
+uniform mat4 perspectiveProjectionMatrix;               //  A 3D projection matrix (if one is present)
+uniform mat4 orthoProjectionMatrix;                     //  A 2D projection matrix (if one is present)
 
-uniform mat4 jointMatrices[MAX_JOINTS];          //  Raw pre-computed joint matrices
+uniform mat4 jointMatrices[MAX_JOINTS];                 //  Raw pre-computed joint matrices
 
-out vec3 fragPosition;                              //  Output position
-out vec3 diffuseColor;                              //  Output color data
-out vec3 normalCoordinate;                          //  Output normal coordinates
-out vec3 textureCoordinate;                         //  Output UV for render subject
-out vec3 skyBoxTextureCoordinate;                   //  Output for skybox UV
-out float keepFragment;                             //  Output for fragment discarding
+out vec3 fragPosition;                                  //  Output position
+out vec3 diffuseColor;                                  //  Output color data
+out vec3 normalCoordinate;                              //  Output normal coordinates
+out vec3 textureCoordinate;                             //  Output UV for render subject
+out vec3 skyBoxTextureCoordinate;                       //  Output for skybox UV
+out float keepFragment;                                 //  Output for fragment discarding
 
-flat out int isUnderPerspective;                    //  Output required by default program for rendering text / glyphs
+flat out int isUnderPerspective;                        //  Output required by default program for rendering text / glyphs
 
-vec3 _lazarusComputeWorldPosition();                //  Determine the output vertex position in worldspace coordinates and calculates the relevant clip-space coordinates.
-vec3 _lazarusComputeNormalDirection();              //  Determine the direction vector of the output vertex normals. Ensures preservation of the normal direction over non-uniform surfaces.
-vec3 _lazarusComputeSkinningMatrix();               //  Determine the weighted result of the combined joint matrices which effect the output vertex position (required for animating assets). 
+void _lazarusForwardInputs();                           //  Hands over vertex inputs that are required by the default fragment shader.
+mat4 _lazarusComputeSkinningMatrix();                   //  Determine the weighted result of the combined joint matrices which effect the output vertex position (required for animating assets).
+mat4 _lazarusComputeModelViewProjection(vec4 position)  //  Determine the mvp matrix used for clipping and culling.
+vec4 _lazarusComputeWorldPosition();                    //  Determines the output vertex position in worldspace coordinates.
+vec3 _lazarusComputeNormalDirection();                  //  Determine the direction vector of the output vertex normals. Ensures preservation of the normal direction over non-uniform surfaces.
 ```
 
 #### Pixel / Fragment shader inputs:
@@ -564,9 +556,11 @@ Anything not used from here will be optimised-out when compiled.
 
     out vec4 outFragment;                                   //  The output fragment color
 
-    vec4 _lazarusComputeColor();                            //  Evaluate inputs and determine fragment's rgba values
-    vec3 _lazarusComputeLambertianReflection(vec3 color);   //  Calculate the fragment's diffuse lighting
-    float _lazarusComputeFogFactor();                       //  Calculate fog attenuation
+    float _lazarusComputeFogFactor();                           //  Calculate fog attenuation
+    vec4 _lazarusComputeColor();                                //  Evaluate inputs and determine fragment's rgba values
+    vec3 _lazarusComputeAmbientReflection(vec3 color, vec3 lightColor, float brightness) // Calculates a lighting result as if the effected models were all evenly illuminated from every angle
+    vec3 _lazarusComputeLambertianReflection(vec3 color, vec3 direction);   //  Calculate the attenuation of a light accross a models surface but without the specular highlights.
+    vec3 _lazarusDefaultLighting(vec3 color);                   //  Apply the default lazarus lighting model to the fragment. Acculates a result from each light in the scene. Applys ambient lighting evenly accross the surface of every primitive, lambertian illumination for directional lights and phong illumination for point lights.
 ```
 
 ------------------------------------------------------------------
@@ -609,57 +603,6 @@ Params:
 #### bool getEnforceImageSanity()
 Returns the current value of `LAZARUS_ENFORCE_IMAGE_SANITY`.
 
-#### void setCursorHidden(bool shouldHide)
-Sets the value of `LAZARUS_DISABLE_CURSOR_VISIBILITY`. When `true` the cursor pointer will become transparent when hovered over the active game window.
-
-*Notes:*
-- *Must be set prior to creation of a window with `WindowManager::initialise()`*
-- *Cursor X and Y coordinates continue to update following a call to `EventManager::monitorEvents()` as if it were opaque.*
-
-params:
->**shouldHide:** *Whether or not cursor opacity should be set to 0.*
-
-#### bool getCursorHidden()
-Returns the current value of `LAZARUS_DISABLE_CURSOR_VISIBILITY`.
-
-#### void setLaunchInFullScreen(bool shouldEnlarge)
-Sets the value of `LAZARUS_LAUNCH_IN_FULLSCREEN`. When `true` the application will launch at the maximum height and width values of the primary monitor.
-
-parms:
->**shouldEnlarge** *Whether or not the application should launch in fullscreen by default.*
-
-#### bool getLaunchInFullScreen()
-Returns the current value of `LAZARUS_DISABLE_CURSOR_VISIBILITY`.
-
-#### void setVsyncDisabled(bool shouldDisable)
-Sets the value of `LAZARUS_VSYNC_DISABLED`. If true, the render pipeline will be allowed to render at it's maximum framerate. When false the interval between rendering and processing is set to 1 frame.
-
-#### bool getVsyncDisabled()
-Returns the current value of `LAZARUS_VSYNC_DISABLED`.
-
-#### void setBackFaceCulling(bool shouldCull)
-Sets the value of `LAZARUS_CULL_BACK_FACES`. I don't reccomend disabling this optimisation but if you want to you can... Ensures that faces opposite to the camera aren't rendered. Front face culling is currently unsupported through lazarus but you can enable it yourself using OpenGL (prior to window creation) like so:
-
-```cpp
-glEnable(GL_CULL_FACE);
-glCullFace(GL_FRONT);
-```
-
-params:
->**shouldCull:** *Whether or not to disable the rendering of faces that are currently out of sight.*
-
-#### bool getBackFaceCulling()
-Returns the current value of `LAZARUS_CULL_BACK_FACES`.
-
-#### void setDepthTest(bool shouldTest)
-Sets the value of `LAZARUS_DEPTH_TEST_FRAGS`. Again, I don't reccomend disabling this setting. Informs OpenGL that we want it to perform a depth test on the current fragment that is being drawn against the rest of the frame buffers contents. Determines what is in-front or behind. Turning this off can have a disastrous effect on the render result.
-
-params:
->**shouldTest:** *Whether or not OpenGL should should check which fragments are in-front or behind of eachother.*
-
-#### getDepthTest()
-Returns the current value of `LAZARUS_DEPTH_TEST_FRAGS`.
-
 #### void setNumberOfActiveLights(int count)
 Sets the value of `LAZARUS_LIGHT_COUNT`. Updates the total number of lightsources known to the render context. Don't do this.
 
@@ -668,15 +611,6 @@ params:
 
 #### int getNumberOfActiveLights()
 Returns the number of lights known accross all `LightManager` instances.
-
-#### void setWireframeMode(bool useWireframe)
-Sets the value of `LAZARUS_WIREFRAME_MODE`. Determines whether the scene should be rendered as the lines between a primitive's vertices. Otherwise triangles are filled in and the scene is rendered normally.
-
-> Params: \
-> **useWireframe:** *Render lines when true, otherwise fill faces.*
-
-#### bool getWireframeMode()
-Returns the current value of `LAZARUS_WIREFRAME_MODE`.
 
 ### Members:
 > **lazarus_result**: Various execution status codes (*type:* `enum`)
@@ -719,19 +653,15 @@ Returns the current value of `LAZARUS_WIREFRAME_MODE`.
 A class for making and managing the program's window(s). 
 
 ### Constructor:
-#### WindowManager(const char *title, int width, int height)
-
-Params:
-> **title**: *The window's title* \
-> **width**: *The width of the window. (default: `800`)* \
-> **height**: *The height of the window. (default: `600`)* \
+#### WindowManager()
+Default-initialises this classes members.
 
 ### Functions:
-#### createWindow()
+#### create(WindowConfig config)
 Initialises OpenGL and supplementary libraries. Creates a window and rendering context.
 
-#### loadConfig()
-Binds a shader program to the current active window's OpenGL Context and loads a render configuration based on values set in the global scope (see: `GlobalsManager`).
+Params:
+> **config:** *A configuration object holding information about how the window and it's context should be set up.*
 
 #### resize(int width, int height)
 Sets the window to the specified `width` and `height`.
@@ -741,7 +671,7 @@ Params:
 > **height:** *The desired window height.*
 
 #### toggleFullscreen()
-Sets the viewport to the size of the monitor / display if it's currently in windowed-mode. If fullscreen is already active, converts the viewport to windowed-mode. When switching out of fullscreen the new frame will be what it was prior to resize. If the size was never specified (*e.g. because the application was launched with `GlobalsManager::setLaunchInFullscreen(true)`*) then the window will take up the full size of the monitor / display.
+Sets the viewport to the size of the monitor / display if it's currently in windowed-mode. If fullscreen is already active, converts the viewport to windowed-mode. When switching out of fullscreen the new frame will be what it was prior to resize. If the size was never specified (*e.g. because the application was launched with `WindowManager::WindowConfig::fullscreen` set to `true`*) then the window will take up the full size of the monitor / display.
 
 #### open()
 Opens the active window.
@@ -780,7 +710,19 @@ Clears the back buffer's depth and color bits so that they can be given new valu
 Enables picking of the window's pixels for objects which have been rendered to the screen following a call to `ModelManager::drawModel(...)`. The ID's of objects with items with `ModelManager::Model::isClickable` set to `true` now become searchable at their pixel coordinates via a call to `CameraManager::getPixelOccupant(...)`.
 
 ### Members:
-> **isOpen:** *Whether or not the active window is open. See also: `GlobalsManager::getContextWindowOpen()`. (type: `bool`, default: `false`)* \
+> **isOpen:** *Whether or not the active window is open. See also: `WindowManager::open()` or `WindowManager::close()`. (type: `bool`, default: `false`)* \
+> **WindowConfig:** *Configuration object for setting up a window. (type: `struct`)*
+>   - **height:** *How much y-axis screenspace in pixels is occupied by the window. (type: `int`, optional, default: `600`)*
+>   - **width:** *How much x-axis screenspace in pixels is occupied by the window. (type: `int`, optional, default: `800`)*
+>   - **title:** *The window name. (type: `const char*`)*
+>   - **backgroundColor:** *The RBG value used to paint unnocupied screenspace. (type: `glm::vec3`, optional, default: `(1.0f, 1.0f, 1.0f)`)*
+>   - **fullscreen:** *Whether the window should be maximised on launch. (type: `bool`, optional, default: `false`)*
+>   - **disableCursor:** *Toggles the visibility of the mouse pointer. (type: `bool`, optional, default: `false`)*
+>   - **cullFaces:** *Whether or not the "back" faces of a `ModelManager::Model` should be rendered. (type: `bool`, optional, default: `true`)*
+>   - **testDepth:** *Toggles whether the subject of a `ModelManager::drawModel` call should have its z-depth checked against z-depth of other geometry in the scene (The scene being `Model`'s that have been drawn prior to a call to `WindowManager:presentNextFrame()`).*
+>   - **disableVsync:** *Toggle vertical-sync on or off. Responsible for locking the framerate to the monitor's refresh rate, instead of "as fast as we can". E.g. A 60khz monitor will render at 60 frames-per-second. (type: `bool`, optional, default: `false`)*
+>   - **wireframeMode:** *Determines if the surface of a face should be rasterised. (type: `bool`, optional, default: `false`)*
+>   - **disableResize:** *Controls if the window size is allowed to be changed by the user. (type `bool`, default: `false`)*
 
 ## WindowManager::EventManager
 A class for tracking, storing and managing window events as well as their values.
@@ -860,14 +802,10 @@ Access the result(s) via `WindowManager::Time::framesPerSecond`.
 Calculate the time taken in milliseconds to draw and present a single frame. \
 Access the result(s) via `WindowManager::Time::timeDelta`.
 
-#### monitorElapsedTime()
-Begin active monitoring of the total number of seconds passed since the time of calling. \
-Access the result(s) via `WindowManager::Time::elapsedTime`.
-
 ### Members:
 > **framesPerSecond:** *Current number of frames being drawn per second. (type: `int`)* \
 > **timeDelta:** *The duration of time taken in milliseconds to draw a single frame. (type: `float`)* 
-> **elapsedTime:** *The amount of seconds passed since `WindowManager::Time::monitorElapsedTime()` was first called. (type: `float`)*
+> **uptimeMs:** *Accumulates uptime since the window was opened in ms.*
 
 ## Shader:
 A class for the lazarus default shader program which, simply maps vertex positions to their coordinates and draws the fragments; following the lambertian lighting model.
@@ -1043,16 +981,16 @@ Params:
 > **out:** *An out parameter where load results are stored.* \
 > **options:** *Load settings indicating how the asset should be loaded.*
 
-#### createQuad(ModelManager::Quad &out, ModelManager::QuadConfig options)
-Creates a quad (2D plane) to the size of the specified height and width \
-with a texture as specified by `options.texturePath`
+#### createQuad(ModelManager::Model &out, ModelManager::AssetConfig options)
+Creates a quad (2D plane) to the size of the specified `options.scale.x` and `options.scale.y` 
+Note that without specifying of a relative path to a texture asset, this function will assume the quad is to be used for a glyph which; is likely to cause problems in your program without manually setting the required texture data for the texture atlas of alphabet glyphs.
 
 Params:
 > **out:** *An out parameter where load results are stored.* \
 > **options:** *Load settings indicating how the asset should be loaded.*
 
-#### createCube(ModelManager::Cube &out, ModelManager::CubeConfig options)
-Creates a cube (equal height, width and depth) of size `options.scale`. Note that without specification of a relative path to a texture asset, this function will assume the cube is to be used for a skybox which; is likely to cause problems in your program without manually setting the required texture data for the cubemap texture.
+#### createCube(ModelManager::Model &out, ModelManager::AssetConfig options)
+Creates a 3D rectangle of dimensions `options.scale.xyz`. Note that without specifying of a relative path to a texture asset, this function will assume the cube is to be used for a skybox which; is likely to cause problems in your program without manually setting the required texture data for the cubemap texture.
 
 Params:
 > **out:** *An out parameter where load results are stored.* \
@@ -1077,13 +1015,6 @@ Creates a duplicate of `src` at the location of `dest` with updated unique ID fo
 > Params: \
 > **dest:** *The pre-allocated destination where the copy should be stored.* \
 > **src:** *The asset to be copied.*
-
-#### setDiscardFragments(ModelManager::Model &modelIn, bool shouldDiscard)
-Toggle for removing the areas of a face prior to rendering where the meshes texture's alpha value is zero. Used for rendering sprites.
-
-> Params: \
-> **modelIn:** *The target mesh object.* \
-> **shouldDiscard:** *The desired value for the option (T/F).* 
 
 #### setActiveAnimation(ModelManager::Model &modelIn, int animationIndex, int loopCount)
 Determine which of an animated asset's movements should be rendered during playback.
@@ -1143,27 +1074,11 @@ Flushes out the internal state(s) of the manager, including it's list of childre
 >   - **name:** *What to call this asset. (type: `std::string`)*
 >   - **meshPath:** *The relative path to the `.obj` or `.glb` asset to be loaded. (type: `std::string`)*
 >   - **materialPath:** *The relative path to the asset's material-file (`.mtl`) if `meshPath` is directed toward an `.obj` file. Leave blank otherwise. (type: `std::string`)*
+>   - **textureTransparency:** *Remove areas of a face when rendering a mesh fragment where the alpha value of one of the meshes textures is zero. Used for rendering sprites. Not to be confused with a meshes transparency. (type: `bool`)*
 >   - **selectable:** *Whether to assign a stencil ID to this asset for cursor-picking while visible in-frame. (type: `bool`)*
 >   - **instanceCount:** *The number of copies of this mesh to be produced. (type: `int`, default: `1`)*
-
-> **QuadConfig:** *Creation function input-settings. (type: `struct`)*
->   - **name:** *What to call this asset. (type: `std::string`, default: `"QUAD_" + n`)*
->   - **texturePath:** *The relative path to a texture image used to render to the quad's surface. (type: `std::string`)*
->   - **width:** *The quad's horizontal span. (type: `float`)*
->   - **height:** *The quad's vertical span. (type: `float`)*
->   - **selectable:** *Whether to assign a stencil ID to this asset for cursor-picking while visible in-frame. (type: `bool`)*
->   - **uvXL:** *The left-most extremity of the x-axis UV / ST coordinates. (type: `float`, optional)*
->   - **uvXR:** *The right-most extremity of the x-axis UV / ST coordinates. (type: `float`, optional)*
->   - **uvYU:** *The upper-most extremity of the y-axis UV / ST coordinates. (type: `float`, optional)*
->   - **uvYD:** *The lower-most extremity of the y-axis UV / ST coordinates. (type: `float`, optional)*
->   - **instanceCount:** *The number of copies of this mesh to be produced. (type: `int`, default: `1`)*
-
-> **CubeConfig:** *Creation function input-settings. (type: `struct`)*
->   - **name:** *What to call this asset. (type: `std::string`, default: `"CUBE_" + n`)*
->   - **texturePath:** *The relative path to a texture image used to render to the quad's surface. (type: `std::string`)*
->   - **selectable:** *Whether to assign a stencil ID to this asset for cursor-picking while visible in-frame. (type: `bool`)*
->   - **scale:** *The multiplier by which to increase the size of the cube by. (type: `float`, default: `1.0f`)*
->   - **instanceCount:** *The number of copies of this mesh to be produced. (type: `int`, default: `1`)*
+>   - **scale:** *A multiplier applied as the magnitude of the meshes overall topological size. (type: `glm::vec3`, default: `glm::vec3(1.0f)`)*
+>   - **translation:** *A location relative to the origin that this mesh should be moved to. (type: `glm::vec3`, default: `glm::vec3(0.0f)`)*
 
 > **Material:** *The properties which constitute the material that is rendered to a surface. (type: `struct`)*
 >   - **id:** *A serialised ID unique to the material's parent `ModelManager::Model`. (type: `int`)*
@@ -1538,6 +1453,6 @@ Free cubemaps: https://www.humus.name/index.php?page=Textures
 7. The maximum number of lights permitted in any one scene while using the `LAZARUS_DEFAULT_VERT_SHADER` and/or `LAZARUS_DEFAULT_FRAG_SHADER` is limitted to a maximum size of 64.
 8. The maximum number of joints allowed for any one animated armature is currently limitted to a maximum size of 64.
 9. The maximum number of entities in any one scene who can be picked or looked up using a pixel with `CameraManager::getPixelOccupant` is limmited to a maximum size of 255.
-10. For linux systems using wayland graphical sessions, running in windowed mode will throw an error due to window repositioning (the window is centered so it doesn't just appear in a random place). Run the application in fullscreen with `GlobalsManager::setLaunchInFullscreen(true)`.
+10. For linux systems using wayland graphical sessions, running in windowed mode will throw an error due to window repositioning (the window is centered so it doesn't just appear in a random place). Run the application in fullscreen with `WindowManager::WindowConfig::fullscreen` set to true or using `WindowManager::toggleFullscreen()`.
 11. All images must be formatted with RGBA 8-bit alignment
 12. Ensure that every vertex in an animated mesh that has been exported to glb format is assigned a weight. If some are missed, common modeling programs will add an extra bone to your rig at export-time to compensate for floating geometry -- this has a negative impact on the parser and will likely not load.

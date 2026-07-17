@@ -26,22 +26,47 @@ Time::Time()
 	this->frameCount 			= 0;
 	this->framesPerSecond 		= 0;
 
-	this->elapsedTime 			= 0.0f;
-	this->internalSeconds 		= 0.0f;
+	this->uptimeMs		 		= 0.0f;
+	this->previousMs	 		= 0.0f;
+	this->currentMs		 		= 0.0f;
 	this->msSinceLastRender 	= 0.0f;
 	this->timeDelta 			= 0.0f;
 };
 
-lazarus_result Time::monitorElapsedUptime()
+lazarus_result Time::getTimeUpdate()
 {
-	this->elapsedTime = glfwGetTime();
-	if(elapsedTime <= 0.0f)
+	std::chrono::high_resolution_clock::duration epoch = std::chrono::high_resolution_clock().now().time_since_epoch();
+	auto time = std::chrono::duration_cast<std::chrono::milliseconds>(epoch);
+	this->currentMs = time.count();
+
+	if(currentMs <= 0.0f)
 	{
 		LOG_ERROR("Time Error: ", __FILE__, __LINE__);
  		return lazarus_result::LAZARUS_TIME_ERROR;
 	};
 
-	this->msSinceLastRender = (this->elapsedTime - this->internalSeconds);
+	this->msSinceLastRender = (this->currentMs - this->previousMs);
+
+	return lazarus_result::LAZARUS_OK;
+};
+
+lazarus_result Time::monitorFPS()
+{
+	this->frameCount++;	
+	this->getTimeUpdate();
+
+	if(this->msSinceLastRender >= 1000.0f)
+	{
+		this->framesPerSecond = this->frameCount;
+		if(this->framesPerSecond <= 0.0f) 
+		{
+			LOG_ERROR("Time Error: ", __FILE__, __LINE__);
+			return lazarus_result::LAZARUS_TIME_ERROR;
+		};
+
+		this->frameCount = 0;
+		this->previousMs = this->currentMs;
+	};
 
 	return lazarus_result::LAZARUS_OK;
 };
@@ -50,33 +75,18 @@ lazarus_result Time::monitorTimeDelta()
 {
 	this->monitorFPS();
 
-	this->timeDelta = (1000 / this->framesPerSecond);
+	this->timeDelta = (1000.0f / this->framesPerSecond);
 	if(timeDelta <= 0.0f)
 	{
 		LOG_ERROR("Time Error: ", __FILE__, __LINE__);
 		return lazarus_result::LAZARUS_TIME_ERROR;
 	};
-
-	return lazarus_result::LAZARUS_OK;
-};
-
-lazarus_result Time::monitorFPS()
-{
-	this->frameCount++;	
-	this->monitorElapsedUptime();
-
-	if(this->msSinceLastRender >= 1.0f)
-	{
-		this->framesPerSecond = this->frameCount;
-		if(this->framesPerSecond <= 0) 
-		{
-			LOG_ERROR("Time Error: ", __FILE__, __LINE__);
-			return lazarus_result::LAZARUS_TIME_ERROR;
-		};
-
-		this->frameCount = 0;
-		this->internalSeconds += 1.0f;
-	};
+	this->uptimeMs += timeDelta;
+	/**
+	 * Statically update global state so that the engine and
+	 * its user share the same perception of time
+	 */
+	LAZARUS_UPTIME = this->uptimeMs;
 
 	return lazarus_result::LAZARUS_OK;
 };
@@ -496,7 +506,7 @@ EventManager::~EventManager()
 	LOG_DEBUG("Destroying Lazarus::WindowManager::Events");
 };
 
-WindowManager::WindowManager(const char *title, uint32_t width, uint32_t height)
+WindowManager::WindowManager()
 	: WindowManager::EventManager(),
 	  WindowManager::Time()
 {
@@ -504,44 +514,30 @@ WindowManager::WindowManager(const char *title, uint32_t width, uint32_t height)
 
 	this->errorCode = GLFW_NO_ERROR;
 	this->errorMessage = NULL;
-	
-    this->frame.width = width;
-    this->frame.height = height;
-    this->frame.title = title;
-
-    this->isFullscreen 	= GlobalsManager::getLaunchInFullscreen();
-    this->enableCursor 	= GlobalsManager::getCursorHidden();
-    this->cullFaces 	= GlobalsManager::getBackFaceCulling();
-    this->testDepth 	= GlobalsManager::getDepthTest();
-    this->disableVsync 	= GlobalsManager::getVsyncDisabled();
-	this->wireframeMode = GlobalsManager::getWireframeMode();
 
 	this->isOpen = false;
 
-	originalWidth = this->frame.width;
-	originalHeight = this->frame.height;
+	originalWidth = 0;
+	originalHeight = 0;
 
-    /*
-        Optional
-    */
     this->monitor = NULL;
-
     this->videoMode = NULL;
     this->cursor = NULL;
 };
 
-lazarus_result WindowManager::createWindow()
+lazarus_result WindowManager::create(WindowManager::WindowConfig config)
 {
 	lazarus_result status = lazarus_result::LAZARUS_OK;
-
+	
     if(!glfwInit())
     {
-        glfwTerminate();
+		glfwTerminate();
         LOG_ERROR("GLFW Error: GLFW missing.", __FILE__, __LINE__);
-
+		
         status = lazarus_result::LAZARUS_GLFW_NOINIT;
 		return status;
     };
+	this->config = config;
 
     /*
       MacOS support:
@@ -566,8 +562,8 @@ lazarus_result WindowManager::createWindow()
     this->videoMode = glfwGetVideoMode(this->monitor);
     
     if(
-		(static_cast<int32_t>(this->frame.width) > videoMode->width) || 
-		(static_cast<int32_t>(this->frame.height) > videoMode->height)
+		(static_cast<int32_t>(config.width) > videoMode->width) || 
+		(static_cast<int32_t>(config.height) > videoMode->height)
 	)
     {
 		LOG_ERROR("GLFW Error: ", __FILE__, __LINE__);
@@ -579,23 +575,28 @@ lazarus_result WindowManager::createWindow()
     int32_t targetWidth = 0;
     int32_t targetHeight = 0;
 
-    isFullscreen
+	if(config.disableResize)
+	{
+		glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+	}
+
+    config.fullscreen
     ? (((targetWidth = videoMode->width) && (targetHeight = videoMode->height)) 
         &&  (
             this->window = glfwCreateWindow(
                 videoMode->width, 
                 videoMode->height, 
-                this->frame.title, 
+                config.title, 
                 this->monitor, 
                 NULL
             ))
         )
-    : ((targetWidth = this->frame.width) && (targetHeight = this->frame.height) 
+    : ((targetWidth = config.width) && (targetHeight = config.height) 
         &&  (
             this->window = glfwCreateWindow(
-                this->frame.width, 
-                this->frame.height, 
-                this->frame.title, 
+                config.width, 
+                config.height, 
+                config.title, 
                 NULL, 
                 NULL
             )
@@ -636,6 +637,10 @@ lazarus_result WindowManager::createWindow()
         return;
     });
 
+	/**
+	 * This callback will do nothing in scenarios where the WindowConfig::disableResize 
+	 * setting is true
+	*/
 	glfwSetFramebufferSizeCallback(this->window, [](GLFWwindow *win, int width, int height){
 		WindowManager *window = (WindowManager *) glfwGetWindowUserPointer(win);
 		window->resize(width, height);
@@ -644,38 +649,39 @@ lazarus_result WindowManager::createWindow()
 	});
 
 	this->initialiseGLEW();
+	this->checkErrors(__FILE__, __LINE__);
     
-    return this->checkErrors(__FILE__, __LINE__);
+    return this->loadConfig();
 };
 
 lazarus_result WindowManager::setBackgroundColor(float r, float g, float b)
 {
 	glClearColor(r, g, b, 1.0);
 
-	this->frame.backgroundColor = glm::vec3(r, g, b);
+	this->config.backgroundColor = glm::vec3(r, g, b);
 
 	return this->checkErrors(__FILE__, __LINE__);
 };
 
 lazarus_result WindowManager::loadConfig()
 {	
-	if(enableCursor == true)
+	if(this->config.disableCursor == true)
 	{
 	    glfwSetInputMode(this->window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 	};
 	
-	if(cullFaces == true)
+	if(this->config.cullFaces == true)
 	{
 		glEnable            (GL_CULL_FACE);
         glCullFace          (GL_BACK);
 	};
 	
-	if(testDepth == true)
+	if(this->config.testDepth == true)
 	{
 	    glEnable            (GL_DEPTH_TEST);
 	};
 
-    if(disableVsync == true)
+    if(this->config.disableVsync == true)
     {
         glfwSwapInterval(0);
     }
@@ -689,7 +695,7 @@ lazarus_result WindowManager::loadConfig()
         glfwSwapInterval(1);
     };
 
-	if(wireframeMode)
+	if(this->config.wireframeMode)
 	{
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	}
@@ -708,12 +714,16 @@ lazarus_result WindowManager::loadConfig()
 		return status;
 	};
 	
-	return this->setBackgroundColor(0.0, 0.0, 0.0);
+	return this->setBackgroundColor(
+		this->config.backgroundColor.x, 
+		this->config.backgroundColor.y, 
+		this->config.backgroundColor.z
+	);
 };
 
 lazarus_result WindowManager::toggleFullscreen()
 {
-	if(!this->isFullscreen)
+	if(!this->config.fullscreen)
 	{
 		/*
 			Track original size so as to restore to
@@ -725,8 +735,8 @@ lazarus_result WindowManager::toggleFullscreen()
 			function is called.
 		*/
 
-		this->originalWidth = this->frame.width;
-		this->originalHeight = this->frame.height;
+		this->originalWidth = this->config.width;
+		this->originalHeight = this->config.height;
 
 		glfwSetWindowMonitor(
 			this->window, 
@@ -736,7 +746,7 @@ lazarus_result WindowManager::toggleFullscreen()
 			this->videoMode->height,
 			this->videoMode->refreshRate
 		);
-		this->isFullscreen = true;
+		this->config.fullscreen = true;
 	}
 	else
 	{
@@ -750,15 +760,15 @@ lazarus_result WindowManager::toggleFullscreen()
 			specified by the user.
 		*/
 
-		this->frame.width = this->originalWidth;
-		this->frame.height = this->originalHeight;
+		this->config.width = this->originalWidth;
+		this->config.height = this->originalHeight;
 
 		glfwSetWindowMonitor(
 			this->window, 
 			NULL, 
 			0, 0, 
-			this->frame.width,
-			this->frame.height, 
+			this->config.width,
+			this->config.height, 
 			0
 		);
 
@@ -768,7 +778,7 @@ lazarus_result WindowManager::toggleFullscreen()
 			return status;
 		};
 
-		this->isFullscreen = false;
+		this->config.fullscreen = false;
 	};
 
 	return this->checkErrors(__FILE__, __LINE__);
@@ -785,11 +795,11 @@ lazarus_result WindowManager::resize(uint32_t width, uint32_t height)
 		called there.
 	*/
 
-	this->frame.height = height;
-	this->frame.width = width;
+	this->config.height = height;
+	this->config.width = width;
 	GlobalsManager::setDisplaySize(width, height);
 
-	glViewport(0, 0, this->frame.width, this->frame.height);
+	glViewport(0, 0, this->config.width, this->config.height);
 
 	return this->checkErrors(__FILE__, __LINE__);
 };
@@ -851,6 +861,7 @@ lazarus_result WindowManager::presentNextFrame()
 	glfwSwapBuffers(this->window);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
+	this->getTimeUpdate();
     return this->checkErrors(__FILE__, __LINE__);
 };
 
@@ -914,8 +925,8 @@ lazarus_result WindowManager::checkErrors(const char *file, int line)
 
 lazarus_result WindowManager::centerWindow()
 {
-	int32_t windowLocationX = floor((videoMode->width - this->frame.width) * 0.5f);
-	int32_t windowLocationY = floor((videoMode->height - this->frame.height) * 0.5f);
+	int32_t windowLocationX = floor((videoMode->width - this->config.width) * 0.5f);
+	int32_t windowLocationY = floor((videoMode->height - this->config.height) * 0.5f);
     glfwSetWindowPos(this->window, windowLocationX, windowLocationY);
 
 	return this->checkErrors(__FILE__, __LINE__);

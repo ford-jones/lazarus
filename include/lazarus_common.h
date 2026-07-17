@@ -42,20 +42,14 @@ extern uint32_t                  LAZARUS_PRIMARY_DISPLAY_WIDTH;
 extern uint32_t                  LAZARUS_PRIMARY_DISPLAY_HEIGHT;
 extern uint32_t                  LAZARUS_LIGHT_COUNT;
 extern std::vector<uint32_t>     LAZARUS_SELECTABLE_ENTITIES;
+extern uint32_t                  LAZARUS_UPTIME;
 
 /* User Settings */
 
 extern bool                      LAZARUS_ENFORCE_IMAGE_SANITY;
-extern bool                      LAZARUS_DISABLE_CURSOR_VISIBILITY;
-extern bool                      LAZARUS_CULL_BACK_FACES;
-extern bool                      LAZARUS_DEPTH_TEST_FRAGS;
-extern bool                      LAZARUS_LAUNCH_IN_FULLSCREEN;
-extern bool                      LAZARUS_DISABLE_VSYNC;
 extern bool                      LAZARUS_DO_STENCIL_BUFFER;
 extern uint32_t                  LAZARUS_MAX_IMAGE_WIDTH;
 extern uint32_t                  LAZARUS_MAX_IMAGE_HEIGHT;
-extern bool                      LAZARUS_WIREFRAME_MODE;
-
 
 typedef enum lazarus_result
 {
@@ -138,21 +132,6 @@ class GlobalsManager
         static void setEnforceImageSanity(bool shouldEnforce);
         static bool getEnforceImageSanity();
 
-        static void setCursorHidden(bool shouldHide);
-        static bool getCursorHidden();
-
-        static void setBackFaceCulling(bool shouldCull);
-        static bool getBackFaceCulling();
-
-        static void setDepthTest(bool shouldTest);
-        static bool getDepthTest();
-
-        static void setLaunchInFullscreen(bool shouldEnlarge);
-        static bool getLaunchInFullscreen();
-
-        static void setVsyncDisabled(bool shouldDisable);
-        static bool getVsyncDisabled();
-
         static void setNumberOfActiveLights(uint8_t count);
         static uint8_t getNumberOfActiveLights();
 
@@ -167,9 +146,6 @@ class GlobalsManager
 
         static void setPickableEntity(uint32_t entityId);
         static uint8_t getPickableEntity(uint8_t index);
-
-        static void setWireframeMode(bool useWireframe);
-        static bool getWireframeMode();
 };
 
 #endif
