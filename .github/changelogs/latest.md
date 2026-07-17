@@ -1,15 +1,13 @@
-# Version: 2026.07.01011628
+# Version: 2026.07.17032337
 
-* [24734c3](https://github.com/ford-jones/lazarus/commit/24734c3520a8e448b3de27c504a3202b64cef324): Fix: Ensures that event queue snapshots persist unchanged between frame presentations
-* [5d47cf0](https://github.com/ford-jones/lazarus/commit/5d47cf0d6908bd75931b572ad28e38c82d6e5d89): Fix: Resolved issue with alphabet clipping during glyph rendering
-* [118130e](https://github.com/ford-jones/lazarus/commit/118130e68b213860027c4623a1e0d74dba8bf5f9): Docs: Cleaned up example and added new event types
-* [419bb0e](https://github.com/ford-jones/lazarus/commit/419bb0e2e689c96510d9a8b60e625abd746206a7): Fix: Correctly expresses key events in held and released states
-* [90d9369](https://github.com/ford-jones/lazarus/commit/90d9369c236c5d1bb72a2b7d4d80e65e24cc8f6f): Docs: Updated documented caveats
-* [afb82c0](https://github.com/ford-jones/lazarus/commit/afb82c03fee0c906151570172bd21bc46c05f2fc): Update: Uses floating point multipication in place of division operations
-* [34995c0](https://github.com/ford-jones/lazarus/commit/34995c069f1239ac52357a19a239bcda37a2931d): Docs: Bump version number
-* [2f2d3d3](https://github.com/ford-jones/lazarus/commit/2f2d3d39abf827a6841b7c870b20bce6a32c0dc4): Update: Enforces numeric limits for shader uniform buffer sizes
-* [0d85806](https://github.com/ford-jones/lazarus/commit/0d8580622247d779641ffdfc57949e1973514d60): Docs: Remove outdated shader information
-* [af24600](https://github.com/ford-jones/lazarus/commit/af24600345dab8b06176e7613513a333ecbf9084): Fix: Ensures texture units are re-bound following the activation of a shader program
-* [b08e39b](https://github.com/ford-jones/lazarus/commit/b08e39ba534478a2a8d1a8609d2c44947e26878f): Docs: Updated code comments for private functions
-* [3fe2750](https://github.com/ford-jones/lazarus/commit/3fe2750f054145a2f85fd830bb3bf0411dbad147): Clean: Refactored mesh shader synchronisation
-* [6bfb820](https://github.com/ford-jones/lazarus/commit/6bfb8206ce83cd92f2bd826c685569840039a6a9): Fix: Ensures gpu's max values are correctly reflected in global constants
+* [716637b](https://github.com/ford-jones/lazarus/commit/716637bf1f646b01a8a91c62451df7dcd8b3b5c7): Update: Uses a high frequency clock to accumulate millis in favour of glfw's uptime-in-seconds
+* [8ea30f7](https://github.com/ford-jones/lazarus/commit/8ea30f7bccb2b3408b65e75e34b7d1dd426e8cc4): Fix: Plays a motion from the start of the sequence after activating an animation
+* [52aefe6](https://github.com/ford-jones/lazarus/commit/52aefe6995493c9a93ae233bfdd62a8519139831): Fix: Calculates lambertian lighting model correctly for different light types and makes frag shader builtins more comprehensive
+* [d55e390](https://github.com/ford-jones/lazarus/commit/d55e390acccdbba39d6e2abe1e8829de029aca79): Fix: Optionally disable window resizing
+* [025cf01](https://github.com/ford-jones/lazarus/commit/025cf019c641cd2b93aa7475f633298b5249df27): Clean: Removed window config from global settings
+* [b8e14fb](https://github.com/ford-jones/lazarus/commit/b8e14fb740b431a3750cca83364bf411d0519e87): Update: Adds transform options to apply during asset creation
+* [eb68433](https://github.com/ford-jones/lazarus/commit/eb68433436d331822e3cd0e889ae6cf1137a0862): Update: Replaces default frag shader if-else blocks with switch-case syntax
+* [b75c261](https://github.com/ford-jones/lazarus/commit/b75c2618cb0ca2d3fcb148f14cc7700ceeb64860): Clean: Removed cube config
+* [972de74](https://github.com/ford-jones/lazarus/commit/972de749d8983bc3568ec3851c2248dc7b81d4e7): Update: Include texture transparency in asset config
+* [f25b9ed](https://github.com/ford-jones/lazarus/commit/f25b9ed36d657acb255c47c89a95a9e0d51b360c): Clean: Refactored default vertex shader
+* [017d745](https://github.com/ford-jones/lazarus/commit/017d74518b547d02c2331179352597f3f0b100ee): Fix: Light brightness affects ambient light sources
