@@ -1,5 +1,6 @@
-# Version: 2026.07.17032337
+# Version: 2026.07.17033109
 
+* [adc909c](https://github.com/ford-jones/lazarus/commit/adc909cb165acf62fef13c68d2af72ac4387a4c9): [Changelog CI] Add Changelog for Version 2026.07.17032337
 * [716637b](https://github.com/ford-jones/lazarus/commit/716637bf1f646b01a8a91c62451df7dcd8b3b5c7): Update: Uses a high frequency clock to accumulate millis in favour of glfw's uptime-in-seconds
 * [8ea30f7](https://github.com/ford-jones/lazarus/commit/8ea30f7bccb2b3408b65e75e34b7d1dd426e8cc4): Fix: Plays a motion from the start of the sequence after activating an animation
 * [52aefe6](https://github.com/ford-jones/lazarus/commit/52aefe6995493c9a93ae233bfdd62a8519139831): Fix: Calculates lambertian lighting model correctly for different light types and makes frag shader builtins more comprehensive
