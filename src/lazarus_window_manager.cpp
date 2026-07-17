@@ -861,7 +861,7 @@ lazarus_result WindowManager::presentNextFrame()
 	glfwSwapBuffers(this->window);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-	this->getTimeUpdate();
+	// this->getTimeUpdate();
     return this->checkErrors(__FILE__, __LINE__);
 };
 
