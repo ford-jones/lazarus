@@ -1,4 +1,5 @@
 set(LAZARUS_ENTRY_POINT lazarus.h)
+set(LAZARUS_AUDIO_HDR lazarus_audio_manager.h)
 set(
     LAZARUS_HEADERS
 

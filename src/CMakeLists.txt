@@ -1,3 +1,4 @@
+set(LAZARUS_AUDIO_SRC lazarus_audio_manager.cpp)
 set(
     LAZARUS_SOURCES
 
