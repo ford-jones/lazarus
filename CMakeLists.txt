@@ -40,10 +40,9 @@ project(LazarusEngine)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON) # This saves on having to wrap every exposed function in __declspec(dllexport) on windows. Comes at the expense of exposing literally everything.
 
 include(ExternalProject)
-include(GNUInstallDirs)
 
 add_library(lazarus SHARED)
 set(lazarus PROPERTIES LINKER_LANGUAGE CXX)
@@ -66,7 +65,11 @@ endif()
 # Directories
 add_subdirectory(include)
 add_subdirectory(src)
-target_include_directories(lazarus PUBLIC ${CMAKE_INSTALL_PREFIX}/include)
+target_include_directories(
+    lazarus 
+    PUBLIC 
+    ${CMAKE_INSTALL_PREFIX}/include
+)
 
 # Source files
 include(src/CMakeLists.txt)
@@ -87,7 +90,8 @@ endforeach()
 ########### DEPENDENCIES ###########
 # TODO: Consider the following
 # https://cmake.org/cmake/help/latest/module/FindOpenGL.html #macos-specific
-# OpenGL
+
+## OpenGL
 find_package(OpenGL REQUIRED)
 if(${OPENGL_FOUND})
     message("Located OpenGL")
@@ -96,15 +100,13 @@ else()
     message("FATAL: OpenGL is missing... ?")
 endif()
 
-# GLEW (GL Extension Wrangler)
+## GLEW
 find_package(GLEW)
 if(${GLEW_FOUND})
     message("Located GLEW")
     target_link_libraries(lazarus PRIVATE GLEW::GLEW)   # Uses GLEW::glew OR GLEW::glew_s depending on what's available
 
 else()
-# TODO: 
-# MacOS
     message("Preparing GLEW download")
     if(WIN32) # glew provides prebuilt binaries for windows
         ExternalProject_Add(
@@ -115,11 +117,11 @@ else()
             CONFIGURE_COMMAND ""
             BUILD_COMMAND ""
             INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory
-			    ${CMAKE_BINARY_DIR}/glew/src/libglew/include/GL ${CMAKE_INSTALL_PREFIX}/include/GL &&
-			    ${CMAKE_COMMAND} -E copy_directory
-		            ${CMAKE_BINARY_DIR}/glew/src/libglew/lib/Release/x64 ${CMAKE_INSTALL_PREFIX}/lib &&
-			    ${CMAKE_COMMAND} -E copy
-			    ${CMAKE_BINARY_DIR}/glew/src/libglew/bin/Release/x64/glew32.${EXT_DYNAMIC} ${CMAKE_INSTALL_PREFIX}/bin/glew32.${EXT_DYNAMIC} 
+			                ${CMAKE_BINARY_DIR}/glew/src/libglew/include/GL ${CMAKE_INSTALL_PREFIX}/include/GL &&
+			                ${CMAKE_COMMAND} -E copy_directory
+		                    ${CMAKE_BINARY_DIR}/glew/src/libglew/lib/Release/x64 ${CMAKE_INSTALL_PREFIX}/lib &&
+			                ${CMAKE_COMMAND} -E copy
+			                ${CMAKE_BINARY_DIR}/glew/src/libglew/bin/Release/x64/glew32.${EXT_DYNAMIC} ${CMAKE_INSTALL_PREFIX}/bin/glew32.${EXT_DYNAMIC} 
         )
     else()
         ExternalProject_Add(
@@ -143,11 +145,24 @@ else()
 
     add_library(GLEW SHARED IMPORTED)
     if(WIN32)
-       set(GLEW_BIN_DIR ${CMAKE_INSTALL_PREFIX}/bin)
-       set_target_properties(GLEW PROPERTIES IMPORTED_LOCATION ${GLEW_BIN_DIR}/glew32.${EXT_DYNAMIC})
-       set_target_properties(GLEW PROPERTIES IMPORTED_IMPLIB ${GLEW_LIB_DIR}/glew32.${EXT_STATIC}) # Seems to be a windows-only requirement ?
+        set(GLEW_BIN_DIR ${CMAKE_INSTALL_PREFIX}/bin)
+        set_target_properties(
+            GLEW 
+            PROPERTIES 
+            IMPORTED_LOCATION ${GLEW_BIN_DIR}/glew32.${EXT_DYNAMIC}
+        )
+        set_target_properties(
+            GLEW 
+            PROPERTIES 
+            IMPORTED_IMPLIB 
+            ${GLEW_LIB_DIR}/glew32.${EXT_STATIC}
+        )
     else()
-       set_target_properties(GLEW PROPERTIES IMPORTED_LOCATION ${GLEW_LIB_DIR}/libGLEW.${EXT_DYNAMIC})
+        set_target_properties(
+            GLEW 
+            PROPERTIES 
+            IMPORTED_LOCATION ${GLEW_LIB_DIR}/libGLEW.${EXT_DYNAMIC}
+        )
     endif()
     
     include_directories(GLEW_INCLUDE_DIR)
@@ -155,19 +170,18 @@ else()
 
 endif()
 
-# GLFW
+## GLFW
 find_library(GLFW3_LIBRARY NAMES glfw3 glfw glfwdll glfw_mt)
 if(${GLFW3_LIBRARY} STREQUAL GLFW3_LIBRARY-NOTFOUND)
-# TODO:
-# MacOS
     message("Preparing GLFW download")
-    if(WIN32) # glfw provides prebuilt binaries for windows
+    if(WIN32) 
+    # download glfw prebuilt binary for windows (note they are also provided for mac but built from source anyway)
 	ExternalProject_Add(
 	    libglfw
 	    PREFIX ${CMAKE_BINARY_DIR}/glfw
-            URL https://github.com/glfw/glfw/releases/download/3.4/glfw-3.4.bin.WIN64.zip
+        URL https://github.com/glfw/glfw/releases/download/3.4/glfw-3.4.bin.WIN64.zip
 	    URL_HASH MD5=725c211378d00f3eee5df5acc8108742
-            CONFIGURE_COMMAND ""
+        CONFIGURE_COMMAND ""
 	    BUILD_COMMAND ""
 	    INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory 
 			    ${CMAKE_BINARY_DIR}/glfw/src/libglfw/include/GLFW ${CMAKE_INSTALL_PREFIX}/include/GLFW &&
@@ -181,6 +195,7 @@ if(${GLFW3_LIBRARY} STREQUAL GLFW3_LIBRARY-NOTFOUND)
 	)
 
     else()
+        # download glfw and build from source
         ExternalProject_Add(
             libglfw
             PREFIX ${CMAKE_BINARY_DIR}/glfw
@@ -198,13 +213,26 @@ if(${GLFW3_LIBRARY} STREQUAL GLFW3_LIBRARY-NOTFOUND)
     set(GLFW_LIB_DIR ${CMAKE_INSTALL_PREFIX}/lib)
 
     if(WIN32)
-         add_library(glfw3 SHARED IMPORTED)
-         set(GLFW_BIN_DIR ${CMAKE_INSTALL_PREFIX}/bin)
-         set_target_properties(glfw3 PROPERTIES IMPORTED_LOCATION ${GLFW_BIN_DIR}/glfw3.${EXT_DYNAMIC})
-         set_target_properties(glfw3 PROPERTIES IMPORTED_IMPLIB ${GLFW_LIB_DIR}/glfw3.${EXT_STATIC})
+        add_library(glfw3 SHARED IMPORTED)
+        set(GLFW_BIN_DIR ${CMAKE_INSTALL_PREFIX}/bin)
+        set_target_properties(
+            glfw3 
+            PROPERTIES 
+            IMPORTED_LOCATION ${GLFW_BIN_DIR}/glfw3.${EXT_DYNAMIC}
+        )
+        set_target_properties(
+            glfw3 
+            PROPERTIES 
+            IMPORTED_IMPLIB ${GLFW_LIB_DIR}/glfw3.${EXT_STATIC}
+        )
     else()
-         add_library(glfw3 STATIC IMPORTED)
-         set_target_properties(glfw3 PROPERTIES IMPORTED_LOCATION ${GLFW_LIB_DIR}/libglfw3.${EXT_STATIC})   # As far as I'm aware, glfw is only available as a static lib on unix (?)
+        # As far as I'm aware, glfw is only available as a static lib on unix (?)
+        add_library(glfw3 STATIC IMPORTED)
+        set_target_properties(
+            glfw3 
+            PROPERTIES 
+            IMPORTED_LOCATION ${GLFW_LIB_DIR}/libglfw3.${EXT_STATIC}
+        )
     endif()
     
     include_directories(GLFW_INCLUDE_DIR)
@@ -215,7 +243,7 @@ else()
     target_link_libraries(lazarus PRIVATE ${GLFW3_LIBRARY})
 endif()
 
-# FreeType2
+## FreeType2
 find_package(Freetype 2.14.3)
 if(${Freetype_FOUND})
     message("Located FreeType2")
@@ -228,6 +256,7 @@ else()
     # freetype2 prefix.... the repective INSTALL_COMMAND's here aim to correct this.
 
     message("Preparing FreeType2 download")
+    # build from source
     if(WIN32)
        ExternalProject_Add(
             libfreetype
@@ -235,25 +264,25 @@ else()
             URL https://sourceforge.net/projects/freetype/files/latest/download
             URL_HASH MD5=b1243d490ba113e9bead49597072520c
             CONFIGURE_COMMAND ""
-	    BUILD_COMMAND ${CMAKE_COMMAND} -S <SOURCE_DIR> -B <SOURCE_DIR>/build -D BUILD_SHARED_LIBS=true -D CMAKE_BUILD_TYPE=Release && ${CMAKE_COMMAND} --build <SOURCE_DIR>/build --config Release
+	        BUILD_COMMAND ${CMAKE_COMMAND} -S <SOURCE_DIR> -B <SOURCE_DIR>/build -D BUILD_SHARED_LIBS=true -D CMAKE_BUILD_TYPE=Release && ${CMAKE_COMMAND} --build <SOURCE_DIR>/build --config Release
             INSTALL_COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/freetype2/src/libfreetype/build/Release/freetype.${EXT_STATIC}  ${CMAKE_INSTALL_PREFIX}/lib/freetype.${EXT_STATIC} &&
                             ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/freetype2/src/libfreetype/build/Release/freetype.${EXT_DYNAMIC}  ${CMAKE_INSTALL_PREFIX}/bin/freetype.${EXT_DYNAMIC} &&
                             ${CMAKE_COMMAND} -E copy  ${CMAKE_BINARY_DIR}/freetype2/src/libfreetype/include/ft2build.h ${CMAKE_INSTALL_PREFIX}/include/ft2build.h &&
                             ${CMAKE_COMMAND} -E copy_directory ${CMAKE_BINARY_DIR}/freetype2/src/libfreetype/include/freetype ${CMAKE_INSTALL_PREFIX}/include/freetype
         )
     else()
-	ExternalProject_Add(
-	   libfreetype
-	   PREFIX ${CMAKE_BINARY_DIR}/freetype2
-           URL https://sourceforge.net/projects/freetype/files/latest/download
-           URL_HASH MD5=b1243d490ba113e9bead49597072520c
-           CONFIGURE_COMMAND ""
-	   BUILD_COMMAND ${CMAKE_COMMAND} -S <SOURCE_DIR> -B <SOURCE_DIR>/build -D BUILD_SHARED_LIBS=true -D CMAKE_BUILD_TYPE=Release && make -C <SOURCE_DIR>/build
-           INSTALL_COMMAND make -C <SOURCE_DIR>/build install && 
-                           ${CMAKE_COMMAND} -E copy_directory ${CMAKE_INSTALL_PREFIX}/include/freetype2 ${CMAKE_INSTALL_PREFIX}/include &&
-                           ${CMAKE_COMMAND} -E copy ${CMAKE_INSTALL_PREFIX}/include/freetype2/ft2build.h ${CMAKE_INSTALL_PREFIX}/include/ft2build.h &&
-                           ${CMAKE_COMMAND} -E rm -R ${CMAKE_INSTALL_PREFIX}/include/freetype2
-	)
+	    ExternalProject_Add(
+	        libfreetype
+	        PREFIX ${CMAKE_BINARY_DIR}/freetype2
+            URL https://sourceforge.net/projects/freetype/files/latest/download
+            URL_HASH MD5=b1243d490ba113e9bead49597072520c
+            CONFIGURE_COMMAND ""
+	        BUILD_COMMAND ${CMAKE_COMMAND} -S <SOURCE_DIR> -B <SOURCE_DIR>/build -D BUILD_SHARED_LIBS=true -D CMAKE_BUILD_TYPE=Release && make -C <SOURCE_DIR>/build
+            INSTALL_COMMAND make -C <SOURCE_DIR>/build install && 
+                            ${CMAKE_COMMAND} -E copy_directory ${CMAKE_INSTALL_PREFIX}/include/freetype2 ${CMAKE_INSTALL_PREFIX}/include &&
+                            ${CMAKE_COMMAND} -E copy ${CMAKE_INSTALL_PREFIX}/include/freetype2/ft2build.h ${CMAKE_INSTALL_PREFIX}/include/ft2build.h &&
+                            ${CMAKE_COMMAND} -E rm -R ${CMAKE_INSTALL_PREFIX}/include/freetype2
+	    )
     endif()
     add_dependencies(lazarus libfreetype)
  
@@ -263,11 +292,23 @@ else()
     add_library(Freetype SHARED IMPORTED)
 
     if(WIN32)
-       set(FT_BIN_DIR ${CMAKE_INSTALL_PREFIX}/bin)
-       set_target_properties(Freetype PROPERTIES IMPORTED_LOCATION ${FT_BIN_DIR}/freetype.${EXT_DYNAMIC})
-       set_target_properties(Freetype PROPERTIES IMPORTED_IMPLIB ${FT_LIB_DIR}/freetype.${EXT_STATIC}) # Seems to be a windows-only requirement ?
+        set(FT_BIN_DIR ${CMAKE_INSTALL_PREFIX}/bin)
+        set_target_properties(
+            Freetype 
+            PROPERTIES 
+            IMPORTED_LOCATION ${FT_BIN_DIR}/freetype.${EXT_DYNAMIC}
+        )
+        set_target_properties(
+            Freetype 
+            PROPERTIES 
+            IMPORTED_IMPLIB ${FT_LIB_DIR}/freetype.${EXT_STATIC}
+        )
     else()
-       set_target_properties(Freetype PROPERTIES IMPORTED_LOCATION ${FT_LIB_DIR}/libfreetype.${EXT_DYNAMIC})
+        set_target_properties(
+            Freetype 
+            PROPERTIES 
+            IMPORTED_LOCATION ${FT_LIB_DIR}/libfreetype.${EXT_DYNAMIC}
+        )
     endif()
 
     include_directories(FT_INCLUDE_DIR)
@@ -275,27 +316,35 @@ else()
 
 endif()
 
-# GLM
+## GLM
 # Note: Header-only library
-message("Preparing glm download")
-ExternalProject_Add(
-    glm
-    PREFIX ${CMAKE_BINARY_DIR}/glm
-    GIT_REPOSITORY https://github.com/g-truc/glm.git
-    CONFIGURE_COMMAND ""
-    BUILD_COMMAND ""
-    INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory
-                    ${CMAKE_BINARY_DIR}/glm/src/glm/glm ${CMAKE_INSTALL_PREFIX}/include/glm
-    GIT_PROGRESS ON
-)
-add_dependencies(lazarus glm)
-set(GLM_INCLUDE_DIR ${CMAKE_INSTALL_PREFIX}/include/glm)
-include_directories(GLM_INCLUDE_DIR)
+# TODO: I think that this literally only searches the supplied path but unable to tell because find_path doesn't display its' output with the --debug-find flag, maybe add more paths?
+find_path(GLM_LOCATION "glm" PATHS "${CMAKE_INSTALL_PREFIX}/include/")
+if(${GLM_LOCATION} STREQUAL GLM_LOCATION-NOTFOUND)
+    message("Preparing glm download")
+    ExternalProject_Add(
+        glm
+        PREFIX ${CMAKE_BINARY_DIR}/glm
+        GIT_REPOSITORY https://github.com/g-truc/glm.git
+        CONFIGURE_COMMAND ""
+        BUILD_COMMAND ""
+        INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory
+                        ${CMAKE_BINARY_DIR}/glm/src/glm/glm ${CMAKE_INSTALL_PREFIX}/include/glm
+        GIT_PROGRESS ON
+    )
+    add_dependencies(lazarus glm)
+    set(GLM_INCLUDE_DIR ${CMAKE_INSTALL_PREFIX}/include/glm)
+    include_directories(GLM_INCLUDE_DIR)
+else()
+    message("Located glm headers")
+    include_directories(${GLM_LOCATION}/glm)
+endif()
 
-# FMOD
+## FMOD
 if(NOT LAZARUS_EXCLUDE_AUDIO)
     if(WIN32)
 	    # This is the default install target for the windows fmod installation wizard
+        # TODO: allow user to set this manually via a flag, only fallback to this default if a path wasn't supplied
 	    set(FMOD_CORE_PATH "C:/Program Files/FMOD Studio API Windows/api/core/")
         find_library(
 	        FMOD_LIBRARY 
@@ -308,20 +357,30 @@ if(NOT LAZARUS_EXCLUDE_AUDIO)
         else()
 	        message("Located FMOD")
             add_library(FMOD::Core SHARED IMPORTED)
-	        set_target_properties(FMOD::Core PROPERTIES IMPORTED_LOCATION ${FMOD_CORE_PATH}/lib/x64/fmod.${EXT_DYNAMIC})
-	        set_target_properties(FMOD::Core PROPERTIES IMPORTED_IMPLIB ${FMOD_CORE_PATH}/lib/x64/fmod_vc.${EXT_STATIC})
+	        set_target_properties(
+                FMOD::Core 
+                PROPERTIES 
+                IMPORTED_LOCATION ${FMOD_CORE_PATH}/lib/x64/fmod.${EXT_DYNAMIC}
+            )
+	        set_target_properties(
+                FMOD::Core 
+                PROPERTIES 
+                IMPORTED_IMPLIB ${FMOD_CORE_PATH}/lib/x64/fmod_vc.${EXT_STATIC}
+            )
 	        include_directories(${FMOD_CORE_PATH}/inc/)
 	        target_link_libraries(lazarus PRIVATE FMOD::Core)
         endif()
 
     else()
-        # TODO:
-        # Would be really awesome if could refactor this to just be a single find_library or find_package call -- this is pretty terrible for Xplatform 
         set(FMOD_INCLUDE_DIR ${CMAKE_INSTALL_PREFIX}/include)
         set(FMOD_LIB_DIR ${CMAKE_INSTALL_PREFIX}/lib)
 
         add_library(fmod SHARED IMPORTED)
-        set_target_properties(fmod PROPERTIES IMPORTED_LOCATION ${FMOD_LIB_DIR}/libfmod.${EXT_DYNAMIC})
+        set_target_properties(
+            fmod 
+            PROPERTIES 
+            IMPORTED_LOCATION ${FMOD_LIB_DIR}/libfmod.${EXT_DYNAMIC}
+        )
         include_directories(FMOD_INCLUDE_DIR)
         target_link_libraries(lazarus PRIVATE fmod)
     endif()
@@ -331,31 +390,61 @@ if(NOT LAZARUS_EXCLUDE_AUDIO)
 
 endif()
 
-# Sean Barrett's stb
+## Sean Barrett's stb
 # Note: Header-only library
-message("Downloading stb_image.h")
-file(
-    DOWNLOAD 
-    https://raw.githubusercontent.com/nothings/stb/refs/heads/master/stb_image.h
-    ${CMAKE_BINARY_DIR}/stb/stb_image.h
-    SHOW_PROGRESS
+# TODO: Same as glm
+find_file(
+    STB_IMAGE_HEADER 
+    NAMES "stb_image.h" 
+    PATHS "${CMAKE_INSTALL_PREFIX}/include/"
 )
-file(INSTALL ${CMAKE_BINARY_DIR}/stb/stb_image.h DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
-message("Downloading stb_image_resize.h")
-file(
-    DOWNLOAD
-    https://raw.githubusercontent.com/nothings/obbg/refs/heads/master/stb/stb_image_resize.h
-    ${CMAKE_BINARY_DIR}/stb/stb_image_resize.h
-    SHOW_PROGRESS
-)
-file(INSTALL ${CMAKE_BINARY_DIR}/stb/stb_image_resize.h DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
+if(${STB_IMAGE_HEADER} STREQUAL STB_IMAGE_HEADER-NOTFOUND)
+    message("Downloading stb_image.h")
+    file(
+        DOWNLOAD 
+        https://raw.githubusercontent.com/nothings/stb/refs/heads/master/stb_image.h
+        ${CMAKE_BINARY_DIR}/stb/stb_image.h
+        SHOW_PROGRESS
+    )
+    file(
+        INSTALL 
+        ${CMAKE_BINARY_DIR}/stb/stb_image.h 
+        DESTINATION 
+        ${CMAKE_INSTALL_PREFIX}/include
+    )
+else()
+    message("Located stb_image header")
+endif()
 
-# std::filesystem (linux only...)
+find_file(
+    STB_RESIZE_HEADER
+    NAMES "stb_image_resize.h"
+    PATHS "${CMAKE_INSTALL_PREFIX}/include/"
+)
+if(${STB_RESIZE_HEADER} STREQUAL STB_RESIZE_HEADER-NOTFOUND)
+    message("Downloading stb_image_resize.h")
+    file(
+        DOWNLOAD
+        https://raw.githubusercontent.com/nothings/obbg/refs/heads/master/stb/stb_image_resize.h
+        ${CMAKE_BINARY_DIR}/stb/stb_image_resize.h
+        SHOW_PROGRESS
+    )
+    file(
+        INSTALL
+        ${CMAKE_BINARY_DIR}/stb/stb_image_resize.h
+        DESTINATION
+        ${CMAKE_INSTALL_PREFIX}/include
+    )
+else()
+    message("Located stb_image_resize header")
+endif()
+
+## std::filesystem (linux only)
 if(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
     message("Linking filesystem")
     target_link_libraries(lazarus PRIVATE stdc++fs)
 
-# cpp frameworks (MacOS only)
+## cpp frameworks (MacOS only)
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
     find_library(COCOA_FRAMEWORK Cocoa) # Required for usage of OOP patterns
     if(${COCOA_FRAMEWORK} STREQUAL COCOA_FRAMEWORK-NOTFOUND)
