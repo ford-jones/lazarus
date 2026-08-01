@@ -507,5 +507,3 @@ install(
     FILES ${LazarusHeaderFiles} ${LazarusEntryPoint} 
     DESTINATION ${CMAKE_INSTALL_PREFIX}/include
 )
-
-# compile windows: cl /EHsc /std:c++17 /Zc:__cplusplus main.cpp game.cpp /I"C:/Program Files/LazarusEngine/include" /I"C:/Program Files/FMOD Studio API Windows/api/core/inc" /link msvcrt.lib user32.lib gdi32.lib shell32.lib lazarus.lib /out:run.exe /NODEFAULTLIB:libcmt
