@@ -36,7 +36,7 @@
 #
 ########### SETUP ###########
 cmake_minimum_required(VERSION 3.6)
-project(LazarusEngine)
+project(LazarusEngine VERSION 0.16.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
