@@ -89,14 +89,9 @@ class ModelManager
             struct Animation
             {
                 bool paused = true;
-                
-                int32_t activeAnimation = -1;
-                int32_t maxLoops = 0;
 
-                uint32_t playbackPosition = 0;  //  Animation playback pos relative to duration
+                uint32_t playbackPosition = 0;
                 uint32_t elapsedLoops = 0;
-                // uint32_t elapsedPlaytime = 0;   //  The total amount of time the animation has been playing for
-                // uint32_t previousPlaytime = 0;  //  The above ^ value last-tick
             };
 
             uint32_t id;
@@ -139,7 +134,6 @@ class ModelManager
         
         void copyModel(Model &dest, Model src);
         
-        bool isPlaying(Model &in);
         lazarus_result setActiveAnimation(Model &meshIn, uint32_t animationIndex, uint32_t loopCount = 0);
         lazarus_result setToPosePosition(Model &meshIn);
         lazarus_result pauseAnimation(Model &meshIn);
@@ -168,36 +162,25 @@ class ModelManager
                 glm::mat4 jointMatrix;
 
                 std::vector<AssetLoader::AssetData::JointMotion> transformData;
-
-                // uint32_t playbackPosition = 0;  //  Animation playback pos relative to duration
-                // int32_t maxLoops = 0;
-                // uint32_t elapsedLoops = 0;
-                // uint32_t elapsedPlaytime = 0;   //  The total amount of time the animation has been playing for
-                // uint32_t previousPlaytime = 0;  //  The above ^ value last-tick
             };
 
             struct AnimationInfo
             {
                 uint32_t elapsedPlaytime = 0;   //  The total amount of time the animation has been playing for
                 uint32_t previousPlaytime = 0;  //  The above ^ value last-tick
-                uint32_t elapsedLoops = 0;
+                uint32_t elapsedLoops = 0;      //  How many times the sequence has played back
+                int32_t maxLoops = 0;
 
-                uint8_t isAnimated;
+                uint8_t nonStatic = false;      //  Whether the mesh moves at all
                 int16_t armatureRoot = -1;
                 int32_t activeAnimation = -1;
-                uint32_t animationCount = 0;
+                uint32_t sequenceCount = 0;     //  Total number of unique animations
             };
 
             uint32_t id;
             uint8_t stencilBufferId;
 
             uint32_t instanceCount;
-
-            // uint8_t isAnimated;
-            // int16_t armatureRoot = -1;
-            // int32_t activeAnimation = -1;
-            // uint32_t animationCount = 0;
-            // bool animationPaused = true;
             
             GLuint VAO;     //  Vertex Array Object
             GLuint VBO;     //  Vertex Buffer Object (attributes: interleaved)
