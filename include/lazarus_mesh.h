@@ -86,6 +86,19 @@ class ModelManager
                 bool isVisible;
             };
 
+            struct Animation
+            {
+                bool paused = true;
+                
+                int32_t activeAnimation = -1;
+                int32_t maxLoops = 0;
+
+                uint32_t playbackPosition = 0;  //  Animation playback pos relative to duration
+                uint32_t elapsedLoops = 0;
+                // uint32_t elapsedPlaytime = 0;   //  The total amount of time the animation has been playing for
+                // uint32_t previousPlaytime = 0;  //  The above ^ value last-tick
+            };
+
             uint32_t id;
             std::string name;
 
@@ -99,6 +112,8 @@ class ModelManager
             std::string materialFilepath;
 
             std::map<uint32_t, Instance> instances;
+            Animation animation;
+
         };
         struct AssetConfig
         {
@@ -123,7 +138,8 @@ class ModelManager
         lazarus_result drawModel(Model &meshIn);
         
         void copyModel(Model &dest, Model src);
-
+        
+        bool isPlaying(Model &in);
         lazarus_result setActiveAnimation(Model &meshIn, uint32_t animationIndex, uint32_t loopCount = 0);
         lazarus_result setToPosePosition(Model &meshIn);
         lazarus_result pauseAnimation(Model &meshIn);
@@ -151,13 +167,25 @@ class ModelManager
                 glm::mat4 globalJointTransform;
                 glm::mat4 jointMatrix;
 
-                std::vector<AssetLoader::AssetData::JointMotion> animationData;
+                std::vector<AssetLoader::AssetData::JointMotion> transformData;
 
-                uint32_t playbackPosition = 0;  //  Animation playback pos relative to duration
-                int32_t maxLoops = 0;
-                uint32_t elapsedLoops = 0;
+                // uint32_t playbackPosition = 0;  //  Animation playback pos relative to duration
+                // int32_t maxLoops = 0;
+                // uint32_t elapsedLoops = 0;
+                // uint32_t elapsedPlaytime = 0;   //  The total amount of time the animation has been playing for
+                // uint32_t previousPlaytime = 0;  //  The above ^ value last-tick
+            };
+
+            struct AnimationInfo
+            {
                 uint32_t elapsedPlaytime = 0;   //  The total amount of time the animation has been playing for
                 uint32_t previousPlaytime = 0;  //  The above ^ value last-tick
+                uint32_t elapsedLoops = 0;
+
+                uint8_t isAnimated;
+                int16_t armatureRoot = -1;
+                int32_t activeAnimation = -1;
+                uint32_t animationCount = 0;
             };
 
             uint32_t id;
@@ -165,11 +193,11 @@ class ModelManager
 
             uint32_t instanceCount;
 
-            uint8_t isAnimated;
-            int16_t armatureRoot = -1;
-            int32_t activeAnimation = -1;
-            uint32_t animationCount = 0;
-            bool animationPaused = true;
+            // uint8_t isAnimated;
+            // int16_t armatureRoot = -1;
+            // int32_t activeAnimation = -1;
+            // uint32_t animationCount = 0;
+            // bool animationPaused = true;
             
             GLuint VAO;     //  Vertex Array Object
             GLuint VBO;     //  Vertex Buffer Object (attributes: interleaved)
@@ -185,6 +213,7 @@ class ModelManager
             std::vector<uint32_t> indexes;
             std::vector<glm::vec3> attributes;
 
+            AnimationInfo animationData;
             std::vector<MotionPoint> armature;
             std::vector<glm::vec4> movements;
         };
@@ -281,13 +310,13 @@ class ModelManager
          * keyframe values for the next draw of the animated
          * asset.
         */
-        glm::mat4 computeLocalJointTransform(MeshData::MotionPoint &motionPoint, uint32_t animationID);
+        glm::mat4 computeLocalJointTransform(Model::Animation &sequence, MeshData::MotionPoint &joint, MeshData::AnimationInfo &data);
 
         /**
          * Applies an animations keyframe data to the the joint of an asset's 
          * armature to modify the location of its' effected vertices.
          */
-        void loadAnimation(MeshData &data);
+        void loadAnimation(Model::Animation &sequence, MeshData &data);
 
         /**
          * Uses the current elapsed time to locate the indices of the keyframe that should 
