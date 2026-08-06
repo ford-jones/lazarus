@@ -35,6 +35,10 @@ Transform::Transform()
 	this->accumulatePitch = 0.0f;
 	this->accumulateRoll = 0.0f;
 	this->accumulateYaw = 0.0f;
+
+	this->accumulateOrbitAzimuth = 0.0f;
+	this->accumulateOrbitElevation = 0.0f;
+
 	this->outRadians = 0.0;
 	this->up = 0.0f;
 
@@ -201,7 +205,12 @@ lazarus_result Transform::rotateCamera(CameraManager::Camera &camera, float pitc
 
 lazarus_result Transform::orbitCamera(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX, float tarY, float tarZ)
 {	
+	/**
+	 * Accumulate inputs to ensure consistent rotational behaviour
+	*/
 	this->rotation = vec3(0.0, 0.0, 0.0);
+	this->accumulateOrbitAzimuth += azimuth;
+	this->accumulateOrbitElevation += elevation;
 
 	if((azimuth > 360.0f) || (azimuth < -360.0f))
 	{
@@ -211,11 +220,11 @@ lazarus_result Transform::orbitCamera(CameraManager::Camera &camera, float azimu
 	}
 	else
 	{
-		this->up = this->determineUpVector(azimuth);
+		this->up = this->determineUpVector(this->accumulateOrbitAzimuth);
 		camera.upVector = glm::vec3(0.0f, this->up, 0.0f);
 		
-		float e = this->degreesToRadians(elevation, false);
-		float a = this->degreesToRadians(azimuth);
+		float e = this->degreesToRadians(this->accumulateOrbitElevation, false);
+		float a = this->degreesToRadians(this->accumulateOrbitAzimuth);
 		
 		this->rotation.x = cos(e) * cos(a);
 		this->rotation.y = sin(a);

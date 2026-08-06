@@ -70,6 +70,9 @@ class Transform
 		float accumulateYaw;
 		float accumulateRoll;
 		
+		float accumulateOrbitElevation;
+		float accumulateOrbitAzimuth;
+		
 		glm::vec3 rotation;
 };
 
