@@ -1,5 +1,5 @@
 # Lazarus Engine
-#### *Version: 0.15.5*
+#### *Version: 0.16.0*
 ## Table of contents:
 
 - [Getting Started](#getting-started)
@@ -19,9 +19,48 @@
 ------------------------------------------------------------------
 
 # Getting Started:
-Hello and welcome to the Lazarus Project. \
+## Compiling the application:
+### Using cmake:
+This project uses cmake to build and install the project as well as its dependencies. The cmake build works accross Windows, MacOS and Linux systems. The build requires elevated privelages, users on unix systems should prefix the following commands with `sudo`. Windows users should launch their terminal window as the system administrator.
 
-Before jumping into the project, make sure the following libraries / tools are accessible on your machine:
+Note that for windows builds, this guide uses the x64 Native Tools Command Prompt for VS 2022. MinGW or other non VS generators are not currently supported.
+
+1. Generate the build files:
+```bash
+# unix
+cmake -S . -B build
+
+# windows
+cmake -G "Visual Studio 17 2022" -A x64 -S . -B build
+```
+
+2. Install dependencies and generate build objects:
+```bash
+cmake --build ./build --config Release
+```
+
+3. Install the project:
+```bash
+cmake --install ./build
+```
+
+4. Compiling consuming applications:
+```bash
+# using gcc/g++ on unix
+g++ -std=c++17 main.cpp -o example -llazarus
+
+# using windows MSVC
+cl /EHsc /std:c++17 /Zc:__cplusplus main.cpp /I"C:/Program Files/LazarusEngine/include" /link msvcrt.lib user32.lib gdi32.lib shell32.lib /LIBPATH:"C:/Program Files/LazarusEngine/lib" lazarus.lib /out:example.exe /NODEFAULTLIB:libcmt
+```
+Windows users should note that unless build files were generated with the `LAZARUS_EXCLUDE_AUDIO` flag, the path to `FMOD`'s headers may also need to be supplied. E.g.
+```
+ /I"C:/Program Files/FMOD Studio API Windows/api/core/inc"
+```
+
+### Using legacy build tools:
+Prior to the existence of the cmake build, users compiled the application using system-specific build scripts (`build.bat` or `makefile`). These are still available for developer usage due to their speed and ease of use. Note that the library artifact produced on windows and mac systems is static, while the linux artifact is dynamic.
+
+Note that these legacy builds require all the project dependencies to be installed and made accessible ahead of time. These are:
 - GCC / G++ (See: [Resources](./resources.md)) or [MSVC](https://visualstudio.microsoft.com/downloads/)
 - [OpenGL](https://www.khronos.org/opengl/wiki/Getting_Started#Downloading_OpenGL) (Note: Most modern OS's ship with OpenGL).
 - [GLFW](https://www.glfw.org/download.html)
@@ -34,64 +73,29 @@ Before jumping into the project, make sure the following libraries / tools are a
 If any of these are unavailable to you, downloads can be found in the resources section. \
 *Note: gcc, glfw, glm & glew are available for macOS using* `homebrew` *and should be installed from there.*
 
-## Compiling the application:
-
-### Unix (Linux / Mac):
-Compile lazarus using the makefile: 
+#### Unix:
+1. Compile lazarus using the makefile: 
 ```
 make
 ```
 *(Note: Use `make optimise` to enable level O3 compiler optimisations. `make debug` will reveal debugging symbols required by `gdb` and `valgrind`.)*
 
-Followed by:
+2. Followed by:
 ```
 make install
 ```
 
-To uninstall the library and all associated files:
+3. Note that the library can be uninstalled with:
 ```
 make uninstall
 ```
 
-At any time, if you want to cleanup the project's build files locally:
+4. At any time, if you want to cleanup the project's build files locally:
 ```
 make clean
 ```
 
-### Windows:
-If using windows you will need to install Microsoft Visual Studio in order to build the project from source. This has been tested with VS2019, VS2022 and VS2026. \
-Run the batchfile from the project root using the x64 Visual Studio terminal to compile with MSVC. To generate a 32-bit binary the x86 terminal should be used instead.
-```
-build.bat
-```
-*(Note: Use `build.bat --debug` to enable debugging symbols in the build output and create a `.pdb` file in the current working directory.)*
-
-Now copy the header files located in include to msvc's include folder. Mine's located at:
-```
-c:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.42.34433\include
-```
-Move the lazarus library (`lib/liblazarus.lib`) to msvc's lib folder:
-```
-c:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.42.34433\lib
-```
-
-## Usage:
-You should now be able to use Lazarus with your project like so:
-```cpp
-#include <lazarus.h>
-
-int main()
-{
-    Lazarus::WindowManager window = Lazarus::WindowManager("Game Window");
-    window.initialise();
-
-    return 0;
-}
-```
-See [here](#lazarus-by-example) for further usage guides.
-
-When compiling your project you will need to pass the following linker flags:
-#### Unix (Linux / Mac):
+5. Compiling consuming applications:
 ```
 g++ main.cpp -o run -lGLEW -lglfw3 -lfmod -lfreetype -lliblazarus
 ```
@@ -100,9 +104,34 @@ Note:
 - On some macs you may need to explicitly specify the c++ standard using: `-std=c++17`
 
 #### Windows:
+1. If using windows you will need to install Microsoft Visual Studio in order to build the project from source. This has been tested with VS2019, VS2022 and VS2026. \
+Run the batchfile from the project root using the x64 Visual Studio terminal to compile with MSVC. To generate a 32-bit binary the x86 terminal should be used instead.
+```
+build.bat
+```
+*(Note: Use `build.bat --debug` to enable debugging symbols in the build output and create a `.pdb` file in the current working directory.)*
+
+2. Now copy the header files located in include to msvc's include folder. Mine's located at:
+```
+c:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.42.34433\include
+```
+
+3. Move the lazarus library (`lib/liblazarus.lib`) to msvc's lib folder:
+```
+c:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.42.34433\lib
+```
+
+4. Compiling consuming applications:
 ```
 cl /EHsc /std:c++17 /Zc:__cplusplus main.cpp /link fmod_vc.lib freetype.lib glfw3.lib glew32.lib opengl32.lib liblazarus.lib msvcrt.lib user32.lib gdi32.lib shell32.lib /out:run.exe /NODEFAULTLIB:libcmt
 ```
+
+## Usage:
+You should now be able to use Lazarus with your project like so:
+```cpp
+#include <lazarus.h>
+```
+See [here](#lazarus-by-example) for further usage guides.
 
 ## Installation Notes:
 For generalised notes on how to install a system library, see [here.](./contribution.md#file-structure)

@@ -65,4 +65,4 @@ install :
 	@echo "installing..." && sudo cp include/* /usr/local/include && sudo cp $(OUT) /usr/local/lib $(BUILDSTEPS)
 
 uninstall : 
-	@echo "uninstalling..." && sudo rm /usr/local/include/lazarus_*.h && sudo rm $(addprefix /usr/local/,$(OUT))
+	@echo "uninstalling..." && sudo rm /usr/local/include/lazarus*.h && sudo rm $(addprefix /usr/local/,$(OUT))
