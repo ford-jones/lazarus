@@ -32,9 +32,12 @@
 #include "lazarus_light.h"
 #include "lazarus_camera.h"
 #include "lazarus_file_loader.h"
-#include "lazarus_audio_manager.h"
 #include "lazarus_text_manager.h"
 #include "lazarus_world_fx.h"
+
+#ifndef LAZARUS_EXCLUDE_AUDIO
+    #include "lazarus_audio_manager.h"
+#endif
 
 #ifndef LAZARUS_H
 #define LAZARUS_H
@@ -51,7 +54,10 @@ namespace Lazarus
     using ::LightManager;
     using ::CameraManager;
     using ::FileLoader;
-    using ::AudioManager;
+    
+    #ifndef LAZARUS_EXCLUDE_AUDIO
+        using ::AudioManager;
+    #endif
 }
 
 #endif
