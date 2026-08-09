@@ -64,6 +64,7 @@ class CameraManager
             vec3 position;
             vec3 direction;
             vec3 upVector;
+            vec3 rotation;
 
             CameraConfig config;
 

@@ -195,6 +195,10 @@ lazarus_result Transform::rotateCamera(CameraManager::Camera &camera, float pitc
 		this->rotation.x = cos(y) * cos(p);
 		this->rotation.y = sin(-p);
 		this->rotation.z = sin(y) * cos(p); 
+		
+		camera.rotation.x = this->accumulatePitch;
+		camera.rotation.y = this->accumulateYaw;
+		camera.rotation.z = this->accumulateRoll;
 
 		camera.direction = this->rotation;
 
@@ -229,6 +233,9 @@ lazarus_result Transform::orbitCamera(CameraManager::Camera &camera, float azimu
 		this->rotation.x = cos(e) * cos(a);
 		this->rotation.y = sin(a);
 		this->rotation.z = sin(e) * cos(a); 
+
+		camera.rotation.x = this->accumulateOrbitElevation;
+		camera.rotation.y = this->accumulateOrbitAzimuth;
 		
 		camera.direction = glm::vec3(tarX, tarY, tarZ);
 		camera.position = camera.direction + (this->rotation * radius);
