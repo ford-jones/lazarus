@@ -35,6 +35,10 @@ Transform::Transform()
 	this->accumulatePitch = 0.0f;
 	this->accumulateRoll = 0.0f;
 	this->accumulateYaw = 0.0f;
+
+	this->accumulateOrbitAzimuth = 0.0f;
+	this->accumulateOrbitElevation = 0.0f;
+
 	this->outRadians = 0.0;
 	this->up = 0.0f;
 
@@ -191,6 +195,10 @@ lazarus_result Transform::rotateCamera(CameraManager::Camera &camera, float pitc
 		this->rotation.x = cos(y) * cos(p);
 		this->rotation.y = sin(-p);
 		this->rotation.z = sin(y) * cos(p); 
+		
+		camera.rotation.x = this->accumulatePitch;
+		camera.rotation.y = this->accumulateYaw;
+		camera.rotation.z = this->accumulateRoll;
 
 		camera.direction = this->rotation;
 
@@ -201,9 +209,14 @@ lazarus_result Transform::rotateCamera(CameraManager::Camera &camera, float pitc
 
 lazarus_result Transform::orbitCamera(CameraManager::Camera &camera, float azimuth, float elevation, float radius, float tarX, float tarY, float tarZ)
 {	
+	/**
+	 * Accumulate inputs to ensure consistent rotational behaviour
+	*/
 	this->rotation = vec3(0.0, 0.0, 0.0);
+	this->accumulateOrbitElevation += elevation;
+	this->accumulateOrbitAzimuth += azimuth;
 
-	if((azimuth > 360.0f) || (azimuth < -360.0f))
+	if((elevation > 360.0f) || (elevation < -360.0f))
 	{
         LOG_ERROR("Transform Error", __FILE__, __LINE__);
 
@@ -211,20 +224,24 @@ lazarus_result Transform::orbitCamera(CameraManager::Camera &camera, float azimu
 	}
 	else
 	{
-		this->up = this->determineUpVector(azimuth);
+		this->up = this->determineUpVector(this->accumulateOrbitElevation);
 		camera.upVector = glm::vec3(0.0f, this->up, 0.0f);
 		
-		float e = this->degreesToRadians(elevation, false);
-		float a = this->degreesToRadians(azimuth);
+		float e = this->degreesToRadians(this->accumulateOrbitAzimuth, false);
+		float a = this->degreesToRadians(this->accumulateOrbitElevation);
 		
 		this->rotation.x = cos(e) * cos(a);
 		this->rotation.y = sin(a);
 		this->rotation.z = sin(e) * cos(a); 
+
+		camera.rotation.x = this->accumulateOrbitElevation;
+		camera.rotation.y = this->accumulateOrbitAzimuth;
+		camera.direction = this->rotation;
 		
-		camera.direction = glm::vec3(tarX, tarY, tarZ);
-		camera.position = camera.direction + (this->rotation * radius);
+		glm::vec3 target = glm::vec3(tarX, tarY, tarZ);
+		camera.position = target + (this->rotation * radius);
 		
-		camera.viewMatrix = glm::lookAt(camera.position, camera.direction, camera.upVector);
+		camera.viewMatrix = glm::lookAt(camera.position, target, camera.upVector);
 
 		return lazarus_result::LAZARUS_OK;
 	}

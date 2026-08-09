@@ -108,8 +108,8 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
         if(!std::empty(assetData.animations))
         {
             LOG_DEBUG("Asset contains animations");
-            meshData.isAnimated = true;
-            meshData.animationCount = assetData.animations.size();
+            meshData.animationData.nonStatic = true;
+            meshData.animationData.sequenceCount = assetData.animations.size();
 
             /*
                 Construct joints and transfroms from loaded data. 
@@ -595,7 +595,7 @@ lazarus_result ModelManager::composeArmature(AssetLoader::AssetData assetData)
         for(size_t j = 0; j < assetData.animations.size(); j++)
         {
             AssetLoader::AssetData::JointMotion jointMotion = assetData.animations[j].at(jointData.id);
-            motionPoint.animationData.push_back(jointMotion);
+            motionPoint.transformData.push_back(jointMotion);
         };
     
         /*
@@ -656,7 +656,7 @@ lazarus_result ModelManager::composeArmature(AssetLoader::AssetData assetData)
     {
         if(heirachy.insert(j).second)
         {
-            meshData.armatureRoot = j;
+            meshData.animationData.armatureRoot = j;
             break;
         };
     };
@@ -668,11 +668,11 @@ lazarus_result ModelManager::composeArmature(AssetLoader::AssetData assetData)
     
         I.e. Breadth-first search begin.
     */
-    MeshData::MotionPoint &rootJoint = meshData.armature[meshData.armatureRoot];
+    MeshData::MotionPoint &rootJoint = meshData.armature[meshData.animationData.armatureRoot];
     std::vector<uint32_t> children = rootJoint.children;
     std::vector<uint32_t> parents;
     
-    parents.resize(rootJoint.children.size(), meshData.armatureRoot);
+    parents.resize(rootJoint.children.size(), meshData.animationData.armatureRoot);
     std::set<uint32_t> visited = {rootJoint.id};
     
     rootJoint.parentID = -1;
@@ -1253,7 +1253,7 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
         
         glUniform1i(this->meshVariantLocation, this->textureStorage);
         glUniform1i(this->discardFragsLocation, data.texture.discardAlphaZero);
-        glUniform1i(this->isAnimatedLocation, data.isAnimated);
+        glUniform1i(this->isAnimatedLocation, data.animationData.nonStatic);
 
         status = this->checkErrors(__FILE__, __LINE__);
         if(status != lazarus_result::LAZARUS_OK)
@@ -1262,17 +1262,17 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
         };
 
         /*
-            Upload animation data if present
+            Upload animation data if there is animation data
         */
-        if(data.isAnimated)
+        if(data.animationData.nonStatic)
         {
             this->clearErrors();
 
             LOG_DEBUG("Uploading animation data");
 
-            if(data.activeAnimation != -1 && !data.animationPaused)
+            if(data.animationData.activeAnimation != -1 && !meshIn.animation.paused)
             {
-                this->loadAnimation(data);
+                this->loadAnimation(meshIn.animation, data);
             };
 
             /*
@@ -1298,19 +1298,19 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
 };
 
 
-void ModelManager::loadAnimation(ModelManager::MeshData &data)
+void ModelManager::loadAnimation(ModelManager::Model::Animation &sequence, ModelManager::MeshData &data)
 {
     LOG_DEBUG("Loading animation data");
     
-    MeshData::MotionPoint &animationRoot = data.armature[data.armatureRoot];
-    if(animationRoot.maxLoops == -1 || animationRoot.elapsedLoops < static_cast<uint32_t>(animationRoot.maxLoops))
+    MeshData::MotionPoint &animationRoot = data.armature[data.animationData.armatureRoot];
+    if(data.animationData.maxLoops == -1 || sequence.elapsedLoops < static_cast<uint32_t>(data.animationData.maxLoops))
     {
         /*
             Calculate the animation's armature-root position
             and begin iterative breadth-first descent through
             the node heirarchy.
         */
-        animationRoot.globalJointTransform = this->computeLocalJointTransform(animationRoot, data.activeAnimation);
+        animationRoot.globalJointTransform = this->computeLocalJointTransform(sequence, animationRoot, data.animationData);
                 
         animationRoot.jointMatrix = (
             animationRoot.globalJointTransform * animationRoot.inverseBindMatrix
@@ -1343,7 +1343,7 @@ void ModelManager::loadAnimation(ModelManager::MeshData &data)
                         child.children.end()
                     );
     
-                    glm::mat4 localTransform = this->computeLocalJointTransform(child, data.activeAnimation);
+                    glm::mat4 localTransform = this->computeLocalJointTransform(sequence, child, data.animationData);
                     child.globalJointTransform = parent.globalJointTransform * localTransform;
     
                     child.jointMatrix = (
@@ -1360,7 +1360,7 @@ void ModelManager::loadAnimation(ModelManager::MeshData &data)
     }
     else
     {
-        data.animationPaused = true;
+        sequence.paused = true;
     };
 };
 
@@ -1390,20 +1390,20 @@ void ModelManager::setStartingOrientation(Model &meshIn, glm::vec3 translation, 
     }
 };
 
-glm::mat4 ModelManager::computeLocalJointTransform(ModelManager::MeshData::MotionPoint &motionPoint, uint32_t animationID)
+glm::mat4 ModelManager::computeLocalJointTransform(ModelManager::Model::Animation &sequence, ModelManager::MeshData::MotionPoint &joint, ModelManager::MeshData::AnimationInfo &data)
 {
-    AssetLoader::AssetData::JointMotion motionData = motionPoint.animationData[animationID];
-    uint32_t prev = motionPoint.playbackPosition;
+    AssetLoader::AssetData::JointMotion motionData = joint.transformData[data.activeAnimation];
+    uint32_t prev = sequence.playbackPosition;
 
     //  Locate keyframes    
-    uint32_t translateIdx = this->getKeyframeIndex(motionData.translation, motionPoint.playbackPosition, motionPoint.elapsedPlaytime, motionPoint.previousPlaytime);
-    uint32_t rotateIdx = this->getKeyframeIndex(motionData.rotation, motionPoint.playbackPosition, motionPoint.elapsedPlaytime, motionPoint.previousPlaytime);
-    uint32_t scaleIdx = this->getKeyframeIndex(motionData.scale, motionPoint.playbackPosition, motionPoint.elapsedPlaytime, motionPoint.previousPlaytime);
+    uint32_t translateIdx = this->getKeyframeIndex(motionData.translation, sequence.playbackPosition, data.elapsedPlaytime, data.previousPlaytime);
+    uint32_t rotateIdx = this->getKeyframeIndex(motionData.rotation, sequence.playbackPosition, data.elapsedPlaytime, data.previousPlaytime);
+    uint32_t scaleIdx = this->getKeyframeIndex(motionData.scale, sequence.playbackPosition, data.elapsedPlaytime, data.previousPlaytime);
 
     //  Extract keyframe transform values
-    glm::vec4 translateKey = this->getTransformLerp(motionData.translation, translateIdx, motionPoint.playbackPosition);
-    glm::vec4 rotateKey = this->getTransformLerp(motionData.rotation, rotateIdx, motionPoint.playbackPosition);
-    glm::vec4 scaleKey = this->getTransformLerp(motionData.scale, scaleIdx, motionPoint.playbackPosition);
+    glm::vec4 translateKey = this->getTransformLerp(motionData.translation, translateIdx, sequence.playbackPosition);
+    glm::vec4 rotateKey = this->getTransformLerp(motionData.rotation, rotateIdx, sequence.playbackPosition);
+    glm::vec4 scaleKey = this->getTransformLerp(motionData.scale, scaleIdx, sequence.playbackPosition);
 
     //  construct a joint transform matrix using keyframe values
     glm::mat4 localTransform = (
@@ -1412,9 +1412,9 @@ glm::mat4 ModelManager::computeLocalJointTransform(ModelManager::MeshData::Motio
         glm::scale(glm::mat4(1.0f), glm::vec3(scaleKey))
     );
 
-    if(motionPoint.playbackPosition < prev)
+    if(sequence.playbackPosition < prev)
     {
-        motionPoint.elapsedLoops += 1;
+        sequence.elapsedLoops += 1;
     };
 
     return localTransform;
@@ -1539,29 +1539,27 @@ lazarus_result ModelManager::setActiveAnimation(ModelManager::Model &meshIn, uin
 {
     lazarus_result status = lazarus_result::LAZARUS_OK;
     ModelManager::ModelData &model = this->modelStore.at(meshIn.id);
+     
     for(size_t i = 0; i < model.size(); i++)
     {
         ModelManager::MeshData &data = model[i];
-        if(data.isAnimated)
+        if(data.animationData.nonStatic)
         {
-            if(animationIndex + 1 <= data.animationCount)
+            if(animationIndex + 1 <= data.animationData.sequenceCount)
             {
-                data.activeAnimation = animationIndex;
-        
+                
                 /*
-                    Animation has changed so begin playing it from the 
-                    start (the current elapsed uptime of the engine)
+                    Target sequence has changed so begin playing it from the 
+                    beginning. Zero out accumulators and note current time.
                 */
-                for(size_t j = 0; j < data.armature.size(); j++) 
-                {
-                    ModelManager::MeshData::MotionPoint &motion = data.armature[j];
-                    motion.previousPlaytime = LAZARUS_UPTIME;
-                    motion.elapsedPlaytime = 0;
-                    motion.playbackPosition = 0;
-                    motion.elapsedLoops = 0;
-                    motion.maxLoops = loopCount;    
-                }
-                data.animationPaused = false;
+                data.animationData.activeAnimation = animationIndex;
+                data.animationData.previousPlaytime = LAZARUS_UPTIME;
+                data.animationData.elapsedPlaytime = 0;
+                data.animationData.maxLoops = loopCount;
+
+                meshIn.animation.playbackPosition = 0;
+                meshIn.animation.elapsedLoops = 0;
+                meshIn.animation.paused = false;
             }
             else
             {
@@ -1581,14 +1579,13 @@ lazarus_result ModelManager::pauseAnimation(ModelManager::Model &meshIn)
     for(size_t i = 0; i < model.size(); i++)
     {
         ModelManager::MeshData &data = model[i];
-        if(data.isAnimated)
+        if(data.animationData.nonStatic)
         {
-            data.animationPaused = true;
+            meshIn.animation.paused = true;
             animatedAssets++;
         }
     };
 
-    
     return animatedAssets 
     ? lazarus_result::LAZARUS_OK 
     : lazarus_result::LAZARUS_NO_ANIMATION_DATA;
@@ -1608,21 +1605,21 @@ lazarus_result ModelManager::playAnimation(ModelManager::Model &meshIn)
     for(size_t i = 0; i < model.size(); i++)
     {
         ModelManager::MeshData &data = model[i];
-        if(data.isAnimated)
+        if(data.animationData.nonStatic)
         {
-            for(size_t j = 0; j < data.armature.size(); j++) 
-            {
-                /**
-                 * TODO:
-                 * This should really be a map or something with equivalent
-                 * lookup speed
-                 */
-                ModelManager::MeshData::MotionPoint &motion = data.armature[j];
-                motion.elapsedPlaytime = motion.playbackPosition;
-                motion.previousPlaytime = LAZARUS_UPTIME;
-            }
+            // for(size_t j = 0; j < data.armature.size(); j++) 
+            // {
+            //     /**
+            //      * TODO:
+            //      * This should really be a map or something with equivalent
+            //      * lookup speed
+            //      */
+            //     ModelManager::MeshData::MotionPoint &motion = data.armature[j];
+                data.animationData.elapsedPlaytime = meshIn.animation.playbackPosition;
+                data.animationData.previousPlaytime = LAZARUS_UPTIME;
+            // }
 
-            data.animationPaused = false;
+            meshIn.animation.paused = false;
             animatedAssets++;
         }
     };
@@ -1641,18 +1638,26 @@ lazarus_result ModelManager::setToPosePosition(ModelManager::Model &meshIn)
     for(size_t i = 0; i < model.size(); i++)
     {
         ModelManager::MeshData &data = model[i];
-        if(data.isAnimated)
+        if(data.animationData.nonStatic)
         {
-            data.activeAnimation = -1;
+            /**
+             * Zero-out the keyframe timestep accumulators
+             */
+            data.animationData.activeAnimation = -1;
+            data.animationData.elapsedPlaytime = 0;
+            data.animationData.previousPlaytime = 0;
+            data.animationData.maxLoops = 0;
 
+            meshIn.animation.playbackPosition = 0;
+            meshIn.animation.elapsedLoops = 0;
+
+            /**
+             * Set joint matrices back to their pose / un-animated
+             */
             for(size_t j = 0; j < data.armature.size(); j++)
             {
                 ModelManager::MeshData::MotionPoint &motion = data.armature[j];
-                motion.playbackPosition = 0;
-                motion.elapsedPlaytime = 0;
-                motion.previousPlaytime = 0;
-                motion.elapsedLoops = 0;
-                motion.maxLoops = 0;
+
                 motion.globalJointTransform = motion.posePosition;
                 motion.jointMatrix = motion.globalJointTransform * motion.inverseBindMatrix;
             };
@@ -1792,7 +1797,7 @@ void ModelManager::setMeshProperties(AssetLoader::AssetData &assetData)
     meshData.movements = assetData.movements;       //  joints, weights
     meshData.indexes = assetData.indices;           
 
-    meshData.isAnimated = false;
+    meshData.animationData.nonStatic = false;
     /*
         Note that these will be evaluated again when 
         loading from a file (create3DAsset).

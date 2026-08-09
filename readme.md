@@ -1153,7 +1153,8 @@ Retrieves the ID of a pixel occupant in view which has `ModelManager::Model::isC
 > **Camera:** *A collection of properties which make up a camera entity. (type: `struct`)* 
 >	- **id:** *This camera's unique id. (type: `int`)* 
 >	- **position:** *The x, y, z location of the camera. (type: `glm::vec3`)*
->	- **direction:** *Which direction the camera is facing. (type: `glm::vec3`)*
+>	- **direction:** *A normalised vector expressing the cameras current forward orientation. (type: `glm::vec3`)*
+>   - **rotation:** *How far the camera has turned from its origin in degrees. (type: glm::vec3)*
 >	- **upVector:** *Which way is considered up. (type: `glm::vec3`)*
 >   - **config:** *Object settings. (type: `CameraManager::CameraConfig`)*
 >	- **viewMatrix:** *The view matrix to be passed into the shader program at the uniform location of `viewLocation`. (type: `glm::mat4`)*

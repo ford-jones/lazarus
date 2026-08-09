@@ -64,7 +64,13 @@ class CameraManager
             vec3 position;
             vec3 direction;
             vec3 upVector;
+            vec3 rotation;
 
+            /**
+             * TODO:
+             * Create a CameraData struct for abstracting these
+             * I dont want any raw / writable matrices in userspace
+             */
             CameraConfig config;
 
             mat4 viewMatrix;
