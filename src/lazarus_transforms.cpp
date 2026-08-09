@@ -236,11 +236,12 @@ lazarus_result Transform::orbitCamera(CameraManager::Camera &camera, float azimu
 
 		camera.rotation.x = this->accumulateOrbitElevation;
 		camera.rotation.y = this->accumulateOrbitAzimuth;
+		camera.direction = this->rotation;
 		
-		camera.direction = glm::vec3(tarX, tarY, tarZ);
-		camera.position = camera.direction + (this->rotation * radius);
+		glm::vec3 target = glm::vec3(tarX, tarY, tarZ);
+		camera.position = target + (this->rotation * radius);
 		
-		camera.viewMatrix = glm::lookAt(camera.position, camera.direction, camera.upVector);
+		camera.viewMatrix = glm::lookAt(camera.position, target, camera.upVector);
 
 		return lazarus_result::LAZARUS_OK;
 	}
