@@ -52,7 +52,8 @@ lazarus_result Transform::translateModel(ModelManager::Model &model, float x, fl
 		ModelManager::Model::Instance &instance = model.instances.at(instanceID);
 		glm::mat4 &instanceMatrix = instance.modelMatrix;
 
-    	instanceMatrix = glm::translate(instanceMatrix, glm::vec3(x, y, z));
+		glm::vec3 magnitude = glm::vec3(x, y, z) / instance.scale;
+    	instanceMatrix = glm::translate(instanceMatrix, magnitude);
 
 		/*
 			Decompose worldspace position from row 4 of the model matrix
@@ -85,7 +86,8 @@ lazarus_result Transform::rotateModel(ModelManager::Model &model, float pitch, f
     	instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
 		instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(roll), glm::vec3(0.0f, 0.0f, 1.0f));
 		
-		instance.direction = instanceMatrix * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f); 
+		glm::vec3 decomposeRotation = instanceMatrix * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f);
+		instance.direction = decomposeRotation / instance.scale; 
 
     	return lazarus_result::LAZARUS_OK;
 	}
