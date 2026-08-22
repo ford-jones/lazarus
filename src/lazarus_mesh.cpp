@@ -1861,17 +1861,34 @@ void ModelManager::copyModel(ModelManager::Model &dest, ModelManager::Model src)
     {
         this->meshData = this->modelData[i];
     
+        /*
+            Ensure that each of the models instances are initialised with
+            new/unique id's.
+        */
         this->modelOut.instances.clear();
         this->instantiateMesh(selectable);
     
         this->modelOut.id = this->modelOut.instances.at(0).id;
         this->meshData.id = this->modelOut.id;
+
+        /* 
+            Ensure that instance transforms are copied too, otherwise everything will be clumping
+            at the origin - which is likely not what someone wants to do when they COPY during runtime
+        */
+        for(size_t j = 0; j < this->modelOut.instances.size(); j++)
+        {
+            ModelManager::Model::Instance &destInstance = this->modelOut.instances.at(j);
+            ModelManager::Model::Instance srcInstance = src.instances.at(j);
+            destInstance.modelMatrix = srcInstance.modelMatrix;
+            destInstance.position = srcInstance.position;
+            destInstance.scale = srcInstance.scale;
+        }
+
         data.push_back(this->meshData);
     };
     
     this->modelStore.insert(std::pair<uint32_t, ModelManager::ModelData>(this->modelOut.id, data));
     this->setSelectable(selectable);
-
     dest = this->modelOut;
 
     return;
