@@ -26,17 +26,18 @@ Time::Time()
 	this->frameCount 			= 0;
 	this->framesPerSecond 		= 0;
 
-	this->uptimeMs		 		= 0.0f;
 	this->previousMs	 		= 0.0f;
 	this->currentMs		 		= 0.0f;
 	this->msSinceLastRender 	= 0.0f;
 	this->timeDelta 			= 0.0f;
+
+	this->initTime = std::chrono::steady_clock::now();
 };
 
 lazarus_result Time::getTimeUpdate()
 {
-	std::chrono::high_resolution_clock::duration epoch = std::chrono::high_resolution_clock().now().time_since_epoch();
-	auto time = std::chrono::duration_cast<std::chrono::milliseconds>(epoch);
+	std::chrono::_V2::steady_clock::time_point clockUpdate = std::chrono::steady_clock().now();
+	std::chrono::milliseconds time = std::chrono::duration_cast<std::chrono::milliseconds>(clockUpdate - this->initTime);
 	this->currentMs = time.count();
 
 	if(currentMs <= 0.0f)
@@ -46,6 +47,12 @@ lazarus_result Time::getTimeUpdate()
 	};
 
 	this->msSinceLastRender = (this->currentMs - this->previousMs);
+
+	/**
+	 * Statically update global state so that the engine and
+	 * its user share the same perception of time
+	 */
+	LAZARUS_UPTIME = this->currentMs;
 
 	return lazarus_result::LAZARUS_OK;
 };
@@ -81,12 +88,6 @@ lazarus_result Time::monitorTimeDelta()
 		LOG_ERROR("Time Error: ", __FILE__, __LINE__);
 		return lazarus_result::LAZARUS_TIME_ERROR;
 	};
-	this->uptimeMs += timeDelta;
-	/**
-	 * Statically update global state so that the engine and
-	 * its user share the same perception of time
-	 */
-	LAZARUS_UPTIME = this->uptimeMs;
 
 	return lazarus_result::LAZARUS_OK;
 };

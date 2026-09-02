@@ -1509,6 +1509,9 @@ glm::vec4 ModelManager::getTransformLerp(AssetLoader::AssetData::JointMotion::Tr
                     As mentioned in previous areas, Blender exports rotations
                     as quats in wxyz order so they must be swizzled here in  order to 
                     correctly compute the lerpstep value.
+
+                    TODO:
+                    Only do this for blender assets
                 */
 
                 glm::quat sphericalLerp = glm::slerp(

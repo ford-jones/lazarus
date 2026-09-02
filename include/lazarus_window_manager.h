@@ -60,6 +60,8 @@ class Time
         double currentMs;
 		double msSinceLastRender;
 		float frameCount;		
+
+        std::chrono::_V2::steady_clock::time_point initTime;
 };
 
 class EventManager
