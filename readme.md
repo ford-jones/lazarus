@@ -1,5 +1,5 @@
 # Lazarus Engine
-#### *Version: 0.16.0*
+#### *Version: 0.16.2*
 ## Table of contents:
 
 - [Getting Started](#getting-started)
@@ -833,8 +833,7 @@ Access the result(s) via `WindowManager::Time::timeDelta`.
 
 ### Members:
 > **framesPerSecond:** *Current number of frames being drawn per second. (type: `int`)* \
-> **timeDelta:** *The duration of time taken in milliseconds to draw a single frame. (type: `float`)* 
-> **uptimeMs:** *Accumulates uptime since the window was opened in ms. (type: `float`)*
+> **frameDelta:** *The amount of milliseconds taken to draw and present a frame. (type: `float`)*
 
 ## Shader:
 A class for the lazarus default shader program which, simply maps vertex positions to their coordinates and draws the fragments; following the lambertian lighting model.
