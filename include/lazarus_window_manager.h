@@ -38,28 +38,25 @@ class Time
 {
 	public:
 		Time();
-        lazarus_result monitorTimeDelta();
 		lazarus_result monitorFPS();
+        lazarus_result monitorFrameDelta();
 		
-		float timeDelta;
 		float framesPerSecond;
-		float uptimeMs;
+		float frameDelta;
         
         virtual ~Time();
-	
+        
     protected:
         /**
          * Accumulates ms between frame presentations. Required for calculating FPS 
          * and frame delta.
          */
-        lazarus_result getTimeUpdate();
-
-    private:
+        lazarus_result advanceTimer();
         
-		double previousMs;
-        double currentMs;
-		double msSinceLastRender;
-		float frameCount;		
+    private:
+        double timeLastTick;    //  The value of LAZARUS_UPTIME at the previous call to advanceTimer
+        double frameTimer;      //  For checking whether one second has elapsed
+        float frameCounter;     //  Counts frames between seconds
 
         std::chrono::_V2::steady_clock::time_point initTime;
 };

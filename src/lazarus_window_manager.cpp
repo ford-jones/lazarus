@@ -23,67 +23,68 @@ Time::Time()
 {
 	LOG_DEBUG("Constructing Lazarus::WindowManager::Time");
 
-	this->frameCount 			= 0;
-	this->framesPerSecond 		= 0;
+	this->frameCounter		= 0;
+	this->framesPerSecond	= 0;
 
-	this->previousMs	 		= 0.0f;
-	this->currentMs		 		= 0.0f;
-	this->msSinceLastRender 	= 0.0f;
-	this->timeDelta 			= 0.0f;
+	this->timeLastTick	 	= 0.0f;
+	this->frameDelta 		= 0.0f;
+	this->frameTimer 		= 0.0;
 
 	this->initTime = std::chrono::steady_clock::now();
 };
 
-lazarus_result Time::getTimeUpdate()
+lazarus_result Time::advanceTimer()
 {
 	std::chrono::_V2::steady_clock::time_point clockUpdate = std::chrono::steady_clock().now();
 	std::chrono::milliseconds time = std::chrono::duration_cast<std::chrono::milliseconds>(clockUpdate - this->initTime);
-	this->currentMs = time.count();
+	double current = time.count();
 
-	if(currentMs <= 0.0f)
+	if(current <= 0.0f)
 	{
 		LOG_ERROR("Time Error: ", __FILE__, __LINE__);
  		return lazarus_result::LAZARUS_TIME_ERROR;
-	};
-
-	this->msSinceLastRender = (this->currentMs - this->previousMs);
-
-	/**
-	 * Statically update global state so that the engine and
-	 * its user share the same perception of time
-	 */
-	LAZARUS_UPTIME = this->currentMs;
-
-	return lazarus_result::LAZARUS_OK;
+	}
+	else
+	{
+		/**
+		 * Statically update global state so that the engine and
+		 * its user share the same perception of time
+		 */
+		LAZARUS_UPTIME = current;
+		this->frameTimer += (LAZARUS_UPTIME - this->timeLastTick);
+		this->timeLastTick = LAZARUS_UPTIME;
+	
+		return lazarus_result::LAZARUS_OK;
+	}
 };
 
 lazarus_result Time::monitorFPS()
 {
-	this->frameCount++;	
-	this->getTimeUpdate();
+	this->advanceTimer();
+	this->frameCounter++;
 
-	if(this->msSinceLastRender >= 1000.0f)
+	if(this->frameTimer >= 1000.0f)
 	{
-		this->framesPerSecond = this->frameCount;
+		this->framesPerSecond = this->frameCounter;
 		if(this->framesPerSecond <= 0.0f) 
 		{
 			LOG_ERROR("Time Error: ", __FILE__, __LINE__);
 			return lazarus_result::LAZARUS_TIME_ERROR;
 		};
 
-		this->frameCount = 0;
-		this->previousMs = this->currentMs;
+		this->frameCounter = 0.0f;
+		this->frameTimer = 0.0;
 	};
 
 	return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result Time::monitorTimeDelta()
+lazarus_result Time::monitorFrameDelta()
 {
 	this->monitorFPS();
 
-	this->timeDelta = (1000.0f / this->framesPerSecond);
-	if(timeDelta <= 0.0f)
+	this->frameDelta = (1000.0f / this->framesPerSecond);
+	if(frameDelta <= 0.0f)
 	{
 		LOG_ERROR("Time Error: ", __FILE__, __LINE__);
 		return lazarus_result::LAZARUS_TIME_ERROR;
@@ -862,7 +863,7 @@ lazarus_result WindowManager::presentNextFrame()
 	glfwSwapBuffers(this->window);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-	// this->getTimeUpdate();
+	// this->advanceTimer();
     return this->checkErrors(__FILE__, __LINE__);
 };
 
