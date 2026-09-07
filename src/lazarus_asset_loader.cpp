@@ -612,21 +612,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                             Check whether the mesh uses an image texture or 
                             is diffuse-colored.
                         */
-                        
-                        if(material.find(GLB_DIFFUSE) != std::string::npos)
-                        {
-                            LOG_DEBUG("Inspecting diffuse colors");
-                            std::vector<std::string> colors = fileLoader->extractContainedContents(material, std::string(GLB_DIFFUSE) + "[", "]");
-                            for(size_t j = 0; j < colors.size(); j++)
-                            {
-                                std::vector<std::string> color = fileLoader->splitTokensFromLine(colors[j].c_str(), ',');
-                                glbMaterialData colorMaterial = {};
-                                colorMaterial.diffuse = {std::stof(color[0]), std::stof(color[1]), std::stof(color[2])};
-                                colorMaterial.textureIndex = -1;
-                                materials.push_back(colorMaterial);
-                            };
-                        }
-                        else if(material.find(GLB_TEXTURE_ID) != std::string::npos)
+                        if(material.find(GLB_TEXTURE_ID) != std::string::npos)
                         {
                             LOG_DEBUG("Inspecting texture info");
                             /*
@@ -641,6 +627,19 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                                 texturedMaterial.diffuse = glm::vec3(-0.1f, -0.1f, -0.1f);
                                 texturedMaterial.textureIndex = index;
                                 materials.push_back(texturedMaterial);
+                            };
+                        }
+                        else if(material.find(GLB_DIFFUSE) != std::string::npos)
+                        {
+                            LOG_DEBUG("Inspecting diffuse colors");
+                            std::vector<std::string> colors = fileLoader->extractContainedContents(material, std::string(GLB_DIFFUSE) + "[", "]");
+                            for(size_t j = 0; j < colors.size(); j++)
+                            {
+                                std::vector<std::string> color = fileLoader->splitTokensFromLine(colors[j].c_str(), ',');
+                                glbMaterialData colorMaterial = {};
+                                colorMaterial.diffuse = {std::stof(color[0]), std::stof(color[1]), std::stof(color[2])};
+                                colorMaterial.textureIndex = -1;
+                                materials.push_back(colorMaterial);
                             };
                         }
                         else
@@ -781,7 +780,12 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                                     break;
                                 //  TEXCOORD
                                 case 'T':
-                                    properties.uvAccessor = value;
+                                    /**
+                                     * TODO:
+                                     * Handle TANGENT types
+                                     */
+                                    if(property[2] == 'E')
+                                        properties.uvAccessor = value;
                                     break;
                                 //  JOINT
                                 case 'J':
