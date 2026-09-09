@@ -275,16 +275,27 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 {
                     AssetLoader::WavefrontMaterialData mtl = obj.materials[j];
 
-                    asset.colors.push_back(mtl.diffuseColor);
-                    asset.textures.push_back(mtl.imageTexture);
-
-                    for(size_t k = 0; k < mtl.triangleCount * 3; k++)
+                    /*
+                        Ensure material validity prior to resolving asset.
+                     */
+                    if(mtl.isTextured || glm::length(mtl.diffuseColor) > 0.0f)
                     {
-                        if(mtl.isTextured)
+                        asset.colors.push_back(mtl.diffuseColor);
+                        asset.textures.push_back(mtl.imageTexture);
+    
+                        for(size_t k = 0; k < mtl.triangleCount * 3; k++)
                         {
-                            this->layers.push_back(mtl.layerID);
+                            if(mtl.isTextured)
+                            {
+                                this->layers.push_back(mtl.layerID);
+                            }
+                            this->tempDiffuse.push_back(mtl.diffuseColor);
                         }
-                        this->tempDiffuse.push_back(mtl.diffuseColor);
+                    }
+                    else
+                    {
+                        LOG_ERROR("Asset Error: Unsupported material.", __FILE__, __LINE__);
+                        return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
                     }
                 }
             
@@ -1200,9 +1211,6 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                         support n'gons due to it's serialisation of indices per-face.
                         Note Uvs may not be present, in which case atleast the diffuse 
                         colors should be.
-                
-                        TODO:
-                        Error if no uv's and no diffuse values
                     */
                     glbAccessorData posiitonAccessor = accessors[mesh.positionAccessor];
                     glbAccessorData normalAccessor = accessors[mesh.normalsAccessor];
@@ -1214,17 +1222,14 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     {
                         glbAccessorData uvAccessor = accessors[mesh.uvAccessor];
                         this->populateBufferFromAccessor(uvAccessor, vertexUvs);
-                    };
-                
+                    }
+
                     /*
                         Load vertex joints and weights describing the
                         parts of the armature of an animated mesh that 
                         should effect a given vertex.
-                
-                        TODO:
-                        Error if animation but no rigging
-                        Error if weight values don't add up to 1.0
                     */
+                    
                     if(mesh.jointsAccessor >= 0 && mesh.weightsAccessor >= 0)
                     {
                         /*
@@ -1315,55 +1320,65 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                         this->populateVectorFromMemory<glm::vec4>(weightAccessor, bufferViews[weightAccessor.bufferViewIndex], vertexWeights);
                     };
                     
-                    /*
-                        Load materials. Load the image from memory if the mesh
-                        uses an image texture. If an image is loaded, the 
-                        diffuse portion of the attributes vector is zero'd.
-                    */
-                
+                    
                     glbMaterialData material = materials[mesh.materialIndex];
                     bool usesTextures = false;
                     
-                    if(material.textureIndex >= 0)
+                    /* Ensure material validity */
+                    if(glm::length(material.diffuse) < 0.0f && material.textureIndex < 0)
                     {
-                        usesTextures = true;
-                    
-                        glbTextureData texture = textures[material.textureIndex];
-                        glbImageData image = images[texture.imageIndex];
-                    
-                        glbBufferViewData bufferView = bufferViews[image.bufferViewIndex];
-                    
-                        /*
-                            Allocate the image buffer on the heap. Even when the texture 
-                            image is compressed, it's raw size can be in the MBs and in
-                            the worst case can cause stack overflows (and has).
-                        */
-                    
-                        unsigned char *buffer = new unsigned char[bufferView.byteLength];
-                        std::memset(buffer, 0, sizeof(unsigned char) * bufferView.byteLength);
-                        std::memcpy(buffer, &this->binaryData[bufferView.byteOffset], sizeof(unsigned char) * bufferView.byteLength);
-                    
-                        FileLoader::Image loadResult = {};
-                        status = fileLoader->loadImage(loadResult, NULL, buffer, bufferView.byteLength, false);
-                        if(status != lazarus_result::LAZARUS_OK)
-                        {
-                            return status;
-                        };
-                    
-                        tempImages.push_back(loadResult);
-                        delete[] buffer;
+                        LOG_ERROR("Asset Error: Unsupported material.", __FILE__, __LINE__);
+                        return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
                     }
                     else
                     {
-                        //  TODO:
-                        //  This block pops up everywhere and should be defaulted / removed
-                    
-                        FileLoader::Image image = {};
-                        image.width = 0;
-                        image.height = 0;
-                        image.pixelData = NULL;
-                    
-                        tempImages.push_back(image);
+                        /*
+                            Load materials. Load the image from memory if the mesh
+                            uses an image texture. If an image is loaded, the 
+                            diffuse portion of the attributes vector is zero'd.
+                        */
+
+                        if(material.textureIndex >= 0)
+                        {
+                            usesTextures = true;
+                        
+                            glbTextureData texture = textures[material.textureIndex];
+                            glbImageData image = images[texture.imageIndex];
+    
+                            glbBufferViewData bufferView = bufferViews[image.bufferViewIndex];
+                        
+                            /*
+                                Allocate the image buffer on the heap. Even when the texture 
+                                image is compressed, it's raw size can be in the MBs and in
+                                the worst case can cause stack overflows (and has).
+                            */
+                        
+                            unsigned char *buffer = new unsigned char[bufferView.byteLength];
+                            std::memset(buffer, 0, sizeof(unsigned char) * bufferView.byteLength);
+                            std::memcpy(buffer, &this->binaryData[bufferView.byteOffset], sizeof(unsigned char) * bufferView.byteLength);
+                        
+                            FileLoader::Image loadResult = {};
+                            status = fileLoader->loadImage(loadResult, NULL, buffer, bufferView.byteLength, false);
+                            if(status != lazarus_result::LAZARUS_OK)
+                            {
+                                return status;
+                            };
+                        
+                            tempImages.push_back(loadResult);
+                            delete[] buffer;
+                        }
+                        else
+                        {
+                            //  TODO:
+                            //  This block pops up everywhere and should be defaulted / removed
+                        
+                            FileLoader::Image image = {};
+                            image.width = 0;
+                            image.height = 0;
+                            image.pixelData = NULL;
+                        
+                            tempImages.push_back(image);
+                        }
                     }
                     
                     /*
