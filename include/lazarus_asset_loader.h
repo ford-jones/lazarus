@@ -63,6 +63,9 @@ using std::stringstream;
 #define OBJ_NORMALS         'n'
 #define OBJ_TRIANGLE        'f'
 #define OBJ_MATERIAL        'u'
+#define OBJ_DATA_DELIM      ' '
+#define OBJ_ATTRIB_DELIM    '/'
+#define OBJ_LINE            'l'
 
 //  Wavefront material (.mtl) properties
 

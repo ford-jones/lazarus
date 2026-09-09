@@ -100,7 +100,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                         if ( isspace(parserCursor[1]) )
                         {
                             AssetLoader::WavefrontMeshData &obj = wavefrontMeshObjects.back();
-                            wavefrontValue = fileLoader->splitTokensFromLine(parserCursor, ' ');
+                            wavefrontValue = fileLoader->splitTokensFromLine(parserCursor, OBJ_DATA_DELIM);
 
                             glm::vec3 vertex = glm::vec3(0.0f, 0.0f, 0.0f);
                             vertex.x = stof(wavefrontValue[1]);
@@ -116,7 +116,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                         if ( parserCursor[1] == OBJ_UV_COORDINATES )
                         {
                             AssetLoader::WavefrontMeshData &obj = wavefrontMeshObjects.back();
-                            wavefrontValue = fileLoader->splitTokensFromLine(parserCursor, ' ');
+                            wavefrontValue = fileLoader->splitTokensFromLine(parserCursor, OBJ_DATA_DELIM);
 
                             glm::vec3 uv = glm::vec3(0.0f, 0.0f, 0.0f);
 
@@ -143,7 +143,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                         else if ( parserCursor[1] == OBJ_NORMALS )
                         {
                             AssetLoader::WavefrontMeshData &obj = wavefrontMeshObjects.back();
-                            wavefrontValue = fileLoader->splitTokensFromLine(parserCursor, ' ');
+                            wavefrontValue = fileLoader->splitTokensFromLine(parserCursor, OBJ_DATA_DELIM);
 
                             glm::vec3 normal = glm::vec3(0.0f, 0.0f, 0.0f);
 
@@ -159,9 +159,23 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                     catch(const std::exception& e)
                     {
                         LOG_ERROR(e.what(), __FILE__, __LINE__);
-                        status = LAZARUS_CAUGHT_EXCEPTION;
+                        status = lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
                     }
                 
+                }
+                case OBJ_LINE:
+                {
+                    /*
+                        l = Line
+
+                        We don't render lines, only triangles. The presence of a
+                        line suggests that the mesh is non-manifold or failed to
+                        export correctly.
+                    */
+
+                    LOG_ERROR("Asset Error: Non-manifold mesh. ", __FILE__, __LINE__);
+                    status = lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
+                    break;
                 }
                 case OBJ_TRIANGLE:
                 {
@@ -171,7 +185,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                     this->faceCount += 1;
                     std::vector<std::string> attributeIndexes;
 
-                    wavefrontValue = fileLoader->splitTokensFromLine(parserCursor, ' ');
+                    wavefrontValue = fileLoader->splitTokensFromLine(parserCursor, OBJ_DATA_DELIM);
 
                     for(auto i: wavefrontValue) 
                     {
@@ -179,18 +193,23 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                         string tokenJ;
 
                         /*
-                            Unlike the other identifiers on the current
-                            line which are folliowed by xyz coordinates; 
-                            values following a face identifier contain 
-                            the indexes describing which v, vt and vn
-                            lines define the properties of *this* face.:
+                            Extract face data (v / vn / vt) which is used to construct a 
+                            triangle, where spaces delimit each vertex and forward-slashes 
+                            are used to delimit the indices of attributes. Note that the 
+                            indices are recounted for each attribute (non unique).
 
-                            Note / TODO:
-                            Some editors deliminate face data with a 
-                            dash character '-', others use whitespace
-                            ' '. Blender uses a forward-slash '/'.
-                        */
-                        while(getline(ssJ, tokenJ, '/')) 
+                            i.e.
+
+                            f 2/1/1 3/2/1 1/3/1                    1
+                              |___| |___| |___|
+                                |     |     |
+                              vert1 vert2 vert3              2           3
+                            
+                            f 2/1/1 4/5/1 3/2/1
+                              ^       ^       ^
+                              pos     norm    uv
+                        */    
+                        while(getline(ssJ, tokenJ, OBJ_ATTRIB_DELIM)) 
                         {
                             if (tokenJ != "f") 
                             {
@@ -409,7 +428,7 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath)
                         string token;
                         
                         vector<string> tokenStore;
-                        while(getline(ss, token, ' ')) 
+                        while(getline(ss, token, OBJ_DATA_DELIM)) 
                         {
                             tokenStore.push_back(token);
                         }
