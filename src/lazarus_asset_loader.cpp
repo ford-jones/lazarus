@@ -1223,7 +1223,12 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                         glbAccessorData uvAccessor = accessors[mesh.uvAccessor];
                         this->populateBufferFromAccessor(uvAccessor, vertexUvs);
                     }
-
+                    
+                    if(animations.size() && mesh.jointsAccessor <= 0 && mesh.weightsAccessor <= 0)
+                    {
+                        LOG_DEBUG("Asset Error: Found animations without rigging");
+                        return lazarus_result::LAZARUS_RIGGING_ERROR;
+                    }
                     /*
                         Load vertex joints and weights describing the
                         parts of the armature of an animated mesh that 
@@ -1380,6 +1385,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                             tempImages.push_back(image);
                         }
                     }
+                    
                     
                     /*
                         Load indices data and perform lookups.

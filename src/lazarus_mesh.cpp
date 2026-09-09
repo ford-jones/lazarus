@@ -649,17 +649,24 @@ lazarus_result ModelManager::composeArmature(AssetLoader::AssetData assetData)
         another node).
     
         TODO:
-        This should be extended to be more inclusive of 
-        armatures with multiple roots (forests).
+        Add support for forests
     */
+    uint32_t rootCount = 0;
     for(size_t j = 0; j < meshData.armature.size(); j++)
     {
-        if(heirachy.insert(j).second)
+        if(heirachy.insert(j).second) // I.e. it is TRUE that there is a duplicate of this entry
         {
+            rootCount++;
             meshData.animationData.armatureRoot = j;
             break;
         };
     };
+
+    if(rootCount > 1)
+    {
+        LOG_ERROR("Asset Error: Armature contains multiple roots.", __FILE__, __LINE__);
+        return lazarus_result::LAZARUS_RIGGING_ERROR;
+    }
     
     /*
         Traverse joint structure from root and apply 
