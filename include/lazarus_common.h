@@ -117,6 +117,7 @@ typedef enum lazarus_result
 
     LAZARUS_INVALID_ANIMATION_ID           = 801,
     LAZARUS_NO_ANIMATION_DATA              = 802,
+    LAZARUS_RIGGING_ERROR                  = 803,
 
     //  other
     LAZARUS_CAUGHT_EXCEPTION               = 901

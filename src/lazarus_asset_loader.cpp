@@ -100,7 +100,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                         if ( isspace(parserCursor[1]) )
                         {
                             AssetLoader::WavefrontMeshData &obj = wavefrontMeshObjects.back();
-                            wavefrontValue = fileLoader->splitTokensFromLine(parserCursor, ' ');
+                            wavefrontValue = fileLoader->splitTokensFromLine(parserCursor, OBJ_DATA_DELIM);
 
                             glm::vec3 vertex = glm::vec3(0.0f, 0.0f, 0.0f);
                             vertex.x = stof(wavefrontValue[1]);
@@ -116,7 +116,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                         if ( parserCursor[1] == OBJ_UV_COORDINATES )
                         {
                             AssetLoader::WavefrontMeshData &obj = wavefrontMeshObjects.back();
-                            wavefrontValue = fileLoader->splitTokensFromLine(parserCursor, ' ');
+                            wavefrontValue = fileLoader->splitTokensFromLine(parserCursor, OBJ_DATA_DELIM);
 
                             glm::vec3 uv = glm::vec3(0.0f, 0.0f, 0.0f);
 
@@ -143,7 +143,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                         else if ( parserCursor[1] == OBJ_NORMALS )
                         {
                             AssetLoader::WavefrontMeshData &obj = wavefrontMeshObjects.back();
-                            wavefrontValue = fileLoader->splitTokensFromLine(parserCursor, ' ');
+                            wavefrontValue = fileLoader->splitTokensFromLine(parserCursor, OBJ_DATA_DELIM);
 
                             glm::vec3 normal = glm::vec3(0.0f, 0.0f, 0.0f);
 
@@ -159,9 +159,23 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                     catch(const std::exception& e)
                     {
                         LOG_ERROR(e.what(), __FILE__, __LINE__);
-                        status = LAZARUS_CAUGHT_EXCEPTION;
+                        status = lazarus_result::LAZARUS_CAUGHT_EXCEPTION;
                     }
                 
+                }
+                case OBJ_LINE:
+                {
+                    /*
+                        l = Line
+
+                        We don't render lines, only triangles. The presence of a
+                        line suggests that the mesh is non-manifold or failed to
+                        export correctly.
+                    */
+
+                    LOG_ERROR("Asset Error: Non-manifold mesh. ", __FILE__, __LINE__);
+                    status = lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
+                    break;
                 }
                 case OBJ_TRIANGLE:
                 {
@@ -171,7 +185,7 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                     this->faceCount += 1;
                     std::vector<std::string> attributeIndexes;
 
-                    wavefrontValue = fileLoader->splitTokensFromLine(parserCursor, ' ');
+                    wavefrontValue = fileLoader->splitTokensFromLine(parserCursor, OBJ_DATA_DELIM);
 
                     for(auto i: wavefrontValue) 
                     {
@@ -179,18 +193,23 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                         string tokenJ;
 
                         /*
-                            Unlike the other identifiers on the current
-                            line which are folliowed by xyz coordinates; 
-                            values following a face identifier contain 
-                            the indexes describing which v, vt and vn
-                            lines define the properties of *this* face.:
+                            Extract face data (v / vn / vt) which is used to construct a 
+                            triangle, where spaces delimit each vertex and forward-slashes 
+                            are used to delimit the indices of attributes. Note that the 
+                            indices are recounted for each attribute (non unique).
 
-                            Note / TODO:
-                            Some editors deliminate face data with a 
-                            dash character '-', others use whitespace
-                            ' '. Blender uses a forward-slash '/'.
-                        */
-                        while(getline(ssJ, tokenJ, '/')) 
+                            i.e.
+
+                            f 2/1/1 3/2/1 1/3/1                    1
+                              |___| |___| |___|
+                                |     |     |
+                              vert1 vert2 vert3              2           3
+                            
+                            f 2/1/1 4/5/1 3/2/1
+                              ^       ^       ^
+                              pos     norm    uv
+                        */    
+                        while(getline(ssJ, tokenJ, OBJ_ATTRIB_DELIM)) 
                         {
                             if (tokenJ != "f") 
                             {
@@ -275,16 +294,27 @@ lazarus_result AssetLoader::parseWavefrontObj(std::vector<AssetLoader::AssetData
                 {
                     AssetLoader::WavefrontMaterialData mtl = obj.materials[j];
 
-                    asset.colors.push_back(mtl.diffuseColor);
-                    asset.textures.push_back(mtl.imageTexture);
-
-                    for(size_t k = 0; k < mtl.triangleCount * 3; k++)
+                    /*
+                        Ensure material validity prior to resolving asset.
+                     */
+                    if(mtl.isTextured || glm::length(mtl.diffuseColor) > 0.0f)
                     {
-                        if(mtl.isTextured)
+                        asset.colors.push_back(mtl.diffuseColor);
+                        asset.textures.push_back(mtl.imageTexture);
+    
+                        for(size_t k = 0; k < mtl.triangleCount * 3; k++)
                         {
-                            this->layers.push_back(mtl.layerID);
+                            if(mtl.isTextured)
+                            {
+                                this->layers.push_back(mtl.layerID);
+                            }
+                            this->tempDiffuse.push_back(mtl.diffuseColor);
                         }
-                        this->tempDiffuse.push_back(mtl.diffuseColor);
+                    }
+                    else
+                    {
+                        LOG_ERROR("Asset Error: Unsupported material.", __FILE__, __LINE__);
+                        return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
                     }
                 }
             
@@ -398,7 +428,7 @@ lazarus_result AssetLoader::parseWavefrontMtl(const char *materialPath)
                         string token;
                         
                         vector<string> tokenStore;
-                        while(getline(ss, token, ' ')) 
+                        while(getline(ss, token, OBJ_DATA_DELIM)) 
                         {
                             tokenStore.push_back(token);
                         }
@@ -612,21 +642,7 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                             Check whether the mesh uses an image texture or 
                             is diffuse-colored.
                         */
-                        
-                        if(material.find(GLB_DIFFUSE) != std::string::npos)
-                        {
-                            LOG_DEBUG("Inspecting diffuse colors");
-                            std::vector<std::string> colors = fileLoader->extractContainedContents(material, std::string(GLB_DIFFUSE) + "[", "]");
-                            for(size_t j = 0; j < colors.size(); j++)
-                            {
-                                std::vector<std::string> color = fileLoader->splitTokensFromLine(colors[j].c_str(), ',');
-                                glbMaterialData colorMaterial = {};
-                                colorMaterial.diffuse = {std::stof(color[0]), std::stof(color[1]), std::stof(color[2])};
-                                colorMaterial.textureIndex = -1;
-                                materials.push_back(colorMaterial);
-                            };
-                        }
-                        else if(material.find(GLB_TEXTURE_ID) != std::string::npos)
+                        if(material.find(GLB_TEXTURE_ID) != std::string::npos)
                         {
                             LOG_DEBUG("Inspecting texture info");
                             /*
@@ -641,6 +657,19 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                                 texturedMaterial.diffuse = glm::vec3(-0.1f, -0.1f, -0.1f);
                                 texturedMaterial.textureIndex = index;
                                 materials.push_back(texturedMaterial);
+                            };
+                        }
+                        else if(material.find(GLB_DIFFUSE) != std::string::npos)
+                        {
+                            LOG_DEBUG("Inspecting diffuse colors");
+                            std::vector<std::string> colors = fileLoader->extractContainedContents(material, std::string(GLB_DIFFUSE) + "[", "]");
+                            for(size_t j = 0; j < colors.size(); j++)
+                            {
+                                std::vector<std::string> color = fileLoader->splitTokensFromLine(colors[j].c_str(), ',');
+                                glbMaterialData colorMaterial = {};
+                                colorMaterial.diffuse = {std::stof(color[0]), std::stof(color[1]), std::stof(color[2])};
+                                colorMaterial.textureIndex = -1;
+                                materials.push_back(colorMaterial);
                             };
                         }
                         else
@@ -781,7 +810,12 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                                     break;
                                 //  TEXCOORD
                                 case 'T':
-                                    properties.uvAccessor = value;
+                                    /**
+                                     * TODO:
+                                     * Handle TANGENT types
+                                     */
+                                    if(property[2] == 'E')
+                                        properties.uvAccessor = value;
                                     break;
                                 //  JOINT
                                 case 'J':
@@ -1196,9 +1230,6 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                         support n'gons due to it's serialisation of indices per-face.
                         Note Uvs may not be present, in which case atleast the diffuse 
                         colors should be.
-                
-                        TODO:
-                        Error if no uv's and no diffuse values
                     */
                     glbAccessorData posiitonAccessor = accessors[mesh.positionAccessor];
                     glbAccessorData normalAccessor = accessors[mesh.normalsAccessor];
@@ -1210,17 +1241,19 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                     {
                         glbAccessorData uvAccessor = accessors[mesh.uvAccessor];
                         this->populateBufferFromAccessor(uvAccessor, vertexUvs);
-                    };
-                
+                    }
+                    
+                    if(animations.size() && mesh.jointsAccessor <= 0 && mesh.weightsAccessor <= 0)
+                    {
+                        LOG_DEBUG("Asset Error: Found animations without rigging");
+                        return lazarus_result::LAZARUS_RIGGING_ERROR;
+                    }
                     /*
                         Load vertex joints and weights describing the
                         parts of the armature of an animated mesh that 
                         should effect a given vertex.
-                
-                        TODO:
-                        Error if animation but no rigging
-                        Error if weight values don't add up to 1.0
                     */
+                    
                     if(mesh.jointsAccessor >= 0 && mesh.weightsAccessor >= 0)
                     {
                         /*
@@ -1311,56 +1344,67 @@ lazarus_result AssetLoader::parseGlBinary(std::vector<AssetLoader::AssetData> &o
                         this->populateVectorFromMemory<glm::vec4>(weightAccessor, bufferViews[weightAccessor.bufferViewIndex], vertexWeights);
                     };
                     
-                    /*
-                        Load materials. Load the image from memory if the mesh
-                        uses an image texture. If an image is loaded, the 
-                        diffuse portion of the attributes vector is zero'd.
-                    */
-                
+                    
                     glbMaterialData material = materials[mesh.materialIndex];
                     bool usesTextures = false;
                     
-                    if(material.textureIndex >= 0)
+                    /* Ensure material validity */
+                    if(glm::length(material.diffuse) < 0.0f && material.textureIndex < 0)
                     {
-                        usesTextures = true;
-                    
-                        glbTextureData texture = textures[material.textureIndex];
-                        glbImageData image = images[texture.imageIndex];
-                    
-                        glbBufferViewData bufferView = bufferViews[image.bufferViewIndex];
-                    
-                        /*
-                            Allocate the image buffer on the heap. Even when the texture 
-                            image is compressed, it's raw size can be in the MBs and in
-                            the worst case can cause stack overflows (and has).
-                        */
-                    
-                        unsigned char *buffer = new unsigned char[bufferView.byteLength];
-                        std::memset(buffer, 0, sizeof(unsigned char) * bufferView.byteLength);
-                        std::memcpy(buffer, &this->binaryData[bufferView.byteOffset], sizeof(unsigned char) * bufferView.byteLength);
-                    
-                        FileLoader::Image loadResult = {};
-                        status = fileLoader->loadImage(loadResult, NULL, buffer, bufferView.byteLength, false);
-                        if(status != lazarus_result::LAZARUS_OK)
-                        {
-                            return status;
-                        };
-                    
-                        tempImages.push_back(loadResult);
-                        delete[] buffer;
+                        LOG_ERROR("Asset Error: Unsupported material.", __FILE__, __LINE__);
+                        return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
                     }
                     else
                     {
-                        //  TODO:
-                        //  This block pops up everywhere and should be defaulted / removed
-                    
-                        FileLoader::Image image = {};
-                        image.width = 0;
-                        image.height = 0;
-                        image.pixelData = NULL;
-                    
-                        tempImages.push_back(image);
+                        /*
+                            Load materials. Load the image from memory if the mesh
+                            uses an image texture. If an image is loaded, the 
+                            diffuse portion of the attributes vector is zero'd.
+                        */
+
+                        if(material.textureIndex >= 0)
+                        {
+                            usesTextures = true;
+                        
+                            glbTextureData texture = textures[material.textureIndex];
+                            glbImageData image = images[texture.imageIndex];
+    
+                            glbBufferViewData bufferView = bufferViews[image.bufferViewIndex];
+                        
+                            /*
+                                Allocate the image buffer on the heap. Even when the texture 
+                                image is compressed, it's raw size can be in the MBs and in
+                                the worst case can cause stack overflows (and has).
+                            */
+                        
+                            unsigned char *buffer = new unsigned char[bufferView.byteLength];
+                            std::memset(buffer, 0, sizeof(unsigned char) * bufferView.byteLength);
+                            std::memcpy(buffer, &this->binaryData[bufferView.byteOffset], sizeof(unsigned char) * bufferView.byteLength);
+                        
+                            FileLoader::Image loadResult = {};
+                            status = fileLoader->loadImage(loadResult, NULL, buffer, bufferView.byteLength, false);
+                            if(status != lazarus_result::LAZARUS_OK)
+                            {
+                                return status;
+                            };
+                        
+                            tempImages.push_back(loadResult);
+                            delete[] buffer;
+                        }
+                        else
+                        {
+                            //  TODO:
+                            //  This block pops up everywhere and should be defaulted / removed
+                        
+                            FileLoader::Image image = {};
+                            image.width = 0;
+                            image.height = 0;
+                            image.pixelData = NULL;
+                        
+                            tempImages.push_back(image);
+                        }
                     }
+                    
                     
                     /*
                         Load indices data and perform lookups.

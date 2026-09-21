@@ -109,31 +109,14 @@ lazarus_result FileLoader::loadText(std::string filepath, std::string &out)
 };
 
 lazarus_result FileLoader::loadImage(FileLoader::Image &out, const char *filename, const unsigned char *raw, uint32_t size, bool flipVert)
-{
+{ 
     this->imageData = {};
     this->outResize = {};
-    
-    /**
-     * TODO/FIXME:
-     * There must be some errors going unchecked here...
-     * Images which appear "busted up" when loaded (crazy aritacts / aliasing / scan lines) tend to display on unix systems with such artifacts present.
-     * On windows however, the compiled executable simply won't run. The asset loader will silently crash out during texture reallocation with no warnings or errors from opengl.
-     */
 
     if(raw == NULL && filename)
     {   
-        /*
-            Images should be flipped on load due to the fact that 
-            most file formats store the (x: 0.0, y: 0.0) coordinate
-            at the top left (first pixel of first row), while 
-            OpenGL's texture coordinate system stores it as the
-            inverse - i.e. bottom left (first pixel, last row).
-
-            It seems the exception to this rule are glb files
-            (i.e. load_from_memory).
-        */
         stbi_set_flip_vertically_on_load(flipVert);
-        this->imageData = stbi_load(filename, &imageWidth, &imageHeight, &channelCount, 0);
+        this->imageData = stbi_load(filename, &imageWidth, &imageHeight, &channelCount, 4);
     }
     else
     {
@@ -142,7 +125,7 @@ lazarus_result FileLoader::loadImage(FileLoader::Image &out, const char *filenam
             If the file has already been opened and read elsewhere in 
             the program, but has not yet been decoded.
         */
-        this->imageData = stbi_load_from_memory(const_cast<stbi_uc*>(raw), size, &imageWidth, &imageHeight, &channelCount, 0);
+        this->imageData = stbi_load_from_memory(const_cast<stbi_uc*>(raw), size, &imageWidth, &imageHeight, &channelCount, 4);
     }
 
     if(imageData != NULL) 
