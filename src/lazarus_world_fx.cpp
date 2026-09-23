@@ -19,37 +19,61 @@
 
 #include "../include/lazarus_world_fx.h"
 
+ParticleLoader::ParticleLoader(Shader &shader) 
+    : ModelManager(shader, TextureLoader::StorageType::ARRAY)
+{
+    LOG_DEBUG("Constructing Lazarus::WorldFX::ParticleLoader");
+};
+
+ParticleLoader::~ParticleLoader()
+{
+    LOG_DEBUG("Destroying Lazarus::WorldFX::ParticleLoader");
+};
+
+SkyboxLoader::SkyboxLoader(Shader &shader)
+    : ModelManager(shader, TextureLoader::StorageType::CUBEMAP)
+{
+    LOG_DEBUG("Constructing Lazarus::WorldFX::SkyboxLoader");
+};
+
+SkyboxLoader::~SkyboxLoader()
+{
+    LOG_DEBUG("Destroying Lazarus::WorldFX::SkyboxLoader");
+};
+
 WorldFX::WorldFX(Shader &shader) 
-    : WorldFX::ModelManager(shader, TextureLoader::StorageType::CUBEMAP)
+    : ParticleLoader(shader), SkyboxLoader(shader)
 {
     LOG_DEBUG("Constructing Lazarus::WorldFX");
 
     this->error = 0;
     this->activeShaderID = 0;
     this->shader = &shader;
+    this->transformer = Transform();
     
     shader.getActiveShader(this->activeShaderID);
     this->updateUniformLocations();
 
-    this->imageLoader   = nullptr;
-    this->skyBoxOut     = {};
-    this->fogOut        = {};
+    this->fileLoader = std::make_unique<FileLoader>();
+    this->particleSystem = {};
+    this->skybox         = {};
+    this->fog            = {};
 };
 
 lazarus_result WorldFX::createSkyBox(WorldFX::Skybox &out, std::string rightPath, std::string leftPath, std::string downPath, std::string upPath, std::string frontPath, std::string backPath)
 {
     LOG_DEBUG("Creating skybox");
 
-    this->skyBoxOut = {};
+    this->skybox = {};
     ModelManager::AssetConfig config = {};
     config.scale = glm::vec3(10.0f);
 
-    lazarus_result status = this->createCube(this->skyBoxOut.cube, config);
+    lazarus_result status = WorldFX::SkyboxLoader::createCube(this->skybox.cube, config);
     if(status != lazarus_result::LAZARUS_OK)
     {
         return status;
     };
-    this->skyBoxOut.paths = {rightPath, leftPath, downPath, upPath, frontPath, backPath};
+    this->skybox.paths = {rightPath, leftPath, downPath, upPath, frontPath, backPath};
 
     status = this->loadSkyMap();
     if(status != lazarus_result::LAZARUS_OK)
@@ -57,11 +81,11 @@ lazarus_result WorldFX::createSkyBox(WorldFX::Skybox &out, std::string rightPath
         return status;
     };
 
-    out = this->skyBoxOut;
+    out = this->skybox;
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox skyboxIn, CameraManager::Camera camera)
+lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox &skyboxIn, CameraManager::Camera camera)
 {
     /*
         For the illusion of infinite depth of the skybox  tp work, 
@@ -80,7 +104,7 @@ lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox skyboxIn, CameraManager::Came
     glm::mat4 viewFromOrigin = glm::mat4(glm::mat3(camera.viewMatrix)); 
     
     this->error = glGetError();
-    if(this->error != 0)
+    if(this->error != GL_NO_ERROR)
     {
         LOG_ERROR("OpenGL Error:", __FILE__, __LINE__);
         return lazarus_result::LAZARUS_UNIFORM_NOT_FOUND;
@@ -88,7 +112,7 @@ lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox skyboxIn, CameraManager::Came
 
     glUniformMatrix4fv(this->viewMatrixLocation, 1, GL_FALSE, &viewFromOrigin[0][0]);
     this->error = glGetError();
-    if(this->error != 0)
+    if(this->error != GL_NO_ERROR)
     {
         LOG_ERROR("OpenGL Error:", __FILE__, __LINE__);
         return lazarus_result::LAZARUS_MATRIX_LOCATION_ERROR;
@@ -99,35 +123,37 @@ lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox skyboxIn, CameraManager::Came
      */
     glDepthMask(GL_FALSE);
 
-    ModelManager::loadModel(skyboxIn.cube);
-    ModelManager::drawModel(skyboxIn.cube);
+    lazarus_result engineStatus = WorldFX::SkyboxLoader::loadModel(skyboxIn.cube);
+    if(!engineStatus)
+    {
+        engineStatus = WorldFX::SkyboxLoader::drawModel(skyboxIn.cube);
+    }
     
     glDepthMask(GL_TRUE);
 
     glUniformMatrix4fv(this->viewMatrixLocation, 1, GL_FALSE, &camera.viewMatrix[0][0]);
     this->error = glGetError();
-    if(this->error != 0)
+    if(this->error != GL_NO_ERROR)
     {
         LOG_ERROR("OpenGL Error:", __FILE__, __LINE__);
-        return lazarus_result::LAZARUS_MATRIX_LOCATION_ERROR;
+        engineStatus = lazarus_result::LAZARUS_MATRIX_LOCATION_ERROR;
     };
 
-    return lazarus_result::LAZARUS_OK;
+    return engineStatus;
 };
 
 lazarus_result WorldFX::createFog(WorldFX::Fog &out, float minDistance, float maxDistance, float thickness, glm::vec3 color, glm::vec3 position)
 {
     LOG_DEBUG("Creating world fog");
     
-    this->fogOut = {};
-    this->fogOut.color = color;
-    this->fogOut.viewpoint = position;
-    this->fogOut.density = thickness;
-    this->fogOut.maxDistance = maxDistance;
-    this->fogOut.minDistance = minDistance;
+    this->fog = {};
+    this->fog.color = color;
+    this->fog.viewpoint = position;
+    this->fog.density = thickness;
+    this->fog.maxDistance = maxDistance;
+    this->fog.minDistance = minDistance;
 
-    out = this->fogOut;
-
+    out = this->fog;
     return lazarus_result::LAZARUS_OK;
 };
 
@@ -135,7 +161,7 @@ lazarus_result WorldFX::loadFog(WorldFX::Fog fogIn)
 {
     if(fogIn.density < 0.0f)
     {
-        LOG_ERROR("OpenGL Error:", __FILE__, __LINE__);
+        LOG_ERROR("World Error:", __FILE__, __LINE__);
 
         return lazarus_result::LAZARUS_INVALID_INTENSITY;
     };
@@ -155,7 +181,7 @@ lazarus_result WorldFX::loadFog(WorldFX::Fog fogIn)
     glUniform1f(this->fogDensityUniformLocation, fogIn.density);
 
     this->error = glGetError();
-    if(this->error != 0)
+    if(this->error != GL_NO_ERROR)
     {
         LOG_ERROR("OpenGL Error:", __FILE__, __LINE__);
 
@@ -165,25 +191,121 @@ lazarus_result WorldFX::loadFog(WorldFX::Fog fogIn)
     return lazarus_result::LAZARUS_OK;
 };
 
+lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, std::string baseAsset, uint32_t particleCount, float maxDistance, float fadeRate, float size, glm::vec3 position, glm::vec3 velocity)
+{
+    LOG_DEBUG("Creating particle system");
+
+    //  Validate inputs
+    if(std::empty(baseAsset) || !particleCount)
+    {
+        LOG_ERROR("World Error: ", __FILE__, __LINE__);
+        return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
+    }
+
+    lazarus_result engineCode = lazarus_result::LAZARUS_OK;
+
+    std::string filetype = "";
+    engineCode = fileLoader->checkFileType(filetype, baseAsset);
+    if(!engineCode)
+    {
+        this->particleSystem = {};
+        this->particleSystem.epicenter = position;
+        this->particleSystem.particleSize = size;
+        this->particleSystem.velocity = velocity;
+        this->particleSystem.decayFactor = fadeRate;
+        this->particleSystem.maxOffset = maxDistance;
+    
+        ModelManager::AssetConfig baseParticle = {};
+        baseParticle.name = std::string("PARTICLE_").append(baseAsset);
+        baseParticle.instanceCount = particleCount;
+        baseParticle.translation = this->particleSystem.epicenter;
+        baseParticle.scale = glm::vec3(this->particleSystem.particleSize);
+        baseParticle.textureTransparency = true;
+        
+        //  TODO:
+        //  Handle obj (need material)
+        if(strcmp(filetype.c_str(), "glb") == 0)
+        {
+            baseParticle.meshPath = baseAsset;
+            engineCode = WorldFX::ParticleLoader::create3DAsset(this->particleSystem.base, baseParticle);
+        }
+        else
+        {
+            baseParticle.materialPath = baseAsset;
+            engineCode = WorldFX::ParticleLoader::createCube(this->particleSystem.base, baseParticle);
+        }
+
+        for(size_t i = 0; i < this->particleSystem.base.instances.size(); i++)
+        {
+            //  Pick a random location somewhere inbetween maxOffset and epicenter 
+            srand(LAZARUS_UPTIME + (i * 1000));
+            float rand_distance = rand() % static_cast<uint32_t>(this->particleSystem.maxOffset);
+            glm::vec3 offset = this->particleSystem.velocity * rand_distance;
+
+            //  Move to the new location
+            transformer.translateModel(this->particleSystem.base, offset.x, offset.y, offset.z, i);
+
+            //  Store the current particle progress/distance
+            float particle_delta = glm::length(this->particleSystem.velocity * this->particleSystem.maxOffset) - glm::length(this->particleSystem.base.instances[i].position);
+            this->particleSystem.particles.push_back(particle_delta);
+        }
+
+        out = this->particleSystem;
+    }
+
+    return engineCode;
+};
+
+lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystem)
+{
+    lazarus_result engineCode = lazarus_result::LAZARUS_OK;
+
+    for(size_t i = 0; i < particleSystem.particles.size(); i++)
+    {
+        float &distanceFromSource = particleSystem.particles[i];
+        if(distanceFromSource < particleSystem.maxOffset)
+        {
+            //  Move particle away from source in direction specified by the user
+            transformer.translateModel(particleSystem.base, particleSystem.velocity.x, particleSystem.velocity.y, particleSystem.velocity.z, i);
+            ModelManager::Model::Instance &instance = particleSystem.base.instances[i];
+    
+            float particle_delta = glm::length(particleSystem.epicenter) - glm::length(instance.position);
+            distanceFromSource = particle_delta;
+        }
+        else
+        {
+            //  Return to center
+            transformer.translateModel(particleSystem.base, particleSystem.epicenter.x, particleSystem.epicenter.y, particleSystem.epicenter.z, i);
+            distanceFromSource = 0.0f;
+        }
+    }
+    
+    engineCode = WorldFX::ParticleLoader::loadModel(particleSystem.base);
+    if(!engineCode)
+    {
+        engineCode = WorldFX::ParticleLoader::drawModel(particleSystem.base);
+    }
+
+    return engineCode;
+};
+
 lazarus_result WorldFX::loadSkyMap()
 {
     lazarus_result status = lazarus_result::LAZARUS_OK;
 
-    this->imageLoader = std::make_unique<FileLoader>();
-
-    for(auto path: this->skyBoxOut.paths)
+    for(auto path: this->skybox.paths)
     {
         LOG_DEBUG(std::string("Loading skybox texture: " + path).c_str());
         std::string absolutePath = "";
         FileLoader::Image image = {};
 
-        status = imageLoader->relativePathToAbsolute(path, absolutePath);
+        status = fileLoader->relativePathToAbsolute(path, absolutePath);
         if(status != lazarus_result::LAZARUS_OK)
         {
             return status;
         };
         
-        status = imageLoader->loadImage(image, absolutePath.c_str());
+        status = fileLoader->loadImage(image, absolutePath.c_str());
         if(status != lazarus_result::LAZARUS_OK)
         {
             return status;
@@ -198,16 +320,16 @@ lazarus_result WorldFX::loadSkyMap()
             helps narrow down an exact cause if the gl code occurs). 
         */
         if(
-            !std::empty(this->skyBoxOut.cubeMap) && 
-            (image.width != image.height || image.width != this->skyBoxOut.cubeMap[0].width)
+            !std::empty(this->skybox.cubeMap) && 
+            (image.width != image.height || image.width != this->skybox.cubeMap[0].width)
         )
         {
-            LOG_ERROR("OpenGL Error:", __FILE__, __LINE__);
+            LOG_ERROR("World Error:", __FILE__, __LINE__);
             
             return lazarus_result::LAZARUS_INVALID_CUBEMAP;
         };
         
-        this->skyBoxOut.cubeMap.push_back(image);
+        this->skybox.cubeMap.push_back(image);
     };
 
     /*
@@ -216,14 +338,14 @@ lazarus_result WorldFX::loadSkyMap()
         members to perform texture operations for this skybox.
     */
     
-    status = ModelManager::TextureLoader::storeCubeMap(this->skyBoxOut.cubeMap[0].width, this->skyBoxOut.cubeMap[0].height);
+    status = WorldFX::SkyboxLoader::storeCubeMap(this->skybox.cubeMap[0].width, this->skybox.cubeMap[0].height);
     if(status != lazarus_result::LAZARUS_OK)
     {
         return status;
     }
     else
     {
-        return ModelManager::TextureLoader::loadCubeMap(this->skyBoxOut.cubeMap);
+        return WorldFX::SkyboxLoader::loadCubeMap(this->skybox.cubeMap);
     }
 };
 
