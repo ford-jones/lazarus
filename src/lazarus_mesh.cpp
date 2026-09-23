@@ -36,8 +36,6 @@ ModelManager::ModelManager(Shader &shader, TextureLoader::StorageType textureTyp
 
     this->maxTexWidth = 0;
     this->maxTexHeight = 0;
-
-    this->textureStorage = textureType;
 };
 
 lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManager::AssetConfig options)
@@ -62,8 +60,9 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
         Determine whether the file is wavefront
         or gltf/glb.
     */
-    uint32_t suffixDelimiter = modelOut.meshFilepath.find_last_of(".");
-    std::string suffix = modelOut.meshFilepath.substr(suffixDelimiter + 1);
+
+    std::string suffix = "";
+    fileLoader->checkFileType(suffix, modelOut.meshFilepath);
 
     lazarus_result status = lazarus_result::LAZARUS_OK;
     std::vector<AssetLoader::AssetData> assets = {};
@@ -237,7 +236,7 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
     ? options.name 
     : std::string("QUAD_").append(std::to_string(this->modelStore.size()));
     
-    int32_t textureUnit = this->textureStorage == TextureLoader::StorageType::ATLAS
+    int32_t textureUnit = TextureLoader::storageType == TextureLoader::StorageType::ATLAS
     ? GL_TEXTURE1
     : GL_TEXTURE2;
 
@@ -245,7 +244,7 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
 
     lazarus_result status = lazarus_result::LAZARUS_OK;
     float layer = 0.0f;
-    if(this->textureStorage!= StorageType::ATLAS)
+    if(TextureLoader::storageType != StorageType::ATLAS)
     {
         if(!std::empty(options.materialPath))
         {
@@ -283,7 +282,7 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
 
         Otherwise it's a generic sprite.
     */
-    if(this->textureStorage == StorageType::ATLAS)
+    if(TextureLoader::storageType == StorageType::ATLAS)
     {
         /*
                 Vertex positions,           Diffuse colors,             Normals,                    UVs 
@@ -399,7 +398,7 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
     ? options.name 
     : std::string("CUBE_").append(std::to_string(this->modelStore.size()));
     
-    int32_t textureUnit = this->textureStorage == TextureLoader::StorageType::CUBEMAP
+    int32_t textureUnit = TextureLoader::storageType == TextureLoader::StorageType::CUBEMAP
     ? GL_TEXTURE3
     : GL_TEXTURE2;
 
@@ -407,7 +406,7 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
     
     lazarus_result status = lazarus_result::LAZARUS_OK;
 
-    if(this->textureStorage == TextureLoader::StorageType::CUBEMAP)
+    if(TextureLoader::storageType == TextureLoader::StorageType::CUBEMAP)
     {
         FileLoader::Image image = {};
         image.height = 0;
@@ -738,7 +737,7 @@ lazarus_result ModelManager::uploadTextures()
     bool containsTextures = false;
     lazarus_result status = lazarus_result::LAZARUS_OK;
 
-    if(this->textureStorage == TextureLoader::StorageType::ARRAY)
+    if(TextureLoader::storageType == TextureLoader::StorageType::ARRAY)
     {
         for(size_t i = 0; i < modelOut.materials.size(); i++)
         {
@@ -1035,7 +1034,7 @@ lazarus_result ModelManager::reallocateTextures()
         for(auto j: i.second)
         {
             glActiveTexture(j.texture.unitId);
-            if(this->textureStorage == TextureLoader::StorageType::ARRAY)
+            if(TextureLoader::storageType == TextureLoader::StorageType::ARRAY)
             {
                 /* Mesh */
                 for(size_t k = 0; k < j.images.size(); k++)
@@ -1258,7 +1257,7 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
     
         this->clearErrors();
         
-        glUniform1i(this->meshVariantLocation, this->textureStorage);
+        glUniform1i(this->meshVariantLocation, TextureLoader::storageType);
         glUniform1i(this->discardFragsLocation, data.texture.discardAlphaZero);
         glUniform1i(this->isAnimatedLocation, data.animationData.nonStatic);
 
@@ -1706,7 +1705,7 @@ lazarus_result ModelManager::drawModel(ModelManager::Model &meshIn)
             same for all materials.
         */
     
-        switch (this->textureStorage)
+        switch (TextureLoader::storageType)
         {
             case TextureLoader::StorageType::ATLAS:
                 glBindTexture(GL_TEXTURE_2D, data.texture.samplerId);

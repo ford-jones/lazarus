@@ -328,7 +328,6 @@ class ModelManager
 
         Shader *shader;
         std::unique_ptr<FileLoader> finder;
-        TextureLoader::StorageType textureStorage;
 
         /*
             Convert std::map to std::set once
