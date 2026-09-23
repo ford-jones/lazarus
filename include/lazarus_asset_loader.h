@@ -125,6 +125,7 @@ class AssetLoader
 {
     protected:
         uint32_t layerCount;
+        std::unique_ptr<FileLoader> fileLoader;
     	AssetLoader();	
     	    
         struct AssetData
@@ -353,7 +354,6 @@ class AssetLoader
         //  Shared members
         
         ifstream file;
-        std::unique_ptr<FileLoader> fileLoader;
         //  Deduplicate vertex attributes and construct a serial for those that are unique to be 
         //  passed to the renderers IBO. Interleaves attributes in the order that is expected by
         //  the renderers VBO.
