@@ -607,11 +607,13 @@ lazarus_result WindowManager::create(WindowManager::WindowConfig config)
 
     GlobalsManager::setDisplaySize(targetWidth, targetHeight);
 
-	status = this->centerWindow();
-	if(status != lazarus_result::LAZARUS_OK)
-	{
-		return status;
-	};
+	#ifndef GLFW_PLATFORM_WAYLAND
+		status = this->centerWindow();
+		if(status != lazarus_result::LAZARUS_OK)
+		{
+			return status;
+		}
+	#endif
 
     glfwMakeContextCurrent(this->window);
 
@@ -774,11 +776,13 @@ lazarus_result WindowManager::toggleFullscreen()
 			0
 		);
 
-		lazarus_result status = this->centerWindow();
-		if(status != lazarus_result::LAZARUS_OK)
-		{
-			return status;
-		};
+		#ifndef GLFW_PLATFORM_WAYLAND
+			lazarus_result status = this->centerWindow();
+			if(status != lazarus_result::LAZARUS_OK)
+			{
+				return status;
+			};
+		#endif
 
 		this->config.fullscreen = false;
 	};
@@ -925,14 +929,22 @@ lazarus_result WindowManager::checkErrors(const char *file, int line)
     }
 };
 
-lazarus_result WindowManager::centerWindow()
-{
-	int32_t windowLocationX = floor((videoMode->width - this->config.width) * 0.5f);
-	int32_t windowLocationY = floor((videoMode->height - this->config.height) * 0.5f);
-    glfwSetWindowPos(this->window, windowLocationX, windowLocationY);
-
-	return this->checkErrors(__FILE__, __LINE__);
-};
+/**
+ * NOTE:
+ * Wayland desktop environments do NOT support setting a window position at all.
+ * In wayland; every window launches from the center of the monitor, a behaviour
+ * which is handled by the Wayland session itself.
+ */
+#ifndef GLFW_PLATFORM_WAYLAND
+	lazarus_result WindowManager::centerWindow()
+	{
+		int32_t windowLocationX = floor((videoMode->width - this->config.width) * 0.5f);
+		int32_t windowLocationY = floor((videoMode->height - this->config.height) * 0.5f);
+	    glfwSetWindowPos(this->window, windowLocationX, windowLocationY);
+	
+		return this->checkErrors(__FILE__, __LINE__);
+	};
+#endif
 
 void WindowManager::initialiseGLEW()
 {

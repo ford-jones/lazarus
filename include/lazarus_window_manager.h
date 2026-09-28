@@ -184,7 +184,9 @@ class WindowManager : public EventManager, public Time
          * NOTE:
          * This function causes issue with wayland graphical sessions
          */
-        lazarus_result centerWindow();
+        #ifndef GLFW_PLATFORM_WAYLAND
+            lazarus_result centerWindow();
+        #endif
 
         /**
          * Set up OpenGL state and apply user settings
