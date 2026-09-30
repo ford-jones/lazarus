@@ -34,6 +34,15 @@
 
 #ifndef LAZARUS_WORLD_FX_H
 #define LAZARUS_WORLD_FX_H
+
+/**
+ * The following skybox/particle loader classes exist to facilitate the
+ * inheretence of two unique/static ModelManager instances into WorldFX. 
+ * This enables the instantiation of WorldFX with access to both array 
+ * AND cubemap texture types via MM as well as its' protected class members
+ * while avoiding the "Dreaded Diamond" caveat of multiple-inheretence.
+ */
+
 class ParticleLoader : protected ModelManager
 {
     public:

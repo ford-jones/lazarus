@@ -58,6 +58,8 @@ WorldFX::WorldFX(Shader &shader)
     this->particleSystem = {};
     this->skybox         = {};
     this->fog            = {};
+
+    this->previousUptime = 0;
 };
 
 lazarus_result WorldFX::createSkyBox(WorldFX::Skybox &out, std::string rightPath, std::string leftPath, std::string downPath, std::string upPath, std::string frontPath, std::string backPath)
@@ -191,12 +193,12 @@ lazarus_result WorldFX::loadFog(WorldFX::Fog fogIn)
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, std::string baseAsset, uint32_t particleCount, float maxDistance, float fadeRate, float size, glm::vec3 position, glm::vec3 velocity)
+lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, WorldFX::ParticleSystemConfig config)
 {
     LOG_DEBUG("Creating particle system");
 
     //  Validate inputs
-    if(std::empty(baseAsset) || !particleCount)
+    if(std::empty(config.baseAsset) || !config.particleCount)
     {
         LOG_ERROR("World Error: ", __FILE__, __LINE__);
         return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
@@ -205,89 +207,152 @@ lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, std::
     lazarus_result engineCode = lazarus_result::LAZARUS_OK;
 
     std::string filetype = "";
-    engineCode = fileLoader->checkFileType(filetype, baseAsset);
+    engineCode = fileLoader->checkFileType(filetype, config.baseAsset);
+
     if(!engineCode)
     {
-        this->particleSystem = {};
-        this->particleSystem.epicenter = position;
-        this->particleSystem.particleSize = size;
-        this->particleSystem.velocity = velocity;
-        this->particleSystem.decayFactor = fadeRate;
-        this->particleSystem.maxOffset = maxDistance;
-    
+        //  Load particle base asset either from a model or an image
         ModelManager::AssetConfig baseParticle = {};
-        baseParticle.name = std::string("PARTICLE_").append(baseAsset);
-        baseParticle.instanceCount = particleCount;
-        baseParticle.translation = this->particleSystem.epicenter;
-        baseParticle.scale = glm::vec3(this->particleSystem.particleSize);
+        baseParticle.name = std::string("PARTICLE_").append(config.baseAsset);
+        baseParticle.instanceCount = config.particleCount;
+        baseParticle.translation = config.epicenter;
+        baseParticle.scale = glm::vec3(config.particleSize);
         baseParticle.textureTransparency = true;
         
+        this->particleSystem = {};
+        this->particleSystem.spawnRate = config.spawnRate;
+        this->particleSystem.maxOffset = config.maxOffset;
+        this->particleSystem.position = config.epicenter;
+        this->particleSystem.dispersion = config.dispersion;
         //  TODO:
         //  Handle obj (need material)
+        //  Use sprites instead of cubes, cubes look weird
         if(strcmp(filetype.c_str(), "glb") == 0)
         {
-            baseParticle.meshPath = baseAsset;
+            baseParticle.meshPath = config.baseAsset;
             engineCode = WorldFX::ParticleLoader::create3DAsset(this->particleSystem.base, baseParticle);
         }
         else
         {
-            baseParticle.materialPath = baseAsset;
+            baseParticle.materialPath = config.baseAsset;
             engineCode = WorldFX::ParticleLoader::createCube(this->particleSystem.base, baseParticle);
         }
 
+        //  Initialise particles
         for(size_t i = 0; i < this->particleSystem.base.instances.size(); i++)
         {
-            //  Pick a random location somewhere inbetween maxOffset and epicenter 
-            srand(LAZARUS_UPTIME + (i * 1000));
-            float rand_distance = rand() % static_cast<uint32_t>(this->particleSystem.maxOffset);
-            glm::vec3 offset = this->particleSystem.velocity * rand_distance;
+            WorldFX::ParticleSystem::Particle particle = {};
+            particle.id = i;
+            particle.releaseTimer = config.spawnRate;
+            
+            //  Determine a semi-random speed this particle will move at between min/max velocity
+            glm::vec3 range = (config.maxVelocity - config.minVelocity) * 100.0f;   //  Bring first 2 decimal places into integer range
+            srand(LAZARUS_UPTIME + ((particle.id + 1) * 1000));
+            float randY = range.y != 0.0f ? (rand() % static_cast<uint32_t>(range.y)) * 0.01f : 0.0f;        //  Convert back to floating point
+            float randX = range.x != 0.0f ? (rand() % static_cast<uint32_t>(range.x)) * 0.01f : 0.0f;        //  Convert back to floating point
+            float randZ = range.z != 0.0f ? (rand() % static_cast<uint32_t>(range.z)) * 0.01f : 0.0f;        //  Convert back to floating point
+            particle.velocity = config.minVelocity + glm::vec3(randX, randY, randZ);
 
-            //  Move to the new location
-            transformer.translateModel(this->particleSystem.base, offset.x, offset.y, offset.z, i);
+            //  Move particle to semi-random location and then determine how far away it is from maxOffset
+            glm::vec3 start = this->particleSystem.dispersion > 0.0f 
+                ? this->particleSystem.position + glm::ballRand(this->particleSystem.dispersion)
+                : this->particleSystem.position;
 
-            //  Store the current particle progress/distance
-            float particle_delta = glm::length(this->particleSystem.velocity * this->particleSystem.maxOffset) - glm::length(this->particleSystem.base.instances[i].position);
-            this->particleSystem.particles.push_back(particle_delta);
+            transformer.translateModel(this->particleSystem.base, start.x, start.y, start.z, particle.id);
+            particle.targetDelta = glm::length(this->particleSystem.position - this->particleSystem.base.instances[i].position);
+            
+            //  Check that the particle hasn't advanced beyond the limit
+            if(particle.targetDelta >= this->particleSystem.maxOffset)
+            {
+                //  Reset and start the respawn countdown
+                transformer.translateModel(particleSystem.base, -this->particleSystem.base.instances[i].position.x, -this->particleSystem.base.instances[i].position.y, -this->particleSystem.base.instances[i].position.z, i);
+                particle.targetDelta = 0.0f;
+                particle.releaseTimer = 0;
+                this->particleSystem.base.instances[i].isVisible = false;
+            }
+
+            this->particleSystem.particles.push_back(particle);
         }
-
         out = this->particleSystem;
     }
-
+    
     return engineCode;
 };
 
-lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystem)
+lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystemIn)
 {
     lazarus_result engineCode = lazarus_result::LAZARUS_OK;
 
-    for(size_t i = 0; i < particleSystem.particles.size(); i++)
+    for(size_t i = 0; i < particleSystemIn.particles.size(); i++)
     {
-        float &distanceFromSource = particleSystem.particles[i];
-        if(distanceFromSource < particleSystem.maxOffset)
+        WorldFX::ParticleSystem::Particle &particle = particleSystemIn.particles[i];
+        WorldFX::ParticleLoader::Model::Instance &meshInstance = particleSystemIn.base.instances[i];
+
+        //  Determine whether particle has been released
+        if(particle.releaseTimer >= particleSystemIn.spawnRate)
         {
-            //  Move particle away from source in direction specified by the user
-            transformer.translateModel(particleSystem.base, particleSystem.velocity.x, particleSystem.velocity.y, particleSystem.velocity.z, i);
-            ModelManager::Model::Instance &instance = particleSystem.base.instances[i];
-    
-            float particle_delta = glm::length(particleSystem.epicenter) - glm::length(instance.position);
-            distanceFromSource = particle_delta;
+            //  Ensure the particle can be seen upon release
+            if(!meshInstance.isVisible)
+            {
+                meshInstance.isVisible = true;
+            }
+            
+            //  Advance the particle further towards the target
+            if(particle.targetDelta < particleSystemIn.maxOffset)
+            {
+                transformer.translateModel(particleSystemIn.base, particle.velocity.x, particle.velocity.y, particle.velocity.z, particle.id);
+                particle.targetDelta = glm::length(particleSystemIn.position - meshInstance.position);
+            }
+            //  Reset back to epicenter and await release
+            else
+            {
+                glm::vec3 start = particleSystemIn.dispersion > 0.0f 
+                ? particleSystemIn.position + glm::ballRand(particleSystemIn.dispersion)
+                : particleSystemIn.position;
+
+                transformer.translateModel(particleSystemIn.base, -meshInstance.position.x, -meshInstance.position.y, -meshInstance.position.z, particle.id);
+                transformer.translateModel(particleSystemIn.base, start.x, start.y, start.z, particle.id);
+
+                particle.targetDelta = 0.0f;
+                particle.releaseTimer = 0;
+                meshInstance.isVisible = false;
+            }
         }
         else
         {
-            //  Return to center
-            transformer.translateModel(particleSystem.base, particleSystem.epicenter.x, particleSystem.epicenter.y, particleSystem.epicenter.z, i);
-            distanceFromSource = 0.0f;
+            //  Increment countdown towards respawn
+            uint32_t diff = LAZARUS_UPTIME - previousUptime;
+            particle.releaseTimer += diff;
+            previousUptime = LAZARUS_UPTIME;
         }
-    }
-    
-    engineCode = WorldFX::ParticleLoader::loadModel(particleSystem.base);
+    };
+
+    engineCode = WorldFX::ParticleLoader::loadModel(particleSystemIn.base);
     if(!engineCode)
     {
-        engineCode = WorldFX::ParticleLoader::drawModel(particleSystem.base);
+        engineCode = WorldFX::ParticleLoader::drawModel(particleSystemIn.base);
     }
 
     return engineCode;
 };
+
+void WorldFX::updateParticle(WorldFX::ParticleSystem::Particle &particle)
+{
+    //         if(distanceFromSource < particleSystem.maxOffset)
+//         {
+//             //  Move particle away from source in direction specified by the user
+//             // glm::vec3 position = particleSystem.epicenter * particleSystem.velocity.x; 
+//             transformer.translateModel(particleSystem.base, particleSystem.velocity.x, particleSystem.velocity.y, particleSystem.velocity.z, i);
+//             distanceFromSource = glm::length(particleSystem.epicenter - instance.position);
+//         }
+//         else
+//         {
+//             //  Return to center
+//             transformer.translateModel(particleSystem.base, -instance.position.x, -instance.position.y, -instance.position.z, i);
+//             distanceFromSource = 0.0f;
+//         }
+    return;
+}
 
 lazarus_result WorldFX::loadSkyMap()
 {
