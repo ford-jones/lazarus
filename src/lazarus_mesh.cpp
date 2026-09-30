@@ -135,7 +135,7 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
             };
     
         };   
-        this->instantiateMesh(options.selectable);
+        this->instantiateMesh();
         
         status = this->setMaterials(assetData);
         if(status != lazarus_result::LAZARUS_OK)
@@ -338,7 +338,7 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
     this->meshData.instanceCount = options.instanceCount;
 
     this->setMeshProperties(assetData);
-    this->instantiateMesh(options.selectable);
+    this->instantiateMesh();
     
     status = this->setMaterials(assetData);
     if(status != lazarus_result::LAZARUS_OK)
@@ -523,7 +523,7 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
     this->meshData.instanceCount = options.instanceCount;
 
     this->setMeshProperties(assetData);
-    this->instantiateMesh(options.selectable);
+    this->instantiateMesh();
     
     status = this->setMaterials(assetData);
     if(status != lazarus_result::LAZARUS_OK)
@@ -1863,8 +1863,8 @@ void ModelManager::copyModel(ModelManager::Model &dest, ModelManager::Model src)
     LOG_DEBUG(std::string("Copying model [").append(src.name+ "]").c_str());
     this->modelOut = src;
     this->modelData = this->modelStore.at(modelOut.id);
-    bool selectable = this->modelOut.instances.at(0).isClickable;
     
+    bool selectable = false;
     ModelManager::ModelData data = {};
     for(size_t i = 0; i < this->modelData.size(); i++)
     {
@@ -1875,7 +1875,7 @@ void ModelManager::copyModel(ModelManager::Model &dest, ModelManager::Model src)
             new/unique id's.
         */
         this->modelOut.instances.clear();
-        this->instantiateMesh(selectable);
+        this->instantiateMesh();
     
         this->modelOut.id = this->modelOut.instances.at(0).id;
         this->meshData.id = this->modelOut.id;
@@ -1893,6 +1893,11 @@ void ModelManager::copyModel(ModelManager::Model &dest, ModelManager::Model src)
             destInstance.scale = srcInstance.scale;
         }
 
+        if(this->meshData.stencilBufferId > 0)
+        {
+            selectable = true;
+        }
+
         data.push_back(this->meshData);
     };
     
@@ -1904,7 +1909,7 @@ void ModelManager::copyModel(ModelManager::Model &dest, ModelManager::Model src)
 };
 
 
-void ModelManager::instantiateMesh(bool selectable)
+void ModelManager::instantiateMesh()
 {   
     LOG_DEBUG("Loading mesh instance(s)");
     for(size_t i = 0; i < meshData.instanceCount; i ++)
@@ -1915,7 +1920,6 @@ void ModelManager::instantiateMesh(bool selectable)
         ModelManager::Model::Instance instance = {};
         instance.id = this->childCount;
         instance.modelMatrix = glm::mat4(1.0f);
-        instance.isClickable = selectable;
         instance.isVisible = true;
         
         /*
