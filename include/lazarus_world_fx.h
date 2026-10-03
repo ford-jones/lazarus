@@ -105,8 +105,10 @@ class WorldFX : public ParticleLoader, SkyboxLoader
 
             uint32_t spawnRate;
             float maxOffset;
-            glm::vec3 position;
             float dispersion;
+            float decayFactor;
+            glm::vec3 position;
+
             std::vector<Particle> particles = {};
             ModelManager::Model base;
         };

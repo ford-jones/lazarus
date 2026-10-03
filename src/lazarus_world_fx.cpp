@@ -193,12 +193,22 @@ lazarus_result WorldFX::loadFog(WorldFX::Fog fogIn)
     return lazarus_result::LAZARUS_OK;
 };
 
+/**
+ * TODO:
+ * Handle obj assets (i.e. need the material path)
+ * Use billboarded sprites instead of cubes, cubes look weird
+ * Validate that minVelocity < maxVelocity
+ * Find a better way to randomise spawn location? I don't think it's random enough?
+        (I.e. With a large number of particles you don't actually see that many.
+        I think they're stacking. Likely due to velocity and/or spawn collisions)
+ */
+
 lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, WorldFX::ParticleSystemConfig config)
 {
     LOG_DEBUG("Creating particle system");
 
     //  Validate inputs
-    if(std::empty(config.baseAsset) || !config.particleCount)
+    if(std::empty(config.baseAsset) || !config.particleCount || config.decay < 0.0f)
     {
         LOG_ERROR("World Error: ", __FILE__, __LINE__);
         return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
@@ -224,9 +234,8 @@ lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, World
         this->particleSystem.maxOffset = config.maxOffset;
         this->particleSystem.position = config.epicenter;
         this->particleSystem.dispersion = config.dispersion;
-        //  TODO:
-        //  Handle obj (need material)
-        //  Use sprites instead of cubes, cubes look weird
+        this->particleSystem.decayFactor = config.decay;
+
         if(strcmp(filetype.c_str(), "glb") == 0)
         {
             baseParticle.meshPath = config.baseAsset;
@@ -235,7 +244,7 @@ lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, World
         else
         {
             baseParticle.materialPath = config.baseAsset;
-            engineCode = WorldFX::ParticleLoader::createCube(this->particleSystem.base, baseParticle);
+            engineCode = WorldFX::ParticleLoader::createQuad(this->particleSystem.base, baseParticle);
         }
 
         //  Initialise particles
@@ -248,8 +257,8 @@ lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, World
             //  Determine a semi-random speed this particle will move at between min/max velocity
             glm::vec3 range = (config.maxVelocity - config.minVelocity) * 100.0f;   //  Bring first 2 decimal places into integer range
             srand(LAZARUS_UPTIME + ((particle.id + 1) * 1000));
-            float randY = range.y != 0.0f ? (rand() % static_cast<uint32_t>(range.y)) * 0.01f : 0.0f;        //  Convert back to floating point
             float randX = range.x != 0.0f ? (rand() % static_cast<uint32_t>(range.x)) * 0.01f : 0.0f;        //  Convert back to floating point
+            float randY = range.y != 0.0f ? (rand() % static_cast<uint32_t>(range.y)) * 0.01f : 0.0f;        //  Convert back to floating point
             float randZ = range.z != 0.0f ? (rand() % static_cast<uint32_t>(range.z)) * 0.01f : 0.0f;        //  Convert back to floating point
             particle.velocity = config.minVelocity + glm::vec3(randX, randY, randZ);
 
@@ -268,7 +277,7 @@ lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, World
                 transformer.translateModel(particleSystem.base, -this->particleSystem.base.instances[i].position.x, -this->particleSystem.base.instances[i].position.y, -this->particleSystem.base.instances[i].position.z, i);
                 particle.targetDelta = 0.0f;
                 particle.releaseTimer = 0;
-                this->particleSystem.base.instances[i].isVisible = false;
+                this->particleSystem.base.instances[i].opacity = 0.0f;
             }
 
             this->particleSystem.particles.push_back(particle);
@@ -292,9 +301,9 @@ lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystemIn)
         if(particle.releaseTimer >= particleSystemIn.spawnRate)
         {
             //  Ensure the particle can be seen upon release
-            if(!meshInstance.isVisible)
+            if(meshInstance.opacity == 0.0f)
             {
-                meshInstance.isVisible = true;
+                meshInstance.opacity = 1.0f;
             }
             
             //  Advance the particle further towards the target
@@ -302,6 +311,11 @@ lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystemIn)
             {
                 transformer.translateModel(particleSystemIn.base, particle.velocity.x, particle.velocity.y, particle.velocity.z, particle.id);
                 particle.targetDelta = glm::length(particleSystemIn.position - meshInstance.position);
+
+                // meshInstance.opacity = 1.0f - (particle.targetDelta / particleSystemIn.maxOffset);
+                meshInstance.opacity = particleSystemIn.decayFactor > 0.0f
+                ? (1.0f - (particle.targetDelta / particleSystemIn.maxOffset)) / particleSystemIn.decayFactor
+                : 1.0f;
             }
             //  Reset back to epicenter and await release
             else
@@ -315,7 +329,7 @@ lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystemIn)
 
                 particle.targetDelta = 0.0f;
                 particle.releaseTimer = 0;
-                meshInstance.isVisible = false;
+                meshInstance.opacity = 0.0f;
             }
         }
         else
