@@ -33,7 +33,7 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
     //  Occupies 4, 5, 6 and 7 (4 * vec4), dilineated by glVertexAttribDivisor
     
     layout(location = 4) in mat4 instanceModelMatrix;
-    layout(location = 8) in float visible;
+    layout(location = 8) in float instanceOpacity;
 
     layout(location = 9) in vec4 inJoints;
     layout(location = 10) in vec4 inWeights;
@@ -51,7 +51,7 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
     out vec3 diffuseColor;
     out vec3 normalCoordinate;
     out vec3 textureCoordinate;
-    out float keepFragment;
+    out float opacity;
     out vec3 skyBoxTextureCoordinate;
 
     flat out int isUnderPerspective;
@@ -62,8 +62,7 @@ const char *LAZARUS_DEFAULT_VERT_LAYOUT = R"(
         isUnderPerspective = usesPerspective;
         diffuseColor = inDiffuse;
         textureCoordinate = inTexCoord;
-        
-        keepFragment = visible;
+        opacity = instanceOpacity;
 
         //   Cubemap textures are sampled in 3D (xyz). So the
         //   the skybox cube's vertex positions are used forthe 
@@ -172,7 +171,7 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
     in vec3 textureCoordinate;
     in vec3 skyBoxTextureCoordinate;
 
-    in float keepFragment;
+    in float opacity;
 
     flat in int isUnderPerspective;
 
@@ -352,9 +351,11 @@ const char *LAZARUS_DEFAULT_FRAG_LAYOUT = R"(
 const char *LAZARUS_DEFAULT_FRAG_SHADER = R"(
     void main ()
     {
-        vec4 fragColor = _lazarusComputeColor();
+        //  Do no processing at all on this fragment if it is transparent
+        if(opacity < 0.05) discard;
 
-        if(keepFragment < 1.0) discard;
+        //  Get the fragments base colour: The value is either sampled from a texture or a baked-in diffuse colour
+        vec4 fragColor = _lazarusComputeColor();
 
         //  When the fragment is part of a skybox or is observed by an orthographic camera, use color as-is.
         if(samplerType == CUBEMAP || isUnderPerspective == ORTHOGRAPHIC)
@@ -366,12 +367,12 @@ const char *LAZARUS_DEFAULT_FRAG_SHADER = R"(
             vec3 lighting = 0.1 * fragColor.rgb;
             lighting += _lazarusDefaultLighting(fragColor.rgb);
 
-            outFragment = vec4(lighting, 1.0);
+            outFragment = vec4(lighting, opacity);
 
             if(fogDensity > 0.0)
             {
                 float fogFactor = _lazarusComputeFogFactor();
-                outFragment = vec4((mix(fogColor.xyz, lighting, fogFactor)), 1.0);
+                outFragment = vec4((mix(fogColor.xyz, lighting, fogFactor)), opacity);
             }
         }
 

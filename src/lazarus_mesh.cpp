@@ -913,8 +913,7 @@ lazarus_result ModelManager::uploadVertexData()
         this->modelOut.instances.end(), 
         std::back_inserter(visibility), 
         [](const std::pair<uint32_t, ModelManager::Model::Instance> &pair){
-            uint32_t v = pair.second.isVisible;
-            return static_cast<float>(v);
+            return pair.second.opacity;
         }
     );
 
@@ -1193,8 +1192,7 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
             meshIn.instances.end(), 
             std::back_inserter(visibility), 
             [](const std::pair<uint32_t, ModelManager::Model::Instance> &pair){
-                uint32_t v = pair.second.isVisible;
-                return static_cast<float>(v);
+                return pair.second.opacity;
             }
         );
     
@@ -1920,7 +1918,7 @@ void ModelManager::instantiateMesh()
         ModelManager::Model::Instance instance = {};
         instance.id = this->childCount;
         instance.modelMatrix = glm::mat4(1.0f);
-        instance.isVisible = true;
+        instance.opacity = 1.0f;
         
         /*
             Instances are created at the origin 

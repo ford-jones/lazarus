@@ -82,7 +82,7 @@ class ModelManager
 
                 glm::mat4 modelMatrix;
 
-                bool isVisible;
+                float opacity;
             };
 
             struct Animation
