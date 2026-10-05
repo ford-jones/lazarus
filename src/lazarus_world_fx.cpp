@@ -148,22 +148,35 @@ lazarus_result WorldFX::createFog(WorldFX::Fog &out, float minDistance, float ma
 {
     LOG_DEBUG("Creating world fog");
     
-    this->fog = {};
-    this->fog.color = color;
-    this->fog.viewpoint = position;
-    this->fog.density = thickness;
-    this->fog.maxDistance = maxDistance;
-    this->fog.minDistance = minDistance;
-
-    out = this->fog;
-    return lazarus_result::LAZARUS_OK;
+    if(minDistance > maxDistance)
+    {
+        LOG_ERROR("World Error", __FILE__, __LINE__);
+        return lazarus_result::LAZARUS_INVALID_DIMENSIONS;
+    }
+    else if(thickness < 0.0f)
+    {
+        LOG_ERROR("World Error", __FILE__, __LINE__);
+        return lazarus_result::LAZARUS_INVALID_INTENSITY;
+    }
+    else
+    {
+        this->fog = {};
+        this->fog.color = color;
+        this->fog.viewpoint = position;
+        this->fog.density = thickness;
+        this->fog.maxDistance = maxDistance;
+        this->fog.minDistance = minDistance;
+    
+        out = this->fog;
+        return lazarus_result::LAZARUS_OK;
+    }
 };
 
 lazarus_result WorldFX::loadFog(WorldFX::Fog fogIn)
 {
     if(fogIn.density < 0.0f)
     {
-        LOG_ERROR("World Error:", __FILE__, __LINE__);
+        LOG_ERROR("World Error", __FILE__, __LINE__);
 
         return lazarus_result::LAZARUS_INVALID_INTENSITY;
     };
@@ -197,7 +210,6 @@ lazarus_result WorldFX::loadFog(WorldFX::Fog fogIn)
  * TODO:
  * Handle obj assets (i.e. need the material path)
  * Use billboarded sprites instead of cubes, cubes look weird
- * Validate that minVelocity < maxVelocity
  * Find a better way to randomise spawn location? I don't think it's random enough?
         (I.e. With a large number of particles you don't actually see that many.
         I think they're stacking. Likely due to velocity and/or spawn collisions)
@@ -208,10 +220,23 @@ lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, World
     LOG_DEBUG("Creating particle system");
 
     //  Validate inputs
-    if(std::empty(config.baseAsset) || !config.particleCount || config.decay < 0.0f)
+    if(std::empty(config.baseAsset))
     {
-        LOG_ERROR("World Error: ", __FILE__, __LINE__);
+        LOG_ERROR("World Error ", __FILE__, __LINE__);
         return lazarus_result::LAZARUS_ASSET_LOAD_ERROR;
+    }
+    else if(
+        !config.particleCount                       ||
+        config.dispersion    < 0.0f                 ||
+        config.decay         < 0.0f                 ||
+        config.spawnRate     < 0.0f                 ||
+        config.minVelocity.x > config.maxVelocity.x || 
+        config.minVelocity.y > config.maxVelocity.y || 
+        config.minVelocity.z > config.maxVelocity.z
+    )
+    {
+        LOG_ERROR("World Error ", __FILE__, __LINE__);
+        return lazarus_result::LAZARUS_INVALID_INTENSITY;
     }
 
     lazarus_result engineCode = lazarus_result::LAZARUS_OK;
@@ -256,7 +281,7 @@ lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, World
             
             //  Determine a semi-random speed this particle will move at between min/max velocity
             glm::vec3 range = (config.maxVelocity - config.minVelocity) * 100.0f;   //  Bring first 2 decimal places into integer range
-            srand(LAZARUS_UPTIME + ((particle.id + 1) * 1000));
+            srand(UINT16_MAX + ((particle.id + 1) * 1000));
             float randX = range.x != 0.0f ? (rand() % static_cast<uint32_t>(range.x)) * 0.01f : 0.0f;        //  Convert back to floating point
             float randY = range.y != 0.0f ? (rand() % static_cast<uint32_t>(range.y)) * 0.01f : 0.0f;        //  Convert back to floating point
             float randZ = range.z != 0.0f ? (rand() % static_cast<uint32_t>(range.z)) * 0.01f : 0.0f;        //  Convert back to floating point
@@ -312,7 +337,6 @@ lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystemIn)
                 transformer.translateModel(particleSystemIn.base, particle.velocity.x, particle.velocity.y, particle.velocity.z, particle.id);
                 particle.targetDelta = glm::length(particleSystemIn.position - meshInstance.position);
 
-                // meshInstance.opacity = 1.0f - (particle.targetDelta / particleSystemIn.maxOffset);
                 meshInstance.opacity = particleSystemIn.decayFactor > 0.0f
                 ? (1.0f - (particle.targetDelta / particleSystemIn.maxOffset)) / particleSystemIn.decayFactor
                 : 1.0f;
@@ -350,24 +374,6 @@ lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystemIn)
     return engineCode;
 };
 
-void WorldFX::updateParticle(WorldFX::ParticleSystem::Particle &particle)
-{
-    //         if(distanceFromSource < particleSystem.maxOffset)
-//         {
-//             //  Move particle away from source in direction specified by the user
-//             // glm::vec3 position = particleSystem.epicenter * particleSystem.velocity.x; 
-//             transformer.translateModel(particleSystem.base, particleSystem.velocity.x, particleSystem.velocity.y, particleSystem.velocity.z, i);
-//             distanceFromSource = glm::length(particleSystem.epicenter - instance.position);
-//         }
-//         else
-//         {
-//             //  Return to center
-//             transformer.translateModel(particleSystem.base, -instance.position.x, -instance.position.y, -instance.position.z, i);
-//             distanceFromSource = 0.0f;
-//         }
-    return;
-}
-
 lazarus_result WorldFX::loadSkyMap()
 {
     lazarus_result status = lazarus_result::LAZARUS_OK;
@@ -403,7 +409,7 @@ lazarus_result WorldFX::loadSkyMap()
             (image.width != image.height || image.width != this->skybox.cubeMap[0].width)
         )
         {
-            LOG_ERROR("World Error:", __FILE__, __LINE__);
+            LOG_ERROR("World Error", __FILE__, __LINE__);
             
             return lazarus_result::LAZARUS_INVALID_CUBEMAP;
         };

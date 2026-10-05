@@ -134,19 +134,6 @@ class WorldFX : public ParticleLoader, SkyboxLoader
         );
         lazarus_result loadFog(Fog fogIn);
 
-        // lazarus_result createParticleSystem(
-        //     ParticleSystem &out,        //  refernce out variable
-        //     std::string baseAsset,      //  if obj/glb do controlled load of model, otherwise assume is texture that will go on cubes
-        //     uint32_t particleCount,     //  num of instances
-        //     float maxDistance,          //  Max distance from epicenter
-        //     float fadeRate,             //  Translucence influence (goal: 0.0=solid, 1.0=threshold-distance)
-        //     float size,                 //  By how much the base asset should scale
-        //     glm::vec3 position,         //  Starting location
-        //     glm::vec3 maxVelocity,      //  Directional magnitude of particle travel
-        //     glm::vec3 minVelocity = glm::vec3(0.0f)
-        // );
-        // lazarus_result drawParticles(ParticleSystem &particleSystem);
-
         lazarus_result createParticleSystem(ParticleSystem &out, ParticleSystemConfig config);
         lazarus_result drawParticles(ParticleSystem &particleSystemIn);
 
@@ -155,7 +142,6 @@ class WorldFX : public ParticleLoader, SkyboxLoader
     private:
         lazarus_result loadSkyMap();
         lazarus_result updateUniformLocations();
-        void updateParticle(ParticleSystem::Particle &particle);
 
         GLuint activeShaderID;
         
