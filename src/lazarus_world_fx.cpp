@@ -148,31 +148,32 @@ lazarus_result WorldFX::createFog(WorldFX::Fog &out, float minDistance, float ma
 {
     LOG_DEBUG("Creating world fog");
     
-    if(minDistance > maxDistance)
+    this->fog = {};
+    this->fog.color = color;
+    this->fog.viewpoint = position;
+    this->fog.density = thickness;
+    this->fog.maxDistance = maxDistance;
+    this->fog.minDistance = minDistance;
+
+    //  Input validation
+    if(this->fog.minDistance > this->fog.maxDistance)
     {
         LOG_ERROR("World Error", __FILE__, __LINE__);
         return lazarus_result::LAZARUS_INVALID_DIMENSIONS;
     }
-    else if(thickness < 0.0f)
+    else if(this->fog.density < 0.0f)
     {
         LOG_ERROR("World Error", __FILE__, __LINE__);
         return lazarus_result::LAZARUS_INVALID_INTENSITY;
     }
     else
     {
-        this->fog = {};
-        this->fog.color = color;
-        this->fog.viewpoint = position;
-        this->fog.density = thickness;
-        this->fog.maxDistance = maxDistance;
-        this->fog.minDistance = minDistance;
-    
         out = this->fog;
         return lazarus_result::LAZARUS_OK;
     }
 };
 
-lazarus_result WorldFX::loadFog(WorldFX::Fog fogIn)
+lazarus_result WorldFX::drawFog(WorldFX::Fog fogIn)
 {
     if(fogIn.density < 0.0f)
     {
@@ -210,9 +211,6 @@ lazarus_result WorldFX::loadFog(WorldFX::Fog fogIn)
  * TODO:
  * Handle obj assets (i.e. need the material path)
  * Use billboarded sprites instead of cubes, cubes look weird
- * Find a better way to randomise spawn location? I don't think it's random enough?
-        (I.e. With a large number of particles you don't actually see that many.
-        I think they're stacking. Likely due to velocity and/or spawn collisions)
  */
 
 lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, WorldFX::ParticleSystemConfig config)

@@ -132,7 +132,7 @@ class WorldFX : public ParticleLoader, SkyboxLoader
             glm::vec3 color,
             glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f)
         );
-        lazarus_result loadFog(Fog fogIn);
+        lazarus_result drawFog(Fog fogIn);
 
         lazarus_result createParticleSystem(ParticleSystem &out, ParticleSystemConfig config);
         lazarus_result drawParticles(ParticleSystem &particleSystemIn);

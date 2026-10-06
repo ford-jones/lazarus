@@ -606,7 +606,7 @@ For a comprehensive usage guide, visit [Lazarus by Example](#lazarus-by-example)
 
 ### Functions:
 #### void setMaxImageSize(int width, int height)
-Sets the value of `LAZARUS_MAX_IMAGE_WIDTH` and `LAZARUS_MAX_IMAGE_HEIGHT`. Used to determine the rescale size for all images loaded with `FileReader::readFromImage()` from hereafter.
+Sets the value of `LAZARUS_MAX_IMAGE_WIDTH` and `LAZARUS_MAX_IMAGE_HEIGHT`. Used to determine the rescale size for all images loaded with `FileLoader::readFromImage()` from hereafter.
 
 *Notes:* 
 - *Has no effect if the value returned by `GlobalsManager::getEnforceImageSanity()`* is `true`.
@@ -872,29 +872,36 @@ Params:
 > **identifier:** *The uniform variable's name within the shader program.* \
 > **data:** *The value to be uploaded to the GPU. Supported types are: `float`, `int`, `unsigned int`, `vec2`, `vec3` and `vec4`.*
 
-## FileReader:
+## FileLoader:
 A utility class for locating files and reading their contents.
 
 ### Constructor:
-#### FileReader()
+#### FileLoader()
 Default-initialises this classes members.
 
 ### Functions:
-#### std::string relativePathToAbsolute(std::string filepath, std::string &out)
+#### FileLoader::relativePathToAbsolute(std::string filepath, std::string &out)
 Finds the absolute path (from root) to the `filepath` and returns it as `std::string`.
 
 Params:
 > **filepath:** The relative path to the file you would like to find the absolute path of.
 > **out:** Out parameter which stores the result
 
-#### loadText(std::string filepath, std::string &out)
+#### FileLoader::checkFileType(std::string &out, std::string filename)
+Determines which file suffix / extension the input `filename` is.
+
+Params:
+> **filename:** The absolute OR relative path to a file
+> **out:** Out parameter for storing the result
+
+#### FileLoader::loadText(std::string filepath, std::string &out)
 Reads a file who's contents are expressed in utf-8 ascii and stores its contents in the out buffer.
 
 Params:
 > **filepath:** The relative path to the file you would like to read from.
 > **out:** Out parameter to store the file's contents.
 
-#### readFromImage(FileReader::Image &out, const char *filepath, const unsigned char *raw, int size)
+#### FileLoader::readFromImage(FileLoader::Image &out, const char *filepath, const unsigned char *raw, int size)
 Reads and parses the contents of an image located at `filepath` or directly from memory when passed to `raw`. Supported filetypes are .png, .jpg, .tga, .pic; view `stb_image` documentation for the full list. Images must be formatted into 8-bit per channel RGBA.
 
 Params:
@@ -1089,8 +1096,7 @@ Flushes out the internal state(s) of the manager, including it's list of childre
 >	- **direction:** *The instance's forward-vector. Where the instance's local coordinate system's z+ is in relation to world space. (type: `glm::vec3`)*
 >	- **scale:** *The size of the instance. (type: `glm::vec3`)*
 >   - **modelMatrix:** *A 4x4 matrice used to perform transformations on the instance. You will need this if you're intending you write your own transformations instead of using the `Transform` class. (type: `glm::mat4`)*
->   - **isClickable:** *Whether or not this assets id can be looked up via pixel coordinate when it is occupying screenspace. (type: `bool`)*
->   - **isVisible:** *Whether or not this instance should be rendered to the screen during fragment processing or discarded. (type: `bool`)*
+>   - **opacity:** *By which magnitude should this asset be blended with existing pixel occupants when rendered. Note that values below `0.05f` aren't computed and are diregarded completely when drawn. (type: `float`)*
 
 > **ModelType:** *Different varieties of meshes (type: `enum`)*
 >   - **GLB:** *A mesh which has been loaded from a glb file.*
@@ -1375,7 +1381,7 @@ Params:
 > **color:** *The fog's RGB color values.*
 > **position:** *The worldspace coordinates of the viewpoint. (default: `{0.0, 0.0, 0.0} (origin)`).*
 
-#### loadFog(WorldFx::Fog &fogIn)
+#### drawFog(WorldFx::Fog &fogIn)
 Load fog properties to the GPU to be used in subsequent draw calls.
 
 Params:
@@ -1384,7 +1390,7 @@ Params:
 ### Members:
 > **SkyBox**: *A collection of properties which make up a skybox object. (type: `struct`.)*
 >   - **paths:** *The absolute filepaths to the 6 image textures used to construct the skymap. (type: `std::vector<std::string>`)*
->   - **cubeMap:** *The image data for each of the cubes 6 faces. (type: `std::vector<FileReader::Image>`)*
+>   - **cubeMap:** *The image data for each of the cubes 6 faces. (type: `std::vector<FileLoader::Image>`)*
 >   - **cube:** *The skybox's mesh. (type: `ModelManager::Model`)*
 > **Fog** *A collection of properties which quanitify world fog and it's visibility. (type: `struct`).* 
 >   - **color:** *The fog's RGB color values. (type: `glm::vec3`).*
