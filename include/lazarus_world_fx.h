@@ -60,7 +60,7 @@ class SkyboxLoader : protected ModelManager
 class WorldFX : public ParticleLoader, SkyboxLoader
 {
     public:
-        WorldFX(Shader &shader);
+        WorldFX(Shader &shader, CameraManager::Camera &camera);
         struct Skybox
         {
             std::vector<string> paths;
@@ -116,13 +116,13 @@ class WorldFX : public ParticleLoader, SkyboxLoader
         lazarus_result createSkyBox(
             Skybox &out,
             std::string rightPath,
-            std::string leftPath,
+            std::string leftPath,\
             std::string downPath,
             std::string upPath,
             std::string frontPath,
             std::string backPath
         );
-        lazarus_result drawSkyBox(Skybox &skyboxIn, CameraManager::Camera camera);
+        lazarus_result drawSkyBox(Skybox &skyboxIn);
 
         lazarus_result createFog(
             Fog &out,
@@ -157,6 +157,7 @@ class WorldFX : public ParticleLoader, SkyboxLoader
         Fog fog;
 
         Shader *shader;
+        CameraManager::Camera *camera;
         std::unique_ptr<FileLoader> fileLoader;
         Transform transformer;
 

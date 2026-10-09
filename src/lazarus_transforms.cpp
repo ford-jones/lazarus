@@ -28,10 +28,12 @@ Transform::Transform()
 		so that things like camera rotation dont 
 		break at the extremities 
 		
-		(helps with gimbal lock...)
+		(helps with avoiding gimbal lock...)
 	*/
 
 	this->pi = 3.1419;
+	this->radians = this->pi / 180.0f;
+	
 	this->accumulatePitch = 0.0f;
 	this->accumulateRoll = 0.0f;
 	this->accumulateYaw = 0.0f;
@@ -83,7 +85,7 @@ lazarus_result Transform::rotateModel(ModelManager::Model &model, float pitch, f
 		glm::mat4 &instanceMatrix = instance.modelMatrix;
 
     	instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
-    	instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(yaw), glm::vec3(0.0f, 1.0f, 0.0f));
+    	instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(yaw, false), glm::vec3(0.0f, 1.0f, 0.0f));
 		instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(roll), glm::vec3(0.0f, 0.0f, 1.0f));
 		
 		glm::vec3 decomposeRotation = instanceMatrix * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f);
@@ -186,6 +188,16 @@ lazarus_result Transform::rotateCamera(CameraManager::Camera &camera, float pitc
 	}
 	else
 	{
+		/**
+		 * TODO:
+		 * Accumulation of pitch/yaw/roll needs to occur per-camera
+		 * Not just within the scope of the manager
+		 * 
+		 * In some scenarios, processing both X and Y inputs at once creates what
+		 * APPEARS to be rotation on the Z axis... For instance, WorldFX::drawParticles
+		 * must call target.rotateModel twice for the inputs to be processed on their
+		 * intended axis?
+		 */
 		this->rotation = vec3(0.0, 0.0, 0.0);
 		
 		this->up = this->determineUpVector(accumulatePitch);
@@ -194,6 +206,7 @@ lazarus_result Transform::rotateCamera(CameraManager::Camera &camera, float pitc
 		float p = this->degreesToRadians(accumulatePitch);
 		float y = this->degreesToRadians(accumulateYaw, false);
 
+		//	Compute orientation within a unit-sphere
 		this->rotation.x = cos(y) * cos(p);
 		this->rotation.y = sin(-p);
 		this->rotation.z = sin(y) * cos(p); 
@@ -232,6 +245,7 @@ lazarus_result Transform::orbitCamera(CameraManager::Camera &camera, float azimu
 		float e = this->degreesToRadians(this->accumulateOrbitAzimuth, false);
 		float a = this->degreesToRadians(this->accumulateOrbitElevation);
 		
+		//	Compute orientation within a unit-sphere
 		this->rotation.x = cos(e) * cos(a);
 		this->rotation.y = sin(a);
 		this->rotation.z = sin(e) * cos(a); 
@@ -291,7 +305,7 @@ float Transform::degreesToRadians(float in, bool enforceLimits)
 		return lazarus_result::LAZARUS_INVALID_RADIANS;
 	};
 
-	this->outRadians = in * this->pi / 180.0f;
+	this->outRadians = in * this->radians;
 
 	return this->outRadians;
 };

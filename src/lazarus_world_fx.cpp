@@ -41,7 +41,7 @@ SkyboxLoader::~SkyboxLoader()
     LOG_DEBUG("Destroying Lazarus::WorldFX::SkyboxLoader");
 };
 
-WorldFX::WorldFX(Shader &shader) 
+WorldFX::WorldFX(Shader &shader, CameraManager::Camera &camera)
     : ParticleLoader(shader), SkyboxLoader(shader)
 {
     LOG_DEBUG("Constructing Lazarus::WorldFX");
@@ -49,6 +49,7 @@ WorldFX::WorldFX(Shader &shader)
     this->error = 0;
     this->activeShaderID = 0;
     this->shader = &shader;
+    this->camera = &camera;
     this->transformer = Transform();
     
     shader.getActiveShader(this->activeShaderID);
@@ -87,7 +88,7 @@ lazarus_result WorldFX::createSkyBox(WorldFX::Skybox &out, std::string rightPath
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox &skyboxIn, CameraManager::Camera camera)
+lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox &skyboxIn)
 {
     /*
         For the illusion of infinite depth of the skybox  tp work, 
@@ -103,7 +104,7 @@ lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox &skyboxIn, CameraManager::Cam
     */
     glDisable           (GL_CULL_FACE);
 
-    glm::mat4 viewFromOrigin = glm::mat4(glm::mat3(camera.viewMatrix)); 
+    glm::mat4 viewFromOrigin = glm::mat4(glm::mat3(this->camera->viewMatrix)); 
     
     this->error = glGetError();
     if(this->error != GL_NO_ERROR)
@@ -133,7 +134,7 @@ lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox &skyboxIn, CameraManager::Cam
     
     glDepthMask(GL_TRUE);
 
-    glUniformMatrix4fv(this->viewMatrixLocation, 1, GL_FALSE, &camera.viewMatrix[0][0]);
+    glUniformMatrix4fv(this->viewMatrixLocation, 1, GL_FALSE, &this->camera->viewMatrix[0][0]);
     this->error = glGetError();
     if(this->error != GL_NO_ERROR)
     {
@@ -210,7 +211,7 @@ lazarus_result WorldFX::drawFog(WorldFX::Fog fogIn)
 /**
  * TODO:
  * Handle obj assets (i.e. need the material path)
- * Use billboarded sprites instead of cubes, cubes look weird
+ * Only billboard when its a sprite
  */
 
 lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, WorldFX::ParticleSystemConfig config)
@@ -314,7 +315,6 @@ lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, World
 lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystemIn)
 {
     lazarus_result engineCode = lazarus_result::LAZARUS_OK;
-
     for(size_t i = 0; i < particleSystemIn.particles.size(); i++)
     {
         WorldFX::ParticleSystem::Particle &particle = particleSystemIn.particles[i];
@@ -329,25 +329,57 @@ lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystemIn)
                 meshInstance.opacity = 1.0f;
             }
             
-            //  Advance the particle further towards the target
             if(particle.targetDelta < particleSystemIn.maxOffset)
             {
+                //  Clear previously applied rotations by reseting to an identity matrix with the previous position preserved
+                meshInstance.modelMatrix = glm::mat4(1.0f);
+                meshInstance.modelMatrix[3] = glm::vec4(meshInstance.position, 1.0f);
+                
+                //  Advance the particle further towards the desired offset and turn towards the camera
                 transformer.translateModel(particleSystemIn.base, particle.velocity.x, particle.velocity.y, particle.velocity.z, particle.id);
+                transformer.rotateModel(particleSystemIn.base, 0.0f, -this->camera->rotation.y + 90.0f, 0.0f, particle.id);
+                transformer.rotateModel(particleSystemIn.base, this->camera->rotation.x, 0.0f, 0.0f, particle.id);
                 particle.targetDelta = glm::length(particleSystemIn.position - meshInstance.position);
 
+                /*
+                    Another possible way I imagine doing this is by using the
+                    inverse of the (already calculated) camera viewing matrix.
+                    By switching the cameras position with the particles instead.
+                    E.g.
+                    
+                    transformer.translateModel(particleSystemIn.base, particle.velocity.x, particle.velocity.y, particle.velocity.z, particle.id);
+                    particle.targetDelta = glm::length(particleSystemIn.position - meshInstance.position);
+
+                    glm::mat4 viewInverse = glm::inverse(this->camera->viewMatrix);
+                    glm::mat4 matrix = glm::mat4(
+                        viewInverse[0],
+                        viewInverse[1],
+                        viewInverse[2],
+                        meshInstance.modelMatrix[3]
+                    );
+                    meshInstance.modelMatrix = matrix;
+                */
+                
+                //  Apply transparency
                 meshInstance.opacity = particleSystemIn.decayFactor > 0.0f
                 ? (1.0f - (particle.targetDelta / particleSystemIn.maxOffset)) / particleSystemIn.decayFactor
                 : 1.0f;
             }
-            //  Reset back to epicenter and await release
             else
             {
+                //  locate a spawn position
                 glm::vec3 start = particleSystemIn.dispersion > 0.0f 
                 ? particleSystemIn.position + glm::ballRand(particleSystemIn.dispersion)
                 : particleSystemIn.position;
 
-                transformer.translateModel(particleSystemIn.base, -meshInstance.position.x, -meshInstance.position.y, -meshInstance.position.z, particle.id);
-                transformer.translateModel(particleSystemIn.base, start.x, start.y, start.z, particle.id);
+                //  Reset back to epicenter and begin awaiting release
+                meshInstance.modelMatrix = glm::mat4(1.0f);
+                meshInstance.position = glm::vec3(0.0f);
+                transformer.translateModel(
+                    particleSystemIn.base, 
+                    start.x, start.y, start.z, 
+                    particle.id
+                );
 
                 particle.targetDelta = 0.0f;
                 particle.releaseTimer = 0;
