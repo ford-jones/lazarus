@@ -331,15 +331,20 @@ lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystemIn)
             
             if(particle.targetDelta < particleSystemIn.maxOffset)
             {
-                //  Clear previously applied rotations by reseting to an identity matrix with the previous position preserved
-                meshInstance.modelMatrix = glm::mat4(1.0f);
-                meshInstance.modelMatrix[3] = glm::vec4(meshInstance.position, 1.0f);
-                
-                //  Advance the particle further towards the desired offset and turn towards the camera
+                //  Advance the particle further towards the desired offset
                 transformer.translateModel(particleSystemIn.base, particle.velocity.x, particle.velocity.y, particle.velocity.z, particle.id);
-                transformer.rotateModel(particleSystemIn.base, 0.0f, -this->camera->rotation.y + 90.0f, 0.0f, particle.id);
-                transformer.rotateModel(particleSystemIn.base, this->camera->rotation.x, 0.0f, 0.0f, particle.id);
                 particle.targetDelta = glm::length(particleSystemIn.position - meshInstance.position);
+
+                //  Check is sprite
+                if(particleSystemIn.base.type == ParticleLoader::ModelType::PLANE)
+                {
+                    //  Clear previously applied rotations by reseting to an identity matrix but preserve position
+                    //  Afterwards, rotate towards the viewport
+                    meshInstance.modelMatrix = glm::mat4(1.0f);
+                    meshInstance.modelMatrix[3] = glm::vec4(meshInstance.position, 1.0f);
+                    transformer.rotateModel(particleSystemIn.base, 0.0f, -this->camera->rotation.y + 90.0f, 0.0f, particle.id);
+                    transformer.rotateModel(particleSystemIn.base, this->camera->rotation.x, 0.0f, 0.0f, particle.id);
+                }
 
                 /*
                     Another possible way I imagine doing this is by using the
@@ -347,9 +352,6 @@ lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystemIn)
                     By switching the cameras position with the particles instead.
                     E.g.
                     
-                    transformer.translateModel(particleSystemIn.base, particle.velocity.x, particle.velocity.y, particle.velocity.z, particle.id);
-                    particle.targetDelta = glm::length(particleSystemIn.position - meshInstance.position);
-
                     glm::mat4 viewInverse = glm::inverse(this->camera->viewMatrix);
                     glm::mat4 matrix = glm::mat4(
                         viewInverse[0],

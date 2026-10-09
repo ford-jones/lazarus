@@ -19,6 +19,12 @@
 
 #include "../include/lazarus_transforms.h"
 
+
+/**
+ * TODO:
+ * Create global equivelents for each transform
+ * I.e. a localspace version and a worldspace version
+ */
 Transform::Transform()
 {
 	LOG_DEBUG("Constructing Lazarus::Transform");
@@ -33,7 +39,7 @@ Transform::Transform()
 
 	this->pi = 3.1419;
 	this->radians = this->pi / 180.0f;
-	
+
 	this->accumulatePitch = 0.0f;
 	this->accumulateRoll = 0.0f;
 	this->accumulateYaw = 0.0f;
@@ -75,19 +81,19 @@ lazarus_result Transform::rotateModel(ModelManager::Model &model, float pitch, f
 {
 	try
 	{
-		/*
-			Extract the current z axis rotation values from
-			row 3 of the matrice and then truncate the last 
-			element. This can be treated as the mesh asset's 
-			forward / direction vector.
-		*/
 		ModelManager::Model::Instance &instance = model.instances.at(instanceID);
 		glm::mat4 &instanceMatrix = instance.modelMatrix;
-
+		
     	instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(pitch), glm::vec3(1.0f, 0.0f, 0.0f));
     	instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(yaw, false), glm::vec3(0.0f, 1.0f, 0.0f));
 		instanceMatrix = glm::rotate(instanceMatrix, this->degreesToRadians(roll), glm::vec3(0.0f, 0.0f, 1.0f));
 		
+		/*
+			Extract the current z axis rotation values from
+			row 3 of the matrix and then truncate the last 
+			element. This can be treated as the mesh asset's 
+			forward / direction vector.
+		*/
 		glm::vec3 decomposeRotation = instanceMatrix * glm::vec4(0.0f, 0.0f, 1.0f, 0.0f);
 		instance.direction = decomposeRotation / instance.scale; 
 
