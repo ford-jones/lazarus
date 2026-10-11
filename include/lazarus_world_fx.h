@@ -101,13 +101,14 @@ class WorldFX : public ParticleLoader, SkyboxLoader
                 uint32_t releaseTimer;
                 glm::vec3 velocity;
                 float targetDelta;
-        };
+            };
 
             uint32_t spawnRate;
             float maxOffset;
             float dispersion;
             float decayFactor;
             glm::vec3 position;
+            uint32_t previousUptime;
 
             std::vector<Particle> particles = {};
             ModelManager::Model base;
@@ -116,7 +117,7 @@ class WorldFX : public ParticleLoader, SkyboxLoader
         lazarus_result createSkyBox(
             Skybox &out,
             std::string rightPath,
-            std::string leftPath,\
+            std::string leftPath,
             std::string downPath,
             std::string upPath,
             std::string frontPath,
@@ -162,7 +163,6 @@ class WorldFX : public ParticleLoader, SkyboxLoader
         Transform transformer;
 
         int32_t error;
-        uint32_t previousUptime;
 };
 
 #endif

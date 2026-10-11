@@ -1377,12 +1377,12 @@ void ModelManager::setStartingOrientation(Model &meshIn, glm::vec3 translation, 
         ModelManager::Model::Instance &instance = meshIn.instances[i];
         glm::mat4 &instanceMatrix = instance.modelMatrix;
 
-        instanceMatrix = glm::translate(instanceMatrix, translation);
-        //  This is a naive implementation in that it expects the geometry is at the origin -
-        //  because it is, because the mesh was just created. Compare with Lazarus::Transform for 
-        //  reference.
-        instance.position = translation;
+        /**
+         * TODO:
+         * Handle rotation
+         */
 
+        //  Scale
         //  Note: Planes and cubes use scale to determine the raw vertex positions laid out in the VBO
         //  rather than a modification to the modelmatrix, as occurs here.    
         if( meshIn.type == ModelType::GLB || 
@@ -1391,6 +1391,14 @@ void ModelManager::setStartingOrientation(Model &meshIn, glm::vec3 translation, 
             instanceMatrix = glm::scale(instanceMatrix, scale);
             instance.scale = scale;
         };
+
+        //  Translate
+        instanceMatrix = glm::translate(instanceMatrix, translation / instance.scale);
+        //  This is a naive implementation in that it expects the geometry is at the origin -
+        //  because it is, because the mesh was just created. Compare with Lazarus::Transform for 
+        //  reference.
+        instance.position = instanceMatrix * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+
     }
 };
 

@@ -59,8 +59,6 @@ WorldFX::WorldFX(Shader &shader, CameraManager::Camera &camera)
     this->particleSystem = {};
     this->skybox         = {};
     this->fog            = {};
-
-    this->previousUptime = 0;
 };
 
 lazarus_result WorldFX::createSkyBox(WorldFX::Skybox &out, std::string rightPath, std::string leftPath, std::string downPath, std::string upPath, std::string frontPath, std::string backPath)
@@ -90,20 +88,22 @@ lazarus_result WorldFX::createSkyBox(WorldFX::Skybox &out, std::string rightPath
 
 lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox &skyboxIn)
 {
-    /*
-        For the illusion of infinite depth of the skybox  tp work, 
-        the translation transform needs to be culled from the
-        viewing matrix (the result of the glm::lookAt() operation 
-        called by CameraManager::create*Cam(...)). 
-        
-        This decomposition done by converting the 4x4 matrix to a 3x3 and 
-        back again. This truncates the row from the matrix which
-        describes the vertex position from the origin and replaces
-        it with 0's (essentially back at the origin). It's then
-        changed back again afterwards.
-    */
-    glDisable           (GL_CULL_FACE);
-
+    /**
+     * Because the camera is inside of a cube looking at a texture
+     * from the perspective of its' interior; backface culling needs to
+     * be disabled.
+     */
+    glDisable(GL_CULL_FACE);
+    
+    /**
+     * For the illusion of infinite depth of the skybox to work, 
+        the position data needs to be culled / decomposed out from the
+        viewing matrix.
+     *  This decomposition is performed by converting the 4x4 matrix to a 3x3 and 
+        back again. This truncates the row from the matrix which describes the vertex 
+        position from the origin and replaces it with 0's (essentially back at the origin).
+        It's then changed back again afterwards.
+     */
     glm::mat4 viewFromOrigin = glm::mat4(glm::mat3(this->camera->viewMatrix)); 
     
     this->error = glGetError();
@@ -122,7 +122,12 @@ lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox &skyboxIn)
     };
 
     /**
-     * Temporarily toggle depth-testing during rendering
+     * Temporarily disable depth-testing during rendering
+     * Because the skybox is really just a cube sitting at the origin; this ensures that 
+       draw results from anything else occupying the same space will be overwritten.
+     * The implication is that skybox draw calls should always be performed first. Any draw
+       call that follows prior to calling WindowManager::presentNextFrame will be rendered 
+       on top of the skybox.
      */
     glDepthMask(GL_FALSE);
 
@@ -141,6 +146,16 @@ lazarus_result WorldFX::drawSkyBox(WorldFX::Skybox &skyboxIn)
         LOG_ERROR("OpenGL Error:", __FILE__, __LINE__);
         engineStatus = lazarus_result::LAZARUS_MATRIX_LOCATION_ERROR;
     };
+
+    /**
+     * TODO:
+     * This should only happen if backface culling was enabled during window
+       creation
+     */
+
+    //  Turn backface culling back on
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
 
     return engineStatus;
 };
@@ -183,6 +198,10 @@ lazarus_result WorldFX::drawFog(WorldFX::Fog fogIn)
         return lazarus_result::LAZARUS_INVALID_INTENSITY;
     };
     
+    /**
+     * Check whether the active shader program has changed and adjust uniforms accordingly
+     * Note that this or similar should be performed by every manager at the site of setting any per-draw uniform upload data
+     */
     uint32_t program = 0;
     shader->getActiveShader(program);
     if(this->activeShaderID != program)
@@ -191,6 +210,7 @@ lazarus_result WorldFX::drawFog(WorldFX::Fog fogIn)
         this->updateUniformLocations();
     };
     
+    //  Set uniform values
     glUniform3fv(this->fogColorUniformLocation, 1, &fogIn.color[0]);
     glUniform3fv(this->fogViewpointUniformLocation, 1, &fogIn.viewpoint[0]);
     glUniform1f(this->fogMaxDistUniformLocation, fogIn.maxDistance);
@@ -211,7 +231,6 @@ lazarus_result WorldFX::drawFog(WorldFX::Fog fogIn)
 /**
  * TODO:
  * Handle obj assets (i.e. need the material path)
- * Only billboard when its a sprite
  */
 
 lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, WorldFX::ParticleSystemConfig config)
@@ -259,6 +278,7 @@ lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, World
         this->particleSystem.position = config.epicenter;
         this->particleSystem.dispersion = config.dispersion;
         this->particleSystem.decayFactor = config.decay;
+        this->particleSystem.previousUptime = 0;
 
         if(strcmp(filetype.c_str(), "glb") == 0)
         {
@@ -331,17 +351,21 @@ lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystemIn)
             
             if(particle.targetDelta < particleSystemIn.maxOffset)
             {
+                //  If it's a sprite then clear all previously applied rotations
+                //  i.e. reset to an identity matrix but preserve the original position
+                if(particleSystemIn.base.type == ParticleLoader::ModelType::PLANE)
+                {
+                    meshInstance.modelMatrix = glm::mat4(1.0f);
+                    meshInstance.modelMatrix[3] = glm::vec4(meshInstance.position, 1.0f);
+                }
+                
                 //  Advance the particle further towards the desired offset
                 transformer.translateModel(particleSystemIn.base, particle.velocity.x, particle.velocity.y, particle.velocity.z, particle.id);
                 particle.targetDelta = glm::length(particleSystemIn.position - meshInstance.position);
-
-                //  Check is sprite
+                
+                //  If it's a billboard / sprite rotate towards the viewport
                 if(particleSystemIn.base.type == ParticleLoader::ModelType::PLANE)
                 {
-                    //  Clear previously applied rotations by reseting to an identity matrix but preserve position
-                    //  Afterwards, rotate towards the viewport
-                    meshInstance.modelMatrix = glm::mat4(1.0f);
-                    meshInstance.modelMatrix[3] = glm::vec4(meshInstance.position, 1.0f);
                     transformer.rotateModel(particleSystemIn.base, 0.0f, -this->camera->rotation.y + 90.0f, 0.0f, particle.id);
                     transformer.rotateModel(particleSystemIn.base, this->camera->rotation.x, 0.0f, 0.0f, particle.id);
                 }
@@ -375,7 +399,7 @@ lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystemIn)
                 : particleSystemIn.position;
 
                 //  Reset back to epicenter and begin awaiting release
-                meshInstance.modelMatrix = glm::mat4(1.0f);
+                meshInstance.modelMatrix[3] = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
                 meshInstance.position = glm::vec3(0.0f);
                 transformer.translateModel(
                     particleSystemIn.base, 
@@ -391,9 +415,9 @@ lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystemIn)
         else
         {
             //  Increment countdown towards respawn
-            uint32_t diff = LAZARUS_UPTIME - previousUptime;
+            uint32_t diff = LAZARUS_UPTIME - particleSystemIn.previousUptime;
             particle.releaseTimer += diff;
-            previousUptime = LAZARUS_UPTIME;
+            particleSystemIn.previousUptime = LAZARUS_UPTIME;
         }
     };
 
