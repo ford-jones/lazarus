@@ -233,7 +233,7 @@ lazarus_result WorldFX::drawFog(WorldFX::Fog fogIn)
  * Handle obj assets (i.e. need the material path)
  */
 
-lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, WorldFX::ParticleSystemConfig config)
+lazarus_result WorldFX::createParticles(WorldFX::ParticleSystem &out, WorldFX::ParticleSystemConfig config)
 {
     LOG_DEBUG("Creating particle system");
 
@@ -272,29 +272,40 @@ lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, World
         baseParticle.scale = glm::vec3(config.particleSize);
         baseParticle.textureTransparency = true;
         
+        
+        /**
+         * TODO:
+         * Make these ID's unique
+         * This naive implementation will duplicate ID's when psystems are created
+           from different world managers
+         */
         this->particleSystem = {};
+        this->particleSystem.id = this->particleSystems.size();
         this->particleSystem.spawnRate = config.spawnRate;
         this->particleSystem.maxOffset = config.maxOffset;
         this->particleSystem.position = config.epicenter;
         this->particleSystem.dispersion = config.dispersion;
         this->particleSystem.decayFactor = config.decay;
-        this->particleSystem.previousUptime = 0;
+        
+        this->particleSystemData = {};
+        this->particleSystemData.id = this->particleSystem.id;
+        this->particleSystemData.previousUptime = 0;
 
         if(strcmp(filetype.c_str(), "glb") == 0)
         {
             baseParticle.meshPath = config.baseAsset;
-            engineCode = WorldFX::ParticleLoader::create3DAsset(this->particleSystem.base, baseParticle);
+            engineCode = WorldFX::ParticleLoader::create3DAsset(this->particleSystemData.baseMesh, baseParticle);
         }
         else
         {
             baseParticle.materialPath = config.baseAsset;
-            engineCode = WorldFX::ParticleLoader::createQuad(this->particleSystem.base, baseParticle);
+            engineCode = WorldFX::ParticleLoader::createQuad(this->particleSystemData.baseMesh, baseParticle);
         }
 
         //  Initialise particles
-        for(size_t i = 0; i < this->particleSystem.base.instances.size(); i++)
+        for(size_t i = 0; i < this->particleSystemData.baseMesh.instances.size(); i++)
         {
-            WorldFX::ParticleSystem::Particle particle = {};
+            WorldFX::ParticleSystemData::Particle particle = {};
             particle.id = i;
             particle.releaseTimer = config.spawnRate;
             
@@ -311,21 +322,33 @@ lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, World
                 ? this->particleSystem.position + glm::ballRand(this->particleSystem.dispersion)
                 : this->particleSystem.position;
 
-            transformer.translateModel(this->particleSystem.base, start.x, start.y, start.z, particle.id);
-            particle.targetDelta = glm::length(this->particleSystem.position - this->particleSystem.base.instances[i].position);
+            transformer.translateModel(
+                this->particleSystemData.baseMesh, 
+                start.x, start.y, start.z, 
+                particle.id
+            );
+            particle.offset = glm::length(this->particleSystem.position - this->particleSystemData.baseMesh.instances[i].position);
             
             //  Check that the particle hasn't advanced beyond the limit
-            if(particle.targetDelta >= this->particleSystem.maxOffset)
+            if(particle.offset >= this->particleSystem.maxOffset)
             {
                 //  Reset and start the respawn countdown
-                transformer.translateModel(particleSystem.base, -this->particleSystem.base.instances[i].position.x, -this->particleSystem.base.instances[i].position.y, -this->particleSystem.base.instances[i].position.z, i);
-                particle.targetDelta = 0.0f;
+                transformer.translateModel(
+                    particleSystemData.baseMesh, 
+                    -this->particleSystemData.baseMesh.instances[i].position.x, 
+                    -this->particleSystemData.baseMesh.instances[i].position.y, 
+                    -this->particleSystemData.baseMesh.instances[i].position.z, 
+                    particle.id
+                );
+                particle.offset = 0.0f;
                 particle.releaseTimer = 0;
-                this->particleSystem.base.instances[i].opacity = 0.0f;
+                this->particleSystemData.baseMesh.instances[i].opacity = 0.0f;
             }
 
-            this->particleSystem.particles.push_back(particle);
+            this->particleSystemData.particles.push_back(particle);
         }
+
+        this->particleSystems.emplace(this->particleSystemData.id, this->particleSystemData);
         out = this->particleSystem;
     }
     
@@ -335,10 +358,12 @@ lazarus_result WorldFX::createParticleSystem(WorldFX::ParticleSystem &out, World
 lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystemIn)
 {
     lazarus_result engineCode = lazarus_result::LAZARUS_OK;
-    for(size_t i = 0; i < particleSystemIn.particles.size(); i++)
+    WorldFX::ParticleSystemData &systemData = this->particleSystems[particleSystemIn.id];
+
+    for(size_t i = 0; i < systemData.particles.size(); i++)
     {
-        WorldFX::ParticleSystem::Particle &particle = particleSystemIn.particles[i];
-        WorldFX::ParticleLoader::Model::Instance &meshInstance = particleSystemIn.base.instances[i];
+        WorldFX::ParticleSystemData::Particle &particle = systemData.particles[i];
+        WorldFX::ParticleLoader::Model::Instance &meshInstance = systemData.baseMesh.instances[particle.id];
 
         //  Determine whether particle has been released
         if(particle.releaseTimer >= particleSystemIn.spawnRate)
@@ -349,25 +374,25 @@ lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystemIn)
                 meshInstance.opacity = 1.0f;
             }
             
-            if(particle.targetDelta < particleSystemIn.maxOffset)
+            if(particle.offset < particleSystemIn.maxOffset)
             {
                 //  If it's a sprite then clear all previously applied rotations
                 //  i.e. reset to an identity matrix but preserve the original position
-                if(particleSystemIn.base.type == ParticleLoader::ModelType::PLANE)
+                if(systemData.baseMesh.type == ParticleLoader::ModelType::PLANE)
                 {
                     meshInstance.modelMatrix = glm::mat4(1.0f);
                     meshInstance.modelMatrix[3] = glm::vec4(meshInstance.position, 1.0f);
                 }
                 
                 //  Advance the particle further towards the desired offset
-                transformer.translateModel(particleSystemIn.base, particle.velocity.x, particle.velocity.y, particle.velocity.z, particle.id);
-                particle.targetDelta = glm::length(particleSystemIn.position - meshInstance.position);
+                transformer.translateModel(systemData.baseMesh, particle.velocity.x, particle.velocity.y, particle.velocity.z, particle.id);
+                particle.offset = glm::length(particleSystemIn.position - meshInstance.position);
                 
                 //  If it's a billboard / sprite rotate towards the viewport
-                if(particleSystemIn.base.type == ParticleLoader::ModelType::PLANE)
+                if(systemData.baseMesh.type == ParticleLoader::ModelType::PLANE)
                 {
-                    transformer.rotateModel(particleSystemIn.base, 0.0f, -this->camera->rotation.y + 90.0f, 0.0f, particle.id);
-                    transformer.rotateModel(particleSystemIn.base, this->camera->rotation.x, 0.0f, 0.0f, particle.id);
+                    transformer.rotateModel(systemData.baseMesh, 0.0f, -this->camera->rotation.y + 90.0f, 0.0f, particle.id);
+                    transformer.rotateModel(systemData.baseMesh, this->camera->rotation.x, 0.0f, 0.0f, particle.id);
                 }
 
                 /*
@@ -388,7 +413,7 @@ lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystemIn)
                 
                 //  Apply transparency
                 meshInstance.opacity = particleSystemIn.decayFactor > 0.0f
-                ? (1.0f - (particle.targetDelta / particleSystemIn.maxOffset)) / particleSystemIn.decayFactor
+                ? (1.0f - (particle.offset / particleSystemIn.maxOffset)) / particleSystemIn.decayFactor
                 : 1.0f;
             }
             else
@@ -402,12 +427,12 @@ lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystemIn)
                 meshInstance.modelMatrix[3] = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
                 meshInstance.position = glm::vec3(0.0f);
                 transformer.translateModel(
-                    particleSystemIn.base, 
+                    systemData.baseMesh, 
                     start.x, start.y, start.z, 
                     particle.id
                 );
 
-                particle.targetDelta = 0.0f;
+                particle.offset = 0.0f;
                 particle.releaseTimer = 0;
                 meshInstance.opacity = 0.0f;
             }
@@ -415,16 +440,16 @@ lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystemIn)
         else
         {
             //  Increment countdown towards respawn
-            uint32_t diff = LAZARUS_UPTIME - particleSystemIn.previousUptime;
+            uint32_t diff = LAZARUS_UPTIME - systemData.previousUptime;
             particle.releaseTimer += diff;
-            particleSystemIn.previousUptime = LAZARUS_UPTIME;
+            systemData.previousUptime = LAZARUS_UPTIME;
         }
     };
 
-    engineCode = WorldFX::ParticleLoader::loadModel(particleSystemIn.base);
+    engineCode = WorldFX::ParticleLoader::loadModel(systemData.baseMesh);
     if(!engineCode)
     {
-        engineCode = WorldFX::ParticleLoader::drawModel(particleSystemIn.base);
+        engineCode = WorldFX::ParticleLoader::drawModel(systemData.baseMesh);
     }
 
     return engineCode;

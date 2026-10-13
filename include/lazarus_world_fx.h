@@ -95,23 +95,13 @@ class WorldFX : public ParticleLoader, SkyboxLoader
 
         struct ParticleSystem
         {
-            struct Particle
-            {
-                uint32_t id;
-                uint32_t releaseTimer;
-                glm::vec3 velocity;
-                float targetDelta;
-            };
+            uint32_t id;
 
             uint32_t spawnRate;
             float maxOffset;
             float dispersion;
             float decayFactor;
             glm::vec3 position;
-            uint32_t previousUptime;
-
-            std::vector<Particle> particles = {};
-            ModelManager::Model base;
         };
 
         lazarus_result createSkyBox(
@@ -135,12 +125,32 @@ class WorldFX : public ParticleLoader, SkyboxLoader
         );
         lazarus_result drawFog(Fog fogIn);
 
-        lazarus_result createParticleSystem(ParticleSystem &out, ParticleSystemConfig config);
+        lazarus_result createParticles(ParticleSystem &out, ParticleSystemConfig config);
         lazarus_result drawParticles(ParticleSystem &particleSystemIn);
 
         virtual ~WorldFX();
 
     private:
+        struct ParticleSystemData
+        {
+            uint32_t id;                    //  Maps directly to ParticleSystem.id (userspace id)
+            uint32_t previousUptime;        //  The time as it was on the previous tick
+            ModelManager::Model baseMesh;   //  Particle geometry
+
+            struct Particle
+            {
+                uint32_t id;
+                uint32_t releaseTimer;
+                float offset;
+                glm::vec3 velocity;
+            };
+
+            /** NOTE: should probably be a std::map */
+            std::vector<Particle> particles = {};
+        };
+
+        std::map<uint32_t, ParticleSystemData> particleSystems;
+
         lazarus_result loadSkyMap();
         lazarus_result updateUniformLocations();
 
@@ -155,6 +165,7 @@ class WorldFX : public ParticleLoader, SkyboxLoader
 
         Skybox skybox;
         ParticleSystem particleSystem;
+        ParticleSystemData particleSystemData;
         Fog fog;
 
         Shader *shader;
