@@ -1,5 +1,5 @@
 # Lazarus Engine
-#### *Version: 0.16.3*
+#### *Version: 0.17.0*
 ## Table of contents:
 
 - [Getting Started](#getting-started)
@@ -1387,8 +1387,21 @@ Load fog properties to the GPU to be used in subsequent draw calls.
 Params:
 > **fogIn:** *The fog to be uploaded.*
 
+#### createParticles(WorldFX::ParticleSystem &out, WorldFX::ParticleSystemConfig config)
+Creates and initialises a body of instantiated geometry that can be used for handling dynamic clusters of objects.
+
+Params:
+> **out:** *A reference to a preallocated out-variable that will be used as a handle for managing the newly created system.*
+> **config:** *A configuration object which describes desired system properties.*
+
+#### drawParticles(WorldFX::ParticleSystem &particleSystemIn)
+Updates the state of each of the particle-system's constituents and renders the results to worldspace.
+
+Params:
+> **particleSystemIn:** *A reference to a system's handle that has previously been created with this manager which should be updated and rendered.*
+
 ### Members:
-> **SkyBox**: *A collection of properties which make up a skybox object. (type: `struct`.)*
+> **Skybox:** *A collection of properties which make up a skybox object. (type: `struct`.)*
 >   - **paths:** *The absolute filepaths to the 6 image textures used to construct the skymap. (type: `std::vector<std::string>`)*
 >   - **cubeMap:** *The image data for each of the cubes 6 faces. (type: `std::vector<FileLoader::Image>`)*
 >   - **cube:** *The skybox's mesh. (type: `ModelManager::Model`)*
@@ -1398,6 +1411,24 @@ Params:
 >   - **minDistance:** *From the viewpoint, at which distance the fog's attenuation / opacity begins taking effect. (type: `float`).*
 >   - **maxDistance:** *From the viewpoint, at which distance the fog reaches full opacity / coverage. (type: `float`).*
 >   - **density:** *The fog's thickness. Note that this only acts as a modifier of the other visibility values. The fog will still eventually reach full opacity. (type: `float`).*
+> **ParticleSystemConfig:** *A configuration object used for defining a particle system (type: `struct`)*
+>   - **baseAsset:** *The relative path to either an image or a glb asset. (type: `std::string`)*
+>   - **epicenter:** *The site where each of a systems particles should originate from. (type: `glm::vec3`)*
+>   - **minVelocity:** *The slowest speed/direction that a particle could possibly move within the system. (type: `glm::vec3`)*
+>   - **maxVelocity:** *The fastest speed/direction that a particle could possibly move within the system. (type: `glm::vec3`)*
+>   - **particleCount:** *How many particles are in the system. (type: `int`)*
+>   - **spawnRate:** *The amount of time in ms that a particle should be held back for prior to re-release after advancing beyond the maximum offset (type: `int`)*
+>   - **maxOffset:** *A radial value used to describe the furthest distance a particle can travel in any direction from the epicenter. (type: `float`)*
+>   - **decay:** *A multiplier used to modify the speed that a particles opacity should taper. (type: `float`)*
+>   - **particleSize:** *A multiplier used to modify the size of each particle in the system relative to its' original size. (type: `float`)*
+>   - **dispersion:** *A radial value used to describe the maximum-offset that particles can be spawned from relative to the epicenter. (type: `float`)*
+> **ParticleSystem:** *A collection of properties which describe a particle system (type: `struct`)*
+>   - **id:** *A serialised number used to identify particle systems from one another. (type: `int`)*
+>   - **spawnRate:** *Same as `ParticleSystemConfig.spawnRate`*
+>   - **maxOffset:** *Same as `ParticleSystemConfig.maxOffset`*
+>   - **dispersion:** *Same as `ParticleSystemConfig.dispersion`* 
+>   - **decayFactor:** *Same as `ParticleSystemConfig.decay`*
+>   - **position:** *Same as `ParticleSystemConfig.epicenter`*
 
 ------------------------------------------------------------------
 
