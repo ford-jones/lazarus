@@ -418,14 +418,15 @@ lazarus_result WorldFX::drawParticles(WorldFX::ParticleSystem &particleSystemIn)
             }
             else
             {
-                //  locate a spawn position
-                glm::vec3 start = particleSystemIn.dispersion > 0.0f 
-                ? particleSystemIn.position + glm::ballRand(particleSystemIn.dispersion)
-                : particleSystemIn.position;
-
                 //  Reset back to epicenter and begin awaiting release
                 meshInstance.modelMatrix[3] = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
                 meshInstance.position = glm::vec3(0.0f);
+
+                //  locate a new spawn position, move there and begin awaiting release
+                glm::vec3 start = particleSystemIn.dispersion > 0.0f 
+                ? particleSystemIn.position + glm::ballRand(particleSystemIn.dispersion)
+                : particleSystemIn.position;
+                
                 transformer.translateModel(
                     systemData.baseMesh, 
                     start.x, start.y, start.z, 

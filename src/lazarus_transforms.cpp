@@ -30,14 +30,14 @@ Transform::Transform()
 	LOG_DEBUG("Constructing Lazarus::Transform");
 
 	/*
-		Use low precision (and incorrect) pi value
+		Use low precision pi value
 		so that things like camera rotation dont 
 		break at the extremities 
 		
 		(helps with avoiding gimbal lock...)
 	*/
 
-	this->pi = 3.1419;
+	this->pi = 3.141;
 	this->radians = this->pi / 180.0f;
 
 	this->accumulatePitch = 0.0f;
@@ -175,17 +175,17 @@ lazarus_result Transform::translateCamera(CameraManager::Camera &camera, float x
 
 lazarus_result Transform::rotateCamera(CameraManager::Camera &camera, float pitch, float yaw, float roll)
 {	
-	/*
-		Ensures consistent behaviour between
-		camera rotation vs translation, as the cam
-		translation naturally accumulates.
-	*/
-	this->accumulatePitch += pitch;
+	/**
+	 * NOTE:
+	 * Accumulate inputs to ensure consistent behaviour between rotation and translation.
+	 * Pitch has its result decimated by 0.001 to help avoid gimbal-lock.
+	 */
+	this->accumulatePitch += pitch - 0.001f;
 	this->accumulateYaw += yaw;
 	this->accumulateRoll += roll;
 	
-	if(	((pitch > 360.0f) || (pitch < -360.0f)) 					|| 
-		((accumulatePitch > 360.0f) || (accumulatePitch < -360.0f))	)
+	if(	((pitch >= 360.0f) || (pitch <= -360.0f)) 					|| 
+		((accumulatePitch >= 360.0f) || (accumulatePitch <= -360.0f))	)
 	{
 		this->accumulatePitch = 0;
         LOG_ERROR("Transform Error", __FILE__, __LINE__);
