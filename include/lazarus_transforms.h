@@ -63,6 +63,7 @@ class Transform
 		float degreesToRadians(float in, bool enforceLimits = true);
 
 		double pi;
+		double radians;
 		float outRadians;
 		float up;
 

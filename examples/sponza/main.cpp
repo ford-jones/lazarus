@@ -110,6 +110,7 @@ int main()
     Lazarus::ModelManager::Model sponza = {};
     Lazarus::ModelManager::AssetConfig sponza_config = {};
     sponza_config.meshPath = "sponza.glb";
+    sponza_config.textureTransparency = true;
     model_manager->create3DAsset(sponza, sponza_config);
     
     window.eventsInit();

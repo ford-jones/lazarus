@@ -72,9 +72,9 @@ lazarus_result CameraManager::createCamera(CameraManager::Camera &out, CameraMan
 
             /*
                 The direction of the back of the camera, so
-                the camera is actually looking down +X
+                the camera is actually looking down +Z
             */
-            glm::vec3 inverseTarget     = glm::vec3(-1.0f, 0.0f, 0.0f);
+            glm::vec3 inverseTarget     = glm::vec3(0.0f, 0.0f, -1.0f);
 
             camera.position             = vec3(0.0f, 0.0f, 0.0f);
             camera.direction            = glm::normalize(camera.position - inverseTarget);

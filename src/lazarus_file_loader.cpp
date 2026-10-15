@@ -213,6 +213,19 @@ lazarus_result FileLoader::loadImage(FileLoader::Image &out, const char *filenam
 	};
 };
 
+lazarus_result FileLoader::checkFileType(std::string &filetype, std::string filename)
+{
+    uint32_t suffixDelimiter = filename.find_last_of(".");
+    if(suffixDelimiter == std::string::npos)
+    {
+        LOG_ERROR("Filesystem Error: ", __FILE__, __LINE__);
+        return lazarus_result::LAZARUS_FILE_UNREADABLE;
+    }
+    filetype = filename.substr(suffixDelimiter + 1);
+
+    return lazarus_result::LAZARUS_OK;
+};
+
 std::vector<std::string> FileLoader::splitTokensFromLine(const char *data, char delim)
 {
     std::string token;

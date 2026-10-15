@@ -36,8 +36,6 @@ ModelManager::ModelManager(Shader &shader, TextureLoader::StorageType textureTyp
 
     this->maxTexWidth = 0;
     this->maxTexHeight = 0;
-
-    this->textureStorage = textureType;
 };
 
 lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManager::AssetConfig options)
@@ -62,8 +60,9 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
         Determine whether the file is wavefront
         or gltf/glb.
     */
-    uint32_t suffixDelimiter = modelOut.meshFilepath.find_last_of(".");
-    std::string suffix = modelOut.meshFilepath.substr(suffixDelimiter + 1);
+
+    std::string suffix = "";
+    fileLoader->checkFileType(suffix, modelOut.meshFilepath);
 
     lazarus_result status = lazarus_result::LAZARUS_OK;
     std::vector<AssetLoader::AssetData> assets = {};
@@ -136,7 +135,7 @@ lazarus_result ModelManager::create3DAsset(ModelManager::Model &out, ModelManage
             };
     
         };   
-        this->instantiateMesh(options.selectable);
+        this->instantiateMesh();
         
         status = this->setMaterials(assetData);
         if(status != lazarus_result::LAZARUS_OK)
@@ -237,7 +236,7 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
     ? options.name 
     : std::string("QUAD_").append(std::to_string(this->modelStore.size()));
     
-    int32_t textureUnit = this->textureStorage == TextureLoader::StorageType::ATLAS
+    int32_t textureUnit = TextureLoader::storageType == TextureLoader::StorageType::ATLAS
     ? GL_TEXTURE1
     : GL_TEXTURE2;
 
@@ -245,7 +244,7 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
 
     lazarus_result status = lazarus_result::LAZARUS_OK;
     float layer = 0.0f;
-    if(this->textureStorage!= StorageType::ATLAS)
+    if(TextureLoader::storageType != StorageType::ATLAS)
     {
         if(!std::empty(options.materialPath))
         {
@@ -283,7 +282,7 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
 
         Otherwise it's a generic sprite.
     */
-    if(this->textureStorage == StorageType::ATLAS)
+    if(TextureLoader::storageType == StorageType::ATLAS)
     {
         /*
                 Vertex positions,           Diffuse colors,             Normals,                    UVs 
@@ -339,7 +338,7 @@ lazarus_result ModelManager::createQuad(ModelManager::Model &out, ModelManager::
     this->meshData.instanceCount = options.instanceCount;
 
     this->setMeshProperties(assetData);
-    this->instantiateMesh(options.selectable);
+    this->instantiateMesh();
     
     status = this->setMaterials(assetData);
     if(status != lazarus_result::LAZARUS_OK)
@@ -399,7 +398,7 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
     ? options.name 
     : std::string("CUBE_").append(std::to_string(this->modelStore.size()));
     
-    int32_t textureUnit = this->textureStorage == TextureLoader::StorageType::CUBEMAP
+    int32_t textureUnit = TextureLoader::storageType == TextureLoader::StorageType::CUBEMAP
     ? GL_TEXTURE3
     : GL_TEXTURE2;
 
@@ -407,7 +406,7 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
     
     lazarus_result status = lazarus_result::LAZARUS_OK;
 
-    if(this->textureStorage == TextureLoader::StorageType::CUBEMAP)
+    if(TextureLoader::storageType == TextureLoader::StorageType::CUBEMAP)
     {
         FileLoader::Image image = {};
         image.height = 0;
@@ -524,7 +523,7 @@ lazarus_result ModelManager::createCube(ModelManager::Model &out, ModelManager::
     this->meshData.instanceCount = options.instanceCount;
 
     this->setMeshProperties(assetData);
-    this->instantiateMesh(options.selectable);
+    this->instantiateMesh();
     
     status = this->setMaterials(assetData);
     if(status != lazarus_result::LAZARUS_OK)
@@ -738,7 +737,7 @@ lazarus_result ModelManager::uploadTextures()
     bool containsTextures = false;
     lazarus_result status = lazarus_result::LAZARUS_OK;
 
-    if(this->textureStorage == TextureLoader::StorageType::ARRAY)
+    if(TextureLoader::storageType == TextureLoader::StorageType::ARRAY)
     {
         for(size_t i = 0; i < modelOut.materials.size(); i++)
         {
@@ -914,8 +913,7 @@ lazarus_result ModelManager::uploadVertexData()
         this->modelOut.instances.end(), 
         std::back_inserter(visibility), 
         [](const std::pair<uint32_t, ModelManager::Model::Instance> &pair){
-            uint32_t v = pair.second.isVisible;
-            return static_cast<float>(v);
+            return pair.second.opacity;
         }
     );
 
@@ -1035,7 +1033,7 @@ lazarus_result ModelManager::reallocateTextures()
         for(auto j: i.second)
         {
             glActiveTexture(j.texture.unitId);
-            if(this->textureStorage == TextureLoader::StorageType::ARRAY)
+            if(TextureLoader::storageType == TextureLoader::StorageType::ARRAY)
             {
                 /* Mesh */
                 for(size_t k = 0; k < j.images.size(); k++)
@@ -1194,8 +1192,7 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
             meshIn.instances.end(), 
             std::back_inserter(visibility), 
             [](const std::pair<uint32_t, ModelManager::Model::Instance> &pair){
-                uint32_t v = pair.second.isVisible;
-                return static_cast<float>(v);
+                return pair.second.opacity;
             }
         );
     
@@ -1258,7 +1255,7 @@ lazarus_result ModelManager::loadModel(ModelManager::Model &meshIn)
     
         this->clearErrors();
         
-        glUniform1i(this->meshVariantLocation, this->textureStorage);
+        glUniform1i(this->meshVariantLocation, TextureLoader::storageType);
         glUniform1i(this->discardFragsLocation, data.texture.discardAlphaZero);
         glUniform1i(this->isAnimatedLocation, data.animationData.nonStatic);
 
@@ -1380,12 +1377,12 @@ void ModelManager::setStartingOrientation(Model &meshIn, glm::vec3 translation, 
         ModelManager::Model::Instance &instance = meshIn.instances[i];
         glm::mat4 &instanceMatrix = instance.modelMatrix;
 
-        instanceMatrix = glm::translate(instanceMatrix, translation);
-        //  This is a naive implementation in that it expects the geometry is at the origin -
-        //  because it is, because the mesh was just created. Compare with Lazarus::Transform for 
-        //  reference.
-        instance.position = translation;
+        /**
+         * TODO:
+         * Handle rotation
+         */
 
+        //  Scale
         //  Note: Planes and cubes use scale to determine the raw vertex positions laid out in the VBO
         //  rather than a modification to the modelmatrix, as occurs here.    
         if( meshIn.type == ModelType::GLB || 
@@ -1394,6 +1391,14 @@ void ModelManager::setStartingOrientation(Model &meshIn, glm::vec3 translation, 
             instanceMatrix = glm::scale(instanceMatrix, scale);
             instance.scale = scale;
         };
+
+        //  Translate
+        instanceMatrix = glm::translate(instanceMatrix, translation / instance.scale);
+        //  This is a naive implementation in that it expects the geometry is at the origin -
+        //  because it is, because the mesh was just created. Compare with Lazarus::Transform for 
+        //  reference.
+        instance.position = instanceMatrix * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+
     }
 };
 
@@ -1706,7 +1711,7 @@ lazarus_result ModelManager::drawModel(ModelManager::Model &meshIn)
             same for all materials.
         */
     
-        switch (this->textureStorage)
+        switch (TextureLoader::storageType)
         {
             case TextureLoader::StorageType::ATLAS:
                 glBindTexture(GL_TEXTURE_2D, data.texture.samplerId);
@@ -1864,8 +1869,8 @@ void ModelManager::copyModel(ModelManager::Model &dest, ModelManager::Model src)
     LOG_DEBUG(std::string("Copying model [").append(src.name+ "]").c_str());
     this->modelOut = src;
     this->modelData = this->modelStore.at(modelOut.id);
-    bool selectable = this->modelOut.instances.at(0).isClickable;
     
+    bool selectable = false;
     ModelManager::ModelData data = {};
     for(size_t i = 0; i < this->modelData.size(); i++)
     {
@@ -1876,7 +1881,7 @@ void ModelManager::copyModel(ModelManager::Model &dest, ModelManager::Model src)
             new/unique id's.
         */
         this->modelOut.instances.clear();
-        this->instantiateMesh(selectable);
+        this->instantiateMesh();
     
         this->modelOut.id = this->modelOut.instances.at(0).id;
         this->meshData.id = this->modelOut.id;
@@ -1894,6 +1899,11 @@ void ModelManager::copyModel(ModelManager::Model &dest, ModelManager::Model src)
             destInstance.scale = srcInstance.scale;
         }
 
+        if(this->meshData.stencilBufferId > 0)
+        {
+            selectable = true;
+        }
+
         data.push_back(this->meshData);
     };
     
@@ -1905,7 +1915,7 @@ void ModelManager::copyModel(ModelManager::Model &dest, ModelManager::Model src)
 };
 
 
-void ModelManager::instantiateMesh(bool selectable)
+void ModelManager::instantiateMesh()
 {   
     LOG_DEBUG("Loading mesh instance(s)");
     for(size_t i = 0; i < meshData.instanceCount; i ++)
@@ -1916,8 +1926,7 @@ void ModelManager::instantiateMesh(bool selectable)
         ModelManager::Model::Instance instance = {};
         instance.id = this->childCount;
         instance.modelMatrix = glm::mat4(1.0f);
-        instance.isClickable = selectable;
-        instance.isVisible = true;
+        instance.opacity = 1.0f;
         
         /*
             Instances are created at the origin 

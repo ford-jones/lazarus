@@ -82,8 +82,7 @@ class ModelManager
 
                 glm::mat4 modelMatrix;
 
-                bool isClickable;
-                bool isVisible;
+                float opacity;
             };
 
             struct Animation
@@ -178,7 +177,7 @@ class ModelManager
             };
 
             uint32_t id;
-            uint8_t stencilBufferId;
+            uint8_t stencilBufferId;            //  Screenspace selectable ID
 
             uint32_t instanceCount;
             
@@ -270,7 +269,7 @@ class ModelManager
         /**
          * Generates a buffer used to handle a meshes GPU instance data
         */
-        void instantiateMesh(bool selectable);
+        void instantiateMesh();
 
         /**
          * Initialises `this->modelOut`'s default properties
@@ -328,7 +327,6 @@ class ModelManager
 
         Shader *shader;
         std::unique_ptr<FileLoader> finder;
-        TextureLoader::StorageType textureStorage;
 
         /*
             Convert std::map to std::set once

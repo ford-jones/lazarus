@@ -28,14 +28,39 @@
 #include "lazarus_mesh.h"
 #include "lazarus_camera.h"
 #include "lazarus_shader.h"
+#include "lazarus_transforms.h"
+
+#include <glm/gtc/random.hpp>
 
 #ifndef LAZARUS_WORLD_FX_H
 #define LAZARUS_WORLD_FX_H
 
-class WorldFX : private ModelManager
+/**
+ * The following skybox/particle loader classes exist to facilitate the
+ * inheretence of two unique/static ModelManager instances into WorldFX. 
+ * This enables the instantiation of WorldFX with access to both array 
+ * AND cubemap texture types via MM as well as its' protected class members
+ * while avoiding the "Dreaded Diamond" caveat of multiple-inheretence.
+ */
+
+class ParticleLoader : protected ModelManager
 {
     public:
-        WorldFX(Shader &shader);
+        ParticleLoader(Shader &shader);
+        virtual ~ParticleLoader();
+};
+
+class SkyboxLoader : protected ModelManager
+{
+    public:
+        SkyboxLoader(Shader &shader);
+        virtual ~SkyboxLoader();
+};
+
+class WorldFX : public ParticleLoader, SkyboxLoader
+{
+    public:
+        WorldFX(Shader &shader, CameraManager::Camera &camera);
         struct Skybox
         {
             std::vector<string> paths;
@@ -54,24 +79,80 @@ class WorldFX : private ModelManager
             float density;
         };
 
-        lazarus_result createSkyBox(Skybox &out, std::string rightPath, std::string leftPath, std::string downPath, std::string upPath, std::string frontPath, std::string backPath);
-        lazarus_result drawSkyBox(Skybox skyboxIn, CameraManager::Camera camera);
+        struct ParticleSystemConfig
+        {
+            std::string baseAsset;
+            glm::vec3 epicenter;
+            glm::vec3 minVelocity;
+            glm::vec3 maxVelocity;
+            uint32_t particleCount;
+            uint32_t spawnRate;
+            float maxOffset;
+            float decay;
+            float particleSize;
+            float dispersion;
+        };
+
+        struct ParticleSystem
+        {
+            uint32_t id;
+
+            uint32_t spawnRate;
+            float maxOffset;
+            float dispersion;
+            float decayFactor;
+            glm::vec3 position;
+        };
+
+        lazarus_result createSkyBox(
+            Skybox &out,
+            std::string rightPath,
+            std::string leftPath,
+            std::string downPath,
+            std::string upPath,
+            std::string frontPath,
+            std::string backPath
+        );
+        lazarus_result drawSkyBox(Skybox &skyboxIn);
 
         lazarus_result createFog(
             Fog &out,
-            float minDistance, 
-            float maxDistance, 
-            float thickness, 
+            float minDistance,
+            float maxDistance,
+            float thickness,
             glm::vec3 color,
             glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f)
         );
-        lazarus_result loadFog(Fog fogIn);
+        lazarus_result drawFog(Fog fogIn);
+
+        lazarus_result createParticles(ParticleSystem &out, ParticleSystemConfig config);
+        lazarus_result drawParticles(ParticleSystem &particleSystemIn);
 
         virtual ~WorldFX();
 
     private:
-        lazarus_result updateUniformLocations();
+        struct ParticleSystemData
+        {
+            uint32_t id;                    //  Maps directly to ParticleSystem.id (userspace id)
+            uint32_t previousUptime;        //  The time as it was on the previous tick
+            ModelManager::Model baseMesh;   //  Particle geometry
+
+            struct Particle
+            {
+                uint32_t id;
+                uint32_t releaseTimer;
+                float offset;
+                glm::vec3 velocity;
+            };
+
+            /** NOTE: should probably be a std::map */
+            std::vector<Particle> particles = {};
+        };
+
+        std::map<uint32_t, ParticleSystemData> particleSystems;
+
         lazarus_result loadSkyMap();
+        lazarus_result updateUniformLocations();
 
         GLuint activeShaderID;
         
@@ -82,10 +163,15 @@ class WorldFX : private ModelManager
         GLint fogMinDistUniformLocation;
         GLint fogDensityUniformLocation;
 
-        Skybox skyBoxOut;
-        Fog fogOut;
+        Skybox skybox;
+        ParticleSystem particleSystem;
+        ParticleSystemData particleSystemData;
+        Fog fog;
+
         Shader *shader;
-        std::unique_ptr<FileLoader> imageLoader;
+        CameraManager::Camera *camera;
+        std::unique_ptr<FileLoader> fileLoader;
+        Transform transformer;
 
         int32_t error;
 };

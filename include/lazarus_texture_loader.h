@@ -66,6 +66,7 @@ class TextureLoader
 		virtual ~TextureLoader();
 
 		GLuint textureId;		
+		StorageType storageType;
 
 	private:		
 		void calculateMipLevels(uint32_t &mipCount, uint32_t width, uint32_t height);
@@ -76,7 +77,6 @@ class TextureLoader
 
 		shared_ptr<FileLoader> loader;
 		FileLoader::Image image;
-		StorageType storageType;
 };
 
 #endif
