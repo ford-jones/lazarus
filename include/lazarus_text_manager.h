@@ -44,6 +44,7 @@
 #ifndef LAZARUS_TEXT_MANAGER_H
 #define LAZARUS_TEXT_MANAGER_H
 
+#define LAZARUS_CONTROL_KEY_COUNT 33
 class FontLoader
 {
     public:
@@ -96,6 +97,8 @@ class TextManager : private FontLoader, private ModelManager
         struct Text
         {
             uint32_t layoutIndex;
+            uint32_t width;
+            uint32_t height;
             TextConfig config;
         };
 
@@ -103,7 +106,7 @@ class TextManager : private FontLoader, private ModelManager
         lazarus_result extendFontStack(uint32_t &fontId, std::string filepath, uint32_t ptSize = 12);
         
         lazarus_result createText(Text &out, TextConfig options);
-        lazarus_result loadText(Text textIn);
+        lazarus_result loadText(Text &textIn);
         lazarus_result drawText(Text textIn);
         
         virtual ~TextManager();
@@ -124,10 +127,11 @@ class TextManager : private FontLoader, private ModelManager
         uint32_t atlasWidth;
         uint32_t atlasHeight;
         
+        uint32_t wordWidth;
+        uint32_t wordHeight;
+
         uint32_t fontIndex;
         uint32_t layoutIndex; 
-        
-        float translationStride;
         
         float uvL;
         float uvR;
