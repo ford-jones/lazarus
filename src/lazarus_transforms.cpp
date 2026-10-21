@@ -176,11 +176,9 @@ lazarus_result Transform::translateCamera(CameraManager::Camera &camera, float x
 lazarus_result Transform::rotateCamera(CameraManager::Camera &camera, float pitch, float yaw, float roll)
 {	
 	/**
-	 * NOTE:
 	 * Accumulate inputs to ensure consistent behaviour between rotation and translation.
-	 * Pitch has its result decimated by 0.001 to help avoid gimbal-lock.
 	 */
-	this->accumulatePitch += pitch - 0.001f;
+	this->accumulatePitch += pitch;
 	this->accumulateYaw += yaw;
 	this->accumulateRoll += roll;
 	
@@ -208,8 +206,11 @@ lazarus_result Transform::rotateCamera(CameraManager::Camera &camera, float pitc
 		
 		this->up = this->determineUpVector(accumulatePitch);
 		camera.upVector = glm::vec3(0.0f, this->up, 0.0f);
-
-		float p = this->degreesToRadians(accumulatePitch);
+		
+		/**
+		 * Pitch has its result decimated by 0.001 to help avoid gimbal-lock.
+		 */
+		float p = this->degreesToRadians(accumulatePitch - 0.001f);
 		float y = this->degreesToRadians(accumulateYaw, false);
 
 		//	Compute orientation within a unit-sphere
