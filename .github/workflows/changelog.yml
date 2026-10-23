@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v7
       - name: Cleanup previous output
         run: |
-          git rm -f .github/changelogs/latest.md && git restore . --staged
+          git rm -f .github/changelogs/latest.md && rm -rf .github/changelogs/latest.md
       - name: Set current date as env variable
         id: date
         run: |
