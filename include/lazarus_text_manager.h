@@ -99,7 +99,10 @@ class TextManager : private FontLoader, private ModelManager
             uint32_t layoutIndex;
             uint32_t width;
             uint32_t height;
-            TextConfig config;
+
+            glm::vec2 location;
+            std::string targetString;
+            glm::vec3 color;
         };
 
         lazarus_result initialise();
@@ -113,8 +116,18 @@ class TextManager : private FontLoader, private ModelManager
 
         uint32_t fontCount;
         
-        private: 
+    private: 
+        struct TextData
+        {
+            uint32_t id = 0;
+            uint32_t letterSpacing = 1;
+            uint32_t fontIndex = 0;
+
+            std::vector<ModelManager::Model> surfaces = {};
+        };
+
         Text textOut;
+        TextData textData;
         lazarus_result identifyAlphabetDimensions(uint32_t fontId);
         lazarus_result updateUniformLocations();
         void setActiveGlyph(char target, uint32_t fontId, uint32_t spacing);
@@ -131,7 +144,6 @@ class TextManager : private FontLoader, private ModelManager
         uint32_t wordHeight;
 
         uint32_t fontIndex;
-        uint32_t layoutIndex; 
         
         float uvL;
         float uvR;
@@ -149,15 +161,13 @@ class TextManager : private FontLoader, private ModelManager
         
         std::unique_ptr<CameraManager> cameraBuilder;
         
-        ModelManager::Model quad;
         CameraManager::Camera camera;
 
         std::vector<ModelManager::Model> word;
         std::vector<uint32_t> alphabetHeights;
         std::vector<std::map<uint8_t, FileLoader::Image>> fonts;
         
-        std::pair<uint32_t, std::vector<ModelManager::Model>> layoutEntry;
-        std::map<uint32_t, std::vector<ModelManager::Model>> layout;
+        std::map<uint32_t, TextData> layout;
         std::map<uint8_t, FileLoader::Image> characters;
     };
     
