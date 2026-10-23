@@ -6,9 +6,13 @@
 .vc
 .vs
 
+# Binaries
+examples/sponza/sponza
+
 # Compiler output
 lib
 build
+*.o
 
 # Debugging symbols
 run.dSYM

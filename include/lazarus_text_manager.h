@@ -44,6 +44,7 @@
 #ifndef LAZARUS_TEXT_MANAGER_H
 #define LAZARUS_TEXT_MANAGER_H
 
+#define LAZARUS_CONTROL_KEY_COUNT 33
 class FontLoader
 {
     public:
@@ -96,22 +97,37 @@ class TextManager : private FontLoader, private ModelManager
         struct Text
         {
             uint32_t layoutIndex;
-            TextConfig config;
+            uint32_t width;
+            uint32_t height;
+
+            glm::vec2 location;
+            std::string targetString;
+            glm::vec3 color;
         };
 
         lazarus_result initialise();
         lazarus_result extendFontStack(uint32_t &fontId, std::string filepath, uint32_t ptSize = 12);
         
         lazarus_result createText(Text &out, TextConfig options);
-        lazarus_result loadText(Text textIn);
+        lazarus_result loadText(Text &textIn);
         lazarus_result drawText(Text textIn);
         
         virtual ~TextManager();
 
         uint32_t fontCount;
         
-        private: 
+    private: 
+        struct TextData
+        {
+            uint32_t id = 0;
+            uint32_t letterSpacing = 1;
+            uint32_t fontIndex = 0;
+
+            std::vector<ModelManager::Model> surfaces = {};
+        };
+
         Text textOut;
+        TextData textData;
         lazarus_result identifyAlphabetDimensions(uint32_t fontId);
         lazarus_result updateUniformLocations();
         void setActiveGlyph(char target, uint32_t fontId, uint32_t spacing);
@@ -124,10 +140,10 @@ class TextManager : private FontLoader, private ModelManager
         uint32_t atlasWidth;
         uint32_t atlasHeight;
         
+        uint32_t wordWidth;
+        uint32_t wordHeight;
+
         uint32_t fontIndex;
-        uint32_t layoutIndex; 
-        
-        float translationStride;
         
         float uvL;
         float uvR;
@@ -145,15 +161,13 @@ class TextManager : private FontLoader, private ModelManager
         
         std::unique_ptr<CameraManager> cameraBuilder;
         
-        ModelManager::Model quad;
         CameraManager::Camera camera;
 
         std::vector<ModelManager::Model> word;
         std::vector<uint32_t> alphabetHeights;
         std::vector<std::map<uint8_t, FileLoader::Image>> fonts;
         
-        std::pair<uint32_t, std::vector<ModelManager::Model>> layoutEntry;
-        std::map<uint32_t, std::vector<ModelManager::Model>> layout;
+        std::map<uint32_t, TextData> layout;
         std::map<uint8_t, FileLoader::Image> characters;
     };
     

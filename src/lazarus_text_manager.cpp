@@ -225,11 +225,11 @@ TextManager::TextManager(Shader &shader)
     this->fonts = {};
     this->alphabetHeights = {};
 
-    this->translationStride = 0;
+    this->wordWidth = 0;
+    this->wordHeight = 0;
 
     this->targetKey = 0;
     this->fontIndex = 0;
-    this->layoutIndex = 0;
 
     this->rowWidth = 0;
     this->rowHeight = 0;
@@ -286,14 +286,14 @@ lazarus_result TextManager::extendFontStack(uint32_t &fontId, std::string filepa
     };
     
     /*
-        The expression (n - 33) AKA (i = 33 && i < 128) occurs in several places 
+        The expression (n - LAZARUS_CONTROL_KEY_COUNT) AKA (i = 33 && i < 128) occurs in several places 
         and is used to skip control keys as well as calculate the offset for 
         non-control characters (i.e. keycodes which don't have a unicode UTF-8 
         glyph associated with them. e.g. shift / ctrl).
     */
 
-   rowWidth = 0;
-   rowHeight = 0;
+    rowWidth = 0;
+    rowHeight = 0;
     atlasWidth = 0;
     atlasHeight = 0;
 
@@ -353,7 +353,7 @@ lazarus_result TextManager::extendFontStack(uint32_t &fontId, std::string filepa
             +1 for zero-exclusive keycode indexing
         */
         
-        for(uint32_t i = 33; i < INT8_MAX + 1; i++)
+        for(uint32_t i = LAZARUS_CONTROL_KEY_COUNT; i < INT8_MAX + 1; i++)
         {
             status = FontLoader::loadCharacter(this->glyph, static_cast<char>(i), (n + 1));
             if(status != lazarus_result::LAZARUS_OK)
@@ -371,7 +371,7 @@ lazarus_result TextManager::extendFontStack(uint32_t &fontId, std::string filepa
     
             try
             {
-                characters.emplace((i - 33), this->glyph);
+                characters.emplace((i - LAZARUS_CONTROL_KEY_COUNT), this->glyph);
             }
             catch(const std::exception& e)
             {
@@ -390,18 +390,25 @@ lazarus_result TextManager::extendFontStack(uint32_t &fontId, std::string filepa
 lazarus_result TextManager::createText(TextManager::Text &out, TextManager::TextConfig options)
 {
     LOG_DEBUG(std::string("Generating on-screen text [").append(options.targetString + "]").c_str());
-    this->layoutIndex += 1;
 
-    textOut.layoutIndex = this->layoutIndex;
-    textOut.config = options;
-    
-    this->layoutEntry = std::pair<int, std::vector<ModelManager::Model>>(this->layoutIndex, {});
-    this->layout.insert(this->layoutEntry);
+    this->textOut = {};
+    textOut.layoutIndex = this->layout.size();
+    textOut.color = options.color;
+    textOut.location = options.location;
+    textOut.targetString = options.targetString;
+    textOut.width = 0;
+    textOut.height = 0;
+
+    this->textData = {};
+    textData.id = textOut.layoutIndex;
+    textData.fontIndex = options.fontIndex;
+    textData.letterSpacing = options.letterSpacing;
+    textData.surfaces = {};
 
     try
     {
-        this->layoutEntry = std::pair<int, std::vector<ModelManager::Model>>(this->layoutIndex, {});
-        this->layout.insert(this->layoutEntry);
+        std::pair<int, TextManager::TextData> layoutEntry = std::pair<int, TextManager::TextData>(textOut.layoutIndex, this->textData);
+        this->layout.insert(layoutEntry);
     }
     catch(const std::exception& e)
     {
@@ -419,7 +426,7 @@ lazarus_result TextManager::createText(TextManager::Text &out, TextManager::Text
     return lazarus_result::LAZARUS_OK;
 };
 
-lazarus_result TextManager::loadText(TextManager::Text textIn)
+lazarus_result TextManager::loadText(TextManager::Text &textIn)
 {
     lazarus_result status = lazarus_result::LAZARUS_OK;
 
@@ -428,8 +435,6 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
         It's computationally brutal to be doing all of this every frame
         i.e. Freeing and reprovisioning quads etc
     */
-
-    TextManager::TextConfig &settings = textIn.config;
     
     /*
         Creation of these tiles takes up space in the
@@ -439,10 +444,10 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
         Also helps ensure the location of the tiles at
         the time of draw. I.e. index 0 .. n
     */
-    
-    ModelManager::clearMeshStorage();
-
-    uint32_t program = 0;
+   
+   ModelManager::clearMeshStorage();
+   
+   uint32_t program = 0;
     shader->getActiveShader(program);
     if(this->activeShaderID != program)
     {
@@ -455,7 +460,8 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
         this->word.clear();
     };
     
-    this->translationStride = 0;
+    this->wordWidth = 0;
+    this->wordHeight = 0;
     
     /*
         Generate new tiles which are used as 
@@ -470,11 +476,12 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
         edges of nearby neighbours in the texture 
         atlas to be mapped to the quad.
     */
+    TextManager::TextData &data = this->layout.at(textIn.layoutIndex);
     
-    for(size_t i = 0; i < settings.targetString.size(); i++)
+    for(size_t i = 0; i < textIn.targetString.size(); i++)
     {   
-        this->quad = {};
-        this->setActiveGlyph(settings.targetString[i], settings.fontIndex, settings.letterSpacing);
+        ModelManager::Model quad = {};
+        this->setActiveGlyph(textIn.targetString[i], data.fontIndex, data.letterSpacing);
         
         LOG_DEBUG("Loading glyph tile");
 
@@ -483,7 +490,7 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
         quadSettings.scale.y = this->glyph.height;
         quadSettings.scale.z = 0.0f;
         ModelManager::setUvOffset(uvL, uvR, uvU, uvD);
-        status = ModelManager::createQuad(this->quad, quadSettings);
+        status = ModelManager::createQuad(quad, quadSettings);
         
         if(status != lazarus_result::LAZARUS_OK)
         {
@@ -495,34 +502,35 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
         */
         status = transformer.translateModel(
             quad, 
-            static_cast<float>((settings.location.x + (this->glyph.width * 0.5f)) + this->translationStride), 
-            static_cast<float>((settings.location.y + (this->rowHeight * 0.5f))), 
+            static_cast<float>((textIn.location.x + (this->glyph.width * 0.5f)) + this->wordWidth), 
+            static_cast<float>((textIn.location.y + (this->rowHeight * 0.5f))), 
             0.0f
         );
         if(status != lazarus_result::LAZARUS_OK)
         {
             return status;
         };
-        this->translationStride += (this->glyph.width + settings.letterSpacing);
+        this->wordWidth += (this->glyph.width + data.letterSpacing);
+        this->wordHeight = this->glyph.height > this->wordHeight
+        ? this->glyph.height
+        : this->wordHeight;
 
         this->word.push_back(quad);
     };
 
+    textIn.width = this->wordWidth - data.letterSpacing;
+    textIn.height = this->wordHeight;
+
     /*
-        Cleanup the layout at the locaiton of an
-        entry and assume its position with the new
-        set of tiles.
+        replace previous tiles
     */
 
-    layout.erase(textIn.layoutIndex);
-    layout.insert_or_assign(textIn.layoutIndex, this->word);
-        
-    this->translationStride = 0;
+    data.surfaces = this->word;
 
     //  TODO:
     //  Check opengl errors 
     
-    glUniform3fv(this->textColorUniformLocation, 1, &textIn.config.color[0]);
+    glUniform3fv(this->textColorUniformLocation, 1, &textIn.color[0]);
 
     return status;
 };
@@ -530,18 +538,16 @@ lazarus_result TextManager::loadText(TextManager::Text textIn)
 lazarus_result TextManager::drawText(TextManager::Text textIn)
 {   
     LOG_DEBUG("Rendering character tiles");
-    this->word = layout.at(textIn.layoutIndex);
+    TextManager::TextData &data = layout.at(textIn.layoutIndex);
 
     //  TODO:
     //  Check errors
 
-    for(auto i: this->word)
-    {
-        quad = i;
-        
+    for(auto surface: data.surfaces)
+    {   
         cameraBuilder->loadCamera(camera);
-        ModelManager::loadModel(quad);
-        ModelManager::drawModel(quad);
+        ModelManager::loadModel(surface);
+        ModelManager::drawModel(surface);
     };
 
     return lazarus_result::LAZARUS_OK;
@@ -560,7 +566,7 @@ lazarus_result TextManager::identifyAlphabetDimensions(uint32_t fontId)
 
     LOG_DEBUG(std::string("Determining texture atlas dimensions for font [" + std::to_string(fontId) + "]").c_str());
 
-    for(uint8_t i = 33; i < INT8_MAX + 1; i++)
+    for(uint8_t i = LAZARUS_CONTROL_KEY_COUNT; i < INT8_MAX + 1; i++)
     {
         lazarus_result status = FontLoader::loadCharacter(this->glyph, static_cast<char>(i), fontId);
         if(status != lazarus_result::LAZARUS_OK)
@@ -614,7 +620,7 @@ void TextManager::setActiveGlyph(char target, uint32_t fontId, uint32_t spacing)
 
         this->lookUpUVs(this->targetKey, fontId);
         this->characters = this->fonts.at(fontId);
-        this->glyph = this->characters.at((this->targetKey - 33));
+        this->glyph = this->characters.at((this->targetKey - LAZARUS_CONTROL_KEY_COUNT));
     };
 
     return;
@@ -623,7 +629,7 @@ void TextManager::setActiveGlyph(char target, uint32_t fontId, uint32_t spacing)
 void TextManager::lookUpUVs(uint8_t keyCode, uint32_t fontId)
 {
     this->characters = this->fonts.at(fontId);
-    uint8_t range = keyCode - 33;
+    uint8_t range = keyCode - LAZARUS_CONTROL_KEY_COUNT;
     uint32_t targetXL = 0;
     uint32_t targetXR = 0;
 

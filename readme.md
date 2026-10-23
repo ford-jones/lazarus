@@ -1,5 +1,5 @@
 # Lazarus Engine
-#### *Version: 0.17.0*
+#### *Version: 0.17.1*
 ## Table of contents:
 
 - [Getting Started](#getting-started)
@@ -614,7 +614,7 @@ Sets the value of `LAZARUS_MAX_IMAGE_WIDTH` and `LAZARUS_MAX_IMAGE_HEIGHT`. Used
 - *Also effects the cursor image. Load your cursors first!*
 
 Params:
->**width:** *The width in pixels to be used for image resizing.*
+>**width:** *The width in pixels to be used for image resizing.* \
 >**height:** *The height in pixels to be used for image resizing.*
 
 #### int getMaxImageWidth()
@@ -884,21 +884,21 @@ Default-initialises this classes members.
 Finds the absolute path (from root) to the `filepath` and returns it as `std::string`.
 
 Params:
-> **filepath:** The relative path to the file you would like to find the absolute path of.
+> **filepath:** The relative path to the file you would like to find the absolute path of. \
 > **out:** Out parameter which stores the result
 
 #### FileLoader::checkFileType(std::string &out, std::string filename)
 Determines which file suffix / extension the input `filename` is.
 
 Params:
-> **filename:** The absolute OR relative path to a file
+> **filename:** The absolute OR relative path to a file \
 > **out:** Out parameter for storing the result
 
 #### FileLoader::loadText(std::string filepath, std::string &out)
 Reads a file who's contents are expressed in utf-8 ascii and stores its contents in the out buffer.
 
 Params:
-> **filepath:** The relative path to the file you would like to read from.
+> **filepath:** The relative path to the file you would like to read from. \
 > **out:** Out parameter to store the file's contents.
 
 #### FileLoader::readFromImage(FileLoader::Image &out, const char *filepath, const unsigned char *raw, int size)
@@ -1004,7 +1004,7 @@ A management class for mesh assets and their properties.
 #### ModelManager(Shader &shader, TextureLoader::StorageType textureType)
 
 Params:
-> **shader:** *The shader program used to render this mesh.
+> **shader:** *The shader program used to render this mesh. \
 > **textureType:** *Which variant of sampler storage should mesh texture's loaded by this instance be written to. (default: `TextureLoader::StorageType::ARRAY`)*
 
 ### Functions:
@@ -1302,7 +1302,7 @@ Loads a new TrueType font into a texture atlas stored in VRAM. \
 Returns the font index used for font selection when loading text.
 
 params:
-> **fontId:** *An out-parameter to store the index of the new font.*
+> **fontId:** *An out-parameter to store the index of the new font.* \
 > **filepath:** *The relative path to the TrueType `.ttf` font file.* \
 > **ptSize:** *The desired character pt size. (default: `12`)*
 
@@ -1329,16 +1329,22 @@ Params:
 > **textIn:** *A text object previously loaded by `TextManager::loadText`.*
 
 ### Members:
-> **Text:** *A collection of properties which make up a string of text.*
->   - **layoutIndex:** *An identifier for performing lookup on strings loaded into the layout container. (type: `int`)*
->   - **config:** *Object settings. (type: `TextManager::TextConfig`)*
-
 > **TextConfig:** *Creation function input-settings. (type: `struct`)*
 >   - **fontIndex:** *The unsigned integer value returned in the out-parameter of `TextManager::extendFontStack`, i.e. a font previously loaded into memory. (type: `int`)*
 >   - **letterSpacing:** *The number of pixels to leave between each rendered glyph / character. (type: `int`, default: `1`)*
 >   - **location:** *The position of the text (in pixels) measured from the bottom-left corner of the window. (type: `glm::vec2`, default: `(0.0, 0.0)`)*
 >   - **targetString:** *The text you wish to render on-screen. (type: `std::string`)*
 >   - **color:** *The RGB color of the `targetString` when rendered. (type: `glm::vec3`, default: `(0.0, 0.0, 0.0)`)*
+
+
+> **Text:** *A collection of properties which make up a string of text.*
+>   - **layoutIndex:** *An identifier for performing lookup on strings loaded into the layout container. (type: `int`)*
+>   - **width:** *The amount of real estate on-screen which is occupied by the string's width in pixels, inclusive of letter spacing. (type: `int`)*
+>   - **width:** *The height of the string, equal to the string's tallest character. (type: `int`)*
+>   - **location:** *Maps to `TextConfig.location`*
+>   - **targetString:** *Maps to `TextConfig.targetString`*
+>   - **color:** *Maps to `TextConfig.color`*
+
 
 ## WorldFX:
 A management class for handling environmental effects such as skyboxes and soon; particles.
@@ -1405,12 +1411,16 @@ Params:
 >   - **paths:** *The absolute filepaths to the 6 image textures used to construct the skymap. (type: `std::vector<std::string>`)*
 >   - **cubeMap:** *The image data for each of the cubes 6 faces. (type: `std::vector<FileLoader::Image>`)*
 >   - **cube:** *The skybox's mesh. (type: `ModelManager::Model`)*
+
+
 > **Fog** *A collection of properties which quanitify world fog and it's visibility. (type: `struct`).* 
 >   - **color:** *The fog's RGB color values. (type: `glm::vec3`).*
 >   - **viewpoint:** *The epicenter of the fog's sphere of visibility in worldspace. Defines where the fog can be seen from. (type: `glm::vec3`).*
 >   - **minDistance:** *From the viewpoint, at which distance the fog's attenuation / opacity begins taking effect. (type: `float`).*
 >   - **maxDistance:** *From the viewpoint, at which distance the fog reaches full opacity / coverage. (type: `float`).*
 >   - **density:** *The fog's thickness. Note that this only acts as a modifier of the other visibility values. The fog will still eventually reach full opacity. (type: `float`).*
+
+
 > **ParticleSystemConfig:** *A configuration object used for defining a particle system (type: `struct`)*
 >   - **baseAsset:** *The relative path to either an image or a glb asset. (type: `std::string`)*
 >   - **epicenter:** *The site where each of a systems particles should originate from. (type: `glm::vec3`)*
@@ -1422,6 +1432,8 @@ Params:
 >   - **decay:** *A multiplier used to modify the speed that a particles opacity should taper. (type: `float`)*
 >   - **particleSize:** *A multiplier used to modify the size of each particle in the system relative to its' original size. (type: `float`)*
 >   - **dispersion:** *A radial value used to describe the maximum-offset that particles can be spawned from relative to the epicenter. (type: `float`)*
+
+
 > **ParticleSystem:** *A collection of properties which describe a particle system (type: `struct`)*
 >   - **id:** *A serialised number used to identify particle systems from one another. (type: `int`)*
 >   - **spawnRate:** *Same as `ParticleSystemConfig.spawnRate`*
